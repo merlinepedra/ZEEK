@@ -297,11 +297,15 @@ void add_type(ID* id, BroType* t, attr_list* attr)
 
 	tnew->SetName(id->Name());
 
-	id->SetType(tnew);
+	TypeType* tt = new TypeType(tnew);
+	tt->AddAttrs(attr);
+
+	id->SetType(tt);
 	id->MakeType();
 
-	if ( attr )
-		id->SetAttrs(new Attributes(attr, tnew, false));
+	Attributes* full_attrs = tt->Attrs();
+	Ref(full_attrs);	// because AddAttrs takes over
+	id->AddAttrs(full_attrs);
 	}
 
 static void transfer_arg_defaults(RecordType* args, RecordType* recv)

@@ -896,6 +896,54 @@ bool FuncType::DoUnserialize(UnserialInfo* info)
 	return true;
 	}
 
+
+TypeType::TypeType(BroType* t)
+: BroType(TYPE_TYPE)
+	{
+	type = t->Ref();
+	attrs = new Attributes(type);
+
+	if ( type->Tag() == TYPE_TYPE )
+		{
+		// Import the underlying attributes.
+		Attributes* a = type->AsTypeType()->Attrs();
+
+		if ( a )
+			{
+			::Ref(a);	// because the following Unref()'s
+			attrs->AddAttrs(a);
+			}
+		}
+	}
+
+void TypeType::AddAttrs(attr_list* a)
+	{
+	if ( a )
+		{
+		loop_over_list(*a, i)
+			attrs->AddAttr((*a)[i]);
+		}
+	}
+
+IMPLEMENT_SERIAL(TypeType, SER_TYPE_TYPE);
+
+bool TypeType::DoSerialize(SerialInfo* info) const
+	{
+	DO_SERIALIZE(SER_TYPE_TYPE, BroType);
+	return type->Serialize(info) && attrs->Serialize(info);
+	}
+
+bool TypeType::DoUnserialize(UnserialInfo* info)
+	{
+	DO_UNSERIALIZE(BroType);
+
+	type = BroType::Unserialize(info);
+	attrs = Attributes::Unserialize(info);
+
+	return type != 0 && attrs != 0;
+	}
+
+
 TypeDecl::TypeDecl(BroType* t, const char* i, attr_list* arg_attrs, bool in_record)
 	{
 	type = t;

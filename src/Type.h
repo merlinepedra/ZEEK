@@ -428,15 +428,20 @@ protected:
 
 class TypeType : public BroType {
 public:
-	explicit TypeType(BroType* t) : BroType(TYPE_TYPE)	{ type = t->Ref(); }
-	~TypeType() override { Unref(type); }
+	explicit TypeType(BroType* t);
+	~TypeType() override	{ Unref(type); Unref(attrs); }
+
+	void AddAttrs(attr_list* a);
+	Attributes* Attrs()	{ return attrs; }
 
 	BroType* Type()	{ return type; }
 
 protected:
 	TypeType()	{}
+	DECLARE_SERIAL(TypeType)
 
 	BroType* type;
+	Attributes* attrs;
 };
 
 class TypeDecl {

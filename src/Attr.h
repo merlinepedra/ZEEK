@@ -84,6 +84,11 @@ protected:
 class Attributes : public BroObj {
 public:
 	Attributes(attr_list* a, BroType* t, bool in_record);
+
+	// This second form is used for building up TypeType attributes,
+	// which start from scratch (no up-front attributes).
+	Attributes(BroType* t);
+
 	~Attributes() override;
 
 	void AddAttr(Attr* a);

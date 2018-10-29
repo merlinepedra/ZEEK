@@ -128,6 +128,15 @@ Attributes::Attributes(attr_list* a, BroType* t, bool arg_in_record)
 	delete a;
 	}
 
+Attributes::Attributes(BroType* t)
+	{
+	attrs = new attr_list;
+	type = t->Ref();
+	in_record = false;
+
+	SetLocationInfo(&start_location, &end_location);
+	}
+
 Attributes::~Attributes()
 	{
 	loop_over_list(*attrs, i)
