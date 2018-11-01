@@ -946,8 +946,34 @@ bool TypeType::DoUnserialize(UnserialInfo* info)
 
 TypeDecl::TypeDecl(BroType* t, const char* i, attr_list* arg_attrs, bool in_record)
 	{
+	// 't' might be a TYPE_TYPE that carries attributes.  If so,
+	// store these separately and reduce t to its corresponding
+	// base type.
+	Attributes* t_attrs =
+		(t && t->Tag() == TYPE_TYPE) ? t->AsTypeType()->Attrs() : 0;
+
+	while ( t && t->Tag() == TYPE_TYPE )
+		t = t->AsTypeType()->Type();
+
 	type = t;
-	attrs = arg_attrs ? new Attributes(arg_attrs, t, in_record) : 0;
+
+	if ( t_attrs || arg_attrs )
+		{
+		attr_list* al = new attr_list;
+		attrs = new Attributes(al, t, in_record);
+
+		if ( t_attrs )
+			{
+			Ref(t_attrs);
+			attrs->AddAttrs(t_attrs);
+			}
+
+		if ( arg_attrs )
+			attrs->AddAttrs(new Attributes(arg_attrs, t, in_record));
+		}
+	else
+		attrs = 0;
+
 	id = i;
 	}
 

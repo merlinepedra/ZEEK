@@ -19,6 +19,15 @@ static Val* init_val(Expr* init, const BroType* t, Val* aggr)
 static void make_var(ID* id, BroType* t, init_class c, Expr* init,
 			attr_list* attr, decl_type dt, int do_init)
 	{
+	// 't' might be a TYPE_TYPE that carries attributes.  If so,
+	// store these separately and reduce t to its corresponding
+	// base type.
+	Attributes* t_attrs =
+		(t && t->Tag() == TYPE_TYPE) ? t->AsTypeType()->Attrs() : 0;
+
+	while ( t && t->Tag() == TYPE_TYPE )
+		t = t->AsTypeType()->Type();
+
 	if ( id->Type() )
 		{
 		if ( id->IsRedefinable() || (! init && attr) )
@@ -102,6 +111,12 @@ static void make_var(ID* id, BroType* t, init_class c, Expr* init,
 
 	id->SetType(t);
 
+	if ( t_attrs )
+		{
+		Ref(t_attrs);
+		id->AddAttrs(t_attrs);
+		}
+
 	if ( attr )
 		id->AddAttrs(new Attributes(attr, t, false));
 
@@ -159,8 +174,9 @@ static void make_var(ID* id, BroType* t, init_class c, Expr* init,
 		{
 		if ( c == INIT_NONE && dt == VAR_REDEF && t->IsTable() &&
 		     init && init->Tag() == EXPR_ASSIGN )
-			// e.g. 'redef foo["x"] = 1' is missing an init class, but the
-			// intention clearly isn't to overwrite entire existing table val.
+			// e.g. 'redef foo["x"] = 1' is missing an init class,
+			// but the intention clearly isn't to overwrite entire
+			// existing table val.
 			c = INIT_EXTRA;
 
 		if ( (c == INIT_EXTRA && id->FindAttr(ATTR_ADD_FUNC)) ||
@@ -302,6 +318,13 @@ void add_type(ID* id, BroType* t, attr_list* attr)
 
 	id->SetType(tt);
 	id->MakeType();
+
+	if ( t->Tag() == TYPE_TYPE )
+		{
+		Attributes* tt_a = tt->Attrs();
+		Ref(tt_a);	// because AddAttrs takes over
+		id->AddAttrs(tt_a);
+		}
 
 	Attributes* full_attrs = tt->Attrs();
 	Ref(full_attrs);	// because AddAttrs takes over

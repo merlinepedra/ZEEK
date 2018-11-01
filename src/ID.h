@@ -39,6 +39,12 @@ public:
 	BroType* AsType()		{ return is_type ? Type() : 0; }
 	const BroType* AsType() const	{ return is_type ? Type() : 0; }
 
+	// These facilitate access to the TYPE_TYPE object that is
+	// used to hold type attributes.
+	bool IsType() const			{ return is_type; }
+	BroType* FullType()			{ return type; }
+	const BroType* FullType() const		{ return type; }
+
 	// If weak_ref is false, the Val is assumed to be already ref'ed
 	// and will be deref'ed when the ID is deleted.
 	//
