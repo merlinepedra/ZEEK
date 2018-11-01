@@ -32,8 +32,8 @@ public:
 	string ModuleName() const;
 
 	void SetType(BroType* t)	{ Unref(type); type = t; }
-	BroType* Type()			{ return type; }
-	const BroType* Type() const	{ return type; }
+	BroType* Type()			{ return is_type ? type->AsTypeType()->Type() : type; }
+	const BroType* Type() const	{ return is_type ? type->AsTypeType()->Type() : type; }
 
 	void MakeType()			{ is_type = true; }
 	BroType* AsType()		{ return is_type ? Type() : 0; }
