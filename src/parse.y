@@ -62,7 +62,8 @@
 %type <expr> expr opt_expr init anonymous_function
 %type <event_expr> event
 %type <stmt> stmt stmt_list func_body for_head
-%type <type> type opt_type enum_body
+%type <type> type type_specifier type_name opt_type enum_body
+%type <type> type_with_attrs type_name_with_attrs
 %type <func_type> func_hdr func_params
 %type <type_l> type_list
 %type <type_decl> type_decl formal_args_decl
@@ -233,6 +234,22 @@ static bool expr_is_table_type_name(const Expr* expr)
 		return type->AsTypeType()->Type()->IsTable();
 
 	return false;
+	}
+
+static bool check_type_name(ID* id)
+	{
+	if ( ! id || ! id->IsType() )
+		{
+		NullStmt here;
+		if ( id )
+			id->Error("not a Bro type", &here);
+		return false
+		}
+
+	if ( id->IsDeprecated() )
+		reporter->Warning("deprecated (%s)", $1->Name());
+
+	return true;
 	}
 %}
 
@@ -819,7 +836,16 @@ enum_body_elem:
 			}
 	;
 
-type:
+type:		type_specifier
+	|	type_name
+	;
+
+type_with_attrs:
+		type_specifier
+	|	type_name_with_attrs;
+	;
+
+type_specifier:
 		TOK_BOOL	{
 				set_location(@1);
 				$$ = base_type(TYPE_BOOL);
@@ -983,8 +1009,20 @@ type:
 				set_location(@1, @3);
 				$$ = new OpaqueType($3);
 				}
+	;
 
-	|	resolve_id
+type_name:	resolve_id
+			{
+			if ( ! check_type_name($1) )
+				$$ = error_type();
+			else
+				{
+				$$ = $1->Type();
+				Ref($$);
+				}
+	;
+
+type_name:	resolve_id
 			{
 			if ( ! $1 || ! $1->IsType() )
 				{
@@ -995,7 +1033,7 @@ type:
 				}
 			else
 				{
-				$$ = $1->FullType();
+				$$ = $1->Type();
 				Ref($$);
 
 				if ( $1->IsDeprecated() )
