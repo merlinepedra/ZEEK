@@ -62,7 +62,7 @@
 %type <expr> expr opt_expr init anonymous_function
 %type <event_expr> event
 %type <stmt> stmt stmt_list func_body for_head
-%type <type> type type_no_attrs opt_type enum_body
+%type <type> type opt_type enum_body
 %type <func_type> func_hdr func_params
 %type <type_l> type_list
 %type <type_decl> type_decl formal_args_decl
@@ -731,13 +731,13 @@ expr:
 			$$ = new SizeExpr($2);
 			}
 
-	|       expr TOK_AS type_no_attrs
+	|       expr TOK_AS type
 			{
 			set_location(@1, @3);
 			$$ = new CastExpr($1, $3);
 			}
 
-	|       expr TOK_IS type_no_attrs
+	|       expr TOK_IS type
 			{
 			set_location(@1, @3);
 			$$ = new IsExpr($1, $3);
@@ -817,14 +817,6 @@ enum_body_elem:
 			assert(cur_enum_type);
 			cur_enum_type->AddName(current_module, $1, is_export, $2);
 			}
-	;
-
-type_no_attrs:	type
-				{
-				$$ = $1;
-				while ( $$->Tag() == TYPE_TYPE )
-					$$ = $$->AsTypeType()->Type();
-				}
 	;
 
 type:
@@ -1013,9 +1005,9 @@ type:
 	;
 
 type_list:
-		type_list ',' type_no_attrs
+		type_list ',' type
 			{ $1->AppendEvenIfNotPure($3); }
-	|	type_no_attrs
+	|	type
 			{
 			$$ = new TypeList($1);
 			$$->Append($1);
@@ -1063,7 +1055,7 @@ formal_args_decl_list:
 	;
 
 formal_args_decl:
-		TOK_ID ':' type_no_attrs opt_attr
+		TOK_ID ':' type opt_attr
 			{
 			set_location(@1, @4);
 			$$ = new TypeDecl($3, $1, $4);
@@ -1228,7 +1220,7 @@ begin_func:
 	;
 
 func_params:
-		'(' formal_args ')' ':' type_no_attrs
+		'(' formal_args ')' ':' type
 			{ $$ = new FuncType($2, $5, FUNC_FLAVOR_FUNCTION); }
 	|	'(' formal_args ')'
 			{ $$ = new FuncType($2, base_type(TYPE_VOID), FUNC_FLAVOR_FUNCTION); }
@@ -1560,13 +1552,13 @@ case_type_list:
 	;
 
 case_type:
-		TOK_TYPE type_no_attrs
+		TOK_TYPE type
 			{
 			$$ = new ID(0, SCOPE_FUNCTION, 0);
 			$$->SetType($2);
 			}
 
-	|	TOK_TYPE type_no_attrs TOK_AS TOK_ID
+	|	TOK_TYPE type TOK_AS TOK_ID
 			{
 			const char* name = $4;
 			BroType* type = $2;
