@@ -62,7 +62,8 @@
 %type <expr> expr opt_expr init anonymous_function
 %type <event_expr> event
 %type <stmt> stmt stmt_list func_body for_head
-%type <type> type opt_type enum_body
+%type <type> type type_specifier type_name enum_body
+%type <type_and_attrs> type_with_attrs type_name_with_attrs opt_type
 %type <func_type> func_hdr func_params
 %type <type_l> type_list
 %type <type_decl> type_decl formal_args_decl
@@ -234,6 +235,23 @@ static bool expr_is_table_type_name(const Expr* expr)
 
 	return false;
 	}
+
+static bool check_type_name(ID* id)
+	{
+	if ( ! id || ! id->AsType() )
+		{
+		NullStmt here;
+		if ( id )
+			id->Error("not a Bro type", &here);
+		return false;
+		}
+
+	if ( id->IsDeprecated() )
+		reporter->Warning("deprecated (%s)", id->Name());
+
+	return true;
+	}
+
 %}
 
 %union {
@@ -254,6 +272,7 @@ static bool expr_is_table_type_name(const Expr* expr)
 	TypeList* type_l;
 	TypeDecl* type_decl;
 	type_decl_list* type_decl_l;
+	struct TypeAndAttrs* type_and_attrs;
 	Case* c_case;
 	case_list* case_l;
 	Attr* attr;
@@ -819,7 +838,17 @@ enum_body_elem:
 			}
 	;
 
-type:
+type:		type_specifier
+	|	type_name
+	;
+
+type_with_attrs:
+		type_specifier
+			{ $$ = new TypeAndAttrs($1); }
+	|	type_name_with_attrs
+	;
+
+type_specifier:
 		TOK_BOOL	{
 				set_location(@1);
 				$$ = base_type(TYPE_BOOL);
@@ -983,22 +1012,31 @@ type:
 				set_location(@1, @3);
 				$$ = new OpaqueType($3);
 				}
+	;
 
-	|	resolve_id
+type_name:	resolve_id
 			{
-			if ( ! $1 || ! ($$ = $1->AsType()) )
-				{
-				NullStmt here;
-				if ( $1 )
-					$1->Error("not a BRO type", &here);
+			if ( ! check_type_name($1) )
 				$$ = error_type();
-				}
 			else
 				{
+				$$ = $1->Type();
 				Ref($$);
+				}
+			}
+	;
 
-				if ( $1->IsDeprecated() )
-					reporter->Warning("deprecated (%s)", $1->Name());
+type_name_with_attrs:
+		resolve_id
+			{
+			$$ = new TypeAndAttrs;
+
+			if ( ! check_type_name($1) )
+				$$->type = error_type();
+			else
+				{
+				$$->type = $1->Type()->Ref();
+				$$->attrs = $1->Attrs();
 				}
 			}
 	;
@@ -1025,10 +1063,13 @@ type_decl_list:
 	;
 
 type_decl:
-		TOK_ID ':' type opt_attr ';'
+		TOK_ID ':' type_with_attrs opt_attr ';'
 			{
 			set_location(@1, @4);
-			$$ = new TypeDecl($3, $1, $4, (in_record > 0));
+			$$ = new TypeDecl($3->type, $1,
+						$3->attrs, $4, (in_record > 0));
+
+			delete $3;
 
 			if ( in_record > 0 && cur_decl_type_id )
 				broxygen_mgr->RecordField(cur_decl_type_id, $$, ::filename);
@@ -1057,7 +1098,7 @@ formal_args_decl:
 		TOK_ID ':' type opt_attr
 			{
 			set_location(@1, @4);
-			$$ = new TypeDecl($3, $1, $4);
+			$$ = new TypeDecl($3, $1, 0, $4);
 			}
 	;
 
@@ -1120,7 +1161,7 @@ decl:
 
 	|	TOK_TYPE global_id ':'
 			{ cur_decl_type_id = $2; broxygen_mgr->StartType($2);  }
-		type opt_attr ';'
+		type_with_attrs opt_attr ';'
 			{
 			cur_decl_type_id = 0;
 			add_type($2, $5, $6);
@@ -1224,7 +1265,7 @@ func_params:
 	;
 
 opt_type:
-		':' type
+		':' type_with_attrs
 			{ $$ = $2; }
 	|
 			{ $$ = 0; }
@@ -1558,7 +1599,7 @@ case_type:
 	|	TOK_TYPE type TOK_AS TOK_ID
 			{
 			const char* name = $4;
-			BroType* type = $2;
+			TypeAndAttrs* t_a = new TypeAndAttrs($2, 0);
 			ID* case_var = lookup_ID(name, current_module.c_str());
 
 			if ( case_var && case_var->IsGlobal() )
@@ -1566,7 +1607,7 @@ case_type:
 			else
 				case_var = install_ID(name, current_module.c_str(), false, false);
 
-			add_local(case_var, type, INIT_NONE, 0, 0, VAR_REGULAR);
+			add_local(case_var, t_a, INIT_NONE, 0, 0, VAR_REGULAR);
 			$$ = case_var;
 			}
 

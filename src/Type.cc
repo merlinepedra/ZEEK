@@ -896,10 +896,30 @@ bool FuncType::DoUnserialize(UnserialInfo* info)
 	return true;
 	}
 
-TypeDecl::TypeDecl(BroType* t, const char* i, attr_list* arg_attrs, bool in_record)
+TypeDecl::TypeDecl(BroType* t, const char* i, Attributes* type_attrs,
+			attr_list* arg_attrs, bool in_record)
 	{
 	type = t;
-	attrs = arg_attrs ? new Attributes(arg_attrs, t, in_record) : 0;
+
+	if ( type_attrs )
+		{
+		attrs = new Attributes(new attr_list, t, in_record);
+		Ref(type_attrs);
+		attrs->AddAttrs(type_attrs);
+
+		if ( arg_attrs )
+			{
+			Attributes* a = new Attributes(arg_attrs, t, in_record);
+			attrs->AddAttrs(a);
+			}
+		}
+
+	else if ( arg_attrs )
+		attrs = new Attributes(arg_attrs, t, in_record);
+
+	else
+		attrs = 0;
+
 	id = i;
 	}
 

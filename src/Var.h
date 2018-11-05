@@ -10,15 +10,27 @@
 class Func;
 class EventHandlerPtr;
 
+// This structure is used because the parser doesn't support productions
+// yielding multiple values.  It's just a way to bundle up a production
+// having both a type and a set of attributes as its value.
+struct TypeAndAttrs {
+	TypeAndAttrs(BroType* t = 0, Attributes* a = 0)
+		{ type = t; attrs = a; }
+
+	BroType* type;
+	Attributes* attrs;
+};
+
 typedef enum { VAR_REGULAR, VAR_CONST, VAR_REDEF, VAR_OPTION, } decl_type;
 
-extern void add_global(ID* id, BroType* t, init_class c, Expr* init,
+// The following both delete t_a before returning.
+extern void add_global(ID* id, TypeAndAttrs* t_a, init_class c, Expr* init,
 			attr_list* attr, decl_type dt);
-extern Stmt* add_local(ID* id, BroType* t, init_class c, Expr* init,
+extern Stmt* add_local(ID* id, TypeAndAttrs* t_a, init_class c, Expr* init,
 			attr_list* attr, decl_type dt);
-extern Expr* add_and_assign_local(ID* id, Expr* init, Val* val = 0);
+extern void add_type(ID* id, TypeAndAttrs* t_a, attr_list* attr);
 
-extern void add_type(ID* id, BroType* t, attr_list* attr);
+extern Expr* add_and_assign_local(ID* id, Expr* init, Val* val = 0);
 
 extern void begin_func(ID* id, const char* module_name, function_flavor flavor,
 		       int is_redef, FuncType* t, attr_list* attrs = nullptr);

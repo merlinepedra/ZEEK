@@ -1370,8 +1370,11 @@ ForStmt::ForStmt(id_list* arg_loop_vars, Expr* loop_expr)
 
 			else
 				{
+				TypeAndAttrs* t_a =
+					new TypeAndAttrs(ind_type->Ref());
+
 				delete add_local((*loop_vars)[i],
-						ind_type->Ref(), INIT_NONE,
+						t_a, INIT_NONE,
 						0, 0, VAR_REGULAR);
 				}
 			}
@@ -1387,8 +1390,12 @@ ForStmt::ForStmt(id_list* arg_loop_vars, Expr* loop_expr)
 
 		BroType* t = (*loop_vars)[0]->Type();
 		if ( ! t )
-			delete add_local((*loop_vars)[0], base_type(TYPE_INT),
+			{
+			TypeAndAttrs* t_a =
+				new TypeAndAttrs(base_type(TYPE_INT));
+			delete add_local((*loop_vars)[0], t_a,
 						INIT_NONE, 0, 0, VAR_REGULAR);
+			}
 
 		else if ( ! IsIntegral(t->Tag()) )
 			{
@@ -1407,9 +1414,12 @@ ForStmt::ForStmt(id_list* arg_loop_vars, Expr* loop_expr)
 
 		BroType* t = (*loop_vars)[0]->Type();
 		if ( ! t )
-			delete add_local((*loop_vars)[0],
-					base_type(TYPE_STRING),
+			{
+			TypeAndAttrs* t_a =
+				new TypeAndAttrs(base_type(TYPE_STRING));
+			delete add_local((*loop_vars)[0], t_a,
 					INIT_NONE, 0, 0, VAR_REGULAR);
+			}
 
 		else if ( t->Tag() != TYPE_STRING )
 			{

@@ -16,9 +16,14 @@ static Val* init_val(Expr* init, const BroType* t, Val* aggr)
 	return init->InitVal(t, aggr);
 	}
 
-static void make_var(ID* id, BroType* t, init_class c, Expr* init,
+static void make_var(ID* id, TypeAndAttrs* t_a, init_class c, Expr* init,
 			attr_list* attr, decl_type dt, int do_init)
 	{
+	BroType* t = t_a ? t_a->type : 0;
+	Attributes* a = t_a ? t_a->attrs : 0;
+
+	delete t_a;
+
 	if ( id->Type() )
 		{
 		if ( id->IsRedefinable() || (! init && attr) )
@@ -102,6 +107,13 @@ static void make_var(ID* id, BroType* t, init_class c, Expr* init,
 
 	id->SetType(t);
 
+	// Important to add the (implicit) attributes coming from the type
+	// first, so the (explict) second set can override them.
+	if ( a )
+		{
+		Ref(a);
+		id->AddAttrs(a);
+		}
 	if ( attr )
 		id->AddAttrs(new Attributes(attr, t, false));
 
@@ -235,16 +247,16 @@ static void make_var(ID* id, BroType* t, init_class c, Expr* init,
 	}
 
 
-void add_global(ID* id, BroType* t, init_class c, Expr* init,
+void add_global(ID* id, TypeAndAttrs* t_a, init_class c, Expr* init,
 		attr_list* attr, decl_type dt)
 	{
-	make_var(id, t, c, init, attr, dt, 1);
+	make_var(id, t_a, c, init, attr, dt, 1);
 	}
 
-Stmt* add_local(ID* id, BroType* t, init_class c, Expr* init,
+Stmt* add_local(ID* id, TypeAndAttrs* t_a, init_class c, Expr* init,
 		attr_list* attr, decl_type dt)
 	{
-	make_var(id, t, c, init, attr, dt, 0);
+	make_var(id, t_a, c, init, attr, dt, 0);
 
 	if ( init )
 		{
@@ -276,8 +288,13 @@ extern Expr* add_and_assign_local(ID* id, Expr* init, Val* val)
 	return new AssignExpr(new NameExpr(id), init, 0, val);
 	}
 
-void add_type(ID* id, BroType* t, attr_list* attr)
+void add_type(ID* id, TypeAndAttrs* t_a, attr_list* attr)
 	{
+	BroType* t = t_a->type;
+	Attributes* a = t_a->attrs;
+
+	delete t_a;
+
 	string new_type_name = id->Name();
 	string old_type_name = t->GetName();
 	BroType* tnew = 0;
@@ -300,8 +317,14 @@ void add_type(ID* id, BroType* t, attr_list* attr)
 	id->SetType(tnew);
 	id->MakeType();
 
+	if ( a )
+		{
+		Ref(a);
+		id->AddAttrs(a);
+		}
+
 	if ( attr )
-		id->SetAttrs(new Attributes(attr, tnew, false));
+		id->AddAttrs(new Attributes(attr, tnew, false));
 	}
 
 static void transfer_arg_defaults(RecordType* args, RecordType* recv)

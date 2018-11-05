@@ -441,7 +441,8 @@ protected:
 
 class TypeDecl {
 public:
-	TypeDecl(BroType* t, const char* i, attr_list* attrs = 0, bool in_record = false);
+	TypeDecl(BroType* t, const char* i, Attributes* type_attrs = 0,
+			attr_list* attrs = 0, bool in_record = false);
 	TypeDecl(const TypeDecl& other);
 	virtual ~TypeDecl();
 
