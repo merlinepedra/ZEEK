@@ -71,9 +71,11 @@ protected:
 
 class TimerMgr : public iosource::IOSource {
 public:
+	TimerMgr();
+
 	virtual ~TimerMgr();
 
-	virtual void Add(Timer* timer) = 0;
+	void Add(Timer* timer);
 
 	/**
 	 * Advance the clock to time t, expiring at most max_expire timers.
@@ -93,7 +95,7 @@ public:
 	/**
 	 * Expire all timers.
 	 */
-	virtual void Expire() = 0;
+	void Expire();
 
 	/**
 	 * Removes a timer. Cancel() is a method separate from Remove()
@@ -108,9 +110,9 @@ public:
 
 	double Time() const		{ return t ? t : 1; }	// 1 > 0
 
-	virtual int Size() const = 0;
-	virtual int PeakSize() const = 0;
-	virtual uint64_t CumulativeNum() const = 0;
+	size_t Size() const { return q->Size(); }
+	size_t PeakSize() const { return q->PeakSize(); }
+	size_t CumulativeNum() const { return q->CumulativeNum(); }
 
 	double LastTimestamp() const	{ return last_timestamp; }
 
@@ -122,7 +124,7 @@ public:
 	static unsigned int* CurrentTimers()	{ return current_timers; }
 
 	// IOSource API methods
-	virtual double GetNextTimeout() override { return -1; }
+	virtual double GetNextTimeout() override;
 	virtual void Process() override;
 	virtual const char* Tag() override { return "TimerMgr"; }
 
@@ -133,10 +135,12 @@ public:
 	void InitPostScript();
 
 protected:
-	TimerMgr();
 
-	virtual int DoAdvance(double t, int max_expire) = 0;
-	virtual void Remove(Timer* timer) = 0;
+	int DoAdvance(double t, int max_expire);
+	void Remove(Timer* timer);
+
+	Timer* Remove();
+	Timer* Top();
 
 	double t;
 	double last_timestamp;
@@ -144,30 +148,12 @@ protected:
 
 	int num_expired;
 
+	size_t peak_size = 0;
+	size_t cumulative_num = 0;
+
 	static unsigned int current_timers[NUM_TIMER_TYPES];
-};
 
-class PQ_TimerMgr : public TimerMgr {
-public:
-	PQ_TimerMgr();
-	~PQ_TimerMgr() override;
-
-	void Add(Timer* timer) override;
-	void Expire() override;
-
-	int Size() const override { return q->Size(); }
-	int PeakSize() const override { return q->PeakSize(); }
-	uint64_t CumulativeNum() const override { return q->CumulativeNum(); }
-	double GetNextTimeout() override;
-
-protected:
-	int DoAdvance(double t, int max_expire) override;
-	void Remove(Timer* timer) override;
-
-	Timer* Remove()			{ return (Timer*) q->Remove(); }
-	Timer* Top()			{ return (Timer*) q->Top(); }
-
-	zeek::detail::PriorityQueue* q;
+	zeek::detail::PriorityQueue* q = nullptr;
 };
 
 extern TimerMgr* timer_mgr;
@@ -177,7 +163,6 @@ extern TimerMgr* timer_mgr;
 using TimerType [[deprecated("Remove in v4.1. Use zeek::detail::TimerType.")]] = zeek::detail::TimerType;
 using Timer [[deprecated("Remove in v4.1. Use zeek::detail::Timer.")]] = zeek::detail::Timer;
 using TimerMgr [[deprecated("Remove in v4.1. Use zeek::detail::TimerMgr.")]] = zeek::detail::TimerMgr;
-using PQ_TimerMgr [[deprecated("Remove in v4.1. Use zeek::detail::PQ_TimerMgr.")]] = zeek::detail::PQ_TimerMgr;
 extern zeek::detail::TimerMgr*& timer_mgr [[deprecated("Remove in v4.1. Use zeek::detail::timer_mgr.")]];
 
 constexpr auto TIMER_BACKDOOR [[deprecated("Remove in v4.1. Use zeek::detail::TIMER_BACKDOOR.")]] = zeek::detail::TIMER_BACKDOOR;

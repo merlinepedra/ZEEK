@@ -184,7 +184,7 @@ void ProfileLogger::Log()
 			stats.nfa_states, stats.dfa_states, stats.computed, stats.mem / 1024));
 		}
 
-	file->Write(fmt("%.06f Timers: current=%d max=%d lag=%.2fs\n",
+	file->Write(fmt("%.06f Timers: current=%zu max=%zu lag=%.2fs\n",
 	                network_time,
 	                zeek::detail::timer_mgr->Size(), zeek::detail::timer_mgr->PeakSize(),
 	                network_time - zeek::detail::timer_mgr->LastTimestamp()));

@@ -537,7 +537,7 @@ zeek::detail::SetupResult zeek::detail::setup(int argc, char** argv,
 	createCurrentDoc("1.0");		// Set a global XML document
 #endif
 
-	zeek::detail::timer_mgr = new zeek::detail::PQ_TimerMgr();
+	zeek::detail::timer_mgr = new zeek::detail::TimerMgr();
 
 	auto zeekygen_cfg = options.zeekygen_config_file.value_or("");
 	zeekygen_mgr = new zeekygen::Manager(zeekygen_cfg, bro_argv[0]);
