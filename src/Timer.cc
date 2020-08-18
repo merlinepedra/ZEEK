@@ -163,7 +163,7 @@ int TimerMgr::DoAdvance(double new_t, int max_expire)
 		// Remove it before dispatching, since the dispatch
 		// can otherwise delete it, and then we won't know
 		// whether we should delete it too.
-		(void) Remove();
+		Remove(res.first);
 
 		DBG_LOG(zeek::DBG_TM, "Dispatching timer %s (%p)",
 		        timer_type_to_string(timer->Type()), timer);
@@ -222,9 +222,15 @@ double TimerMgr::GetNextTimeout()
 	return -1;
 	}
 
-Timer* TimerMgr::Remove()
+Timer* TimerMgr::Remove(QueueIndex index)
 	{
-	const auto& [ index, top ] = Top();
+	Timer* top = nullptr;
+	if ( index == QueueIndex::NONE )
+		{
+		auto res = Top();
+		index = res.first;
+		top = res.second;
+		}
 
 	if ( index == QueueIndex::Q5 )
 		q_5s.pop_front();

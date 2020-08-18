@@ -142,7 +142,7 @@ protected:
 	int DoAdvance(double t, int max_expire);
 	void Remove(Timer* timer);
 
-	Timer* Remove();
+	Timer* Remove(QueueIndex index = QueueIndex::NONE);
 	std::pair<QueueIndex, Timer*> Top();
 
 	double t;
