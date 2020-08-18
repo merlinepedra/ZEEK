@@ -65,6 +65,8 @@ public:
 
 	void Describe(ODesc* d) const;
 
+	bool active = true;
+
 protected:
 	Timer()	{}
 	TimerType type;

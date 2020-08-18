@@ -152,6 +152,7 @@ void TimerMgr::Expire()
 int TimerMgr::DoAdvance(double new_t, int max_expire)
 	{
 	auto res = Top();
+	QueueIndex index = res.first;
 	Timer* timer = res.second;
 
 	for ( num_expired = 0; (num_expired < max_expire || max_expire == 0) &&
@@ -163,14 +164,23 @@ int TimerMgr::DoAdvance(double new_t, int max_expire)
 		// Remove it before dispatching, since the dispatch
 		// can otherwise delete it, and then we won't know
 		// whether we should delete it too.
-		Remove(res.first);
+		Remove(index);
 
-		DBG_LOG(zeek::DBG_TM, "Dispatching timer %s (%p)",
-		        timer_type_to_string(timer->Type()), timer);
-		timer->Dispatch(new_t, false);
+		if ( timer->active )
+			{
+			DBG_LOG(zeek::DBG_TM, "Dispatching timer %s (%p)",
+			        timer_type_to_string(timer->Type()), timer);
+			timer->Dispatch(new_t, false);
+			}
+		else
+			{
+			--num_expired;
+			}
+
 		delete timer;
 
 		res = Top();
+		index = res.first;
 		timer = res.second;
 		}
 
@@ -179,38 +189,40 @@ int TimerMgr::DoAdvance(double new_t, int max_expire)
 
 void TimerMgr::Remove(Timer* timer)
 	{
-	std::deque<Timer*>::iterator it;
+	timer->active = false;
 
-	if ( ! q_5s.empty() )
-		{
-		it = std::find(q_5s.begin(), q_5s.end(), timer);
-		if ( it != q_5s.end() )
-			{
-			q_5s.erase(it);
-			--current_timers[timer->Type()];
-			delete timer;
-			return;
-			}
-		}
+	// std::deque<Timer*>::iterator it;
 
-	if ( ! q_6s.empty() )
-		{
-		it = std::find(q_6s.begin(), q_6s.end(), timer);
-		if ( it != q_6s.end() )
-			{
-			q_6s.erase(it);
-			--current_timers[timer->Type()];
-			delete timer;
-			return;
-			}
-		}
+	// if ( ! q_5s.empty() )
+	// 	{
+	// 	it = std::find(q_5s.begin(), q_5s.end(), timer);
+	// 	if ( it != q_5s.end() )
+	// 		{
+	// 		q_5s.erase(it);
+	// 		--current_timers[timer->Type()];
+	// 		delete timer;
+	// 		return;
+	// 		}
+	// 	}
 
-	if ( ! q->Remove(timer) )
-		zeek::reporter->InternalError("asked to remove a missing timer");
+	// if ( ! q_6s.empty() )
+	// 	{
+	// 	it = std::find(q_6s.begin(), q_6s.end(), timer);
+	// 	if ( it != q_6s.end() )
+	// 		{
+	// 		q_6s.erase(it);
+	// 		--current_timers[timer->Type()];
+	// 		delete timer;
+	// 		return;
+	// 		}
+	// 	}
 
-	--current_timers[timer->Type()];
+	// if ( ! q->Remove(timer) )
+	// 	zeek::reporter->InternalError("asked to remove a missing timer");
 
-	delete timer;
+	// --current_timers[timer->Type()];
+
+	// delete timer;
 	}
 
 double TimerMgr::GetNextTimeout()
