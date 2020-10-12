@@ -3260,15 +3260,15 @@ ValPtr EnumVal::DoClone(CloneState* state)
 VectorVal::VectorVal(VectorType* t) : VectorVal({NewRef{}, t})
 	{ }
 
-VectorVal::VectorVal(VectorTypePtr t) : Val(t)
+VectorVal::VectorVal(VectorTypePtr t) : Val(std::move(t))
 	{
-	auto yt = t->AsVectorType()->Yield();
+	auto yt = type->AsVectorType()->Yield();
 	val.vector_val = new ZAM_vector(this, yt);
 	}
 
-VectorVal::VectorVal(VectorTypePtr t, unsigned int n) : Val(t)
+VectorVal::VectorVal(VectorTypePtr t, unsigned int n) : Val(std::move(t))
 	{
-	auto yt = t->AsVectorType()->Yield();
+	auto yt = type->AsVectorType()->Yield();
 	val.vector_val = new ZAM_vector(this, yt, n);
 	}
 

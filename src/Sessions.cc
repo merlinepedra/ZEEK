@@ -961,7 +961,7 @@ Connection* NetSessions::FindConnection(Val* v)
 	auto raw_orig_port_v = vl.Lookup(orig_p, error);
 	auto raw_resp_port_v = vl.Lookup(resp_p, error);
 
-	static IntrusivePtr<BroType> port_type = nullptr;
+	static IntrusivePtr<Type> port_type = nullptr;
 	if ( ! port_type )
 		port_type = base_type(TYPE_PORT);
 

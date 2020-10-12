@@ -1472,11 +1472,11 @@ function sort%(v: any, ...%) : any
 			sort(vv.begin(), vv.end(), unsigned_sort_function);
 		else if ( eit == TYPE_INTERNAL_INT )
 			sort(vv.begin(), vv.end(), signed_sort_function);
-		else
-			{
-			ASSERT(eit == TYPE_INTERNAL_DOUBLE);
+		else if ( eit == TYPE_INTERNAL_DOUBLE )
 			sort(vv.begin(), vv.end(), double_sort_function);
-			}
+
+		// else ... it was a type that needed a comparison function
+		// but didn't provide one.
 		}
 
 	return rval;
@@ -1541,6 +1541,9 @@ function order%(v: any, ...%) : index_vec
 		index_map.emplace_back(vv->Lookup(i));
 		}
 
+	sort_type = elt_type;
+	sort_type_is_managed = IsManagedType(sort_type);
+
 	if ( comp )
 		{
 		const auto& comp_type = comp->GetType();
@@ -1563,12 +1566,12 @@ function order%(v: any, ...%) : index_vec
 		else if ( eit == TYPE_INTERNAL_INT )
 			sort(ind_vv.begin(), ind_vv.end(),
 				indirect_signed_sort_function);
-		else
-			{
-			ASSERT(eit == TYPE_INTERNAL_DOUBLE);
+		else if ( eit == TYPE_INTERNAL_DOUBLE )
 			sort(ind_vv.begin(), ind_vv.end(),	
 				indirect_double_sort_function);
-			}
+
+		// else ... it was a type that needed a comparison function
+		// but didn't provide one.
 		}
 
 	index_map = {};
