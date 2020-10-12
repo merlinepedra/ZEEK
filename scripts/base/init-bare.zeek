@@ -3690,7 +3690,7 @@ type dns_edns_ecs: record {
 	family: string;	##< IP Family
 	source_prefix_len: count;	##< Source Prefix Length.
 	scope_prefix_len: count;	##< Scope Prefix Length.
-	address: string;	##< Client Subnet Address.
+	address: addr;	##< Client Subnet Address.
 };
 
 ## An DNS EDNS TCP KEEPALIVE (TCP KEEPALIVE) record.
