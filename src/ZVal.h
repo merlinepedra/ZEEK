@@ -55,14 +55,16 @@ union ZAMValUnion {
 	ZAMValUnion() { managed_val = nullptr; }
 
 	// Construct from a given Bro value with a given type.
-	ZAMValUnion(zeek::IntrusivePtr<zeek::Val> v, const zeek::IntrusivePtr<zeek::Type>& t);
+	ZAMValUnion(zeek::IntrusivePtr<zeek::Val> v,
+			const zeek::IntrusivePtr<zeek::Type>& t);
 
 	// True if when interpreting the value as having the given type,
 	// it's a nil pointer.
 	bool IsNil(const zeek::IntrusivePtr<zeek::Type>& t) const;
 
 	// Convert to a Bro value.
-	zeek::IntrusivePtr<zeek::Val> ToVal(const zeek::IntrusivePtr<zeek::Type>& t) const;
+	zeek::IntrusivePtr<zeek::Val>
+		ToVal(const zeek::IntrusivePtr<zeek::Type>& t) const;
 
 	// Used for bool, int, enum.
 	bro_int_t int_val;
@@ -130,7 +132,8 @@ public:
 	// due to tricky memory management concerns, namely that ZAM_vector's
 	// point to their VectorVal's and VectorVal's point to their
 	// ZAM_vector's.
-	ZAM_vector(zeek::VectorVal* _vv, zeek::IntrusivePtr<zeek::Type> yt, int n = 0)
+	ZAM_vector(zeek::VectorVal* _vv, zeek::IntrusivePtr<zeek::Type> yt,
+			int n = 0)
 	: zvec(n)
 		{
 		vv = _vv;
@@ -150,8 +153,9 @@ public:
 			DeleteMembers();
 		}
 
-	zeek::IntrusivePtr<zeek::Type> YieldType() 		{ return general_yt; }
-	const zeek::IntrusivePtr<zeek::Type>& YieldType() const	{ return general_yt; }
+	zeek::IntrusivePtr<zeek::Type> YieldType() 	{ return general_yt; }
+	const zeek::IntrusivePtr<zeek::Type>& YieldType() const
+		{ return general_yt; }
 
 	void SetYieldType(zeek::IntrusivePtr<zeek::Type> yt)
 		{
@@ -284,7 +288,8 @@ class ZAM_record {
 public:
 	// Similarly to ZAM_vector, we use a bare pointer for the RecordVal
 	// to simplify the memory management given the pointer cycle.
-	ZAM_record(zeek::RecordVal* _v, zeek::IntrusivePtr<zeek::RecordType> _rt);
+	ZAM_record(zeek::RecordVal* _v,
+			zeek::IntrusivePtr<zeek::RecordType> _rt);
 
 	~ZAM_record()
 		{
