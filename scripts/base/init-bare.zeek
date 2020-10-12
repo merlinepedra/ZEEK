@@ -3314,7 +3314,7 @@ export {
 		## The security mode field specifies whether SMB signing is enabled, required at the server, or both.
 		security_mode     : count;
 		## A globally unique identifier that is generate by the server to uniquely identify the server.
-		server_guid       : string;
+		server_guid       : SMB2::GUID;
 		## The system time of the SMB2 server when the SMB2 NEGOTIATE Request was processed.
 		system_time       : time;
 		## The SMB2 server start time.
@@ -4291,7 +4291,7 @@ export {
 		keyboard_function_key:  count;
 		ime_file_name:          string;
 		post_beta2_color_depth: count  &optional;
-		client_product_id:      string &optional;
+		client_product_id:      count  &optional;
 		serial_number:          count  &optional;
 		high_color_depth:       count  &optional;
 		supported_color_depths: count  &optional;
