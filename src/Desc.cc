@@ -427,7 +427,7 @@ bool ODesc::FindType(const Type* type)
 	return false;
 	}
 
-const char* obj_desc(const IntrusivePtr<Obj>& o)
+const char* obj_desc(const Obj* o)
 	{
 	static ODesc d;
 

@@ -214,8 +214,14 @@ protected:
 // Returns a string representation of an object's description.  Used for
 // debugging and error messages.  Uses common storage, so do not call twice
 // without first making full use of the value returned from the initial call.
+//
+// The main version takes a bare pointer rather than an IntrusivePtr because
+// the latter is harder to deal with when making calls from a debugger like
+// lldb.
 class Obj;
-extern const char* obj_desc(const zeek::IntrusivePtr<zeek::Obj>& o);
+extern const char* obj_desc(const zeek::Obj* o);
+inline const char* obj_desc(const zeek::IntrusivePtr<zeek::Obj>& o)
+	{ return obj_desc(o.get()); }
 
 } // namespace zeek
 
