@@ -101,7 +101,7 @@ NameExpr* Expr::AsNameExpr()
 	return (NameExpr*) this;
 	}
 
-IntrusivePtr<NameExpr> Expr::AsNameExprPtr()
+NameExprPtr Expr::AsNameExprPtr()
 	{
 	CHECK_TAG(tag, EXPR_NAME, "ExprVal::AsNameExpr", expr_name)
 	return {NewRef{}, (NameExpr*) this};
@@ -113,10 +113,16 @@ const ConstExpr* Expr::AsConstExpr() const
 	return (const ConstExpr*) this;
 	}
 
-IntrusivePtr<ConstExpr> Expr::AsConstExprPtr()
+ConstExprPtr Expr::AsConstExprPtr()
 	{
 	CHECK_TAG(tag, EXPR_CONST, "ExprVal::AsConstExpr", expr_name)
 	return {NewRef{}, (ConstExpr*) this};
+	}
+
+const FieldExpr* Expr::AsFieldExpr() const
+	{
+	CHECK_TAG(tag, EXPR_FIELD, "ExprVal::AsFieldExpr", expr_name)
+	return (const FieldExpr*) this;
 	}
 
 const CallExpr* Expr::AsCallExpr() const
