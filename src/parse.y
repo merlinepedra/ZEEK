@@ -1338,16 +1338,34 @@ capture_list:
 	;
 
 capture:
-		opt_deep resolve_id
+		opt_deep TOK_ID
 			{
-			zeek::IntrusivePtr id{zeek::AdoptRef{}, $2};
+			zeek::detail::set_location(@2);
+			auto id = zeek::detail::lookup_ID($2,
+					zeek::detail::current_module.c_str());
+
+			if ( ! id )
+				zeek::reporter->Error("no such local identifier: %s", $2);
+			else if ( id->IsType() )
+				{
+				zeek::reporter->Error("cannot specify type in capture: %s", $2);
+				id = nullptr;
+				}
+			else if ( id->IsGlobal() )
+				{
+				zeek::reporter->Error("cannot specify global in capture: %s", $2);
+				id = nullptr;
+				}
+
+			delete [] $2;
+
 			$$ = new zeek::FuncType::Capture;
 			$$->id = id;
 			$$->deep_copy = $1;
 			}
 	;
 
-opt_deep:	'*'
+opt_deep:	TOK_COPY
 			{ $$ = true; }
 	|
 			{ $$ = false; }

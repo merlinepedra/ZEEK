@@ -319,6 +319,9 @@ ScriptFunc::~ScriptFunc()
 	{
 	if ( ! weak_closure_ref )
 		Unref(closure);
+
+	delete captures_frame;
+	delete captures_offset_mapping;
 	}
 
 bool ScriptFunc::IsPure() const
@@ -472,6 +475,39 @@ ValPtr ScriptFunc::Invoke(zeek::Args* args, Frame* parent) const
 	return result;
 	}
 
+void ScriptFunc::CreateCaptures(Frame* f)
+	{
+	auto captures = type->GetCaptures();
+
+	if ( ! captures )
+		return;
+
+	// Create a private Frame to hold the values of captured variables,
+	// and a mapping from those variables to their offsets in the Frame.
+	captures_frame = new Frame(captures->size(), this, nullptr);
+	captures_offset_mapping = new std::map<const ID*, int>;
+
+	int offset = 0;
+	for ( auto c : *captures )
+		{
+		auto cid = c->id;
+		auto v = f->GetElementByID(cid);
+
+		if ( v )
+			{
+			if ( c->deep_copy || ! v->Modifiable() )
+				v = v->Clone();
+			else
+				v->Ref();
+
+			captures_frame->SetElement(offset, v);
+			}
+
+		(*captures_offset_mapping)[cid.get()] = offset;
+		++offset;
+		}
+	}
+
 void ScriptFunc::AddBody(StmtPtr new_body,
                          const std::vector<IDPtr>& new_inits,
                          size_t new_frame_size, int priority)
@@ -575,6 +611,13 @@ FuncPtr ScriptFunc::DoClone()
 	other->closure = closure ? closure->SelectiveClone(outer_ids, this) : nullptr;
 	other->weak_closure_ref = false;
 	other->outer_ids = outer_ids;
+
+	if ( captures_frame )
+		{
+		other->captures_frame = captures_frame->Clone();
+		other->captures_offset_mapping = new std::map<const ID*, int>;
+		*other->captures_offset_mapping = *captures_offset_mapping;
+		}
 
 	return other;
 	}
