@@ -34,18 +34,18 @@ function send_event()
     local not_dog = 1;
     local event_count = 11;
 
-    local log : myfunctype = function[event_count](c: count) : function(d: count) : count
+    local log : myfunctype = function(c: count) : function(d: count) : count
         {
         print fmt("inside: %s | outside: %s | global: %s", c, event_count, global_with_same_name);
-        return function[c](d: count) : count { return d + c; };
+        return function(d: count) : count { return d + c; };
         };
 
 	local two_part_adder_maker = function (begin : count) : function (base_step : count) : function ( step : count) : count
 		{
-		return function [begin](base_step : count) : function (step : count) : count
+		return function (base_step : count) : function (step : count) : count
 			{
                 print fmt("begin: %s | base_step: %s", begin, base_step);
-				return function[begin, base_step] (step : count) : count
+				return function (step : count) : count
 					{
                     print fmt("begin: %s | base_step: %s | step: %s", begin, base_step, step);
 					return (begin += base_step + step); }; }; };
@@ -54,6 +54,7 @@ function send_event()
 	local stepper = l(50);
 
     ++n;
+    ++event_count;
     if ( n % 2 == 0)
         {
         local e2 = Broker::make_event(ping, "function 1", l);
@@ -110,17 +111,17 @@ function my_funcs()
     local begin = 100;
     local event_count = begin;
 
-    local l : myfunctype = function[event_count](c: count) : function(d: count) : count
+    local l : myfunctype = function(c: count) : function(d: count) : count
     {
     print fmt("inside: %s | outside: %s | global: %s", c, event_count, global_with_same_name);
-    return function[c](d: count) : count { return d + c; };
+    return function(d: count) : count { return d + c; };
     };
 
-    local dog_fish = function [begin](base_step : count) : function (step : count) : count
+    local dog_fish = function (base_step : count) : function (step : count) : count
         {
 # actual formatting doesn't matter for name resolution.
 print fmt("begin: %s | base_step: %s", begin, base_step);
-        return function [begin, base_step](step : count) : count
+        return function (step : count) : count
             {
                         print fmt("begin: %s | base_step: %s | step: %s", begin, base_step, step);
                         return (begin += base_step + step); }; };
