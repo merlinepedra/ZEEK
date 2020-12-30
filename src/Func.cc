@@ -485,7 +485,7 @@ void ScriptFunc::CreateCaptures(Frame* f)
 	// Create a private Frame to hold the values of captured variables,
 	// and a mapping from those variables to their offsets in the Frame.
 	captures_frame = new Frame(captures->size(), this, nullptr);
-	captures_offset_mapping = new std::map<const ID*, int>;
+	captures_offset_mapping = new OffsetMap;
 
 	int offset = 0;
 	for ( auto c : *captures )
@@ -503,7 +503,24 @@ void ScriptFunc::CreateCaptures(Frame* f)
 			captures_frame->SetElement(offset, v);
 			}
 
-		(*captures_offset_mapping)[cid.get()] = offset;
+		(*captures_offset_mapping)[cid->Name()] = offset;
+		++offset;
+		}
+	}
+
+void ScriptFunc::SetCaptures(Frame* f)
+	{
+	auto captures = type->GetCaptures();
+	ASSERT(captures);
+
+	captures_frame = f;
+	captures_offset_mapping = new OffsetMap;
+
+	int offset = 0;
+	for ( auto c : *captures )
+		{
+		auto cid = c->id;
+		(*captures_offset_mapping)[cid->Name()] = offset;
 		++offset;
 		}
 	}
@@ -579,7 +596,7 @@ void ScriptFunc::SetClosureFrame(Frame* f)
 
 bool ScriptFunc::UpdateClosure(const broker::vector& data)
 	{
-	auto result = Frame::Unserialize(data);
+	auto result = Frame::Unserialize(data, nullptr);
 
 	if ( ! result.first )
 		return false;
@@ -594,6 +611,17 @@ bool ScriptFunc::UpdateClosure(const broker::vector& data)
 
 	weak_closure_ref = false;
 	closure = new_closure.release();
+
+	return true;
+	}
+
+bool ScriptFunc::DeserializeCaptures(const broker::vector& data)
+	{
+	auto result = Frame::Unserialize(data, GetType()->GetCaptures());
+
+ASSERT(result.first);
+
+	SetCaptures(result.second.release());
 
 	return true;
 	}
@@ -615,7 +643,7 @@ FuncPtr ScriptFunc::DoClone()
 	if ( captures_frame )
 		{
 		other->captures_frame = captures_frame->Clone();
-		other->captures_offset_mapping = new std::map<const ID*, int>;
+		other->captures_offset_mapping = new OffsetMap;
 		*other->captures_offset_mapping = *captures_offset_mapping;
 		}
 
@@ -624,7 +652,10 @@ FuncPtr ScriptFunc::DoClone()
 
 broker::expected<broker::data> ScriptFunc::SerializeClosure() const
 	{
-	return Frame::Serialize(closure, outer_ids);
+	if ( captures_frame )
+		return captures_frame->SerializeCopyFrame();
+	else
+		return closure->SerializeClosureFrame(outer_ids);
 	}
 
 void ScriptFunc::Describe(ODesc* d) const
