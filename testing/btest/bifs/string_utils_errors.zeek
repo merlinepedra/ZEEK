@@ -1,4 +1,7 @@
+# Don't run the test for transformed ASTs, as they'll stop early due to
+# error propagation.
 # @TEST-REQUIRES: test "${ZEEK_XFORM}" != "1"
+#
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
