@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "Expr.h"
-#include "Func.h"
-#include "Stmt.h"
+#include "zeek/Expr.h"
+#include "zeek/Func.h"
+#include "zeek/Stmt.h"
 
 namespace zeek::detail {
 

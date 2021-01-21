@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "DefPoint.h"
-#include "ID.h"
-#include "Type.h"
+#include "zeek/script_opt/DefPoint.h"
+#include "zeek/ID.h"
+#include "zeek/Type.h"
 
 
 namespace zeek::detail {

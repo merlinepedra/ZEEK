@@ -1,6 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include "ReachingDefs.h"
+#include "zeek/script_opt/ReachingDefs.h"
 #include "Desc.h"
 
 

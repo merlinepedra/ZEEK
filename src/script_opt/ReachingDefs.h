@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "DefItem.h"
+#include "zeek/script_opt/DefItem.h"
 
 
 namespace zeek::detail {

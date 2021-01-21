@@ -1,6 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include "DefSetsMgr.h"
+#include "zeek/script_opt/DefSetsMgr.h"
 
 
 namespace zeek::detail {
