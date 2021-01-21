@@ -8,12 +8,12 @@ namespace zeek::detail {
 
 
 DefinitionItem::DefinitionItem(const ID* _id)
+: name(_id->Name())
 	{
 	is_id = true;
 	id = _id;
 	di = nullptr;
 	field_name = nullptr;
-	name = nullptr;
 
 	t = id->GetType();
 
@@ -30,28 +30,15 @@ DefinitionItem::DefinitionItem(const DefinitionItem* _di,
 
 	t = std::move(_t);
 
-	auto di_n = di->Name();
-	auto nl = strlen(di_n) + 1 /* $ */ + strlen(field_name) + 1;
-	name = new char[nl];
-	snprintf(name, nl, "%s$%s", di->Name(), field_name);
+	name += di->Name();
+	name += '$';
+	name += field_name;
 
 	CheckForRecord();
 	}
 
-DefinitionItem::~DefinitionItem()
-	{
-	if ( fields )
-		{
-		for ( int i = 0; i < num_fields; ++i )
-			delete fields[i];
-
-		delete fields;
-		}
-
-	delete name;
-	}
-
-DefinitionItem* DefinitionItem::FindField(const char* field) const
+std::shared_ptr<DefinitionItem>
+DefinitionItem::FindField(const char* field) const
 	{
 	if ( ! IsRecord() )
 		return nullptr;
@@ -61,36 +48,40 @@ DefinitionItem* DefinitionItem::FindField(const char* field) const
 	return FindField(offset);
 	}
 
-DefinitionItem* DefinitionItem::FindField(int offset) const
+std::shared_ptr<DefinitionItem> DefinitionItem::FindField(int offset) const
 	{
 	if ( ! IsRecord() )
 		return nullptr;
 
-	return fields[offset];
+	return (*fields)[offset];
 	}
 
-DefinitionItem* DefinitionItem::CreateField(const char* field, TypePtr t)
+std::shared_ptr<DefinitionItem>
+DefinitionItem::CreateField(const char* field, TypePtr t)
 	{
 	auto offset = rt->FieldOffset(field);
 
-	if ( fields[offset] )
-		return fields[offset];
+	if ( (*fields)[offset] )
+		return (*fields)[offset];
 
-	fields[offset] = new DefinitionItem(this, field, std::move(t));
+	(*fields)[offset] =
+		std::make_shared<DefinitionItem>(this, field, std::move(t));
 
-	return fields[offset];
+	return (*fields)[offset];
 	}
 
-DefinitionItem* DefinitionItem::CreateField(int offset, TypePtr t)
+std::shared_ptr<DefinitionItem>
+DefinitionItem::CreateField(int offset, TypePtr t)
 	{
-	if ( fields[offset] )
-		return fields[offset];
+	if ( (*fields)[offset] )
+		return (*fields)[offset];
 
 	auto field = rt->FieldName(offset);
 
-	fields[offset] = new DefinitionItem(this, field, std::move(t));
+	(*fields)[offset] =
+		std::make_shared<DefinitionItem>(this, field, std::move(t));
 
-	return fields[offset];
+	return (*fields)[offset];
 	}
 
 void DefinitionItem::CheckForRecord()
@@ -98,25 +89,21 @@ void DefinitionItem::CheckForRecord()
 	if ( ! IsRecord() )
 		{
 		rt = nullptr;
-		fields = nullptr;
 		return;
 		}
 
 	rt = t->AsRecordType();
 	num_fields = rt->NumFields();
-	fields = new DefinitionItem*[num_fields];
-
-	for ( int i = 0; i < num_fields; ++i )
-		fields[i] = nullptr;
+	fields = std::vector<std::shared_ptr<DefinitionItem>>(num_fields);
 	}
 
 
-DefinitionItem* DefItemMap::GetID_DI(const ID* id)
+std::shared_ptr<DefinitionItem> DefItemMap::GetID_DI(const ID* id)
 	{
 	auto di = i2d.find(id);
 	if ( di == i2d.end() )
 		{
-		auto new_entry = new DefinitionItem(id);
+		auto new_entry = std::make_shared<DefinitionItem>(id);
 		i2d[id] = new_entry;
 		return new_entry;
 		}
@@ -127,16 +114,16 @@ DefinitionItem* DefItemMap::GetID_DI(const ID* id)
 const DefinitionItem* DefItemMap::GetConstID_DI(const ID* id) const
 	{
 	auto di = i2d.find(id);
-	return di == i2d.end() ? nullptr : di->second;
+	return di == i2d.end() ? nullptr : di->second.get();
 	}
 
 const DefinitionItem* DefItemMap::GetConstID_DI(const DefinitionItem* di,
 						const char* field_name) const
 	{
-	return di->FindField(field_name);
+	return di->FindField(field_name).get();
 	}
 
-DefinitionItem* DefItemMap::GetExprDI(const Expr* expr)
+std::shared_ptr<DefinitionItem> DefItemMap::GetExprDI(const Expr* expr)
 	{
 	if ( expr->Tag() == EXPR_NAME )
 		{

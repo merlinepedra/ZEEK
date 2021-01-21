@@ -34,22 +34,24 @@ public:
 	DefinitionItem(const DefinitionItem* _di, const char* _field_name,
 			TypePtr _t);
 
-	~DefinitionItem();
+	const char* Name() const	{ return name.c_str(); }
 
-	bool IsRecord() const	{ return t->Tag() == TYPE_RECORD; }
-
-	const char* Name() const	{ return name ? name : id->Name(); }
 	TypePtr GetType() const		{ return t; }
+	bool IsRecord() const		{ return t->Tag() == TYPE_RECORD; }
 
 	// For this definition item, look for a field corresponding
-	// to the given name/offset.
-	DefinitionItem* FindField(const char* field) const;
-	DefinitionItem* FindField(int offset) const;
+	// to the given name or offset.  Nil if the field has not (yet)
+	// been created.
+	std::shared_ptr<DefinitionItem> FindField(const char* field) const;
+	std::shared_ptr<DefinitionItem> FindField(int offset) const;
 
 	// Start tracking a field in this definition item with the
-	// given name/offset.
-	DefinitionItem* CreateField(const char* field, TypePtr t);
-	DefinitionItem* CreateField(int offset, TypePtr t);
+	// given name or offset, returning the associated item.
+	//
+	// If the field already exists, then it's simply returned.
+	std::shared_ptr<DefinitionItem> CreateField(const char* field,
+							TypePtr t);
+	std::shared_ptr<DefinitionItem> CreateField(int offset, TypePtr t);
 
 protected:
 	void CheckForRecord();
@@ -60,34 +62,31 @@ protected:
 	const char* field_name;
 
 	TypePtr t;
-
-	char* name;
+	std::string name;
 
 	const RecordType* rt;
-	DefinitionItem** fields;	// indexed by field offset
+
+	// If present, tracks definition items for a record's fields as
+	// these are seen (i.e., as they are entered via CreateField()).
+	std::optional<std::vector<std::shared_ptr<DefinitionItem>>> fields;
 	int num_fields;
 };
 
 // For a given identifier, locates its associated definition item.
-typedef std::unordered_map<const ID*, DefinitionItem*> ID_to_DI_Map;
+typedef std::unordered_map<const ID*, std::shared_ptr<DefinitionItem>>
+		ID_to_DI_Map;
 
 // Class for managing a set of IDs and their associated definition items.
 class DefItemMap {
 public:
-	~DefItemMap()
-		{
-		for ( auto& i2d : i2d )
-			delete i2d.second;
-		}
-
 	// Gets the definition for either a name or a record field reference.
 	// Returns nil if "expr" lacks such a form, or if there isn't
 	// any such definition.
-	DefinitionItem* GetExprDI(const Expr* expr);
+	std::shared_ptr<DefinitionItem> GetExprDI(const Expr* expr);
 
 	// Returns the definition item for a given ID; creates it if
 	// it doesn't already exist.
-	DefinitionItem* GetID_DI(const ID* id);
+	std::shared_ptr<DefinitionItem> GetID_DI(const ID* id);
 
 	// Returns the definition item for a given ID, or nil if it
 	// doesn't exist.
