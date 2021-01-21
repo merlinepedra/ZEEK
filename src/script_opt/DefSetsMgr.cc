@@ -22,8 +22,8 @@ void DefSetsMgr::CreatePostDef(const ID* id, DefinitionPoint dp, bool min_only)
 	CreatePostDef(di, dp, min_only);
 	}
 
-void DefSetsMgr::CreatePostDef(DefinitionItem* di, DefinitionPoint dp,
-				bool min_only)
+void DefSetsMgr::CreatePostDef(std::shared_ptr<DefinitionItem> di,
+				DefinitionPoint dp, bool min_only)
 	{
 	auto where = dp.OpaqueVal();
 
@@ -44,19 +44,19 @@ void DefSetsMgr::CreatePostDef(DefinitionItem* di, DefinitionPoint dp,
 	CreateDef(di, dp, false, min_only);
 	}
 
-void DefSetsMgr::CreateDef(DefinitionItem* di, DefinitionPoint dp,
-				bool is_pre, bool min_only)
+void DefSetsMgr::CreateDef(std::shared_ptr<DefinitionItem> di,
+				DefinitionPoint dp, bool is_pre, bool min_only)
 	{
 	auto where = dp.OpaqueVal();
 	RDSetPtr min_defs = is_pre ? pre_min_defs : post_min_defs;
 
-	min_defs->AddOrReplace(where, di, dp);
+	min_defs->AddOrReplace(where, di.get(), dp);
 
 	if ( min_only )
 		return;
 
 	RDSetPtr& max_defs = is_pre ? pre_max_defs : post_max_defs;
-	max_defs->AddOrReplace(where, di, dp);
+	max_defs->AddOrReplace(where, di.get(), dp);
 	}
 
 
