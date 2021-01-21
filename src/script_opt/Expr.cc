@@ -25,6 +25,12 @@ ConstExpr* Expr::AsConstExpr()
 	return (ConstExpr*) this;
 	}
 
+const FieldExpr* Expr::AsFieldExpr() const
+	{
+	CHECK_TAG(tag, EXPR_FIELD, "ExprVal::AsFieldExpr", expr_name)
+	return (const FieldExpr*) this;
+	}
+
 FieldExpr* Expr::AsFieldExpr()
 	{
 	CHECK_TAG(tag, EXPR_FIELD, "ExprVal::AsFieldExpr", expr_name)
