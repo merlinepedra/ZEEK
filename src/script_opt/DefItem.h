@@ -39,6 +39,9 @@ public:
 	TypePtr GetType() const		{ return t; }
 	bool IsRecord() const		{ return t->Tag() == TYPE_RECORD; }
 
+	// The identifier to which this item ultimately belongs.
+	const ID* RootID() const	{ return di ? di->RootID() : id; }
+
 	// For this definition item, look for a field corresponding
 	// to the given name or offset.  Nil if the field has not (yet)
 	// been created.

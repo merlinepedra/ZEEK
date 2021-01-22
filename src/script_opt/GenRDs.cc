@@ -780,7 +780,7 @@ void RD_Decorate::CheckVar(const Expr* e, const ID* id, bool check_fields)
 		return;
 
 	if ( analysis_options.usage_issues > 0 &&
-	     ! mgr.HasPreMinRD(e, id) /* && ! id->FindAttr(ATTR_IS_SET) */ )
+	     ! mgr.HasPreMinRD(e, id) && ! id->GetAttr(ATTR_IS_SET) )
 		e->Warn("possibly used without definition");
 
 	if ( check_fields && id->GetType()->Tag() == TYPE_RECORD )
@@ -965,7 +965,7 @@ TraversalCode RD_Decorate::PreExpr(const Expr* e)
 			{
 			auto r_def = mgr.GetExprDI(r);
 
-			if ( r_def )
+			if ( r_def && ! r_def->RootID()->GetAttr(ATTR_IS_SET) )
 				{
 				auto fn = f->FieldName();
 				auto field_rd = mgr.GetConstID_DI(r_def.get(), fn);
@@ -1284,13 +1284,21 @@ void RD_Decorate::CheckRecordRDs(std::shared_ptr<DefinitionItem> di,
 					DefinitionPoint dp,
 					const RDPtr& pre_rds, const Obj* o)
 	{
+	CreateRecordRDs(di, dp, false, nullptr);
+
+	auto root_id = di->RootID();
+	if ( root_id->GetAttr(ATTR_IS_SET) )
+		// No point checking for unset fields.
+		return;
+
 	auto rt = di->GetType()->AsRecordType();
 	auto num_fields = rt->NumFields();
 
 	for ( auto i = 0; i < num_fields; ++i )
 		{
 		if ( rt->FieldHasAttr(i, ATTR_DEFAULT) ||
-		     rt->FieldHasAttr(i, ATTR_OPTIONAL) )
+		     rt->FieldHasAttr(i, ATTR_OPTIONAL) ||
+		     rt->FieldHasAttr(i, ATTR_IS_SET) )
 			continue;
 
 		auto n_i = rt->FieldName(i);
@@ -1321,8 +1329,6 @@ void RD_Decorate::CheckRecordRDs(std::shared_ptr<DefinitionItem> di,
 				CheckRecordRDs(field_di, dp, pre_rds, o);
 			}
 		}
-
-	CreateRecordRDs(di, dp, false, nullptr);
 	}
 
 
