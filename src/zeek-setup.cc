@@ -781,9 +781,12 @@ SetupResult setup(int argc, char** argv, Options* zopts)
 			}
 		}
 
-	analyze_scripts(options);
-
 	auto& analysis_options = options.analysis_options;
+
+	if ( analysis_options.usage_issues > 0 )
+		analysis_options.activate = true;
+
+	analyze_scripts(options);
 
 	if ( analysis_options.report_recursive )
 		// This option is report-and-exit.

@@ -54,7 +54,9 @@ private:
 
 	// Checks for whether the given identifier present in the given
 	// expression is undefined at that point, per the associated RDs.
-	void CheckVar(const Expr* e, const ID* id);
+	// If check_fields is true, then we check the fields of records
+	// in addition to the record itself.
+	void CheckVar(const Expr* e, const ID* id, bool check_fields);
 
 	// The following enable tracking of either identifiers or
 	// record fields before/after the given definition point.

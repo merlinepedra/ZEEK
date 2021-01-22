@@ -7,6 +7,7 @@
 #include "zeek/script_opt/ProfileFunc.h"
 #include "zeek/script_opt/Inline.h"
 #include "zeek/script_opt/Reduce.h"
+#include "zeek/script_opt/GenRDs.h"
 
 
 namespace zeek::detail {
@@ -68,6 +69,10 @@ void optimize_func(ScriptFunc* f, ProfileFunc* pf, ScopePtr scope_ptr,
 
 	f->ReplaceBody(body, new_body);
 	body = new_body;
+	body->Traverse(pf);
+
+	RD_Decorate reduced_rds(pf);
+	reduced_rds.TraverseFunction(f, scope, body);
 
 	int new_frame_size =
 		scope->Length() + rc->NumTemps() + rc->NumNewLocals();

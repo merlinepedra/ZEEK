@@ -774,16 +774,16 @@ bool RD_Decorate::IsAggr(const Expr* e) const
 	return zeek::IsAggr(tag);
 	}
 
-void RD_Decorate::CheckVar(const Expr* e, const ID* id)
+void RD_Decorate::CheckVar(const Expr* e, const ID* id, bool check_fields)
 	{
 	if ( id->IsGlobal() )
 		return;
 
 	if ( analysis_options.usage_issues > 0 &&
 	     ! mgr.HasPreMinRD(e, id) /* && ! id->FindAttr(ATTR_IS_SET) */ )
-		e->Error("used without definition");
+		e->Warn("possibly used without definition");
 
-	if ( id->GetType()->Tag() == TYPE_RECORD )
+	if ( check_fields && id->GetType()->Tag() == TYPE_RECORD )
 		{
 		auto di = mgr.GetID_DI(id);
 		auto e_pre = mgr.GetPreMinRDs(e);
@@ -805,7 +805,7 @@ TraversalCode RD_Decorate::PreExpr(const Expr* e)
 
 	switch ( e->Tag() ) {
 	case EXPR_NAME:
-		CheckVar(e, e->AsNameExpr()->Id());
+		CheckVar(e, e->AsNameExpr()->Id(), true);
 		break;
 
 	case EXPR_LIST:
@@ -961,16 +961,6 @@ TraversalCode RD_Decorate::PreExpr(const Expr* e)
 		if ( r->Tag() != EXPR_NAME && r->Tag() != EXPR_FIELD )
 			break;
 
-		r->Traverse(this);
-
-		if ( r->Tag() == EXPR_NAME )
-			{
-			auto r_n = r->AsNameExpr();
-			if ( r_n->Id()->IsGlobal() )
-				// Don't worry about record fields in globals.
-				return TC_ABORTSTMT;
-			}
-
 		if ( analysis_options.usage_issues > 1 )
 			{
 			auto r_def = mgr.GetExprDI(r);
@@ -982,9 +972,29 @@ TraversalCode RD_Decorate::PreExpr(const Expr* e)
 
 				auto e_pre = mgr.GetPreMinRDs(e);
 				if ( ! field_rd || ! e_pre->HasDI(field_rd) )
-					printf("record field potentially used without being set: %s\n", obj_desc(e).c_str());
+					printf("record field possibly used without being set: %s\n", obj_desc(e).c_str());
 				}
 			}
+
+		if ( r->Tag() == EXPR_NAME )
+			{
+			auto r_id = r->AsNameExpr()->Id();
+			if ( r_id->IsGlobal() )
+				// Don't worry about record fields in globals.
+				return TC_ABORTSTMT;
+
+			// For names, we care about checking the name
+			// itself, but if it's a record we don't want to
+			// complain about missing fields, as they're
+			// irrelevant other than the one specifically
+			// being referenced.  So we do the CheckVar here
+			// and don't descend recursively.
+			CheckVar(r, r_id, false);
+			}
+
+		else
+			// Recursively check the subexpression.
+			r->Traverse(this);
 
 		return TC_ABORTSTMT;
 		}
@@ -1011,7 +1021,7 @@ TraversalCode RD_Decorate::PreExpr(const Expr* e)
 
 			if ( ! id_di /*### && ! analysis_options.inliner */ )
 				{
-				printf("%s used without definition\n",
+				printf("%s possibly used without definition\n",
 					id->Name());
 				break;
 				}
@@ -1106,13 +1116,21 @@ TraversalCode RD_Decorate::PreExpr(const Expr* e)
 
 		return TC_ABORTSTMT;
 
+	case EXPR_RECORD_CONSTRUCTOR:
+		{
+		auto r = dynamic_cast<const RecordConstructorExpr*>(e);
+		auto l = r->Op();
+		mgr.SetPreFromPre(l, e);
+		break;
+		}
+
 	case EXPR_LAMBDA:
 		{
 		auto l = dynamic_cast<const LambdaExpr*>(e);
 		auto ids = l->OuterIDs();
 
 		for ( auto& id : ids )
-			CheckVar(e, id);
+			CheckVar(e, id, false);
 
 		// Don't descend into the lambda body - we analyze and
 		// optimize it separately, as its own function.
@@ -1286,7 +1304,7 @@ void RD_Decorate::CheckRecordRDs(std::shared_ptr<DefinitionItem> di,
 		// record elements are not initialized.
 		if ( ! field_di || ! pre_rds->HasDI(field_di.get()) )
 			{
-			printf("%s$%s (%s) may be used without definition\n",
+			printf("%s$%s (%s) possibly used without being set\n",
 				di->Name(), n_i, obj_desc(o).c_str());
 			}
 
