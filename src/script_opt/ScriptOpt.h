@@ -91,7 +91,7 @@ extern std::unordered_set<const Func*> non_recursive_funcs;
 extern void analyze_func(ScriptFuncPtr f);
 
 // Analyze all of the parsed scripts collectively for optimization.
-extern void analyze_scripts(Options& opts);
+extern void analyze_scripts();
 
 
 } // namespace zeek::detail
