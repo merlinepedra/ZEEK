@@ -135,6 +135,12 @@ AssignExpr* Expr::AsAssignExpr()
 	return (AssignExpr*) this;
 	}
 
+const AddToExpr* Expr::AsAddToExpr() const
+	{
+	CHECK_TAG(tag, EXPR_ADD_TO, "ExprVal::AsAddToExpr", expr_name)
+	return (const AddToExpr*) this;
+	}
+
 const IndexExpr* Expr::AsIndexExpr() const
 	{
 	CHECK_TAG(tag, EXPR_INDEX, "ExprVal::AsIndexExpr", expr_name)
@@ -147,6 +153,24 @@ IndexExpr* Expr::AsIndexExpr()
 	return (IndexExpr*) this;
 	}
 
+const IndexAssignExpr* Expr::AsIndexAssignExpr() const
+	{
+	CHECK_TAG(tag, EXPR_INDEX_ASSIGN, "ExprVal::AsIndexAssignExpr", expr_name)
+	return (const IndexAssignExpr*) this;
+	}
+
+const FieldLHSAssignExpr* Expr::AsFieldLHSAssignExpr() const
+	{
+	CHECK_TAG(tag, EXPR_FIELD_LHS_ASSIGN, "ExprVal::AsFieldLHSAssignExpr", expr_name)
+	return (const FieldLHSAssignExpr*) this;
+	}
+
+const HasFieldExpr* Expr::AsHasFieldExpr() const
+	{
+	CHECK_TAG(tag, EXPR_HAS_FIELD, "ExprVal::AsHasFieldExpr", expr_name)
+	return (const HasFieldExpr*) this;
+	}
+
 const EventExpr* Expr::AsEventExpr() const
 	{
 	CHECK_TAG(tag, EXPR_EVENT, "ExprVal::AsEventExpr", expr_name)
@@ -157,6 +181,12 @@ EventExprPtr Expr::AsEventExprPtr()
 	{
 	CHECK_TAG(tag, EXPR_EVENT, "ExprVal::AsEventExpr", expr_name)
 	return {NewRef{}, (EventExpr*) this};
+	}
+
+const RefExpr* Expr::AsRefExpr() const
+	{
+	CHECK_TAG(tag, EXPR_REF, "ExprVal::AsRefExpr", expr_name)
+	return (const RefExpr*) this;
 	}
 
 RefExprPtr Expr::AsRefExprPtr()

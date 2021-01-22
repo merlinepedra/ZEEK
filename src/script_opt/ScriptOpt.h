@@ -36,7 +36,17 @@ struct AnalyOpt {
 	// If true, report which functions are directly and indirectly
 	// recursive, and exit.  Only germane if running the inliner.
 	bool report_recursive = false;
+
+	// If non-zero, looks for variables that are used-but-possibly-not-set,
+	// or set-but-not-used.
+	//
+	// If > 1, also reports on uses of uninitialized record fields and
+	// analyzes nested records in depth.  Warning: with the current
+	// data structures this greatly increases analysis time.
+	int usage_issues = 0;
 };
+
+extern AnalyOpt analysis_options;
 
 
 class ProfileFunc;

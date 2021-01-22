@@ -12,6 +12,8 @@
 namespace zeek::detail {
 
 
+AnalyOpt analysis_options;
+
 std::unordered_set<const Func*> non_recursive_funcs;
 
 // Tracks all of the loaded functions (including event handlers and hooks).
@@ -99,7 +101,7 @@ static void check_env_opt(const char* opt, bool& opt_flag)
 
 void analyze_scripts(Options& opts)
 	{
-	auto& analysis_options = opts.analysis_options;
+	analysis_options = opts.analysis_options;
 
 	static bool did_init = false;
 

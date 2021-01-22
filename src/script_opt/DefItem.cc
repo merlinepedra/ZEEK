@@ -98,31 +98,6 @@ void DefinitionItem::CheckForRecord()
 	}
 
 
-std::shared_ptr<DefinitionItem> DefItemMap::GetID_DI(const ID* id)
-	{
-	auto di = i2d.find(id);
-	if ( di == i2d.end() )
-		{
-		auto new_entry = std::make_shared<DefinitionItem>(id);
-		i2d[id] = new_entry;
-		return new_entry;
-		}
-	else
-		return di->second;
-	}
-
-const DefinitionItem* DefItemMap::GetConstID_DI(const ID* id) const
-	{
-	auto di = i2d.find(id);
-	return di == i2d.end() ? nullptr : di->second.get();
-	}
-
-const DefinitionItem* DefItemMap::GetConstID_DI(const DefinitionItem* di,
-						const char* field_name) const
-	{
-	return di->FindField(field_name).get();
-	}
-
 std::shared_ptr<DefinitionItem> DefItemMap::GetExprDI(const Expr* expr)
 	{
 	if ( expr->Tag() == EXPR_NAME )
@@ -148,6 +123,31 @@ std::shared_ptr<DefinitionItem> DefItemMap::GetExprDI(const Expr* expr)
 
 	else
 		return nullptr;
+	}
+
+std::shared_ptr<DefinitionItem> DefItemMap::GetID_DI(const ID* id)
+	{
+	auto di = i2d.find(id);
+	if ( di == i2d.end() )
+		{
+		auto new_entry = std::make_shared<DefinitionItem>(id);
+		i2d[id] = new_entry;
+		return new_entry;
+		}
+	else
+		return di->second;
+	}
+
+const DefinitionItem* DefItemMap::GetConstID_DI(const ID* id) const
+	{
+	auto di = i2d.find(id);
+	return di == i2d.end() ? nullptr : di->second.get();
+	}
+
+const DefinitionItem* DefItemMap::GetConstID_DI(const DefinitionItem* di,
+						const char* field_name) const
+	{
+	return di->FindField(field_name).get();
 	}
 
 
