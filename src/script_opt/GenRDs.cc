@@ -372,7 +372,8 @@ void RD_Decorate::TraverseSwitch(const SwitchStmt* sw)
 		if ( type_ids )
 			{
 			for ( const auto& id : *type_ids )
-				CreateInitPreDef(id, DefinitionPoint(body));
+				if ( id->Name() )
+					CreateInitPreDef(id, DefinitionPoint(body));
 			}
 
 		auto body_min_pre = mgr.GetPreMinRDs(body);
