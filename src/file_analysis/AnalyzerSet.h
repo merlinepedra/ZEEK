@@ -93,7 +93,7 @@ public:
 	 * @return an iterator that may be used to loop over analyzers in the set.
 	 */
 	[[deprecated("Remove in v5.1. Use standard-library compatible iteration.")]]
-	IterCookie* InitForIteration() const
+	IterCookie<file_analysis::Analyzer>* InitForIteration() const
 		{
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -109,7 +109,7 @@ public:
 	 *         more left (in that case the cookie is also deleted).
 	 */
 	[[deprecated("Remove in v5.1. Use standard-library compatible iteration.")]]
-	file_analysis::Analyzer* NextEntry(IterCookie* c)
+	file_analysis::Analyzer* NextEntry(IterCookie<file_analysis::Analyzer>* c)
 		{
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -118,7 +118,7 @@ public:
 		}
 
 	// Iterator support
-	using iterator = zeek::DictIterator;
+	using iterator = zeek::DictIterator<file_analysis::Analyzer>;
 	using const_iterator = const iterator;
 	using reverse_iterator = std::reverse_iterator<iterator>;
 	using const_reverse_iterator = std::reverse_iterator<const_iterator>;

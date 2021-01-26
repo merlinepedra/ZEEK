@@ -500,7 +500,7 @@ static void BuildJSON(threading::formatter::JSON::NullDoubleWriter& writer, Val*
 
 			for ( const auto& te : *table )
 				{
-				entry = te.GetValue<TableEntryVal*>();
+				entry = te.value;
 				k = te.GetHashKey();
 
 				auto lv = tval->RecreateIndex(*k);
@@ -1478,7 +1478,7 @@ int TableVal::RecursiveSize() const
 
 	for ( const auto& ve : *table_val )
 		{
-		auto* tv = ve.GetValue<TableEntryVal*>();
+		auto* tv = ve.value;
 		if ( tv->GetVal() )
 			n += tv->GetVal()->AsTableVal()->RecursiveSize();
 		}
@@ -1641,7 +1641,7 @@ bool TableVal::AddTo(Val* val, bool is_first_init, bool propagate_ops) const
 	for ( const auto& tble : *table_val )
 		{
 		auto k = tble.GetHashKey();
-		auto* v = tble.GetValue<TableEntryVal*>();
+		auto* v = tble.value;
 
 		if ( is_first_init && t->AsTable()->Lookup(k.get()) )
 			{
@@ -2340,7 +2340,7 @@ void TableVal::Describe(ODesc* d) const
 			reporter->InternalError("hash table underflow in TableVal::Describe");
 
 		auto k = iter->GetHashKey();
-		auto* v = iter->GetValue<TableEntryVal*>();
+		auto* v = iter->value;
 
 		auto vl = table_hash->RecoverVals(*k);
 		int dim = vl->Length();
@@ -2487,7 +2487,7 @@ void TableVal::DoExpire(double t)
 	if ( ! expire_iterator )
 		{
 		auto it = table_val->begin_robust();
-		expire_iterator = new RobustDictIterator(std::move(it));
+		expire_iterator = new RobustDictIterator<TableEntryVal>(std::move(it));
 		}
 
 	std::unique_ptr<detail::HashKey> k = nullptr;
@@ -2499,7 +2499,7 @@ void TableVal::DoExpire(double t)
 		      *expire_iterator != table_val->end_robust(); ++i, ++(*expire_iterator) )
 		{
 		k = (*expire_iterator)->GetHashKey();
-		v = (*expire_iterator)->GetValue<TableEntryVal*>();
+		v = (*expire_iterator)->value;
 
 		if ( v->ExpireAccessTime() == 0 )
 			{
@@ -2676,7 +2676,7 @@ ValPtr TableVal::DoClone(CloneState* state)
 	for ( const auto& tble : *table_val )
 		{
 		auto key = tble.GetHashKey();
-		auto* val = tble.GetValue<TableEntryVal*>();
+		auto* val = tble.value;
 		TableEntryVal* nval = val->Clone(state);
 		tv->table_val->Insert(key.get(), nval);
 
@@ -2714,7 +2714,7 @@ unsigned int TableVal::MemoryAllocation() const
 
 	for ( const auto& ve : *table_val )
 		{
-		auto* tv = ve.GetValue<TableEntryVal*>();
+		auto* tv = ve.value;
 		if ( tv->GetVal() )
 			size += tv->GetVal()->MemoryAllocation();
 		size += padded_sizeof(TableEntryVal);
@@ -2761,7 +2761,7 @@ TableVal::ParseTimeTableState TableVal::DumpTableState()
 	for ( const auto& tble : *table_val )
 		{
 		auto key = tble.GetHashKey();
-		auto* val = tble.GetValue<TableEntryVal*>();
+		auto* val = tble.value;
 
 		rval.emplace_back(RecreateIndex(*key), val->GetVal());
 		}

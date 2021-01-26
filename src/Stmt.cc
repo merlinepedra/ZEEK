@@ -1303,7 +1303,7 @@ ValPtr ForStmt::DoExec(Frame* f, Val* v, StmtFlowType& flow) const
 		for ( const auto& lve : *loop_vals )
 			{
 			auto k = lve.GetHashKey();
-			auto* current_tev = lve.GetValue<TableEntryVal*>();
+			auto* current_tev = lve.value;
 			auto ind_lv = tv->RecreateIndex(*k);
 
 			if ( value_var )

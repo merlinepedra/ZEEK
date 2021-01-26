@@ -1265,7 +1265,7 @@ Supervisor::NodeConfig Supervisor::NodeConfig::FromRecord(const RecordVal* node)
 	for ( const auto& cte : *cluster_table )
 		{
 		auto k = cte.GetHashKey();
-		auto* v = cte.GetValue<TableEntryVal*>();
+		auto* v = cte.value;
 
 		auto key = cluster_table_val->RecreateIndex(*k);
 		auto name = key->Idx(0)->AsStringVal()->ToStdString();
