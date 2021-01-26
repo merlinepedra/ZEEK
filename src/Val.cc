@@ -495,7 +495,7 @@ static void BuildJSON(threading::formatter::JSON::NullDoubleWriter& writer, Val*
 			else
 				writer.StartObject();
 
-			std::unique_ptr<detail::HashKey> k;
+			detail::HashKey* k;
 			TableEntryVal* entry;
 
 			for ( const auto& te : *table )
@@ -1561,6 +1561,12 @@ bool TableVal::Assign(ValPtr index, ValPtr new_val, bool broker_forward,
 bool TableVal::Assign(ValPtr index, std::unique_ptr<detail::HashKey> k,
                       ValPtr new_val, bool broker_forward, bool* iterators_invalidated)
 	{
+	return Assign(index, k.get(), new_val, broker_forward, iterators_invalidated);
+	}
+
+bool TableVal::Assign(ValPtr index, detail::HashKey* k,
+                      ValPtr new_val, bool broker_forward, bool* iterators_invalidated)
+	{
 	bool is_set = table_type->IsSet();
 
 	if ( (is_set && new_val) || (! is_set && ! new_val) )
@@ -1568,7 +1574,7 @@ bool TableVal::Assign(ValPtr index, std::unique_ptr<detail::HashKey> k,
 
 	TableEntryVal* new_entry_val = new TableEntryVal(std::move(new_val));
 	detail::HashKey k_copy(k->Key(), k->Size(), k->Hash());
-	TableEntryVal* old_entry_val = table_val->Insert(k.get(), new_entry_val, iterators_invalidated);
+	TableEntryVal* old_entry_val = table_val->Insert(k, new_entry_val, iterators_invalidated);
 
 	// If the dictionary index already existed, the insert may free up the
 	// memory allocated to the key bytes, so have to assume k is invalid
@@ -1643,7 +1649,7 @@ bool TableVal::AddTo(Val* val, bool is_first_init, bool propagate_ops) const
 		auto k = tble.GetHashKey();
 		auto* v = tble.value;
 
-		if ( is_first_init && t->AsTable()->Lookup(k.get()) )
+		if ( is_first_init && t->AsTable()->Lookup(k) )
 			{
 			auto key = table_hash->RecoverVals(*k);
 			// ### Shouldn't complain if their values are equal.
@@ -1718,8 +1724,8 @@ TableValPtr TableVal::Intersection(const TableVal& tv) const
 
 		// Here we leverage the same assumption about consistent
 		// hashes as in TableVal::RemoveFrom above.
-		if ( t0->Lookup(k.get()) )
-			result->table_val->Insert(k.get(), new TableEntryVal(nullptr));
+		if ( t0->Lookup(k) )
+			result->table_val->Insert(k, new TableEntryVal(nullptr));
 		}
 
 	return result;
@@ -1739,7 +1745,7 @@ bool TableVal::EqualTo(const TableVal& tv) const
 
 		// Here we leverage the same assumption about consistent
 		// hashes as in TableVal::RemoveFrom above.
-		if ( ! t1->Lookup(k.get()) )
+		if ( ! t1->Lookup(k) )
 			return false;
 		}
 
@@ -1760,7 +1766,7 @@ bool TableVal::IsSubsetOf(const TableVal& tv) const
 
 		// Here we leverage the same assumption about consistent
 		// hashes as in TableVal::RemoveFrom above.
-		if ( ! t1->Lookup(k.get()) )
+		if ( ! t1->Lookup(k) )
 			return false;
 		}
 
@@ -2490,7 +2496,7 @@ void TableVal::DoExpire(double t)
 		expire_iterator = new RobustDictIterator<TableEntryVal>(std::move(it));
 		}
 
-	std::unique_ptr<detail::HashKey> k = nullptr;
+	detail::HashKey* k = nullptr;
 	TableEntryVal* v = nullptr;
 	TableEntryVal* v_saved = nullptr;
 	bool modified = false;
@@ -2523,7 +2529,7 @@ void TableVal::DoExpire(double t)
 				// function modified or deleted the table
 				// value, so look it up again.
 				v_saved = v;
-				v = table_val->Lookup(k.get());
+				v = table_val->Lookup(k);
 
 				if ( ! v )
 					{ // user-provided function deleted it
@@ -2549,7 +2555,7 @@ void TableVal::DoExpire(double t)
 					reporter->InternalWarning("index not in prefix table");
 				}
 
-			table_val->RemoveEntry(k.get());
+			table_val->RemoveEntry(k);
 			if ( change_func )
 				{
 				if ( ! idx )
@@ -2678,7 +2684,7 @@ ValPtr TableVal::DoClone(CloneState* state)
 		auto key = tble.GetHashKey();
 		auto* val = tble.value;
 		TableEntryVal* nval = val->Clone(state);
-		tv->table_val->Insert(key.get(), nval);
+		tv->table_val->Insert(key, nval);
 
 		if ( subnets )
 			{

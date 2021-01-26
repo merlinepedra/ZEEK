@@ -215,6 +215,48 @@ TEST_CASE("dict new iteration")
 	delete key2;
 	}
 
+TEST_CASE("dict structured bindings")
+	{
+	PDict<uint32_t> dict;
+
+	uint32_t val = 15;
+	uint32_t key_val = 5;
+	detail::HashKey* key = new detail::HashKey(key_val);
+
+	uint32_t val2 = 10;
+	uint32_t key_val2 = 25;
+	detail::HashKey* key2 = new detail::HashKey(key_val2);
+
+	dict.Insert(key, &val);
+	dict.Insert(key2, &val2);
+
+	int count = 0;
+
+	for ( const auto& [k, v] : dict )
+		{
+		uint64_t kv = *(uint32_t*) k->Key();
+
+		switch ( count )
+			{
+			case 0:
+				CHECK(kv == key_val2);
+				CHECK(*v == val2);
+				break;
+			case 1:
+				CHECK(kv == key_val);
+				CHECK(*v == val);
+				break;
+			default:
+				break;
+			}
+
+		count++;
+		}
+
+	delete key;
+	delete key2;
+	}
+
 TEST_CASE("dict robust iteration")
 	{
 	PDict<uint32_t> dict;

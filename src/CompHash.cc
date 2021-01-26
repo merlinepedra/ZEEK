@@ -213,7 +213,7 @@ char* CompositeHash::SingleValHash(bool type_check, char* kp0,
 			auto lv = make_intrusive<ListVal>(TYPE_ANY);
 
 			struct HashKeyComparer {
-				bool operator()(const std::unique_ptr<HashKey>& a, const std::unique_ptr<HashKey>& b) const
+				bool operator()(const HashKey* a, const HashKey* b) const
 					{
 					if ( a->Hash() != b->Hash() )
 						return a->Hash() < b->Hash();
@@ -225,14 +225,14 @@ char* CompositeHash::SingleValHash(bool type_check, char* kp0,
 					}
 			};
 
-			std::map<std::unique_ptr<HashKey>, int, HashKeyComparer> hashkeys;
+			std::map<HashKey*, int, HashKeyComparer> hashkeys;
 			auto idx = 0;
 
 			for ( const auto& entry : *tbl )
 				{
 				auto k = entry.GetHashKey();
 				lv->Append(tv->RecreateIndex(*k));
-				hashkeys[std::move(k)] = idx++;
+				hashkeys[k] = idx++;
 				}
 
 			for ( auto& kv : hashkeys )

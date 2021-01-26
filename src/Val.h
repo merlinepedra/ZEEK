@@ -734,6 +734,9 @@ public:
 	bool Assign(ValPtr index, std::unique_ptr<detail::HashKey> k,
 	            ValPtr new_val, bool broker_forward = true,
 	            bool* iterators_invalidated = nullptr);
+	bool Assign(ValPtr index, detail::HashKey* k,
+	            ValPtr new_val, bool broker_forward = true,
+	            bool* iterators_invalidated = nullptr);
 
 	ValPtr SizeVal() const override;
 

@@ -19,13 +19,26 @@
 namespace zeek {
 	template <typename T> class IterCookie;
 	template <typename T> class Dictionary;
-}
 
-//ZEEK_FORWARD_DECLARE_NAMESPACED(IterCookie, zeek);
-//ZEEK_FORWARD_DECLARE_NAMESPACED(Dictionary, zeek);
+namespace detail {
+	template <typename T> class DictEntry;
+}
+}
 
 // Type for function to be called when deleting elements.
 typedef void (*dict_delete_func)(void*);
+
+// Definitions needed for structured bindings to work
+namespace std {
+	template<typename T>
+	struct std::tuple_size<zeek::detail::DictEntry<T>>
+		{
+		static const size_t value = 2;
+		};
+
+	template<typename T> struct tuple_element<0, zeek::detail::DictEntry<T>> { using type = zeek::detail::HashKey*; };
+	template<typename T> struct tuple_element<1, zeek::detail::DictEntry<T>> { using type = T*; };
+}
 
 namespace zeek {
 
@@ -84,11 +97,14 @@ public:
 	uint32_t hash = 0;
 
 	T* value = nullptr;
+	detail::HashKey* hash_key;
 
 	union {
 		char key_here[8]; //hold key len<=8. when over 8, it's a pointer to real keys.
 		char* key;
 	};
+
+	DictEntry() : DictEntry(nullptr) {}
 
 	DictEntry(void* arg_key, int key_size = 0, hash_t hash = 0, T* value = nullptr,
 	          int16_t d = TOO_FAR_TO_REACH, bool copy_key = false)
@@ -115,6 +131,8 @@ public:
 				key = (char*)arg_key;
 				}
 			}
+
+		hash_key = new detail::HashKey(GetKey(), key_size, hash);
 		}
 
 	bool Empty() const	{ return distance == TOO_FAR_TO_REACH; }
@@ -135,14 +153,12 @@ public:
 		{
 		if( key_size > 8 )
 			delete [] key;
+		delete hash_key;
 		SetEmpty();
 		}
 
 	const char* GetKey() const { return key_size <= 8 ? key_here : key; }
-	std::unique_ptr<detail::HashKey> GetHashKey() const
-		{
-		return std::make_unique<detail::HashKey>(GetKey(), key_size, hash);
-		}
+	detail::HashKey* GetHashKey() const { return hash_key; }
 
 	bool Equal(const char* arg_key, int arg_key_size, hash_t arg_hash) const
 		{//only 40-bit hash comparison.
@@ -156,6 +172,17 @@ public:
 	bool operator!=(const DictEntry& r) const
 		{
 		return ! Equal(r.GetKey(), r.key_size, r.hash);
+		}
+
+	template<size_t N> auto& get() &
+		{
+		if constexpr (N == 0) return hash_key;
+		else if constexpr (N == 1) return value;
+		}
+	template<size_t N> auto const& get() const&
+		{
+		if constexpr (N == 0) return hash_key;
+		else if constexpr (N == 1) return value;
 		}
 };
 
