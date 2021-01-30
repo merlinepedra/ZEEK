@@ -84,6 +84,7 @@ while (( "$#" )); do
     esac
 done
 
+CURR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )" # Location of script
 TMP=".tmp.$$"
 COVERAGE_FILE="./$TMP/coverage.info"
 
@@ -93,7 +94,7 @@ fi
 
 # Files and directories that will be removed from the counts in step 5. Directories
 # need to be surrounded by escaped wildcards.
-REMOVE_TARGETS="*.yy *.ll *.y *.l \*/bro.dir/\* *.bif \*/zeek.dir/\* \*/src/3rdparty/\* \*/auxil/\*"
+REMOVE_TARGETS="*.yy *.ll *.y *.l \*/bro.dir/\* *.bif \*/zeek.dir/\* \*/src/3rdparty/\* \*/auxil/\* \*/src/zeek/3rdparty/\*"
 
 # 1. Move to base dir, create tmp dir
 cd ../../;
@@ -117,13 +118,13 @@ verify_run "which lcov" \
 
 # 4. Create a "tracefile" through lcov, which is necessary to create output later on.
 echo -n "Creating tracefile for output generation... "
-verify_run "lcov --no-external --capture --directory . --output-file $COVERAGE_FILE"
+verify_run "lcov --gcov-tool ${CURR}/gcov_for_clang.sh --no-external --capture --directory . --output-file $COVERAGE_FILE"
 
 # 5. Remove a number of 3rdparty and "extra" files that shoudln't be included in the
 # Zeek coverage numbers.
 for TARGET in $REMOVE_TARGETS; do
     echo -n "Getting rid of $TARGET files from tracefile... "
-    verify_run "lcov --remove $COVERAGE_FILE $TARGET --output-file $COVERAGE_FILE"
+    verify_run "lcov --gcov-tool ${CURR}/gcov_for_clang.sh --remove $COVERAGE_FILE $TARGET --output-file $COVERAGE_FILE"
 done
 
 # 6. Create HTML files or Coveralls report
