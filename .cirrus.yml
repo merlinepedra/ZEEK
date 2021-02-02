@@ -34,7 +34,8 @@ ci_template: &CI_TEMPLATE
     ( $CIRRUS_REPO_NAME == 'zeek' &&
       (
       $CIRRUS_BRANCH == 'master' ||
-      $CIRRUS_BRANCH =~ 'release/.*'
+      $CIRRUS_BRANCH =~ 'release/.*' ||
+      $CIRRUS_BRANCH == 'topic/timw/1353-coverage-dupes'
       )
     )
 
@@ -91,132 +92,144 @@ env:
 # Linux EOL timelines: https://linuxlifecycle.com/
 # Fedora (~13 months): https://fedoraproject.org/wiki/Fedora_Release_Life_Cycle
 
-fedora33_task:
-  container:
-    # Fedora 33 EOL: Around November 2022
-    dockerfile: ci/fedora-33/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# fedora33_task:
+#   container:
+#     # Fedora 33 EOL: Around November 2022
+#     dockerfile: ci/fedora-33/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-fedora32_task:
-  container:
-    # Fedora 32 EOL: Around May 2021
-    dockerfile: ci/fedora-32/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# fedora32_task:
+#   container:
+#     # Fedora 32 EOL: Around May 2021
+#     dockerfile: ci/fedora-32/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-centos8_task:
-  container:
-    # CentOS 8 EOL: May 31, 2029
-    dockerfile: ci/centos-8/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  env:
-    ZEEK_CI_CREATE_ARTIFACT: 1
-  << : *CI_TEMPLATE
-  upload_binary_artifacts:
-    path: build.tgz
-  benchmark_script: ./ci/benchmark.sh
+# centos8_task:
+#   container:
+#     # CentOS 8 EOL: May 31, 2029
+#     dockerfile: ci/centos-8/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   env:
+#     ZEEK_CI_CREATE_ARTIFACT: 1
+#   << : *CI_TEMPLATE
+#   upload_binary_artifacts:
+#     path: build.tgz
+#   benchmark_script: ./ci/benchmark.sh
 
-centos7_task:
-  container:
-    # CentOS 7 EOL: June 30, 2024
-    dockerfile: ci/centos-7/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# centos7_task:
+#   container:
+#     # CentOS 7 EOL: June 30, 2024
+#     dockerfile: ci/centos-7/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-debian10_task:
-  container:
-    # Debian 10 EOL: June 2024
-    dockerfile: ci/debian-10/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# debian10_task:
+#   container:
+#     # Debian 10 EOL: June 2024
+#     dockerfile: ci/debian-10/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-debian10_static_task:
-  container:
-    # Just uses a recent/common distro to run a static compile test.
-    # Debian 10 EOL: June 2024
-    dockerfile: ci/debian-10/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
-  env:
-    ZEEK_CI_CONFIGURE_FLAGS: *STATIC_CONFIG
+# debian10_static_task:
+#   container:
+#     # Just uses a recent/common distro to run a static compile test.
+#     # Debian 10 EOL: June 2024
+#     dockerfile: ci/debian-10/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
+#   env:
+#     ZEEK_CI_CONFIGURE_FLAGS: *STATIC_CONFIG
 
-debian9_task:
-  container:
-    # Debian 9 EOL: June 2022
-    dockerfile: ci/debian-9/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# debian9_task:
+#   container:
+#     # Debian 9 EOL: June 2022
+#     dockerfile: ci/debian-9/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-debian9_32bit_task:
-  container:
-    # Debian 9 EOL: June 2022
-    dockerfile: ci/debian-9-32bit/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# debian9_32bit_task:
+#   container:
+#     # Debian 9 EOL: June 2022
+#     dockerfile: ci/debian-9-32bit/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-ubuntu20_task:
-  container:
-    # Ubuntu 20.04 EOL: April 2025
-    dockerfile: ci/ubuntu-20.04/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# ubuntu20_task:
+#   container:
+#     # Ubuntu 20.04 EOL: April 2025
+#     dockerfile: ci/ubuntu-20.04/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-ubuntu18_task:
-  container:
-    # Ubuntu 18.04 EOL: April 2023
-    dockerfile: ci/ubuntu-18.04/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# ubuntu18_task:
+#   container:
+#     # Ubuntu 18.04 EOL: April 2023
+#     dockerfile: ci/ubuntu-18.04/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-ubuntu16_task:
-  container:
-    # Ubuntu 16.04 EOL: April 2021
-    dockerfile: ci/ubuntu-16.04/Dockerfile
-    << : *RESOURCES_TEMPLATE
-  << : *CI_TEMPLATE
+# ubuntu16_task:
+#   container:
+#     # Ubuntu 16.04 EOL: April 2021
+#     dockerfile: ci/ubuntu-16.04/Dockerfile
+#     << : *RESOURCES_TEMPLATE
+#   << : *CI_TEMPLATE
 
-# Apple doesn't publish official long-term support timelines.
-# We aim to support both the current and previous macOS release.
-macos_big_sur_task:
-  macos_instance:
-    image: big-sur-base
-  prepare_script: ./ci/macos/prepare.sh
-  << : *CI_TEMPLATE
-  << : *MACOS_RESOURCES_TEMPLATE
+# # Apple doesn't publish official long-term support timelines.
+# # We aim to support both the current and previous macOS release.
+# macos_big_sur_task:
+#   macos_instance:
+#     image: big-sur-base
+#   prepare_script: ./ci/macos/prepare.sh
+#   << : *CI_TEMPLATE
+#   << : *MACOS_RESOURCES_TEMPLATE
 
-macos_catalina_task:
-  macos_instance:
-    image: catalina-xcode-11.6
-  prepare_script: ./ci/macos/prepare.sh
-  << : *CI_TEMPLATE
-  << : *MACOS_RESOURCES_TEMPLATE
+# macos_catalina_task:
+#   macos_instance:
+#     image: catalina-xcode-11.6
+#   prepare_script: ./ci/macos/prepare.sh
+#   << : *CI_TEMPLATE
+#   << : *MACOS_RESOURCES_TEMPLATE
 
-# FreeBSD EOL timelines: https://www.freebsd.org/security/security.html#sup
-freebsd12_task:
-  freebsd_instance:
-    # FreeBSD 12 EOL: June 30, 2024
-    image_family: freebsd-12-2
-    cpu: 8
-    # Not allowed to request less than 8GB for an 8 CPU FreeBSD VM.
-    memory: 8GB
-  prepare_script: ./ci/freebsd/prepare.sh
-  << : *CI_TEMPLATE
-  coverage_script: ./ci/upload-coverage.sh
-  env:
-    ZEEK_CI_CONFIGURE_FLAGS: *COVERAGE_CONFIG
+# # FreeBSD EOL timelines: https://www.freebsd.org/security/security.html#sup
+# freebsd12_task:
+#   freebsd_instance:
+#     # FreeBSD 12 EOL: June 30, 2024
+#     image_family: freebsd-12-2
+#     cpu: 8
+#     # Not allowed to request less than 8GB for an 8 CPU FreeBSD VM.
+#     memory: 8GB
+#   prepare_script: ./ci/freebsd/prepare.sh
+#   << : *CI_TEMPLATE
 
-freebsd11_task:
-  freebsd_instance:
-    # FreeBSD 11 EOL: September 30, 2021
-    image_family: freebsd-11-4
-    cpu: 8
-    # Not allowed to request less than 8GB for an 8 CPU FreeBSD VM.
-    memory: 8GB
-  prepare_script: ./ci/freebsd/prepare.sh
-  << : *CI_TEMPLATE
+# freebsd11_task:
+#   freebsd_instance:
+#     # FreeBSD 11 EOL: September 30, 2021
+#     image_family: freebsd-11-4
+#     cpu: 8
+#     # Not allowed to request less than 8GB for an 8 CPU FreeBSD VM.
+#     memory: 8GB
+#   prepare_script: ./ci/freebsd/prepare.sh
+#   << : *CI_TEMPLATE
 
-sanitizer_task:
+# sanitizer_task:
+#   container:
+#     # Just uses a recent/common distro to run memory error/leak checks.
+#     dockerfile: ci/ubuntu-18.04/Dockerfile
+#     cpu: 4
+#     # AddressSanitizer uses a lot more memory than a typical config.
+#     memory: 12GB
+#   << : *CI_TEMPLATE
+#   test_fuzzers_script: ./ci/test-fuzzers.sh
+#   env:
+#     CXXFLAGS: -DZEEK_DICT_DEBUG
+#     ZEEK_CI_CONFIGURE_FLAGS: *SANITIZER_CONFIG
+#     ZEEK_TAILORED_UB_CHECKS: 1
+#     UBSAN_OPTIONS: print_stacktrace=1
+
+coverage_task:
   container:
     # Just uses a recent/common distro to run memory error/leak checks.
     dockerfile: ci/ubuntu-18.04/Dockerfile
@@ -224,9 +237,7 @@ sanitizer_task:
     # AddressSanitizer uses a lot more memory than a typical config.
     memory: 12GB
   << : *CI_TEMPLATE
-  test_fuzzers_script: ./ci/test-fuzzers.sh
+  coverage_script: ./ci/upload-coverage.sh
   env:
-    CXXFLAGS: -DZEEK_DICT_DEBUG
-    ZEEK_CI_CONFIGURE_FLAGS: *SANITIZER_CONFIG
-    ZEEK_TAILORED_UB_CHECKS: 1
-    UBSAN_OPTIONS: print_stacktrace=1
+    ZEEK_CI_CONFIGURE_FLAGS: *COVERAGE_CONFIG
+    ZEEK_CI_USE_CLANG: 1

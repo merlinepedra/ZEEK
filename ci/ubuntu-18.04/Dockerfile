@@ -29,5 +29,12 @@ RUN apt-get update && apt-get -y install \
     lcov \
   && rm -rf /var/lib/apt/lists/*
 
+# Install clang-11 for the coverage task
+RUN echo "deb http://apt.llvm.org/bionic llvm-toolchain-bionic-11 main" >> /etc/apt/sources.list.d/llvm-11.list
+RUN echo "deb-src http://apt.llvm.org/bionic llvm-toolchain-bionic-11 main" >> /etc/apt/sources.list.d/llvm-11.list
+RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -
+RUN apt-get update && apt-get -y install llvm-11 clang-11 && rm -rf /var/lib/apt/lists/*
+RUN ln -s /usr/bin/llvm-cov-11 /usr/bin/llvm-cov
+
 RUN pip3 install junit2html
 RUN gem install coveralls-lcov
