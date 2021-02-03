@@ -57,7 +57,7 @@ function run_btests
     banner "Running baseline tests: zeek"
 
     pushd testing/btest
-    ${BTEST} -z ${ZEEK_CI_BTEST_RETRIES} -d -b -x btest-results.xml -j ${ZEEK_CI_BTEST_JOBS} || result=1
+    ${BTEST} -z ${ZEEK_CI_BTEST_RETRIES} -d -x btest-results.xml -j ${ZEEK_CI_BTEST_JOBS} || result=1
     make coverage
     prep_artifacts
     popd
