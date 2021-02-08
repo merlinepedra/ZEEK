@@ -239,5 +239,6 @@ coverage_task:
   << : *CI_TEMPLATE
   coverage_script: ./ci/upload-coverage.sh
   env:
+    ZEEK_CI_BTEST_TIMEOUT_MULTIPLIER: 2
     ZEEK_CI_CONFIGURE_FLAGS: *COVERAGE_CONFIG
     ZEEK_CI_USE_CLANG: 1
