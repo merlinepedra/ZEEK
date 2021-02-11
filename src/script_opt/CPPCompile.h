@@ -34,36 +34,37 @@ private:
 	void DefineBody(const FuncInfo& func, const std::string& fname);
 
 	std::string BindArgs(const FuncTypePtr& ft);
-	std::string ValToNative(std::string v, const TypePtr& t);
 
 	void DeclareLocals(const FuncInfo& func);
 
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
 	void GenStmt(const Stmt* s);
 
-	std::string GenExpr(const ExprPtr& e)	{ return GenExpr(e.get()); }
-	std::string GenExpr(const Expr* e);
+	enum GenType {
+		GEN_DONT_CARE,
+		GEN_NATIVE,
+		GEN_VAL_PTR,
+	};
 
-	// True if the given expression corresponds to a ValPtr value
-	// rather than a Val* value or a native type.
-	bool ExprIsValPtr(const ExprPtr& e) const
-		{ return ExprIsValPtr(e.get()); }
-	bool ExprIsValPtr(const Expr* e) const;
-
-	std::string GenValExpr(const ExprPtr& e)
-		{ return GenValExpr(e.get()); }
-	std::string GenValExpr(const Expr* e);
+	std::string GenExpr(const ExprPtr& e, GenType gt)
+		{ return GenExpr(e.get(), gt); }
+	std::string GenExpr(const Expr* e, GenType gt);
 
 	std::string GenArgs(const Expr* e);
 
-	std::string GenUnary(const Expr* e, const char* op);
-	std::string GenBinary(const Expr* e, const char* op);
-	std::string GenBinarySet(const Expr* e, const char* op);
-	std::string GenBinaryString(const Expr* e, const char* op);
-	std::string GenBinaryPattern(const Expr* e, const char* op);
-	std::string GenBinaryAddr(const Expr* e, const char* op);
-	std::string GenBinarySubNet(const Expr* e, const char* op);
-	std::string GenEQ(const Expr* e, const char* op);
+	std::string GenUnary(const Expr* e, GenType gt, const char* op);
+	std::string GenBinary(const Expr* e, GenType gt, const char* op);
+	std::string GenBinarySet(const Expr* e, GenType gt, const char* op);
+	std::string GenBinaryString(const Expr* e, GenType gt, const char* op);
+	std::string GenBinaryPattern(const Expr* e, GenType gt, const char* op);
+	std::string GenBinaryAddr(const Expr* e, GenType gt, const char* op);
+	std::string GenBinarySubNet(const Expr* e, GenType gt, const char* op);
+	std::string GenEQ(const Expr* e, GenType gt, const char* op);
+
+	std::string NativeToGT(const std::string& expr, const TypePtr& t,
+				GenType gt);
+	std::string GenericValPtrToGT(const std::string& expr, const TypePtr& t,
+					GenType gt);
 
 	void GenInitExpr(const ExprPtr& e);
 	std::string InitExprName(const ExprPtr& e);
@@ -72,7 +73,7 @@ private:
 	std::string AttrsName(const AttributesPtr& attrs);
 	const char* AttrName(const AttrPtr& attr);
 
-	void GenType(const TypePtr& t);
+	void GenTypeVar(const TypePtr& t);
 	std::string GeneratedTypeName(const TypePtr& t);
 
 	void GenExpr(const ExprPtr& e) const
@@ -95,8 +96,8 @@ private:
 	int TypeIndex(const TypePtr& t);
 	void RecordAttributes(const AttributesPtr& attrs);
 
-	const char* NativeVal(const TypePtr& t);
 	const char* NativeAccessor(const TypePtr& t);
+	const char* IntrusiveVal(const TypePtr& t);
 
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);

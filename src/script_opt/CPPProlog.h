@@ -18,33 +18,57 @@ using SubNetValPtr = IntrusivePtr<zeek::SubNetVal>;
 
 namespace detail {
 
+extern TypePtr types__CPP[];
+
 // Helper functions.
 
-extern TypePtr types__CPP[];
-Val* index_table__CPP(TableVal* t, std::vector<ValPtr> indices);
-// std::vector<const String*> strings;
-// strings.push_back(s1);
-// strings.push_back(s2);
-//
-//return make_intrusive<StringVal>(concatenate(strings));
-StringVal* str_concat__CPP(const String* s1, const String* s2);
+ValPtr index_table__CPP(TableValPtr t, std::vector<ValPtr> indices)
+	{
+	auto ind_v = make_intrusive<ListVal>(TYPE_ANY);
+
+	// In the future, we could provide N versions of this that
+	// unroll the loop.
+	for ( auto i : indices )
+		ind_v->Append(i);
+
+	return t->FindOrDefault(ind_v);
+	}
+
+StringValPtr str_concat__CPP(const String* s1, const String* s2)
+	{
+	std::vector<const String*> strings(2);
+	strings.push_back(s1);
+	strings.push_back(s2);
+
+	return make_intrusive<StringVal>(concatenate(strings));
+	}
 
 ValPtr index_val__CPP(std::vector<ValPtr> indices);
-ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args) { return f->Invoke(&args, nullptr); }
+
+// Call out to the given script or BiF function.
+inline ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args)
+	{
+	return f->Invoke(&args, nullptr);
+	}
+
+// Convert a bare Val* to its corresponding IntrusivePtr.
 template <typename T>
 IntrusivePtr<T> val_to_valptr__CPP(T* v) { return {NewRef{}, v}; }
 
+// Execute an assignment "v1[v2] = v3".
 void assign_to_index__CPP(ValPtr v1, ValPtr v2, ValPtr v3)
 	{
 	bool iterators_invalidated;
-	auto err_msg = zeek::detail::assign_to_index(v1, v2, v3, iterators_invalidated);
-	if ( err_msg ) reporter->Error("%s", err_msg);
+	auto err_msg = zeek::detail::assign_to_index(v1, v2, v3,
+							iterators_invalidated);
+	if ( err_msg )
+		reporter->Error("%s", err_msg);
 	}
 
-RecordVal* record_coerce();
-TableVal* table_coerce();
-RecordVal* record_constructor();
-TableVal* table_constructor();
-TableVal* set_constructor();
-VectorVal* vector_constructor();
+RecordValPtr record_coerce();
+TableValPtr table_coerce();
+RecordValPtr record_constructor();
+TableValPtr table_constructor();
+TableValPtr set_constructor();
+VectorValPtr vector_constructor();
 void schedule();
