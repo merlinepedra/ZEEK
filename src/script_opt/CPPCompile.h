@@ -7,6 +7,51 @@
 
 namespace zeek::detail {
 
+// Helper class that tracks distinct instances of a given key.  T should
+template <typename T>
+class CPPTracker {
+public:
+	CPPTracker(const char* _base_name)
+	: base_name(_base_name)
+		{
+		}
+
+	bool HasKey(T key) const	{ return map.count(key) > 0; }
+
+	// Only adds the key if it's not already present.
+	void AddKey(T key)
+		{
+		if ( HasKey(key) )
+			return;
+
+		map[key] = map.size();
+		keys.emplace_back(key);
+		}
+
+	std::string KeyName(T key) const
+		{
+		ASSERT(HasKey(key));
+
+		char d_s[64];
+		snprintf(d_s, sizeof d_s, "%d", map[key]);
+
+		return base_name + "_" + std::string(d_s) + "__CPP";
+		}
+
+	const std::vector<T>& Keys() const	{ return keys; }
+
+private:
+	// Maps keys to distinct values.
+	std::unordered_map<T, int> map;
+
+	// Tracks the set of keys, to facilitate iterating over them.
+	// Parallel to "map".
+	std::vector<T> keys;
+
+	// Used to construct key names.
+	std::string base_name;
+};
+
 class CPPCompile {
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs) : funcs(_funcs) { }
@@ -147,10 +192,10 @@ private:
 
 	std::string Canonicalize(const char* name) const;
 
-	std::string Fmt(int d)
+	std::string Fmt(int i)
 		{
 		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%d", d);
+		snprintf(d_s, sizeof d_s, "%d", i);
 		return std::string(d_s);
 		}
 
@@ -200,9 +245,8 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
-	// Maps types to indices in the global "types__CPP" array.  We also
-	// track the types in a vector so we can generate "types__CPP" in the
-	// epilog.
+	// Maps types to indices in the global "types__CPP" array.
+	CPPTracker<const Type*> x_types = "types";
 	std::unordered_map<const Type*, int> type_map;
 	std::vector<TypePtr> types;
 
