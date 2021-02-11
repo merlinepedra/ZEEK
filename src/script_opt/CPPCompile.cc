@@ -37,18 +37,19 @@ void CPPCompile::GenProlog()
 void CPPCompile::GenEpilog()
 	{
 	NL();
-	for ( auto i = 0; i < init_exprs.size(); ++i )
-		GenInitExpr(init_exprs[i]);
+	for ( const auto& e : init_exprs.Keys() )
+		GenInitExpr(e);
 
-	for ( auto i = 0; i < attributes.size(); ++i )
-		GenAttrs(attributes[i]);
+	for ( const auto& a : attributes.Keys() )
+		GenAttrs(a);
 
-	for ( auto i = 0; i < types.size(); ++i )
-		GenTypeVar(types[i]);
+	const auto& tk = types.Keys();
+	for ( const auto& t : tk )
+		GenTypeVar(t);
 
-	Emit("TypePtr types__CPP[%s] =", Fmt(int(types.size())).c_str());
+	Emit("TypePtr types__CPP[%s] =", Fmt(types.Size()).c_str());
 	StartBlock();
-	for ( auto i = 0; i < types.size(); ++i )
+	for ( auto i = 0; i < tk.size(); ++i )
 		Emit("gen_type%s__CPP(),", Fmt(i).c_str());
 	EndBlock(true);
 
@@ -827,7 +828,18 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		}
 
 	case EXPR_RECORD_COERCE:
+		{
+		auto rc = static_cast<const RecordCoerceExpr*>(e);
+		auto op1 = rc->GetOp1();
+		const auto& from_type = op1->GetType();
+		const auto& to_type = rc->GetType();
+
+		if ( same_type(from_type, to_type) )
+			// Elide coercion.
+			return GenExpr(op1, gt);
+
 		return std::string("record_coerce()");
+		}
 
 	case EXPR_TABLE_COERCE:
 		return std::string("table_coerce()");
@@ -1124,9 +1136,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 std::string CPPCompile::InitExprName(const ExprPtr& e)
 	{
-	ASSERT(init_expr_map.count(e.get()) > 0);
-	return std::string("gen_init_expr") +
-		Fmt(init_expr_map[e.get()]) + "__CPP";
+	return init_exprs.KeyName(e);
 	}
 
 void CPPCompile::GenAttrs(const AttributesPtr& attrs)
@@ -1160,8 +1170,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 
 std::string CPPCompile::AttrsName(const AttributesPtr& a)
 	{
-	ASSERT(attrs_map.count(a.get()) > 0);
-	return std::string("gen_attrs") + Fmt(attrs_map[a.get()]) + "__CPP()";
+	return attributes.KeyName(a) + "()";
 	}
 
 const char* CPPCompile::AttrName(const AttrPtr& attr)
@@ -1198,7 +1207,7 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 	{
 	NL();
 
-	Emit("TypePtr %s", GeneratedTypeName(t).c_str());
+	Emit("TypePtr %s", types.KeyName(t.get()).c_str());
 
 	StartBlock();
 
@@ -1303,12 +1312,6 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 	}
 
 	EndBlock();
-	}
-
-std::string CPPCompile::GeneratedTypeName(const TypePtr& t)
-	{
-	ASSERT(type_map.count(t.get()) > 0);
-	return std::string("gen_type") + Fmt(type_map[t.get()]) + "__CPP()";
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag) const
@@ -1494,7 +1497,7 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 	{
 	auto tp = t.get();
 
-	if ( type_map.count(tp) == 0 )
+	if ( ! types.HasKey(tp) )
 		{
 		// Recursively do its subtypes, so that they will be
 		// available when we ultimately do this type.
@@ -1563,29 +1566,24 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 			reporter->InternalError("bad type in CPPCompile::TypeIndex");
 		}
 
-		type_map[tp] = type_map.size();
-		types.emplace_back(t);
+		types.AddKey(t);
 		}
 
-	return type_map[tp];
+	return types.KeyIndex(tp);
 	}
 
 void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
 	{
-	if ( ! attrs || attrs_map.count(attrs.get()) > 0 )
+	if ( ! attrs || attributes.HasKey(attrs) )
 		return;
 
-	attrs_map[attrs.get()] = attrs_map.size();
-	attributes.emplace_back(attrs);
+	attributes.AddKey(attrs);
 
 	for ( const auto& a : attrs->GetAttrs() )
 		{
 		const auto& e = a->GetExpr();
-		if ( e && init_expr_map.count(e.get()) == 0 )
-			{
-			init_expr_map[e.get()] = init_expr_map.size();
-			init_exprs.emplace_back(e);
-			}
+		if ( e )
+			init_exprs.AddKey(e);
 		}
 	}
 

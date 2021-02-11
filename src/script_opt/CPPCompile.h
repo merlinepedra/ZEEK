@@ -7,8 +7,9 @@
 
 namespace zeek::detail {
 
-// Helper class that tracks distinct instances of a given key.  T should
-template <typename T>
+// Helper class that tracks distinct instances of a given key.  T1 is the
+// pointer version of the type and T2 the IntrusivePtr version.
+template <typename T1, typename T2>
 class CPPTracker {
 public:
 	CPPTracker(const char* _base_name)
@@ -16,19 +17,20 @@ public:
 		{
 		}
 
-	bool HasKey(T key) const	{ return map.count(key) > 0; }
+	bool HasKey(T1 key) const	{ return map.count(key) > 0; }
+	bool HasKey(T2 key) const	{ return HasKey(key.get()); }
 
 	// Only adds the key if it's not already present.
-	void AddKey(T key)
+	void AddKey(T2 key)
 		{
 		if ( HasKey(key) )
 			return;
 
-		map[key] = map.size();
+		map[key.get()] = map.size();
 		keys.emplace_back(key);
 		}
 
-	std::string KeyName(T key) const
+	std::string KeyName(T1 key)
 		{
 		ASSERT(HasKey(key));
 
@@ -37,16 +39,22 @@ public:
 
 		return base_name + "_" + std::string(d_s) + "__CPP";
 		}
+	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
 
-	const std::vector<T>& Keys() const	{ return keys; }
+	int KeyIndex(T1 key)	{ return map[key]; }
+	int KeyIndex(T2 key)	{ return map[key.get()]; }
+
+	const std::vector<T2>& Keys() const	{ return keys; }
+
+	int Size() const	{ return keys.size(); }
 
 private:
 	// Maps keys to distinct values.
-	std::unordered_map<T, int> map;
+	std::unordered_map<T1, int> map;
 
 	// Tracks the set of keys, to facilitate iterating over them.
 	// Parallel to "map".
-	std::vector<T> keys;
+	std::vector<T2> keys;
 
 	// Used to construct key names.
 	std::string base_name;
@@ -119,7 +127,6 @@ private:
 	const char* AttrName(const AttrPtr& attr);
 
 	void GenTypeVar(const TypePtr& t);
-	std::string GeneratedTypeName(const TypePtr& t);
 
 	void GenExpr(const ExprPtr& e) const
 		{ return GenExpr(e.get()); }
@@ -246,19 +253,15 @@ private:
 	std::unordered_map<std::string, std::string> constants;
 
 	// Maps types to indices in the global "types__CPP" array.
-	CPPTracker<const Type*> x_types = "types";
-	std::unordered_map<const Type*, int> type_map;
-	std::vector<TypePtr> types;
+	CPPTracker<const Type*, TypePtr> types = "types";
 
 	// Similar for attributes, so we can reconstruct record types.
-	std::unordered_map<const Attributes*, int> attrs_map;
-	std::vector<AttributesPtr> attributes;
+	CPPTracker<const Attributes*, AttributesPtr> attributes = "attrs";
 
 	// Expressions for which we need to generate initialization-time
 	// code.  Currently, these are only expressions appearing in
 	// attributes.
-	std::unordered_map<const Expr*, int> init_expr_map;
-	std::vector<ExprPtr> init_exprs;
+	CPPTracker<const Expr*, ExprPtr> init_exprs = "gen_init_expr";
 
 	// Maps function bodies to the names we use for them.
 	std::unordered_map<const Stmt*, std::string> body_names;
