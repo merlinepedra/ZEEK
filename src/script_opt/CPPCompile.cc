@@ -30,63 +30,7 @@ void CPPCompile::CompileTo(FILE* f)
 
 void CPPCompile::GenProlog()
 	{
-	Emit("#include \"zeek/Func.h\"");
-	Emit("#include \"zeek/RE.h\"");
-	Emit("#include \"zeek/Val.h\"");
-	Emit("#include \"zeek/Expr.h\"");
-	Emit("#include \"zeek/OpaqueVal.h\"");
-	Emit("#include \"zeek/ZeekString.h\"");
-
-	NL();
-	Emit("namespace zeek {");
-
-	NL();
-	Emit("using BoolValPtr = IntrusivePtr<zeek::BoolVal>;");
-	Emit("using CountValPtr = IntrusivePtr<zeek::CountVal>;");
-	Emit("using DoubleValPtr = IntrusivePtr<zeek::DoubleVal>;");
-	Emit("using StringValPtr = IntrusivePtr<zeek::StringVal>;");
-	Emit("using IntervalValPtr = IntrusivePtr<zeek::IntervalVal>;");
-	Emit("using PatternValPtr = IntrusivePtr<zeek::PatternVal>;");
-	Emit("using FuncValPtr = IntrusivePtr<zeek::FuncVal>;");
-	Emit("using SubNetValPtr = IntrusivePtr<zeek::SubNetVal>;");
-
-	NL();
-	Emit("namespace detail {");
-
-	// Helper functions.
-	NL();
-
-	Emit("extern TypePtr types__CPP[];");
-	Emit("Val* index_table__CPP(TableVal* t, std::vector<ValPtr> indices);");
-	// std::vector<const String*> strings;
-	// strings.push_back(s1);
-	// strings.push_back(s2);
-	//
-	//return make_intrusive<StringVal>(concatenate(strings));
-	Emit("StringVal* str_concat__CPP(const String* s1, const String* s2);");
-
-	Emit("ValPtr index_val__CPP(std::vector<ValPtr> indices);");
-	Emit("ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args) { return f->Invoke(&args, nullptr); }");
-	Emit("template <typename T>");
-	Emit("IntrusivePtr<T> val_to_valptr__CPP(T* v) { return {NewRef{}, v}; }");
-
-	Emit("void assign_to_index__CPP(ValPtr v1, ValPtr v2, ValPtr v3)");
-	StartBlock();
-	Emit("bool iterators_invalidated;");
-	Emit("auto err_msg = zeek::detail::assign_to_index(v1, v2, v3, iterators_invalidated);");
-	Emit("if ( err_msg ) reporter->Error(\"%s\", err_msg);");
-	EndBlock();
-
-	// Stubs.
-	NL();
-	Emit("RecordVal* record_coerce();");
-	Emit("TableVal* table_coerce();");
-	Emit("RecordVal* record_constructor();");
-	Emit("TableVal* table_constructor();");
-	Emit("TableVal* set_constructor();");
-	Emit("VectorVal* vector_constructor();");
-	Emit("void schedule();");
-
+	Emit("#include \"zeek/script_opt/CPPProlog.h\"");
 	NL();
 	}
 
