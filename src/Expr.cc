@@ -3774,8 +3774,7 @@ ValPtr ArithCoerceExpr::Fold(Val* v) const
 	}
 
 RecordCoerceExpr::RecordCoerceExpr(ExprPtr arg_op, RecordTypePtr r)
-	: UnaryExpr(EXPR_RECORD_COERCE, std::move(arg_op)),
-	  map(nullptr), map_size(0)
+	: UnaryExpr(EXPR_RECORD_COERCE, std::move(arg_op))
 	{
 	if ( IsError() )
 		return;
@@ -3793,12 +3792,12 @@ RecordCoerceExpr::RecordCoerceExpr(ExprPtr arg_op, RecordTypePtr r)
 		RecordType* t_r = type->AsRecordType();
 		RecordType* sub_r = op->GetType()->AsRecordType();
 
-		map_size = t_r->NumFields();
-		map = new int[map_size];
+		int map_size = t_r->NumFields();
+		map.resize(map_size);
 
 		int i;
 		for ( i = 0; i < map_size; ++i )
-			map[i] = -1;	// -1 = field is not mapped
+			map.emplace_back(-1);	// -1 = field is not mapped
 
 		for ( i = 0; i < sub_r->NumFields(); ++i )
 			{
@@ -3880,11 +3879,6 @@ RecordCoerceExpr::RecordCoerceExpr(ExprPtr arg_op, RecordTypePtr r)
 		}
 	}
 
-RecordCoerceExpr::~RecordCoerceExpr()
-	{
-	delete [] map;
-	}
-
 ValPtr RecordCoerceExpr::InitVal(const zeek::Type* t, ValPtr aggr) const
 	{
 	if ( auto v = Eval(nullptr) )
@@ -3908,11 +3902,13 @@ ValPtr RecordCoerceExpr::Fold(Val* v) const
 		return IntrusivePtr{NewRef{}, v};
 
 	auto rt = cast_intrusive<RecordType>(GetType());
-	return coerce_to_record(rt, v, map, map_size);
+	return coerce_to_record(rt, v, map);
 	}
 
-RecordValPtr coerce_to_record(RecordTypePtr rt, Val* v, int* map, int map_size)
+RecordValPtr coerce_to_record(RecordTypePtr rt, Val* v,
+				const std::vector<int>& map)
 	{
+	auto map_size = map.size();
 	auto val = make_intrusive<RecordVal>(rt);
 	RecordType* val_type = val->GetType()->AsRecordType();
 
