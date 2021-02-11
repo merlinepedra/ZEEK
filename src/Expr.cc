@@ -3907,7 +3907,13 @@ ValPtr RecordCoerceExpr::Fold(Val* v) const
 	if ( same_type(GetType(), Op()->GetType()) )
 		return IntrusivePtr{NewRef{}, v};
 
-	auto val = make_intrusive<RecordVal>(GetType<RecordType>());
+	auto rt = cast_intrusive<RecordType>(GetType());
+	return coerce_to_record(rt, v, map, map_size);
+	}
+
+RecordValPtr coerce_to_record(RecordTypePtr rt, Val* v, int* map, int map_size)
+	{
+	auto val = make_intrusive<RecordVal>(rt);
 	RecordType* val_type = val->GetType()->AsRecordType();
 
 	RecordVal* rv = v->AsRecordVal();
@@ -3920,14 +3926,15 @@ ValPtr RecordCoerceExpr::Fold(Val* v) const
 
 			if ( ! rhs )
 				{
-				const auto& def = rv->GetType()->AsRecordType()->FieldDecl(
-					map[i])->GetAttr(ATTR_DEFAULT);
+				auto rv_rt = rv->GetType()->AsRecordType();
+				const auto& def = rv_rt->FieldDecl(map[i])->
+							GetAttr(ATTR_DEFAULT);
 
 				if ( def )
 					rhs = def->GetExpr()->Eval(nullptr);
 				}
 
-			assert(rhs || GetType()->AsRecordType()->FieldDecl(i)->GetAttr(ATTR_OPTIONAL));
+			assert(rhs || rt->FieldDecl(i)->GetAttr(ATTR_OPTIONAL));
 
 			if ( ! rhs )
 				{
@@ -3949,21 +3956,19 @@ ValPtr RecordCoerceExpr::Fold(Val* v) const
 			else if ( BothArithmetic(rhs_type->Tag(), field_type->Tag()) &&
 			          ! same_type(rhs_type, field_type) )
 				{
-				if ( auto new_val = check_and_promote(rhs, field_type.get(), false, op->GetLocationInfo()) )
-					rhs = std::move(new_val);
-				else
-					RuntimeError("Failed type conversion");
+				auto new_val = check_and_promote(rhs, field_type.get(), false);
+				rhs = std::move(new_val);
 				}
 
 			val->Assign(i, std::move(rhs));
 			}
 		else
 			{
-			if ( const auto& def = GetType()->AsRecordType()->FieldDecl(i)->GetAttr(ATTR_DEFAULT) )
+			if ( const auto& def = rt->FieldDecl(i)->GetAttr(ATTR_DEFAULT) )
 				{
 				auto def_val = def->GetExpr()->Eval(nullptr);
 				const auto& def_type = def_val->GetType();
-				const auto& field_type = GetType()->AsRecordType()->GetFieldType(i);
+				const auto& field_type = rt->GetFieldType(i);
 
 				if ( def_type->Tag() == TYPE_RECORD &&
 				     field_type->Tag() == TYPE_RECORD &&

@@ -1168,6 +1168,9 @@ public:
 	// Optimization-related:
 	ExprPtr Duplicate() override;
 
+	const int* Map() const	{ return map; }
+	int MapSize() const	{ return map_size; }
+
 protected:
 	ValPtr InitVal(const zeek::Type* t, ValPtr aggr) const override;
 	ValPtr Fold(Val* v) const override;
@@ -1177,6 +1180,9 @@ protected:
 	int* map;
 	int map_size;	// equivalent to Type()->AsRecordType()->NumFields()
 };
+
+extern RecordValPtr coerce_to_record(RecordTypePtr rt, Val* v,
+					int* map, int map_size);
 
 class TableCoerceExpr final : public UnaryExpr {
 public:
