@@ -1136,7 +1136,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 std::string CPPCompile::InitExprName(const ExprPtr& e)
 	{
-	return init_exprs.KeyName(e.get());
+	return init_exprs.KeyName(e);
 	}
 
 void CPPCompile::GenAttrs(const AttributesPtr& attrs)
@@ -1170,7 +1170,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 
 std::string CPPCompile::AttrsName(const AttributesPtr& a)
 	{
-	return attributes.KeyName(a.get()) + "()";
+	return attributes.KeyName(a) + "()";
 	}
 
 const char* CPPCompile::AttrName(const AttrPtr& attr)
@@ -1566,7 +1566,7 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 			reporter->InternalError("bad type in CPPCompile::TypeIndex");
 		}
 
-		types.AddKey(tp, t);
+		types.AddKey(t);
 		}
 
 	return types.KeyIndex(tp);
@@ -1574,16 +1574,16 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 
 void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
 	{
-	if ( ! attrs || attributes.HasKey(attrs.get()) )
+	if ( ! attrs || attributes.HasKey(attrs) )
 		return;
 
-	attributes.AddKey(attrs.get(), attrs);
+	attributes.AddKey(attrs);
 
 	for ( const auto& a : attrs->GetAttrs() )
 		{
 		const auto& e = a->GetExpr();
 		if ( e )
-			init_exprs.AddKey(e.get(), e);
+			init_exprs.AddKey(e);
 		}
 	}
 

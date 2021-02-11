@@ -7,8 +7,8 @@
 
 namespace zeek::detail {
 
-// Helper class that tracks distinct instances of a given key.  For Obj's,
-// T1 is the pointer version of the type and T2 the IntrusivePtr version.
+// Helper class that tracks distinct instances of a given key.  T1 is the
+// pointer version of the type and T2 the IntrusivePtr version.
 template <typename T1, typename T2>
 class CPPTracker {
 public:
@@ -18,28 +18,31 @@ public:
 		}
 
 	bool HasKey(T1 key) const	{ return map.count(key) > 0; }
+	bool HasKey(T2 key) const	{ return HasKey(key.get()); }
 
 	// Only adds the key if it's not already present.
-	void AddKey(T1 k1, T2 k2)
+	void AddKey(T2 key)
 		{
-		if ( HasKey(k1) )
+		if ( HasKey(key) )
 			return;
 
-		map[k1] = map.size();
-		keys.emplace_back(k2);
+		map[key.get()] = map.size();
+		keys.emplace_back(key);
 		}
 
-	std::string KeyName(T1 k1)
+	std::string KeyName(T1 key)
 		{
-		ASSERT(HasKey(k1));
+		ASSERT(HasKey(key));
 
 		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%d", map[k1]);
+		snprintf(d_s, sizeof d_s, "%d", map[key]);
 
 		return base_name + "_" + std::string(d_s) + "__CPP";
 		}
+	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
 
 	int KeyIndex(T1 key)	{ return map[key]; }
+	int KeyIndex(T2 key)	{ return map[key.get()]; }
 
 	const std::vector<T2>& Keys() const	{ return keys; }
 
@@ -259,8 +262,6 @@ private:
 	// code.  Currently, these are only expressions appearing in
 	// attributes.
 	CPPTracker<const Expr*, ExprPtr> init_exprs = "gen_init_expr";
-
-	// Maps needed for constructing records.
 
 	// Maps function bodies to the names we use for them.
 	std::unordered_map<const Stmt*, std::string> body_names;
