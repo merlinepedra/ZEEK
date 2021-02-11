@@ -15,8 +15,11 @@ class ProfileFunc : public TraversalCallback {
 public:
 	// If the argument is true, then we compute a hash over the function's
 	// AST to (pseudo-)uniquely identify it.
-	ProfileFunc(bool _compute_hash = false)
-		{ compute_hash = _compute_hash; }
+	ProfileFunc(bool _compute_hash = false, bool _analyze_attrs = false)
+		{
+		compute_hash = _compute_hash;
+		analyze_attrs = _analyze_attrs;
+		}
 
 	const std::unordered_set<const ID*>& Globals() const
 		{ return globals; }
@@ -24,6 +27,8 @@ public:
 		{ return locals; }
 	const std::unordered_set<const ID*>& Inits() const
 		{ return inits; }
+	const std::unordered_set<const ConstExpr*>& Constants() const
+		{ return constants; }
 	const std::unordered_set<ScriptFunc*>& ScriptCalls() const
 		{ return script_calls; }
 	const std::unordered_set<Func*>& BiFCalls() const
@@ -43,6 +48,7 @@ public:
 
 protected:
 	TraversalCode PreStmt(const Stmt*) override;
+	TraversalCode PostStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
 
 	// Globals seen in the function.
@@ -57,6 +63,9 @@ protected:
 	// Same for locals seen in initializations, so we can find
 	// unused aggregates.
 	std::unordered_set<const ID*> inits;
+
+	// Constants seen in the function.
+	std::unordered_set<const ConstExpr*> constants;
 
 	// Script functions that this script calls.
 	std::unordered_set<ScriptFunc*> script_calls;
@@ -88,9 +97,18 @@ protected:
 	// mine out its script calls.
 	bool in_when = false;
 
+	// Whether to skip any locals we encounter - used to recurse into
+	// initialization statements.
+	bool skip_locals = false;
+
 	// We only compute a hash over the function if requested, since
 	// it's somewhat expensive.
 	bool compute_hash;
+
+	// Whether to profile attributes associated with records that might
+	// be instantiated.  Controllable because in most contexts, we
+	// don't want them included.
+	bool analyze_attrs = false;
 
 	// The following are for computing a consistent hash that isn't
 	// too profligate in how much it needs to compute over.

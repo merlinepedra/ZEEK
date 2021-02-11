@@ -8,6 +8,7 @@
 #include "zeek/script_opt/Inline.h"
 #include "zeek/script_opt/Reduce.h"
 #include "zeek/script_opt/GenRDs.h"
+#include "zeek/script_opt/CPPCompile.h"
 
 
 namespace zeek::detail {
@@ -146,7 +147,7 @@ void analyze_scripts()
 
 	for ( auto& f : funcs )
 		{
-		f.SetProfile(std::make_unique<ProfileFunc>(true));
+		f.SetProfile(std::make_unique<ProfileFunc>(true, true));
 		f.Body()->Traverse(f.Profile());
 		func_profs[f.Func()] = f.Profile();
 		}
@@ -213,6 +214,10 @@ void analyze_scripts()
 
 	if ( ! analysis_options.activate )
 		return;
+
+	CPPCompile cpp(funcs);
+	cpp.CompileTo(stdout);
+	return;
 
 	for ( auto& f : funcs )
 		{

@@ -1010,6 +1010,7 @@ public:
 	~HasFieldExpr() override;
 
 	const char* FieldName() const	{ return field_name; }
+	int Field() const		{ return field; }
 
 	// Optimization-related:
 	ExprPtr Duplicate() override;

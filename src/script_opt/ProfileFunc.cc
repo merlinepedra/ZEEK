@@ -18,18 +18,38 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 	if ( compute_hash )
 		UpdateHash(int(tag));
 
-	if ( tag == STMT_INIT )
+	switch ( tag ) {
+	case STMT_INIT:
 		{
 		for ( const auto& id : s->AsInitStmt()->Inits() )
+			{
 			inits.insert(id.get());
 
-		// Don't recurse into these, as we don't want to consider
-		// a local that only appears in an initialization as a
-		// relevant local.
-		return TC_ABORTSTMT;
-		}
+			const auto& it = id->GetType();
+			if ( it->Tag() != TYPE_RECORD )
+				continue;
 
-	switch ( tag ) {
+			if ( ! analyze_attrs )
+				continue;
+
+			auto fields = it->AsRecordType()->Types();
+			for ( const auto& f : *fields )
+				{
+				if ( ! f->attrs )
+					continue;
+
+				auto attrs = f->attrs->GetAttrs();
+
+				for ( const auto& a : attrs )
+					if ( a->GetExpr() )
+						a->GetExpr()->Traverse(this);
+				}
+			}
+
+		skip_locals = true;
+		}
+		break;
+
 	case STMT_WHEN:
 		++num_when_stmts;
 
@@ -86,6 +106,14 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 	return TC_CONTINUE;
 	}
 
+TraversalCode ProfileFunc::PostStmt(const Stmt* s)
+	{
+	if ( s->Tag() == STMT_INIT )
+		skip_locals = false;
+
+	return TC_CONTINUE;
+	}
+
 TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	{
 	++num_exprs;
@@ -97,6 +125,8 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 	switch ( tag ) {
 	case EXPR_CONST:
+		constants.insert(e->AsConstExpr());
+
 		if ( compute_hash )
 			{
 			CheckType(e->GetType());
@@ -111,7 +141,10 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		if ( id->IsGlobal() )
 			globals.insert(id);
 		else
-			locals.insert(id);
+			{
+			if ( ! skip_locals )
+				locals.insert(id);
+			}
 
 		if ( compute_hash )
 			{

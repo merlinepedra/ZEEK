@@ -325,6 +325,7 @@ set(MAIN_SRCS
     plugin/Manager.cc
     plugin/Plugin.cc
 
+    script_opt/CPPCompile.cc
     script_opt/DefItem.cc
     script_opt/DefSetsMgr.cc
     script_opt/Expr.cc
@@ -336,6 +337,8 @@ set(MAIN_SRCS
     script_opt/ScriptOpt.cc
     script_opt/Stmt.cc
     script_opt/TempVar.cc
+
+    script_opt/CPP-gen.cc
 
     nb_dns.c
     digest.h

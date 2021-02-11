@@ -479,7 +479,7 @@ RE_Matcher::RE_Matcher()
 	re_exact = new detail::Specific_RE_Matcher(detail::MATCH_EXACTLY);
 	}
 
-RE_Matcher::RE_Matcher(const char* pat)
+RE_Matcher::RE_Matcher(const char* pat) : orig_text(pat)
 	{
 	re_anywhere = new detail::Specific_RE_Matcher(detail::MATCH_ANYWHERE);
 	re_exact = new detail::Specific_RE_Matcher(detail::MATCH_EXACTLY);

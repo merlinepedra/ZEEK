@@ -227,6 +227,10 @@ public:
 	const char* PatternText() const	{ return re_exact->PatternText(); }
 	const char* AnywherePatternText() const	{ return re_anywhere->PatternText(); }
 
+	// Original text used to construct this matcher.  Empty unless
+	// the main ("explicit") constructor was used.
+	const char* OrigText() const	{ return orig_text.c_str(); }
+
 	unsigned int MemoryAllocation() const
 		{
 		return padded_sizeof(*this)
@@ -235,6 +239,8 @@ public:
 		}
 
 protected:
+	std::string orig_text;
+
 	detail::Specific_RE_Matcher* re_anywhere;
 	detail::Specific_RE_Matcher* re_exact;
 };

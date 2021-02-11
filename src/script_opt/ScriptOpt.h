@@ -58,12 +58,12 @@ class FuncInfo {
 public:
 	FuncInfo(ScriptFuncPtr _func, ScopePtr _scope, StmtPtr _body);
 
-	ScriptFunc* Func()	{ return func.get(); }
-	ScriptFuncPtr FuncPtr()	{ return func; }
-	ScopePtr Scope()	{ return scope; }
-	StmtPtr Body()		{ return body; }
-	ProfileFunc* Profile()	{ return pf.get(); }
-	const std::string& SaveFile()	{ return save_file; }
+	ScriptFunc* Func() const		{ return func.get(); }
+	const ScriptFuncPtr& FuncPtr() const	{ return func; }
+	const ScopePtr& Scope() const		{ return scope; }
+	const StmtPtr& Body() const		{ return body; }
+	ProfileFunc* Profile() const		{ return pf.get(); }
+	const std::string& SaveFile() const	{ return save_file; }
 
 	void SetBody(StmtPtr new_body)	{ body = std::move(new_body); }
 	void SetProfile(std::unique_ptr<ProfileFunc> _pf);

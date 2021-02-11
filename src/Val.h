@@ -63,6 +63,8 @@ class PortVal;
 class AddrVal;
 class SubNetVal;
 class IntervalVal;
+class FuncVal;
+class FileVal;
 class PatternVal;
 class TableVal;
 class RecordVal;
@@ -144,6 +146,12 @@ UNDERLYING_ACCESSOR_DECL(FileVal, File*, AsFile)
 UNDERLYING_ACCESSOR_DECL(PatternVal, const RE_Matcher*, AsPattern)
 UNDERLYING_ACCESSOR_DECL(TableVal, const PDict<TableEntryVal>*, AsTable)
 UNDERLYING_ACCESSOR_DECL(TypeVal, zeek::Type*, AsType)
+
+	FuncVal* AsFuncVal();
+	const FuncVal* AsFuncVal() const;
+
+	FileVal* AsFileVal();
+	const FileVal* AsFileVal() const;
 
 	PatternVal* AsPatternVal();
 	const PatternVal* AsPatternVal() const;
@@ -447,10 +455,11 @@ public:
 
 	const PortVal* Get() const	{ return AsPortVal(); }
 
-protected:
-	friend class ValManager;
+	// Only meant for use by ValManager and compiled-to-C++ script
+	// functions.
 	PortVal(uint32_t p);
 
+protected:
 	void ValDescribe(ODesc* d) const override;
 	ValPtr DoClone(CloneState* state) override;
 };
