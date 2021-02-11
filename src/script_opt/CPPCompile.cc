@@ -184,13 +184,13 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 
 		switch ( c->GetType()->Tag() ) {
 		case TYPE_STRING:
-			Emit("StringValPtr %s = make_intrusive<StringVal>(%s);",
+			Emit("const StringValPtr %s = make_intrusive<StringVal>(%s);",
 				constants[c_desc].c_str(), c_desc.c_str());
 			break;
 
 		case TYPE_PATTERN:
 			Emit("// ### Need to deal with case sensitivity, compiling");
-			Emit("PatternValPtr %s = make_intrusive<PatternVal>(new RE_Matcher(\"%s\"));",
+			Emit("const PatternValPtr %s = make_intrusive<PatternVal>(new RE_Matcher(\"%s\"));",
 				constants[c_desc].c_str(),
 				v->AsPatternVal()->Get()->OrigText());
 			break;
@@ -253,7 +253,7 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	EndBlock();
 
-	Emit("%s Call(%s) const;", FullTypeName(yt), ParamDecl(ft).c_str());
+	Emit("static %s Call(%s);", FullTypeName(yt), ParamDecl(ft).c_str());
 
 	EndBlock(true);
 
@@ -305,7 +305,7 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	for ( auto i = 0; i < p->NumFields(); ++i )
 		params.emplace(std::string(p->FieldName(i)));
 
-	Emit("%s %s::Call(%s) const", FullTypeName(yt), fname.c_str(),
+	Emit("%s %s::Call(%s)", FullTypeName(yt), fname.c_str(),
 		ParamDecl(ft).c_str());
 
 	StartBlock();
