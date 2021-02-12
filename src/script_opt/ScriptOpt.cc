@@ -18,6 +18,8 @@ AnalyOpt analysis_options;
 
 std::unordered_set<const Func*> non_recursive_funcs;
 
+void (*CPP_init_hook)() = nullptr;
+
 // Tracks all of the loaded functions (including event handlers and hooks).
 static std::vector<FuncInfo> funcs;
 
@@ -115,6 +117,9 @@ void analyze_scripts()
 
 	if ( ! did_init )
 		{
+		if ( CPP_init_hook )
+			(*CPP_init_hook)();
+
 		check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
 		check_env_opt("ZEEK_XFORM", analysis_options.activate);

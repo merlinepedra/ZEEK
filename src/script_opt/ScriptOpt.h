@@ -94,4 +94,9 @@ extern void analyze_func(ScriptFuncPtr f);
 extern void analyze_scripts();
 
 
+// Used for C++-compiled scripts to signal their presence, by setting this
+// to a non-empty value.
+extern void (*CPP_init_hook)();
+
+
 } // namespace zeek::detail

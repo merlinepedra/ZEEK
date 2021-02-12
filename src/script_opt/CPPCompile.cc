@@ -58,14 +58,15 @@ void CPPCompile::GenEpilog()
 		}
 
 	NL();
-	Emit("TypePtr types__CPP[%s];", Fmt(types.Size()).c_str());
-
-	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();
+
+	Emit("types__CPP = new TypePtr[%s];", Fmt(types.Size()).c_str());
+
 	for ( const auto& i : inits )
 		Emit("%s = %s;", i.first.c_str(), i.second.c_str());
+
 	EndBlock(true);
 
 	Emit("} // zeek::detail");
@@ -238,7 +239,9 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	EndBlock(true);
 
-	Emit("%s %s_func;", fname.c_str(), fname.c_str());
+	auto func_global = fname + "_func";
+	Emit("%s* %s;", fname.c_str(), func_global.c_str());
+	inits[func_global] = std::string("new ") + fname + "()";
 
 	compiled_funcs.emplace(fname);
 	}
@@ -292,8 +295,6 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	StartBlock();
 
 	DeclareLocals(func);
-
-	NL();
 	GenStmt(func.Body());
 
 	EndBlock();
@@ -303,15 +304,23 @@ void CPPCompile::DeclareLocals(const FuncInfo& func)
 	{
 	const auto& ls = func.Profile()->Locals();
 
+	bool did_decl = false;
+
 	for ( const auto& l : ls )
 		{
 		auto ln = LocalName(l);
 
 		if ( params.count(ln) == 0 )
+			{
 			Emit("%s %s;", FullTypeName(l->GetType()), ln.c_str());
+			did_decl = true;
+			}
 
 		locals.emplace(l, ln);
 		}
+
+	if ( did_decl )
+		NL();
 	}
 
 std::string CPPCompile::BindArgs(const FuncTypePtr& ft)
@@ -687,7 +696,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 			if ( compiled_funcs.count(func_name) > 0 )
 				{
-				gen += "_func.Call(" + GenArgs(args_l) + ")";
+				gen += "_func->Call(" + GenArgs(args_l) + ")";
 				return NativeToGT(gen, t, gt);
 				}
 			}
@@ -1291,11 +1300,12 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	EndBlock(true);
 
-	Emit("auto %s_func = make_intrusive<%s>();", name.c_str(), name.c_str());
+	auto init_expr_name = InitExprName(e);
 
-	Emit("auto %s = make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(wrapper_%s_func)), make_intrusive<ListExpr>(), false);",
-		InitExprName(e).c_str(),
-		InitExprName(e).c_str());
+	Emit("CallExprPtr %s;", init_expr_name.c_str());
+
+	inits[init_expr_name] = std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
+		name + ">())), make_intrusive<ListExpr>(), false);";
 	}
 
 std::string CPPCompile::InitExprName(const ExprPtr& e)

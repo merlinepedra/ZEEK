@@ -7,6 +7,7 @@
 #include "zeek/OpaqueVal.h"
 #include "zeek/Expr.h"
 #include "zeek/EventRegistry.h"
+#include "zeek/script_opt/ScriptOpt.h"
 
 namespace zeek {
 
@@ -21,13 +22,25 @@ using SubNetValPtr = IntrusivePtr<zeek::SubNetVal>;
 
 namespace detail {
 
-extern TypePtr types__CPP[];
+TypePtr* types__CPP;
 
 // Helper functions.
 
+extern void init__CPP();
+
+int flag_init_CPP()
+	{
+	CPP_init_hook = init__CPP;
+	return 0;
+	}
+
+static int dummy = flag_init_CPP();
+
 IDPtr lookup_global__CPP(const char* g)
 	{
-	return lookup_ID(g, GLOBAL_MODULE_NAME);
+	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME);
+	ASSERT(gl != nullptr);
+	return gl;
 	}
 
 StringValPtr str_concat__CPP(const String* s1, const String* s2)
