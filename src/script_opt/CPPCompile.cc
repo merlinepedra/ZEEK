@@ -855,7 +855,14 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		}
 
 	case EXPR_TABLE_COERCE:
-		return std::string("table_coerce()");
+		{
+		auto tc = static_cast<const TableCoerceExpr*>(e);
+		auto op1 = tc->GetOp1();
+		const auto& t = tc->GetType();
+
+		return std::string("table_coerce__CPP(") +
+			GenExpr(op1, GEN_VAL_PTR) + ", " + GenTypeName(t) + ")";
+		}
 
 	case EXPR_RECORD_CONSTRUCTOR:
 		return std::string("record_constructor()");

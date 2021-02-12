@@ -65,8 +65,17 @@ void assign_to_index__CPP(ValPtr v1, ValPtr v2, ValPtr v3)
 		reporter->Error("%s", err_msg);
 	}
 
-RecordValPtr record_coerce();
-TableValPtr table_coerce();
+TableValPtr table_coerce__CPP(const ValPtr& v, const TypePtr& t)
+	{
+	TableVal* tv = v->AsTableVal();
+
+	if ( tv->Size() > 0 )
+		reporter->Error("coercion of non-empty table/set");
+
+	return make_intrusive<TableVal>(cast_intrusive<TableType>(t),
+					tv->GetAttrs());
+	}
+
 RecordValPtr record_constructor();
 TableValPtr table_constructor();
 TableValPtr set_constructor();
