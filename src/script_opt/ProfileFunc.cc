@@ -26,24 +26,10 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 			inits.insert(id.get());
 
 			const auto& it = id->GetType();
-			if ( it->Tag() != TYPE_RECORD )
+			if ( it->Tag() != TYPE_RECORD || ! analyze_attrs )
 				continue;
 
-			if ( ! analyze_attrs )
-				continue;
-
-			auto fields = it->AsRecordType()->Types();
-			for ( const auto& f : *fields )
-				{
-				if ( ! f->attrs )
-					continue;
-
-				auto attrs = f->attrs->GetAttrs();
-
-				for ( const auto& a : attrs )
-					if ( a->GetExpr() )
-						a->GetExpr()->Traverse(this);
-				}
+			TraverseRecord(it->AsRecordType());
 			}
 
 		skip_locals = true;
@@ -209,6 +195,11 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		events.insert(e->AsEventExpr()->Name());
 		break;
 
+	case EXPR_RECORD_COERCE:
+		if ( analyze_attrs )
+			TraverseRecord(e->GetType()->AsRecordType());
+		break;
+
 	case EXPR_LAMBDA:
 		++num_lambdas;
 		break;
@@ -218,6 +209,22 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	}
 
 	return TC_CONTINUE;
+	}
+
+void ProfileFunc::TraverseRecord(const RecordType* r)
+	{
+	auto fields = r->Types();
+	for ( const auto& f : *fields )
+		{
+		if ( ! f->attrs )
+			continue;
+
+		auto attrs = f->attrs->GetAttrs();
+
+		for ( const auto& a : attrs )
+			if ( a->GetExpr() )
+				a->GetExpr()->Traverse(this);
+		}
 	}
 
 void ProfileFunc::CheckType(const TypePtr& t)

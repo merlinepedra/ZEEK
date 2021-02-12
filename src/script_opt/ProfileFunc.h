@@ -51,6 +51,8 @@ protected:
 	TraversalCode PostStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
 
+	void TraverseRecord(const RecordType* r);
+
 	// Globals seen in the function.
 	//
 	// Does *not* include globals solely seen as the function being

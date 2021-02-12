@@ -319,10 +319,11 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 			auto type_name = IntrusiveVal(t);
 			auto type_type = TypeType(t);
-			auto type_ind = Fmt(TypeIndex(t)).c_str();
+			auto type_ind = GenTypeName(t);
 
-			Emit("%s = make_intrusive<%s>(cast_intrusive<%s>(types__CPP[%s]));",
-				IDName(aggr), type_name, type_type, type_ind);
+			Emit("%s = make_intrusive<%s>(cast_intrusive<%s>(%s));",
+				IDName(aggr), type_name,
+				type_type, type_ind.c_str());
 			}
 		}
 		break;
@@ -838,7 +839,13 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 			// Elide coercion.
 			return GenExpr(op1, gt);
 
-		return std::string("record_coerce()");
+		const auto& map = rc->Map();
+		auto type_var = GenTypeName(to_type);
+
+		return std::string("coerce_to_record(cast_intrusive<RecordType>(") +
+				type_var + "), " +
+				GenExpr(op1, GEN_VAL_PTR) +
+				GenIntVector(map) + ")";
 		}
 
 	case EXPR_TABLE_COERCE:
@@ -1049,6 +1056,21 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt, const char* op)
 				e->GetType(), gt);
 	}
 
+std::string CPPCompile::GenIntVector(const std::vector<int>& vec)
+	{
+	std::string res("{ ");
+
+	for ( auto i = 0; i < vec.size(); ++i )	
+		{
+		res += Fmt(i);
+
+		if ( i < vec.size() - 1 )
+			res += ", ";
+		}
+
+	return res + " }";
+	}
+
 std::string CPPCompile::NativeToGT(const std::string& expr, const TypePtr& t,
 					GenType gt)
 	{
@@ -1236,7 +1258,7 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 
 	case TYPE_FILE:
 		Emit("return make_intrusive<FileType>(%s);",
-			TypeName(t->AsFileType()->Yield()));
+			GenTypeName(t->AsFileType()->Yield()).c_str());
 		break;
 
 	case TYPE_OPAQUE:
@@ -1246,12 +1268,12 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 
 	case TYPE_TYPE:
 		Emit("return make_intrusive<TypeType>(%s);",
-			TypeName(t->AsTypeType()->GetType()));
+			GenTypeName(t->AsTypeType()->GetType()).c_str());
 		break;
 
 	case TYPE_VECTOR:
 		Emit("return make_intrusive<VectorType>(%s);",
-			TypeName(t->AsVectorType()->Yield()));
+			GenTypeName(t->AsVectorType()->Yield()).c_str());
 		break;
 
 	case TYPE_LIST:
@@ -1260,7 +1282,7 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 
 		auto tl = t->AsTypeList()->GetTypes();
 		for ( auto i = 0; i < tl.size(); ++i )
-			Emit("tl->Append(%s);", TypeName(tl[i]));
+			Emit("tl->Append(%s);", GenTypeName(tl[i]).c_str());
 
 		Emit("return tl;");
 		}
@@ -1272,11 +1294,11 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 
 		if ( tbl->IsSet() )
 			Emit("return make_intrusive<SetType>(%s, nullptr);",
-				TypeName(tbl->GetIndices()));
+				GenTypeName(tbl->GetIndices()).c_str());
 		else
 			Emit("return make_intrusive<TableType>(%s, %s);",
-				TypeName(tbl->GetIndices()),
-				TypeName(tbl->Yield()));
+				GenTypeName(tbl->GetIndices()).c_str(),
+				GenTypeName(tbl->Yield()).c_str());
 		}
 		break;
 
@@ -1290,8 +1312,7 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 			{
 			const auto& td = (*r)[i];
 
-			auto type_accessor = std::string("types__CPP[") +
-				Fmt(TypeIndex(td->type)).c_str() + "]";
+			auto type_accessor = GenTypeName(td->type);
 
 			if ( td->attrs )
 				Emit("tl->append(new TypeDecl(\"%s\", %s, %s));",
@@ -1307,11 +1328,36 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 		break;
 
 	case TYPE_FUNC:
+		{
+		auto f = t->AsFuncType();
+
+		auto args_type_accessor = GenTypeName(f->Params());
+		auto params = f->Params();
+		auto yt = f->Yield();
+
+		std::string yield_type_accessor;
+
+		if ( yt )
+			yield_type_accessor += "nullptr";
+		else
+			yield_type_accessor += GenTypeName(yt);
+
+		Emit("return make_intrusive<FuncType>(%s, %s, FUNC_FLAVOR_FUNCTION);",
+			args_type_accessor.c_str(),
+			yield_type_accessor.c_str());
+		}
+		break;
+
 	default:
 		reporter->InternalError("bad type in CPPCompile::GenType");
 	}
 
 	EndBlock();
+	}
+
+std::string CPPCompile::GenTypeName(const TypePtr& t)
+	{
+	return std::string("types__CPP[") + Fmt(TypeIndex(t)) + "]";
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag) const
@@ -1499,6 +1545,10 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 
 	if ( ! types.HasKey(tp) )
 		{
+		// Add the type before going further, to avoid loops due to
+		// types that reference each other.
+		types.AddKey(t);
+
 		// Recursively do its subtypes, so that they will be
 		// available when we ultimately do this type.
 		switch ( t->Tag() ) {
@@ -1562,11 +1612,19 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 			}
 			break;
 
+		case TYPE_FUNC:
+			{
+			auto f = t->AsFuncType();
+			(void) TypeIndex(f->Params());
+
+			if ( f->Yield() )
+				(void) TypeIndex(f->Yield());
+			}
+			break;
+
 		default:
 			reporter->InternalError("bad type in CPPCompile::TypeIndex");
 		}
-
-		types.AddKey(t);
 		}
 
 	return types.KeyIndex(tp);

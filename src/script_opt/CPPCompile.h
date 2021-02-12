@@ -114,6 +114,8 @@ private:
 	std::string GenBinarySubNet(const Expr* e, GenType gt, const char* op);
 	std::string GenEQ(const Expr* e, GenType gt, const char* op);
 
+	std::string GenIntVector(const std::vector<int>& vec);
+
 	std::string NativeToGT(const std::string& expr, const TypePtr& t,
 				GenType gt);
 	std::string GenericValPtrToGT(const std::string& expr, const TypePtr& t,
@@ -127,10 +129,7 @@ private:
 	const char* AttrName(const AttrPtr& attr);
 
 	void GenTypeVar(const TypePtr& t);
-
-	void GenExpr(const ExprPtr& e) const
-		{ return GenExpr(e.get()); }
-	void GenExpr(const Expr* e) const;
+	std::string GenTypeName(const TypePtr& t);
 
 	const char* TypeTagName(TypeTag tag) const;
 
