@@ -22,18 +22,6 @@ extern TypePtr types__CPP[];
 
 // Helper functions.
 
-ValPtr index_table__CPP(TableValPtr t, std::vector<ValPtr> indices)
-	{
-	auto ind_v = make_intrusive<ListVal>(TYPE_ANY);
-
-	// In the future, we could provide N versions of this that
-	// unroll the loop.
-	for ( auto i : indices )
-		ind_v->Append(i);
-
-	return t->FindOrDefault(ind_v);
-	}
-
 StringValPtr str_concat__CPP(const String* s1, const String* s2)
 	{
 	std::vector<const String*> strings(2);
@@ -43,7 +31,22 @@ StringValPtr str_concat__CPP(const String* s1, const String* s2)
 	return make_intrusive<StringVal>(concatenate(strings));
 	}
 
-ValPtr index_val__CPP(std::vector<ValPtr> indices);
+ListValPtr index_val__CPP(std::vector<ValPtr> indices)
+	{
+	auto ind_v = make_intrusive<ListVal>(TYPE_ANY);
+
+	// In the future, we could provide N versions of this that
+	// unroll the loop.
+	for ( auto i : indices )
+		ind_v->Append(i);
+
+	return ind_v;
+	}
+
+ValPtr index_table__CPP(TableValPtr t, std::vector<ValPtr> indices)
+	{
+	return t->FindOrDefault(index_val__CPP(std::move(indices)));
+	}
 
 // Call out to the given script or BiF function.
 inline ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args)
@@ -76,8 +79,18 @@ TableValPtr table_coerce__CPP(const ValPtr& v, const TypePtr& t)
 					tv->GetAttrs());
 	}
 
+TableValPtr set_constructor__CPP(std::vector<ValPtr> elements, TableTypePtr t,
+					AttributesPtr attrs)
+	{
+	auto aggr = make_intrusive<TableVal>(t, attrs);
+
+	for ( const auto& elem : elements )
+		aggr->Assign(std::move(elem), nullptr);
+
+	return aggr;
+	}
+
 RecordValPtr record_constructor();
 TableValPtr table_constructor();
-TableValPtr set_constructor();
 VectorValPtr vector_constructor();
 void schedule();

@@ -868,7 +868,23 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		return std::string("record_constructor()");
 
 	case EXPR_SET_CONSTRUCTOR:
-		return std::string("set_constructor()");
+		{
+		auto sc = static_cast<const SetConstructorExpr*>(e);
+		auto t = sc->GetType<TableType>();
+		auto attrs = sc->GetAttrs();
+		std::string attrs_name = "nullptr";
+
+		if ( attrs )
+			{
+			RecordAttributes(attrs);
+			attrs_name = AttrsName(attrs);
+			}
+
+		return std::string("set_constructor__CPP({") +
+			GenExpr(sc->GetOp1(), GEN_VAL_PTR) + "}, " +
+			"cast_intrusive<TableType>(" + GenTypeName(t) + "), " +
+			attrs_name + ")";
+		}
 
 	case EXPR_TABLE_CONSTRUCTOR:
 		return std::string("table_constructor()");
