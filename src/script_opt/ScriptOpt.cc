@@ -78,9 +78,12 @@ void optimize_func(ScriptFunc* f, ProfileFunc* pf, ScopePtr scope_ptr,
 
 	f->ReplaceBody(body, new_body);
 	body = new_body;
-	body->Traverse(pf);
 
-	RD_Decorate reduced_rds(pf);
+	ProfileFunc new_pf;
+	f->Traverse(&new_pf);
+	body->Traverse(&new_pf);
+
+	RD_Decorate reduced_rds(&new_pf);
 	reduced_rds.TraverseFunction(f, scope, body);
 
 	int new_frame_size =
@@ -102,6 +105,10 @@ void FuncInfo::SetProfile(std::unique_ptr<ProfileFunc> _pf)
 
 void analyze_func(ScriptFuncPtr f)
 	{
+	if ( analysis_options.only_func &&
+	     *analysis_options.only_func != f->Name() )
+		return;
+
 	funcs.emplace_back(f, ScopePtr{NewRef{}, f->GetScope()}, f->CurrentBody());
 	}
 
@@ -153,6 +160,7 @@ void analyze_scripts()
 	for ( auto& f : funcs )
 		{
 		f.SetProfile(std::make_unique<ProfileFunc>(true, true));
+		f.Func()->Traverse(f.Profile());
 		f.Body()->Traverse(f.Profile());
 		func_profs[f.Func()] = f.Profile();
 		}
