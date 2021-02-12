@@ -1167,7 +1167,7 @@ public:
 	// Optimization-related:
 	ExprPtr Duplicate() override;
 
-	const std::vector<int>& Map()	{ return map; }
+	const std::vector<int>& Map() const	{ return map; }
 
 protected:
 	ValPtr InitVal(const zeek::Type* t, ValPtr aggr) const override;

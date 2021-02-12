@@ -3793,7 +3793,7 @@ RecordCoerceExpr::RecordCoerceExpr(ExprPtr arg_op, RecordTypePtr r)
 		RecordType* sub_r = op->GetType()->AsRecordType();
 
 		int map_size = t_r->NumFields();
-		map.resize(map_size);
+		map.reserve(map_size);
 
 		int i;
 		for ( i = 0; i < map_size; ++i )
