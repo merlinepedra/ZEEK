@@ -9,6 +9,30 @@
 namespace zeek::detail {
 
 
+TraversalCode ProfileFunc::PreFunction(const Func* f)
+	{
+	// Traverse the function arguments.  We don't track their names,
+	// since unfortunately those can differ between bodies, but we
+	// do look for &default arguments, since those can contain
+	// globals and constants.  This is easy to do since the arguments
+	// are captured by a single record type.
+	if ( analyze_attrs )
+		{
+		const auto& ft = f->GetType();
+		TraverseRecord(ft->Params().get());
+
+		const auto& yield = ft->Yield();
+		if ( yield && yield->Tag() == TYPE_RECORD )
+			TraverseRecord(yield->AsRecordType());
+		}
+
+	// We do *not* continue into the body.  This is because for
+	// functions with multiple bodies, we don't want to conflate
+	// the properties of those bodies.  Instead, our caller needs
+	// to explicitly pick the body of interest.
+	return TC_ABORTSTMT;
+	}
+
 TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 	{
 	++num_stmts;
@@ -216,14 +240,17 @@ void ProfileFunc::TraverseRecord(const RecordType* r)
 	auto fields = r->Types();
 	for ( const auto& f : *fields )
 		{
-		if ( ! f->attrs )
-			continue;
+		if ( f->type->Tag() == TYPE_RECORD )
+			TraverseRecord(f->type->AsRecordType());
 
-		auto attrs = f->attrs->GetAttrs();
+		if ( f->attrs )
+			{
+			auto attrs = f->attrs->GetAttrs();
 
-		for ( const auto& a : attrs )
-			if ( a->GetExpr() )
-				a->GetExpr()->Traverse(this);
+			for ( const auto& a : attrs )
+				if ( a->GetExpr() )
+					a->GetExpr()->Traverse(this);
+			}
 		}
 	}
 

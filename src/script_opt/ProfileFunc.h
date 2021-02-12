@@ -47,6 +47,7 @@ public:
 	int NumLambdas()	{ return num_lambdas; }
 
 protected:
+	TraversalCode PreFunction(const Func*) override;
 	TraversalCode PreStmt(const Stmt*) override;
 	TraversalCode PostStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
