@@ -50,7 +50,7 @@ void CPPCompile::GenEpilog()
 	Emit("TypePtr types__CPP[%s] =", Fmt(types.Size()).c_str());
 	StartBlock();
 	for ( auto i = 0; i < tk.size(); ++i )
-		Emit("gen_type%s__CPP(),", Fmt(i).c_str());
+		Emit("%s,", GenTypeName(tk[i]).c_str());
 	EndBlock(true);
 
 	Emit("} // zeek::detail");
@@ -844,7 +844,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 		return std::string("coerce_to_record(cast_intrusive<RecordType>(") +
 				type_var + "), " +
-				GenExpr(op1, GEN_VAL_PTR) +
+				GenExpr(op1, GEN_VAL_PTR) + ".get(), " +
 				GenIntVector(map) + ")";
 		}
 
@@ -1229,7 +1229,7 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 	{
 	NL();
 
-	Emit("TypePtr %s", types.KeyName(t.get()).c_str());
+	Emit("TypePtr %s()", types.KeyName(t.get()).c_str());
 
 	StartBlock();
 
@@ -1293,10 +1293,10 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 		auto tbl = t->AsTableType();
 
 		if ( tbl->IsSet() )
-			Emit("return make_intrusive<SetType>(%s, nullptr);",
+			Emit("return make_intrusive<SetType>(cast_intrusive<TypeList>(%s), nullptr);",
 				GenTypeName(tbl->GetIndices()).c_str());
 		else
-			Emit("return make_intrusive<TableType>(%s, %s);",
+			Emit("return make_intrusive<TableType>(cast_intrusive<TypeList>(%s), %s);",
 				GenTypeName(tbl->GetIndices()).c_str(),
 				GenTypeName(tbl->Yield()).c_str());
 		}
@@ -1342,7 +1342,7 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 		else
 			yield_type_accessor += GenTypeName(yt);
 
-		Emit("return make_intrusive<FuncType>(%s, %s, FUNC_FLAVOR_FUNCTION);",
+		Emit("return make_intrusive<FuncType>(cast_intrusive<RecordType>(%s), %s, FUNC_FLAVOR_FUNCTION);",
 			args_type_accessor.c_str(),
 			yield_type_accessor.c_str());
 		}
