@@ -872,8 +872,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		auto sc = static_cast<const SetConstructorExpr*>(e);
 		auto t = sc->GetType<TableType>();
 		auto attrs = sc->GetAttrs();
-		std::string attrs_name = "nullptr";
 
+		std::string attrs_name = "nullptr";
 		if ( attrs )
 			{
 			RecordAttributes(attrs);
@@ -887,7 +887,54 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		}
 
 	case EXPR_TABLE_CONSTRUCTOR:
-		return std::string("table_constructor()");
+		{
+		auto tc = static_cast<const TableConstructorExpr*>(e);
+		auto t = tc->GetType<TableType>();
+		auto attrs = tc->GetAttrs();
+
+		std::string attrs_name = "nullptr";
+		if ( attrs )
+			{
+			RecordAttributes(attrs);
+			attrs_name = AttrsName(attrs);
+			}
+
+		std::string indices;
+		std::string vals;
+
+		const auto& exprs = tc->GetOp1()->AsListExpr()->Exprs();
+		auto n = exprs.length();
+
+		for ( auto i = 0; i < n; ++i )
+			{
+			const auto& e = exprs[i];
+
+			ASSERT(e->Tag() == EXPR_ASSIGN);
+
+			auto index = e->GetOp1();
+			auto v = e->GetOp2();
+
+			if ( index->Tag() == EXPR_LIST )
+				// Multiple indices.
+				indices += "index_val__CPP({" +
+					GenExpr(index, GEN_VAL_PTR) + "})";
+			else
+				indices += GenExpr(index, GEN_VAL_PTR);
+
+			vals += GenExpr(v, GEN_VAL_PTR);
+
+			if ( i < n - 1 )
+				{
+				indices += ", ";
+				vals += ", ";
+				}
+			}
+
+		return std::string("table_constructor__CPP({") +
+			indices + "}, {" + vals + "}, " +
+			"cast_intrusive<TableType>(" + GenTypeName(t) + "), " +
+			attrs_name + ")";
+		}
 
 	case EXPR_VECTOR_CONSTRUCTOR:
 		return std::string("vector_constructor()");

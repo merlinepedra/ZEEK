@@ -90,7 +90,25 @@ TableValPtr set_constructor__CPP(std::vector<ValPtr> elements, TableTypePtr t,
 	return aggr;
 	}
 
+TableValPtr table_constructor__CPP(std::vector<ValPtr> indices,
+					std::vector<ValPtr> vals,
+					TableTypePtr t, AttributesPtr attrs)
+	{
+	const auto& yt = t->Yield().get();
+	auto n = indices.size();
+
+	auto aggr = make_intrusive<TableVal>(t, attrs);
+
+	for ( auto i = 0; i < n; ++i )
+		{
+		auto v = check_and_promote(vals[i], yt, true);
+		if ( v )
+			aggr->Assign(std::move(indices[i]), std::move(v));
+		}
+
+	return aggr;
+	}
+
 RecordValPtr record_constructor();
-TableValPtr table_constructor();
 VectorValPtr vector_constructor();
 void schedule();
