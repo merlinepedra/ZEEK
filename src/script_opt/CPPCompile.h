@@ -130,6 +130,7 @@ private:
 
 	void GenTypeVar(const TypePtr& t);
 	std::string GenTypeName(const TypePtr& t);
+	std::string InvokeTypeName(const TypePtr& t);
 
 	const char* TypeTagName(TypeTag tag) const;
 
