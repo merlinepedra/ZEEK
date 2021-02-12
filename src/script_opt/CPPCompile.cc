@@ -46,16 +46,11 @@ void CPPCompile::GenEpilog()
 
 	const auto& tk = types.Keys();
 
-	// First, allow for forward references.
+	// Allow for forward references across types.
 	NL();
 	for ( const auto& t : tk )
-		Emit("extern TypePtr %s;", InvokeTypeName(t).c_str());
-
-	for ( const auto& t : tk )
-		{
-		GenTypeVar(t);
-		inits[GenTypeName(t)] = InvokeTypeName(t);
-		}
+		ordered_inits.emplace_back(GenTypeName(t) +
+						" = " + GenTypeVar(t));
 
 	NL();
 	Emit("void init__CPP()");
@@ -64,8 +59,18 @@ void CPPCompile::GenEpilog()
 
 	Emit("types__CPP = new TypePtr[%s];", Fmt(types.Size()).c_str());
 
+	NL();
+	for ( const auto& oi : ordered_inits )
+		Emit("%s;", oi.c_str());
+
+	NL();
 	for ( const auto& i : inits )
 		Emit("%s = %s;", i.first.c_str(), i.second.c_str());
+
+	// Now generate the guts of compound types.
+
+	for ( const auto& t : tk )
+		ExpandTypeVar(t);
 
 	EndBlock(true);
 
@@ -1377,14 +1382,8 @@ const char* CPPCompile::AttrName(const AttrPtr& attr)
 	}
 	}
 
-void CPPCompile::GenTypeVar(const TypePtr& t)
+std::string CPPCompile::GenTypeVar(const TypePtr& t)
 	{
-	NL();
-
-	Emit("TypePtr %s()", types.KeyName(t.get()).c_str());
-
-	StartBlock();
-
 	switch ( t->Tag() ) {
 	case TYPE_ADDR:
 	case TYPE_ANY:
@@ -1401,81 +1400,60 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 	case TYPE_TIME:
 	case TYPE_TIMER:
 	case TYPE_VOID:
-		Emit("return base_type(%s);", TypeTagName(t->Tag()));
-		break;
+		return std::string("base_type(") + TypeTagName(t->Tag()) + ")";
 
 	case TYPE_SUBNET:
-		Emit("return make_intrusive<SubNetType>();");
-		break;
+		return std::string("make_intrusive<SubNetType>()");
 
 	case TYPE_FILE:
-		Emit("return make_intrusive<FileType>(%s);",
-			InvokeTypeName(t->AsFileType()->Yield()).c_str());
-		break;
+		return std::string("make_intrusive<FileType>(") +
+			GenTypeName(t->AsFileType()->Yield()) + ")";
 
 	case TYPE_OPAQUE:
-		Emit("return make_intrusive<OpaqueType>(%s);",
-			t->AsOpaqueType()->Name().c_str());
-		break;
+		return std::string("make_intrusive<OpaqueType>(") +
+			t->AsOpaqueType()->Name() + ")";
 
 	case TYPE_TYPE:
-		Emit("return make_intrusive<TypeType>(%s);",
-			InvokeTypeName(t->AsTypeType()->GetType()).c_str());
+		return std::string("make_intrusive<TypeType>(") +
+			GenTypeName(t->AsTypeType()->GetType()) + ")";
 		break;
 
 	case TYPE_VECTOR:
-		Emit("return make_intrusive<VectorType>(%s);",
-			InvokeTypeName(t->AsVectorType()->Yield()).c_str());
+		return std::string("make_intrusive<VectorType>(") +
+			GenTypeName(t->AsVectorType()->Yield()) + ")";
 		break;
 
 	case TYPE_LIST:
 		{
-		Emit("auto tl = make_intrusive<TypeList>();");
-
 		auto tl = t->AsTypeList()->GetTypes();
 		for ( auto i = 0; i < tl.size(); ++i )
-			Emit("tl->Append(%s);", InvokeTypeName(tl[i]).c_str());
+			(void) TypeIndex(tl[i]);
 
-		Emit("return tl;");
+		return std::string("make_intrusive<TypeList>()");
 		}
-		break;
 
 	case TYPE_TABLE:
 		{
 		auto tbl = t->AsTableType();
 
 		if ( tbl->IsSet() )
-			Emit("return make_intrusive<SetType>(cast_intrusive<TypeList>(%s), nullptr);",
-				InvokeTypeName(tbl->GetIndices()).c_str());
+			return std::string("make_intrusive<SetType>(cast_intrusive<TypeList>(") +
+				GenTypeName(tbl->GetIndices()) +
+				" ), nullptr)";
 		else
-			Emit("return make_intrusive<TableType>(cast_intrusive<TypeList>(%s), %s);",
-				InvokeTypeName(tbl->GetIndices()).c_str(),
-				InvokeTypeName(tbl->Yield()).c_str());
+			return std::string("make_intrusive<TableType>(cast_intrusive<TypeList>(") +
+				GenTypeName(tbl->GetIndices()) + "), " +
+				GenTypeName(tbl->Yield()) + ")";
 		}
-		break;
 
 	case TYPE_RECORD:
 		{
 		auto r = t->AsRecordType()->Types();
 
-		Emit("auto tl = new type_decl_list();");
-
 		for ( auto i = 0; i < r->length(); ++i )
-			{
-			const auto& td = (*r)[i];
+			(void) TypeIndex((*r)[i]->type);
 
-			auto type_accessor = InvokeTypeName(td->type);
-
-			if ( td->attrs )
-				Emit("tl->append(new TypeDecl(\"%s\", %s, %s));",
-					td->id, type_accessor.c_str(),
-					AttrsName(td->attrs).c_str());
-			else
-				Emit("tl->append(new TypeDecl(\"%s\", %s));",
-					td->id, type_accessor.c_str());
-			}
-
-		Emit("return make_intrusive<RecordType>(tl);");
+		return std::string("make_intrusive<RecordType>(new type_decl_list())");
 		}
 		break;
 
@@ -1483,7 +1461,7 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 		{
 		auto f = t->AsFuncType();
 
-		auto args_type_accessor = InvokeTypeName(f->Params());
+		auto args_type_accessor = GenTypeName(f->Params());
 		auto params = f->Params();
 		auto yt = f->Yield();
 
@@ -1492,11 +1470,11 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 		if ( yt )
 			yield_type_accessor += "nullptr";
 		else
-			yield_type_accessor += InvokeTypeName(yt);
+			yield_type_accessor += GenTypeName(yt);
 
-		Emit("return make_intrusive<FuncType>(cast_intrusive<RecordType>(%s), %s, FUNC_FLAVOR_FUNCTION);",
-			args_type_accessor.c_str(),
-			yield_type_accessor.c_str());
+		return "make_intrusive<FuncType>(cast_intrusive<RecordType>(" +
+			args_type_accessor + "), " +
+			yield_type_accessor + ", FUNC_FLAVOR_FUNCTION)";
 		}
 		break;
 
@@ -1507,14 +1485,52 @@ void CPPCompile::GenTypeVar(const TypePtr& t)
 	EndBlock();
 	}
 
+void CPPCompile::ExpandTypeVar(const TypePtr& t)
+	{
+	if ( t->Tag() == TYPE_LIST )
+		{
+		auto tl = t->AsTypeList()->GetTypes();
+		auto t_name = GenTypeName(t) + "->AsTypeList()";
+
+		for ( auto i = 0; i < tl.size(); ++i )
+			Emit("%s->Append(%s);",
+				t_name.c_str(), GenTypeName(tl[i]).c_str());
+
+		if ( tl.size() > 0 )
+			NL();
+		}
+
+	else if ( t->Tag() == TYPE_RECORD )
+		{
+		auto r = t->AsRecordType()->Types();
+		auto t_name = GenTypeName(t) + "->AsRecordType()";
+
+		Emit("{ type_decl_list tl;");
+
+		for ( auto i = 0; i < r->length(); ++i )
+			{
+			const auto& td = (*r)[i];
+			auto type_accessor = GenTypeName(td->type);
+
+			if ( td->attrs )
+				Emit("tl.append(new TypeDecl(\"%s\", %s, %s));",
+					td->id, type_accessor.c_str(),
+					AttrsName(td->attrs).c_str());
+			else
+				Emit("tl.append(new TypeDecl(\"%s\", %s));",
+					td->id, type_accessor.c_str());
+			}
+
+		Emit("%s->AddFields(tl); }", t_name.c_str());
+		NL();
+		}
+
+	// else nothing to do
+	}
+
 std::string CPPCompile::GenTypeName(const TypePtr& t)
 	{
 	return std::string("types__CPP[") + Fmt(TypeIndex(t)) + "]";
-	}
-
-std::string CPPCompile::InvokeTypeName(const TypePtr& t)
-	{
-	return std::string("types_") + Fmt(TypeIndex(t)) + "__CPP()";
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag) const
@@ -1700,11 +1716,11 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 	{
 	auto tp = t.get();
 
-	if ( ! types.HasKey(tp) )
+	if ( processed_types.count(tp) == 0 )
 		{
 		// Add the type before going further, to avoid loops due to
 		// types that reference each other.
-		types.AddKey(t);
+		processed_types.insert(tp);
 
 		// Recursively do its subtypes, so that they will be
 		// available when we ultimately do this type.

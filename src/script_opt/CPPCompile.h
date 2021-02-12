@@ -128,9 +128,9 @@ private:
 	std::string AttrsName(const AttributesPtr& attrs);
 	const char* AttrName(const AttrPtr& attr);
 
-	void GenTypeVar(const TypePtr& t);
+	std::string GenTypeVar(const TypePtr& t);
+	void ExpandTypeVar(const TypePtr& t);
 	std::string GenTypeName(const TypePtr& t);
-	std::string InvokeTypeName(const TypePtr& t);
 
 	const char* TypeTagName(TypeTag tag) const;
 
@@ -255,11 +255,20 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
-	// Initializations of the form LHS = RHS.
+	// Initializations of the form LHS = RHS, where we don't care
+	// about the order.
 	std::unordered_map<std::string, std::string> inits;
+
+	// Initializations that need to come in a particular order (and
+	// prior to the unordered ones).
+	std::vector<std::string> ordered_inits;
 
 	// Maps types to indices in the global "types__CPP" array.
 	CPPTracker<const Type*, TypePtr> types = "types";
+
+	// Used to prevent analysis of mutually-referring types from
+	// leading to infinite recursion.
+	std::unordered_set<const Type*> processed_types;
 
 	// Similar for attributes, so we can reconstruct record types.
 	CPPTracker<const Attributes*, AttributesPtr> attributes = "attrs";
