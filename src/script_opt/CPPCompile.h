@@ -233,6 +233,9 @@ private:
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
 
+	// Maps event names to the names we use for them.
+	std::unordered_map<std::string, std::string> events;
+
 	// Globals that correspond to variables, not functions.
 	std::unordered_set<const ID*> global_vars;
 

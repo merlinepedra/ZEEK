@@ -1,9 +1,10 @@
+#include "zeek/ZeekString.h"
 #include "zeek/Func.h"
 #include "zeek/RE.h"
 #include "zeek/Val.h"
-#include "zeek/Expr.h"
 #include "zeek/OpaqueVal.h"
-#include "zeek/ZeekString.h"
+#include "zeek/Expr.h"
+#include "zeek/EventRegistry.h"
 
 namespace zeek {
 
@@ -120,5 +121,23 @@ RecordValPtr record_constructor__CPP(std::vector<ValPtr> vals, RecordTypePtr t)
 	return rv;
 	}
 
-VectorValPtr vector_constructor();
-void schedule();
+EventHandlerPtr register_event__CPP(const char* event)
+	{
+	EventHandler* h = event_registry->Lookup(std::string(event));
+
+	if ( ! h )
+		{
+		h = new EventHandler(event);
+		event_registry->Register(h);
+		}
+
+	h->SetUsed();
+
+	return h;
+	}
+
+ValPtr schedule__CPP(double dt, EventHandlerPtr event, std::vector<ValPtr> args)
+	{
+	timer_mgr->Add(new ScheduleTimer(event, std::move(args), dt));
+	return nullptr;
+	}

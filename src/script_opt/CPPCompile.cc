@@ -86,6 +86,13 @@ void CPPCompile::CreateGlobals(const FuncInfo& func)
 	for ( const auto& s : func.Profile()->ScriptCalls() )
 		AddGlobal(s->Name(), "zf");
 
+	for ( const auto& e : func.Profile()->Events() )
+		{
+		AddGlobal(e, "ev");
+		Emit("EventHandlerPtr %s = register_event__CPP(\"%s\");",
+			globals[std::string(e)].c_str(), e);
+		}
+
 	for ( const auto& c : func.Profile()->Constants() )
 		AddConstant(c);
 	}
@@ -963,7 +970,20 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		return std::string("vector_constructor()");
 
 	case EXPR_SCHEDULE:
-		return std::string("schedule()");
+		{
+		auto s = static_cast<const ScheduleExpr*>(e);
+		auto when = s->When();
+		auto event = s->Event();
+		std::string event_name(event->Handler()->Name());
+
+		std::string when_s = GenExpr(when, GEN_NATIVE);
+		if ( when->GetType()->Tag() == TYPE_INTERVAL )
+			when_s += " + run_state::network_time";
+
+		return std::string("schedule__CPP(") + when_s +
+			", " + globals[event_name] + ", { " +
+			GenExpr(event->Args(), GEN_VAL_PTR) + " })";
+		}
 
 	case EXPR_FIELD_ASSIGN:
 	case EXPR_LAMBDA:
