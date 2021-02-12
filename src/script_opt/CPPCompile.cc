@@ -15,7 +15,7 @@ void CPPCompile::CompileTo(FILE* f)
 	GenProlog();
 
 	for ( const auto& func : funcs )
-		CreateGlobals(func);
+		DeclareGlobals(func);
 
 	for ( const auto& func : funcs )
 		DeclareFunc(func);
@@ -37,6 +37,7 @@ void CPPCompile::GenProlog()
 void CPPCompile::GenEpilog()
 	{
 	NL();
+
 	for ( const auto& e : init_exprs.Keys() )
 		GenInitExpr(e);
 
@@ -51,19 +52,27 @@ void CPPCompile::GenEpilog()
 		Emit("extern TypePtr %s;", InvokeTypeName(t).c_str());
 
 	for ( const auto& t : tk )
+		{
 		GenTypeVar(t);
+		inits[GenTypeName(t)] = InvokeTypeName(t);
+		}
 
-	Emit("TypePtr types__CPP[%s] =", Fmt(types.Size()).c_str());
+	NL();
+	Emit("TypePtr types__CPP[%s];", Fmt(types.Size()).c_str());
+
+	NL();
+	Emit("void init__CPP()");
+
 	StartBlock();
-	for ( auto i = 0; i < tk.size(); ++i )
-		Emit("%s,", InvokeTypeName(tk[i]).c_str());
+	for ( const auto& i : inits )
+		Emit("%s = %s;", i.first.c_str(), i.second.c_str());
 	EndBlock(true);
 
 	Emit("} // zeek::detail");
 	Emit("} // zeek");
 	}
 
-void CPPCompile::CreateGlobals(const FuncInfo& func)
+void CPPCompile::DeclareGlobals(const FuncInfo& func)
 	{
 	if ( ! IsCompilable(func) )
 		return;
@@ -77,7 +86,9 @@ void CPPCompile::CreateGlobals(const FuncInfo& func)
 		if ( globals.count(gn) == 0 )
 			{
 			AddGlobal(gn.c_str(), "gl");
-			Emit("ID* %s;", globals[gn].c_str());
+			Emit("IDPtr %s;", globals[gn].c_str());
+			inits[globals[gn]] =
+				std::string("lookup_global__CPP(\"") + gn + "\")";
 			}
 
 		global_vars.emplace(g);
@@ -89,8 +100,10 @@ void CPPCompile::CreateGlobals(const FuncInfo& func)
 	for ( const auto& e : func.Profile()->Events() )
 		{
 		AddGlobal(e, "ev");
-		Emit("EventHandlerPtr %s = register_event__CPP(\"%s\");",
-			globals[std::string(e)].c_str(), e);
+		auto ev = globals[std::string(e)];
+
+		Emit("EventHandlerPtr %s;", ev.c_str());
+		inits[ev] = std::string("register_event__CPP(\"") + e + "\")";
 		}
 
 	for ( const auto& c : func.Profile()->Constants() )
@@ -106,7 +119,9 @@ void CPPCompile::AddBiF(const Func* b)
 
 	AddGlobal(n, "bif");
 
-	Emit("BuiltinFunc* %s;", globals[std::string(n)].c_str());
+	std::string ns(n);
+
+	Emit("BuiltinFunc* %s;", globals[ns].c_str());
 	}
 
 void CPPCompile::AddGlobal(const char* g, const char* suffix)
@@ -137,25 +152,33 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 	if ( constants.count(c_desc) == 0 )
 		{
 		// Need a C++ global for this constant.
-		constants[c_desc] =
-			std::string("CPP__const__") + Fmt(int(constants.size()));
+		auto const_name = std::string("CPP__const__") +
+					Fmt(int(constants.size()));
+
+		constants[c_desc] = const_name;
+
+		std::string def;
 
 		switch ( c->GetType()->Tag() ) {
 		case TYPE_STRING:
-			Emit("const StringValPtr %s = make_intrusive<StringVal>(%s);",
-				constants[c_desc].c_str(), c_desc.c_str());
+			Emit("StringValPtr %s;", const_name.c_str());
+			def = std::string("make_intrusive<StringVal>(") +
+					c_desc.c_str() + ")";
 			break;
 
 		case TYPE_PATTERN:
 			Emit("// ### Need to deal with case sensitivity, compiling");
-			Emit("const PatternValPtr %s = make_intrusive<PatternVal>(new RE_Matcher(\"%s\"));",
-				constants[c_desc].c_str(),
-				v->AsPatternVal()->Get()->OrigText());
+			Emit("PatternValPtr %s;", const_name.c_str());
+
+			def = std::string("make_intrusive<PatternVal>(new RE_Matcher(\"") +
+				v->AsPatternVal()->Get()->OrigText() + "\"));";
 			break;
 
 		default:
 			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
+
+		inits[const_name] = def;
 		}
 
 	const_exprs[c] = constants[c_desc];

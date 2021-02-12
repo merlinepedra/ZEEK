@@ -73,7 +73,7 @@ private:
 	bool IsCompilable(const FuncInfo& func)
 		{ return func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION; }
 
-	void CreateGlobals(const FuncInfo& func);
+	void DeclareGlobals(const FuncInfo& func);
 	void AddBiF(const Func* b);
 	void AddGlobal(const char* g, const char* suffix);
 	void AddConstant(const ConstExpr* c);
@@ -254,6 +254,9 @@ private:
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
+
+	// Initializations of the form LHS = RHS.
+	std::unordered_map<std::string, std::string> inits;
 
 	// Maps types to indices in the global "types__CPP" array.
 	CPPTracker<const Type*, TypePtr> types = "types";

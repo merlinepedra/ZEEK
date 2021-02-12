@@ -1,5 +1,7 @@
+#include "zeek/module_util.h"
 #include "zeek/ZeekString.h"
 #include "zeek/Func.h"
+#include "zeek/Scope.h"
 #include "zeek/RE.h"
 #include "zeek/Val.h"
 #include "zeek/OpaqueVal.h"
@@ -22,6 +24,11 @@ namespace detail {
 extern TypePtr types__CPP[];
 
 // Helper functions.
+
+IDPtr lookup_global__CPP(const char* g)
+	{
+	return lookup_ID(g, GLOBAL_MODULE_NAME);
+	}
 
 StringValPtr str_concat__CPP(const String* s1, const String* s2)
 	{
