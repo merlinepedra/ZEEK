@@ -220,8 +220,11 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s() : CPPFunc(\"%s\", %s) { }", fname.c_str(), func.Func()->Name(),
+	Emit("%s() : CPPFunc(\"%s\", %s)", fname.c_str(), func.Func()->Name(),
 		is_pure ? "true" : "false");
+	StartBlock();
+	GenSubclassTypeAssignment(func.Func());
+	EndBlock();
 
 	const auto& ft = func.Func()->GetType();
 	const auto& yt = ft->Yield();
@@ -249,6 +252,11 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	inits[func_global] = std::string("new ") + fname + "()";
 
 	compiled_funcs.emplace(fname);
+	}
+
+void CPPCompile::GenSubclassTypeAssignment(Func* f)
+	{
+	Emit("type = %s;", GenTypeName(f->GetType()).c_str());
 	}
 
 void CPPCompile::GenInvokeBody(const TypePtr& t, const char* args)
@@ -1283,7 +1291,11 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s() : CPPFunc(\"%s\", false) { }", name.c_str(), name.c_str());
+	Emit("%s() : CPPFunc(\"%s\", false)", name.c_str(), name.c_str());
+
+	StartBlock();
+	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(e->GetType()).c_str());
+	EndBlock();
 
 	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
 	StartBlock();
