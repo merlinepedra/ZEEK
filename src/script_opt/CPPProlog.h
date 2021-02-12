@@ -109,6 +109,16 @@ TableValPtr table_constructor__CPP(std::vector<ValPtr> indices,
 	return aggr;
 	}
 
-RecordValPtr record_constructor();
+RecordValPtr record_constructor__CPP(std::vector<ValPtr> vals, RecordTypePtr t)
+	{
+	auto rv = make_intrusive<RecordVal>(std::move(t));
+	auto n = vals.size();
+
+	for ( auto i = 0; i < n; ++i )
+		rv->Assign(i, vals[i]);
+
+	return rv;
+	}
+
 VectorValPtr vector_constructor();
 void schedule();

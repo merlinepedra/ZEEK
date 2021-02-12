@@ -865,7 +865,30 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		}
 
 	case EXPR_RECORD_CONSTRUCTOR:
-		return std::string("record_constructor()");
+		{
+		auto rc = static_cast<const RecordConstructorExpr*>(e);
+		auto t = rc->GetType<RecordType>();
+
+		const auto& exprs = rc->Op()->AsListExpr()->Exprs();
+		auto n = exprs.length();
+
+		std::string vals;
+
+		for ( auto i = 0; i < n; ++i )
+			{
+			const auto& e = exprs[i];
+
+			ASSERT(e->Tag() == EXPR_FIELD_ASSIGN);
+
+			vals += GenExpr(e->GetOp1(), GEN_VAL_PTR);
+
+			if ( i < n - 1 )
+				vals += ", ";
+			}
+
+		return std::string("record_constructor__CPP({") + vals + "}, " +
+			"cast_intrusive<RecordType>(" + GenTypeName(t) + "))";
+		}
 
 	case EXPR_SET_CONSTRUCTOR:
 		{
