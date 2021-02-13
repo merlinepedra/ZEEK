@@ -164,6 +164,8 @@ constexpr int DOES_NOT_MATCH_INDEX = 0;
 constexpr int MATCHES_INDEX_SCALAR = 1;
 constexpr int MATCHES_INDEX_VECTOR = 2;
 
+extern void init__CPP();
+
 class Type : public Obj {
 public:
 	static inline const TypePtr nil;
@@ -709,6 +711,10 @@ public:
 	void DescribeReST(ODesc* d, bool roles_only = false) const override;
 
 	const EnumValPtr& GetEnumVal(bro_int_t i);
+
+	// Somehow this doesn't work if actually protected :-(.
+	friend void init__CPP();
+	void AddNameInternal(const std::string& full_name, bro_int_t val);
 
 protected:
 	void AddNameInternal(const std::string& module_name,

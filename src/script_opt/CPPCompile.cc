@@ -265,36 +265,15 @@ void CPPCompile::GenSubclassTypeAssignment(Func* f)
 
 void CPPCompile::GenInvokeBody(const TypePtr& t, const char* args)
 	{
-	switch ( t->Tag() ) {
-	case TYPE_VOID:
-		Emit("Call(%s);", args);
+	auto call = std::string("Call(") + args + ")";
+
+	if ( t->Tag() == TYPE_VOID )
+		{
+		Emit("%s;", call.c_str());
 		Emit("return nullptr;");
-		break;
-
-	case TYPE_BOOL:
-		Emit("return val_mgr->Bool(Call(%s));", args);
-		break;
-
-	case TYPE_INT:
-		Emit("return val_mgr->Int(Call(%s));", args);
-		break;
-
-	case TYPE_COUNT:
-		Emit("return val_mgr->Count(Call(%s));", args);
-		break;
-
-	case TYPE_PORT:
-		Emit("return val_mgr->Port(Call(%s));", args);
-		break;
-
-	case TYPE_ENUM:
-		Emit("return make_enum__CPP(Call(%s));", args);
-		break;
-
-	default:
-		Emit("auto v__CPP = Call(%s);", args);
-		Emit("return make_intrusive<%s>(v__CPP);", IntrusiveVal(t));
-	}
+		}
+	else
+		Emit("return %s;", NativeToGT(call, t, GEN_VAL_PTR).c_str());
 	}
 
 void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
@@ -1285,7 +1264,8 @@ std::string CPPCompile::NativeToGT(const std::string& expr, const TypePtr& t,
 		return std::string("val_mgr->Port(") + expr + ")";
 
 	case TYPE_ENUM:
-		return std::string("make_enum__CPP(") + expr + ")";
+		return std::string("make_enum__CPP(") + GenTypeName(t) + ", " +
+					expr + ")";
 
 	default:
 		return std::string("make_intrusive<") + IntrusiveVal(t) +
@@ -1424,7 +1404,6 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 	case TYPE_BOOL:
 	case TYPE_COUNT:
 	case TYPE_DOUBLE:
-	case TYPE_ENUM:
 	case TYPE_ERROR:
 	case TYPE_INT:
 	case TYPE_INTERVAL:
@@ -1435,6 +1414,10 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 	case TYPE_TIMER:
 	case TYPE_VOID:
 		return std::string("base_type(") + TypeTagName(t->Tag()) + ")";
+
+	case TYPE_ENUM:
+		return std::string("make_intrusive<EnumType>(\"") +
+			t->GetName() + "\")";
 
 	case TYPE_SUBNET:
 		return std::string("make_intrusive<SubNetType>()");
@@ -1568,6 +1551,20 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 			}
 
 		Emit("%s->AddFields(tl); }", t_name.c_str());
+		}
+
+	else if ( t->Tag() == TYPE_ENUM )
+		{
+		NL();
+
+		auto e_name = GenTypeName(t) + "->AsEnumType()";
+		auto et = t->AsEnumType();
+		auto names = et->Names();
+
+		for ( const auto& name_pair : et->Names() )
+			Emit("%s->AddNameInternal(\"%s\", %s);",
+				e_name.c_str(), name_pair.first.c_str(),
+				Fmt(int(name_pair.second)).c_str());
 		}
 
 	// else nothing to do
