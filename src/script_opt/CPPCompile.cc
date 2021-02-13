@@ -72,6 +72,8 @@ void CPPCompile::GenEpilog()
 	for ( const auto& t : tk )
 		ExpandTypeVar(t);
 
+	NL();
+
 	EndBlock(true);
 
 	Emit("} // zeek::detail");
@@ -256,7 +258,8 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 void CPPCompile::GenSubclassTypeAssignment(Func* f)
 	{
-	Emit("type = %s;", GenTypeName(f->GetType()).c_str());
+	Emit("type = cast_intrusive<FuncType>(%s);",
+		GenTypeName(f->GetType()).c_str());
 	}
 
 void CPPCompile::GenInvokeBody(const TypePtr& t, const char* args)
@@ -1030,8 +1033,14 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 			GenExpr(event->Args(), GEN_VAL_PTR) + " })";
 		}
 
-	case EXPR_FIELD_ASSIGN:
 	case EXPR_LAMBDA:
+		{
+		auto lb = static_cast<const LambdaExpr*>(e);
+		const auto& in = lb->Ingredients();
+		return std::string("LAMBDA");
+		}
+
+	case EXPR_FIELD_ASSIGN:
 	case EXPR_EVENT:
 	case EXPR_VECTOR_COERCE:
 	case EXPR_CAST:
@@ -1294,7 +1303,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	Emit("%s() : CPPFunc(\"%s\", false)", name.c_str(), name.c_str());
 
 	StartBlock();
-	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(e->GetType()).c_str());
+	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(e->GetType()).c_str());
 	EndBlock();
 
 	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
@@ -1422,8 +1431,8 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 			GenTypeName(t->AsFileType()->Yield()) + ")";
 
 	case TYPE_OPAQUE:
-		return std::string("make_intrusive<OpaqueType>(") +
-			t->AsOpaqueType()->Name() + ")";
+		return std::string("make_intrusive<OpaqueType>(\"") +
+			t->AsOpaqueType()->Name() + "\")";
 
 	case TYPE_TYPE:
 		return std::string("make_intrusive<TypeType>(") +
@@ -1480,13 +1489,23 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 		std::string yield_type_accessor;
 
 		if ( yt )
-			yield_type_accessor += "nullptr";
-		else
 			yield_type_accessor += GenTypeName(yt);
+		else
+			yield_type_accessor += "nullptr";
 
-		return "make_intrusive<FuncType>(cast_intrusive<RecordType>(" +
+		auto fl = f->Flavor();
+
+		std::string fl_name;
+		if ( fl == FUNC_FLAVOR_FUNCTION )
+			fl_name = "FUNC_FLAVOR_FUNCTION";
+		else if ( fl == FUNC_FLAVOR_EVENT )
+			fl_name = "FUNC_FLAVOR_EVENT";
+		else if ( fl == FUNC_FLAVOR_HOOK )
+			fl_name = "FUNC_FLAVOR_HOOK";
+
+		return std::string("make_intrusive<FuncType>(cast_intrusive<RecordType>(") +
 			args_type_accessor + "), " +
-			yield_type_accessor + ", FUNC_FLAVOR_FUNCTION)";
+			yield_type_accessor + ", " + fl_name + ")";
 		}
 		break;
 
@@ -1514,6 +1533,8 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 
 	else if ( t->Tag() == TYPE_RECORD )
 		{
+		NL();
+
 		auto r = t->AsRecordType()->Types();
 		auto t_name = GenTypeName(t) + "->AsRecordType()";
 
@@ -1534,7 +1555,6 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 			}
 
 		Emit("%s->AddFields(tl); }", t_name.c_str());
-		NL();
 		}
 
 	// else nothing to do
@@ -1730,6 +1750,8 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 
 	if ( processed_types.count(tp) == 0 )
 		{
+		ASSERT(! types.HasKey(t));
+
 		// Add the type before going further, to avoid loops due to
 		// types that reference each other.
 		processed_types.insert(tp);
@@ -1810,9 +1832,16 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		default:
 			reporter->InternalError("bad type in CPPCompile::TypeIndex");
 		}
+
+		types.AddKey(t);
 		}
 
-	return types.KeyIndex(tp);
+	if ( types.HasKey(t) )
+		return types.KeyIndex(tp);
+	else
+		// This can happen when two types refer to one another.
+		// Presumably our caller is discarding what we return.
+		return -1;
 	}
 
 void CPPCompile::RecordAttributes(const AttributesPtr& attrs)

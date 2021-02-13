@@ -1307,6 +1307,7 @@ public:
 	           IDPList outer_ids);
 
 	const IDPList& OuterIDs() const	{ return outer_ids; }
+	const function_ingredients& Ingredients() const	{ return *ingredients; }
 
 	ValPtr Eval(Frame* f) const override;
 	TraversalCode Traverse(TraversalCallback* cb) const override;
