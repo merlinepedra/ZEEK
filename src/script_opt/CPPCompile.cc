@@ -1218,7 +1218,7 @@ std::string CPPCompile::GenIntVector(const std::vector<int>& vec)
 
 	for ( auto i = 0; i < vec.size(); ++i )	
 		{
-		res += Fmt(i);
+		res += Fmt(vec[i]);
 
 		if ( i < vec.size() - 1 )
 			res += ", ";
