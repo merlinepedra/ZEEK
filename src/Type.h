@@ -618,6 +618,9 @@ public:
 	const char* AddFields(const type_decl_list& types,
 	                      bool add_log_attr = false);
 
+	void AddFieldsDirectly(const type_decl_list& types,
+				bool add_log_attr = false);
+
 	void Describe(ODesc* d) const override;
 	void DescribeReST(ODesc* d, bool roles_only = false) const override;
 	void DescribeFields(ODesc* d) const;

@@ -1542,7 +1542,7 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 					td->id, type_accessor);
 			}
 
-		Emit("%s->AddFields(tl); }", t_name);
+		Emit("%s->AddFieldsDirectly(tl); }", t_name);
 		}
 
 	else if ( t->Tag() == TYPE_ENUM )

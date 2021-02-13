@@ -143,6 +143,8 @@ RecordValPtr record_constructor__CPP(std::vector<ValPtr> vals, RecordTypePtr t)
 	auto rv = make_intrusive<RecordVal>(std::move(t));
 	auto n = vals.size();
 
+	rv->Reserve(n);
+
 	for ( auto i = 0; i < n; ++i )
 		rv->Assign(i, vals[i]);
 
