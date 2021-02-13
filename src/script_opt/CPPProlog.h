@@ -38,7 +38,7 @@ static int dummy = flag_init_CPP();
 
 IDPtr lookup_global__CPP(const char* g)
 	{
-	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME);
+	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);
 	ASSERT(gl != nullptr);
 	return gl;
 	}
