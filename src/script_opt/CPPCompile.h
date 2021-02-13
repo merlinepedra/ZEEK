@@ -131,6 +131,8 @@ private:
 
 	std::string GenTypeVar(const TypePtr& t);
 	void ExpandTypeVar(const TypePtr& t);
+	void DeclareFuncType(const TypePtr& t);
+
 	std::string GenTypeName(const TypePtr& t);
 
 	const char* TypeTagName(TypeTag tag) const;
@@ -151,6 +153,9 @@ private:
 
 	const char* NativeAccessor(const TypePtr& t);
 	const char* IntrusiveVal(const TypePtr& t);
+
+	void AddInit(const std::string& lhs, const std::string& rhs);
+	void AddInit(const std::string& init);
 
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);
@@ -261,13 +266,8 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
-	// Initializations of the form LHS = RHS, where we don't care
-	// about the order.
-	std::unordered_map<std::string, std::string> inits;
-
-	// Initializations that need to come in a particular order (and
-	// prior to the unordered ones).
-	std::vector<std::string> ordered_inits;
+	// Initializations in the order that they should be generated.
+	std::vector<std::string> inits;
 
 	// Maps types to indices in the global "types__CPP" array.
 	CPPTracker<const Type*, TypePtr> types = "types";

@@ -44,13 +44,9 @@ void CPPCompile::GenEpilog()
 	for ( const auto& a : attributes.Keys() )
 		GenAttrs(a);
 
-	const auto& tk = types.Keys();
-
-	// Allow for forward references across types.
-	NL();
-	for ( const auto& t : tk )
-		ordered_inits.emplace_back(GenTypeName(t) +
-						" = " + GenTypeVar(t));
+	// Generate the guts of compound types.
+	for ( const auto& t : types.Keys() )
+		ExpandTypeVar(t);
 
 	NL();
 	Emit("void init__CPP()");
@@ -60,19 +56,14 @@ void CPPCompile::GenEpilog()
 	Emit("types__CPP = new TypePtr[%s];", Fmt(types.Size()));
 
 	NL();
-	for ( const auto& oi : ordered_inits )
-		Emit("%s;", oi);
-
-	NL();
 	for ( const auto& i : inits )
-		Emit("%s = %s;", i.first, i.second);
+		Emit("%s", i);
 
-	// Now generate the guts of compound types.
-
-	for ( const auto& t : tk )
-		ExpandTypeVar(t);
-
-	NL();
+	// Now that the inits are done, we can finally define function
+	// types.
+	for ( const auto& t : types.Keys() )
+		if ( t->Tag() == TYPE_FUNC )
+			DeclareFuncType(t);
 
 	EndBlock(true);
 
@@ -95,8 +86,9 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 			{
 			AddGlobal(gn.c_str(), "gl");
 			Emit("IDPtr %s;", globals[gn]);
-			inits[globals[gn]] =
-				std::string("lookup_global__CPP(\"") + gn + "\")";
+			AddInit(globals[gn], 
+				std::string("lookup_global__CPP(\"") +
+				gn + "\");");
 			}
 
 		global_vars.emplace(g);
@@ -111,7 +103,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		auto ev = globals[std::string(e)];
 
 		Emit("EventHandlerPtr %s;", ev);
-		inits[ev] = std::string("register_event__CPP(\"") + e + "\")";
+		AddInit(ev, std::string("register_event__CPP(\"") + e + "\")");
 		}
 
 	for ( const auto& c : func.Profile()->Constants() )
@@ -130,7 +122,7 @@ void CPPCompile::AddBiF(const Func* b)
 	std::string ns(n);
 	Emit("Func* %s;", globals[ns]);
 
-	inits[globals[ns]] = std::string("lookup_bif__CPP(\"") + ns + "\")";
+	AddInit(globals[ns], std::string("lookup_bif__CPP(\"") + ns + "\")");
 	}
 
 void CPPCompile::AddGlobal(const std::string& g, const char* suffix)
@@ -185,7 +177,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
 
-		inits[const_name] = def;
+		AddInit(const_name, def);
 		}
 
 	const_exprs[c] = constants[c_desc];
@@ -249,7 +241,7 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	auto func_global = fname + "_func";
 	Emit("%s* %s;", fname, func_global);
-	inits[func_global] = std::string("new ") + fname + "()";
+	AddInit(func_global, std::string("new ") + fname + "()");
 
 	compiled_funcs.emplace(fname);
 	}
@@ -698,8 +690,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 			gen = std::string("(") + gen + ")->AsFunc()";
 
 		auto args_list = std::string(", {") +
-					GenExpr(args_l, GEN_VAL_PTR) + "})";
-		auto invoker = std::string("invoke__CPP(") + gen + args_list;
+					GenExpr(args_l, GEN_VAL_PTR) + "}";
+		auto invoker = std::string("invoke__CPP(") + gen + args_list + ")";
 
 		if ( IsNativeType(t) && gt != GEN_VAL_PTR )
 			return invoker + NativeAccessor(t);
@@ -1114,7 +1106,7 @@ std::string CPPCompile::GenBinarySet(const Expr* e, GenType gt, const char* op)
 	case EXPR_OR:
                 // auto rval = v1->Clone();
                 // if ( ! tv2->AddTo(rval.get(), false, false) )
-                //        reporter->InternalError("set union failed to type check"
+                //        reporter->InternalError("set union failed to type check)"
 		res = v1 + "->Union(*" + v2 + ")";
 		break;
 
@@ -1316,8 +1308,8 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	Emit("CallExprPtr %s;", init_expr_name);
 
-	inits[init_expr_name] = std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
-		name + ">())), make_intrusive<ListExpr>(), false);";
+	AddInit(init_expr_name, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
+		name + ">())), make_intrusive<ListExpr>(), false);");
 	}
 
 std::string CPPCompile::InitExprName(const ExprPtr& e)
@@ -1426,12 +1418,10 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 	case TYPE_TYPE:
 		return std::string("make_intrusive<TypeType>(") +
 			GenTypeName(t->AsTypeType()->GetType()) + ")";
-		break;
 
 	case TYPE_VECTOR:
 		return std::string("make_intrusive<VectorType>(") +
 			GenTypeName(t->AsVectorType()->Yield()) + ")";
-		break;
 
 	case TYPE_LIST:
 		{
@@ -1465,44 +1455,17 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 
 		return std::string("make_intrusive<RecordType>(new type_decl_list())");
 		}
-		break;
 
 	case TYPE_FUNC:
-		{
-		auto f = t->AsFuncType();
-
-		auto args_type_accessor = GenTypeName(f->Params());
-		auto params = f->Params();
-		auto yt = f->Yield();
-
-		std::string yield_type_accessor;
-
-		if ( yt )
-			yield_type_accessor += GenTypeName(yt);
-		else
-			yield_type_accessor += "nullptr";
-
-		auto fl = f->Flavor();
-
-		std::string fl_name;
-		if ( fl == FUNC_FLAVOR_FUNCTION )
-			fl_name = "FUNC_FLAVOR_FUNCTION";
-		else if ( fl == FUNC_FLAVOR_EVENT )
-			fl_name = "FUNC_FLAVOR_EVENT";
-		else if ( fl == FUNC_FLAVOR_HOOK )
-			fl_name = "FUNC_FLAVOR_HOOK";
-
-		return std::string("make_intrusive<FuncType>(cast_intrusive<RecordType>(") +
-			args_type_accessor + "), " +
-			yield_type_accessor + ", " + fl_name + ")";
-		}
-		break;
+		// We do the work for these later, in DeclareFuncType(),
+		// because function types require the record types associated
+		// with their arguments to have been fully instantiated
+		// before constructing the FuncType.
+		return std::string("nullptr");
 
 	default:
 		reporter->InternalError("bad type in CPPCompile::GenType");
 	}
-
-	EndBlock();
 	}
 
 void CPPCompile::ExpandTypeVar(const TypePtr& t)
@@ -1513,10 +1476,8 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto t_name = GenTypeName(t) + "->AsTypeList()";
 
 		for ( auto i = 0; i < tl.size(); ++i )
-			Emit("%s->Append(%s);", t_name, GenTypeName(tl[i]));
-
-		if ( tl.size() > 0 )
-			NL();
+			AddInit(t_name + "->Append(" +
+				GenTypeName(tl[i]) + ");");
 		}
 
 	else if ( t->Tag() == TYPE_RECORD )
@@ -1526,7 +1487,7 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto r = t->AsRecordType()->Types();
 		auto t_name = GenTypeName(t) + "->AsRecordType()";
 
-		Emit("{ type_decl_list tl;");
+		AddInit("{ type_decl_list tl;");
 
 		for ( auto i = 0; i < r->length(); ++i )
 			{
@@ -1534,15 +1495,15 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 			auto type_accessor = GenTypeName(td->type);
 
 			if ( td->attrs )
-				Emit("tl.append(new TypeDecl(\"%s\", %s, %s));",
-					td->id, type_accessor,
-					AttrsName(td->attrs));
+				AddInit(std::string("tl.append(new TypeDecl(\"") +
+					td->id + "\", " + type_accessor +
+					", " + AttrsName(td->attrs) +"));");
 			else
-				Emit("tl.append(new TypeDecl(\"%s\", %s));",
-					td->id, type_accessor);
+				AddInit(std::string("tl.append(new TypeDecl(\"") +
+					td->id + "\", " + type_accessor +"));");
 			}
 
-		Emit("%s->AddFieldsDirectly(tl); }", t_name);
+		AddInit(t_name + "->AddFieldsDirectly(tl); }");
 		}
 
 	else if ( t->Tag() == TYPE_ENUM )
@@ -1553,20 +1514,50 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto et = t->AsEnumType();
 		auto names = et->Names();
 
-		Emit("{ auto et = %s;", e_name);
-		Emit("if ( et->Names().size() == 0 )");
-
-		StartBlock();
+		AddInit("{ auto et = " + e_name + ";");
+		AddInit("if ( et->Names().size() == 0 ) {");
 
 		for ( const auto& name_pair : et->Names() )
-			Emit("et->AddNameInternal(\"%s\", %s);",
-				name_pair.first, Fmt(int(name_pair.second)));
+			AddInit(std::string("\tet->AddNameInternal(\"") +
+				name_pair.first + "\", " + 
+				Fmt(int(name_pair.second)) + ");");
 
-		EndBlock();
-		Emit("}");
+		AddInit("}}");
 		}
 
 	// else nothing to do
+	}
+
+void CPPCompile::DeclareFuncType(const TypePtr& t)
+	{
+	auto f = t->AsFuncType();
+
+	auto args_type_accessor = GenTypeName(f->Params());
+	auto params = f->Params();
+	auto yt = f->Yield();
+
+	std::string yield_type_accessor;
+
+	if ( yt )
+		yield_type_accessor += GenTypeName(yt);
+	else
+		yield_type_accessor += "nullptr";
+
+	auto fl = f->Flavor();
+
+	std::string fl_name;
+	if ( fl == FUNC_FLAVOR_FUNCTION )
+		fl_name = "FUNC_FLAVOR_FUNCTION";
+	else if ( fl == FUNC_FLAVOR_EVENT )
+		fl_name = "FUNC_FLAVOR_EVENT";
+	else if ( fl == FUNC_FLAVOR_HOOK )
+		fl_name = "FUNC_FLAVOR_HOOK";
+
+	auto type_init = std::string("make_intrusive<FuncType>(cast_intrusive<RecordType>(") +
+		args_type_accessor + "), " +
+		yield_type_accessor + ", " + fl_name + ")";
+
+	Emit("%s = %s;", GenTypeName(t), type_init);
 	}
 
 std::string CPPCompile::GenTypeName(const TypePtr& t)
@@ -1757,6 +1748,11 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 	{
 	auto tp = t.get();
 
+	if ( types.HasKey(t) )
+		// Do this check first, so we can recurse below when
+		// adding a new type.
+		return types.KeyIndex(tp);
+
 	if ( processed_types.count(tp) == 0 )
 		{
 		ASSERT(! types.HasKey(t));
@@ -1846,7 +1842,13 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		}
 
 	if ( types.HasKey(t) )
+		{
+		// The following (indirectly) recurses, but the check at
+		// the top of this method keeps the code from reaching
+		// this point.
+		AddInit(GenTypeName(t), GenTypeVar(t));
 		return types.KeyIndex(tp);
+		}
 	else
 		// This can happen when two types refer to one another.
 		// Presumably our caller is discarding what we return.
@@ -1956,6 +1958,16 @@ const char* CPPCompile::IntrusiveVal(const TypePtr& t)
 	default:
 		reporter->InternalError("bad type in CPPCompile::IntrusiveVal");
 	}
+	}
+
+void CPPCompile::AddInit(const std::string& lhs, const std::string& rhs)
+	{
+	AddInit(lhs + " = " + rhs + ";");
+	}
+
+void CPPCompile::AddInit(const std::string& init)
+	{
+	inits.emplace_back(init);
 	}
 
 void CPPCompile::StartBlock()
