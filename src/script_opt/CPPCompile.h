@@ -158,7 +158,7 @@ private:
 	void Emit(const std::string& str) const
 		{
 		Indent();
-		fprintf(write_file, "%s\n", str.c_str());
+		fprintf(write_file, "%s", str.c_str());
 		NL();
 		}
 

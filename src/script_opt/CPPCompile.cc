@@ -1409,7 +1409,7 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 		return std::string("base_type(") + TypeTagName(t->Tag()) + ")";
 
 	case TYPE_ENUM:
-		return std::string("make_intrusive<EnumType>(\"") +
+		return std::string("get_enum_type__CPP(\"") +
 			t->GetName() + "\")";
 
 	case TYPE_SUBNET:
@@ -1553,9 +1553,17 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto et = t->AsEnumType();
 		auto names = et->Names();
 
+		Emit("{ auto et = %s;", e_name);
+		Emit("if ( et->Names().size() == 0 )");
+
+		StartBlock();
+
 		for ( const auto& name_pair : et->Names() )
-			Emit("%s->AddNameInternal(\"%s\", %s);", e_name,
+			Emit("et->AddNameInternal(\"%s\", %s);",
 				name_pair.first, Fmt(int(name_pair.second)));
+
+		EndBlock();
+		Emit("}");
 		}
 
 	// else nothing to do
