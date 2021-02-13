@@ -60,10 +60,16 @@ void CPPCompile::GenEpilog()
 		Emit("%s", i);
 
 	// Now that the inits are done, we can finally define function
-	// types.
+	// types ...
+	NL();
 	for ( const auto& t : types.Keys() )
 		if ( t->Tag() == TYPE_FUNC )
 			DeclareFuncType(t);
+
+	// ... and then instantiate the functions themselves.
+	NL();
+	for ( const auto& f : compiled_funcs )
+		Emit("%s_func = new %s();", f, f);
 
 	EndBlock(true);
 
@@ -239,9 +245,7 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	EndBlock(true);
 
-	auto func_global = fname + "_func";
-	Emit("%s* %s;", fname, func_global);
-	AddInit(func_global, std::string("new ") + fname + "()");
+	Emit("%s* %s;", fname, fname + "_func");
 
 	compiled_funcs.emplace(fname);
 	}
