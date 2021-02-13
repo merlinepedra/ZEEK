@@ -75,7 +75,7 @@ private:
 
 	void DeclareGlobals(const FuncInfo& func);
 	void AddBiF(const Func* b);
-	void AddGlobal(const char* g, const char* suffix);
+	void AddGlobal(const std::string& g, const char* suffix);
 	void AddConstant(const ConstExpr* c);
 
 	void DeclareFunc(const FuncInfo& func);
@@ -83,7 +83,7 @@ private:
 
 	void DeclareSubclass(const FuncInfo& func, const std::string& fname);
 	void GenSubclassTypeAssignment(Func* f);
-	void GenInvokeBody(const TypePtr& t, const char* args);
+	void GenInvokeBody(const TypePtr& t, const std::string& args);
 
 	void DefineBody(const FuncInfo& func, const std::string& fname);
 
@@ -155,45 +155,50 @@ private:
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);
 
-	void Emit(const char* str) const
+	void Emit(const std::string& str) const
 		{
 		Indent();
-		fprintf(write_file, "%s\n", str);
-		}
-
-	void Emit(const char* fmt, const char* arg) const
-		{
-		Indent();
-		fprintf(write_file, fmt, arg);
+		fprintf(write_file, "%s\n", str.c_str());
 		NL();
 		}
 
-	void Emit(const char* fmt, const char* arg1, const char* arg2) const
+	void Emit(const std::string& fmt, const std::string& arg) const
 		{
 		Indent();
-		fprintf(write_file, fmt, arg1, arg2);
+		fprintf(write_file, fmt.c_str(), arg.c_str());
 		NL();
 		}
 
-	void Emit(const char* fmt, const char* arg1, const char* arg2,
-			const char* arg3) const
+	void Emit(const std::string& fmt, const std::string& arg1,
+			const std::string& arg2) const
 		{
 		Indent();
-		fprintf(write_file, fmt, arg1, arg2, arg3);
+		fprintf(write_file, fmt.c_str(), arg1.c_str(), arg2.c_str());
 		NL();
 		}
 
-	void Emit(const char* fmt, const char* arg1, const char* arg2,
-			const char* arg3, const char* arg4) const
+	void Emit(const std::string& fmt, const std::string& arg1,
+			const std::string& arg2, const std::string& arg3) const
 		{
 		Indent();
-		fprintf(write_file, fmt, arg1, arg2, arg3, arg4);
+		fprintf(write_file, fmt.c_str(), arg1.c_str(), arg2.c_str(),
+			arg3.c_str());
 		NL();
 		}
 
-	std::string GlobalName(const char* g, const char* suffix)
+	void Emit(const std::string& fmt, const std::string& arg1,
+			const std::string& arg2, const std::string& arg3,
+			const std::string& arg4) const
 		{
-		return Canonicalize(g) + "__" + suffix;
+		Indent();
+		fprintf(write_file, fmt.c_str(), arg1.c_str(), arg2.c_str(),
+			arg3.c_str(), arg4.c_str());
+		NL();
+		}
+
+	std::string GlobalName(const std::string& g, const char* suffix)
+		{
+		return Canonicalize(g.c_str()) + "__" + suffix;
 		}
 
 	std::string LocalName(const ID* l) const;

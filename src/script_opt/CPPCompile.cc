@@ -57,15 +57,15 @@ void CPPCompile::GenEpilog()
 
 	StartBlock();
 
-	Emit("types__CPP = new TypePtr[%s];", Fmt(types.Size()).c_str());
+	Emit("types__CPP = new TypePtr[%s];", Fmt(types.Size()));
 
 	NL();
 	for ( const auto& oi : ordered_inits )
-		Emit("%s;", oi.c_str());
+		Emit("%s;", oi);
 
 	NL();
 	for ( const auto& i : inits )
-		Emit("%s = %s;", i.first.c_str(), i.second.c_str());
+		Emit("%s = %s;", i.first, i.second);
 
 	// Now generate the guts of compound types.
 
@@ -94,7 +94,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		if ( globals.count(gn) == 0 )
 			{
 			AddGlobal(gn.c_str(), "gl");
-			Emit("IDPtr %s;", globals[gn].c_str());
+			Emit("IDPtr %s;", globals[gn]);
 			inits[globals[gn]] =
 				std::string("lookup_global__CPP(\"") + gn + "\")";
 			}
@@ -110,7 +110,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		AddGlobal(e, "ev");
 		auto ev = globals[std::string(e)];
 
-		Emit("EventHandlerPtr %s;", ev.c_str());
+		Emit("EventHandlerPtr %s;", ev);
 		inits[ev] = std::string("register_event__CPP(\"") + e + "\")";
 		}
 
@@ -128,17 +128,15 @@ void CPPCompile::AddBiF(const Func* b)
 	AddGlobal(n, "bif");
 
 	std::string ns(n);
-	Emit("Func* %s;", globals[ns].c_str());
+	Emit("Func* %s;", globals[ns]);
 
 	inits[globals[ns]] = std::string("lookup_bif__CPP(\"") + ns + "\")";
 	}
 
-void CPPCompile::AddGlobal(const char* g, const char* suffix)
+void CPPCompile::AddGlobal(const std::string& g, const char* suffix)
 	{
-	std::string gs(g);
-
-	if ( globals.count(gs) == 0 )
-		globals.emplace(gs, GlobalName(g, suffix));
+	if ( globals.count(g) == 0 )
+		globals.emplace(g, GlobalName(g, suffix));
 	}
 
 void CPPCompile::AddConstant(const ConstExpr* c)
@@ -170,14 +168,14 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 
 		switch ( c->GetType()->Tag() ) {
 		case TYPE_STRING:
-			Emit("StringValPtr %s;", const_name.c_str());
+			Emit("StringValPtr %s;", const_name);
 			def = std::string("make_intrusive<StringVal>(") +
-					c_desc.c_str() + ")";
+					c_desc + ")";
 			break;
 
 		case TYPE_PATTERN:
 			Emit("// ### Need to deal with case sensitivity, compiling");
-			Emit("PatternValPtr %s;", const_name.c_str());
+			Emit("PatternValPtr %s;", const_name);
 
 			def = std::string("make_intrusive<PatternVal>(new RE_Matcher(\"") +
 				v->AsPatternVal()->Get()->OrigText() + "\"));";
@@ -219,11 +217,11 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	{
 	auto is_pure = func.Func()->IsPure();
 
-	Emit("class %s : public CPPFunc", fname.c_str());
+	Emit("class %s : public CPPFunc", fname);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s() : CPPFunc(\"%s\", %s)", fname.c_str(), func.Func()->Name(),
+	Emit("%s() : CPPFunc(\"%s\", %s)", fname, func.Func()->Name(),
 		is_pure ? "true" : "false");
 	StartBlock();
 	GenSubclassTypeAssignment(func.Func());
@@ -238,20 +236,19 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	if ( IsNativeType(yt) )
 		{
 		auto args = BindArgs(func.Func()->GetType());
-		GenInvokeBody(yt, args.c_str());
+		GenInvokeBody(yt, args);
 		}
 	else
-		Emit("return Call(%s);",
-			BindArgs(func.Func()->GetType()).c_str());
+		Emit("return Call(%s);", BindArgs(func.Func()->GetType()));
 
 	EndBlock();
 
-	Emit("static %s Call(%s);", FullTypeName(yt), ParamDecl(ft).c_str());
+	Emit("static %s Call(%s);", FullTypeName(yt), ParamDecl(ft));
 
 	EndBlock(true);
 
 	auto func_global = fname + "_func";
-	Emit("%s* %s;", fname.c_str(), func_global.c_str());
+	Emit("%s* %s;", fname, func_global);
 	inits[func_global] = std::string("new ") + fname + "()";
 
 	compiled_funcs.emplace(fname);
@@ -260,20 +257,20 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 void CPPCompile::GenSubclassTypeAssignment(Func* f)
 	{
 	Emit("type = cast_intrusive<FuncType>(%s);",
-		GenTypeName(f->GetType()).c_str());
+		GenTypeName(f->GetType()));
 	}
 
-void CPPCompile::GenInvokeBody(const TypePtr& t, const char* args)
+void CPPCompile::GenInvokeBody(const TypePtr& t, const std::string& args)
 	{
 	auto call = std::string("Call(") + args + ")";
 
 	if ( t->Tag() == TYPE_VOID )
 		{
-		Emit("%s;", call.c_str());
+		Emit("%s;", call);
 		Emit("return nullptr;");
 		}
 	else
-		Emit("return %s;", NativeToGT(call, t, GEN_VAL_PTR).c_str());
+		Emit("return %s;", NativeToGT(call, t, GEN_VAL_PTR));
 	}
 
 void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
@@ -288,8 +285,8 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	for ( auto i = 0; i < p->NumFields(); ++i )
 		params.emplace(std::string(p->FieldName(i)));
 
-	Emit("%s %s::Call(%s)", FullTypeName(yt), fname.c_str(),
-		ParamDecl(ft).c_str());
+	Emit("%s %s::Call(%s)", FullTypeName(yt), fname,
+		ParamDecl(ft));
 
 	StartBlock();
 
@@ -311,7 +308,7 @@ void CPPCompile::DeclareLocals(const FuncInfo& func)
 
 		if ( params.count(ln) == 0 )
 			{
-			Emit("%s %s;", FullTypeName(l->GetType()), ln.c_str());
+			Emit("%s %s;", FullTypeName(l->GetType()), ln);
 			did_decl = true;
 			}
 
@@ -367,7 +364,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 			Emit("%s = make_intrusive<%s>(cast_intrusive<%s>(%s));",
 				IDName(aggr), type_name,
-				type_type, type_ind.c_str());
+				type_type, type_ind);
 			}
 		}
 		break;
@@ -388,7 +385,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto e = s->AsExprStmt()->StmtExpr();
 
 		if ( e )
-			Emit("%s;", GenExpr(e, GEN_DONT_CARE).c_str());
+			Emit("%s;", GenExpr(e, GEN_DONT_CARE));
 		}
 		break;
 
@@ -397,7 +394,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto i = s->AsIfStmt();
 		auto cond = i->StmtExpr();
 
-		Emit("if ( %s )", GenExpr(cond, GEN_NATIVE).c_str());
+		Emit("if ( %s )", GenExpr(cond, GEN_NATIVE));
 		StartBlock();
 		GenStmt(i->TrueBranch());
 		EndBlock();
@@ -419,7 +416,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		{
 		auto w = s->AsWhileStmt();
 		Emit("while ( %s )",
-			GenExpr(w->Condition(), GEN_NATIVE).c_str());
+			GenExpr(w->Condition(), GEN_NATIVE));
 		StartBlock();
 		GenStmt(w->Body());
 		EndBlock();
@@ -440,7 +437,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 			break;
 			}
 
-		Emit("return %s;", GenExpr(e, GEN_NATIVE).c_str());
+		Emit("return %s;", GenExpr(e, GEN_NATIVE));
 		}
 		break;
 
@@ -451,7 +448,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto indices = op->GetOp2();
 
 		Emit("%s->Assign(index_val__CPP({%s}), nullptr, true);",
-			aggr.c_str(), GenExpr(indices, GEN_VAL_PTR).c_str());
+			aggr, GenExpr(indices, GEN_VAL_PTR));
 		}
 		break;
 
@@ -465,14 +462,14 @@ void CPPCompile::GenStmt(const Stmt* s)
 			auto indices = op->GetOp2();
 
 			Emit("%s->Remove(*(index_val__CPP({%s}).get()), true);",
-				aggr.c_str(), GenExpr(indices, GEN_VAL_PTR).c_str());
+				aggr, GenExpr(indices, GEN_VAL_PTR));
 			}
 
 		else
 			{
 			ASSERT(op->Tag() == EXPR_FIELD);
-			auto field = Fmt(op->AsFieldExpr()->Field()).c_str();
-			Emit("%s->Assign(%s, nullptr);", aggr.c_str(), field);
+			auto field = Fmt(op->AsFieldExpr()->Field());
+			Emit("%s->Assign(%s, nullptr);", aggr, field);
 			}
 		}
 		break;
@@ -490,8 +487,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 		if ( t == TYPE_TABLE )
 			{
-			Emit("auto tv__CPP = %s;",
-				GenExpr(v, GEN_DONT_CARE).c_str());
+			Emit("auto tv__CPP = %s;", GenExpr(v, GEN_DONT_CARE));
 			Emit("const PDict<TableEntryVal>* loop_vals__CPP = tv__CPP->AsTable();");
 
 			Emit("if ( loop_vals__CPP->Length() > 0 )");
@@ -516,12 +512,10 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 				if ( IsNativeType(v_t) )
 					Emit("%s = ind_lv__CPP->Idx(%s)%s;",
-						IDName(var), Fmt(i).c_str(),
-						acc);
+						IDName(var), Fmt(i), acc);
 				else
 					Emit("%s = {NewRef{}, ind_lv__CPP->Idx(%s)%s};",
-						IDName(var), Fmt(i).c_str(),
-						acc);
+						IDName(var), Fmt(i), acc);
 				}
 
 			GenStmt(f->LoopBody());
@@ -531,8 +525,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 		else if ( t == TYPE_VECTOR )
 			{
-			Emit("auto vv__CPP = %s;",
-				GenExpr(v, GEN_DONT_CARE).c_str());
+			Emit("auto vv__CPP = %s;", GenExpr(v, GEN_DONT_CARE));
 
 			Emit("for ( auto i__CPP = 0u; i__CPP < vv__CPP->Size(); ++i__CPP )");
 			StartBlock();
@@ -547,7 +540,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		else if ( t == TYPE_STRING )
 			{
 			Emit("auto sval__CPP = %s;",
-				GenExpr(v, GEN_DONT_CARE).c_str());
+				GenExpr(v, GEN_DONT_CARE));
 
 			Emit("for ( auto i__CPP = 0u; i__CPP < sval__CPP->Len(); ++i )");
 			StartBlock();
@@ -770,7 +763,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 	case EXPR_FIELD:
 		{
 		auto f = e->AsFieldExpr()->Field();
-		auto f_s = Fmt(f).c_str();
+		auto f_s = Fmt(f);
 
 		gen = GenExpr(e->GetOp1(), GEN_DONT_CARE) +
 			"->GetFieldOrDefault(" + f_s + ")";
@@ -781,7 +774,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 	case EXPR_HAS_FIELD:
 		{
 		auto f = e->AsHasFieldExpr()->Field();
-		auto f_s = Fmt(f).c_str();
+		auto f_s = Fmt(f);
 
 		// Need to use accessors for native types.
 		gen = std::string("(") + GenExpr(e->GetOp1(), GEN_DONT_CARE) +
@@ -1289,14 +1282,14 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	// First, create a CPPFunc that we can compile to compute e.
 	auto name = std::string("wrapper_") + InitExprName(e);
-	Emit("class %s : public CPPFunc", name.c_str());
+	Emit("class %s : public CPPFunc", name);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s() : CPPFunc(\"%s\", false)", name.c_str(), name.c_str());
+	Emit("%s() : CPPFunc(\"%s\", false)", name, name);
 
 	StartBlock();
-	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(e->GetType()).c_str());
+	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(e->GetType()));
 	EndBlock();
 
 	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
@@ -1314,14 +1307,14 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	Emit("static %s Call()", FullTypeName(t));
 	StartBlock();
 
-	Emit("return %s;", GenExpr(e, GEN_NATIVE).c_str());
+	Emit("return %s;", GenExpr(e, GEN_NATIVE));
 	EndBlock();
 
 	EndBlock(true);
 
 	auto init_expr_name = InitExprName(e);
 
-	Emit("CallExprPtr %s;", init_expr_name.c_str());
+	Emit("CallExprPtr %s;", init_expr_name);
 
 	inits[init_expr_name] = std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
 		name + ">())), make_intrusive<ListExpr>(), false);";
@@ -1336,7 +1329,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 	{
 	NL();
 
-	Emit("AttributesPtr %s", AttrsName(attrs).c_str());
+	Emit("AttributesPtr %s", AttrsName(attrs));
 
 	StartBlock();
 
@@ -1350,7 +1343,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 		if ( attr->GetExpr() )
 			Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));",
 				AttrName(attr),
-				InitExprName(attr->GetExpr()).c_str());
+				InitExprName(attr->GetExpr()));
 		else
 			Emit("attrs.emplace_back(make_intrusive<Attr>(%s));",
 				AttrName(attr));
@@ -1520,8 +1513,7 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto t_name = GenTypeName(t) + "->AsTypeList()";
 
 		for ( auto i = 0; i < tl.size(); ++i )
-			Emit("%s->Append(%s);",
-				t_name.c_str(), GenTypeName(tl[i]).c_str());
+			Emit("%s->Append(%s);", t_name, GenTypeName(tl[i]));
 
 		if ( tl.size() > 0 )
 			NL();
@@ -1543,14 +1535,14 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 
 			if ( td->attrs )
 				Emit("tl.append(new TypeDecl(\"%s\", %s, %s));",
-					td->id, type_accessor.c_str(),
-					AttrsName(td->attrs).c_str());
+					td->id, type_accessor,
+					AttrsName(td->attrs));
 			else
 				Emit("tl.append(new TypeDecl(\"%s\", %s));",
-					td->id, type_accessor.c_str());
+					td->id, type_accessor);
 			}
 
-		Emit("%s->AddFields(tl); }", t_name.c_str());
+		Emit("%s->AddFields(tl); }", t_name);
 		}
 
 	else if ( t->Tag() == TYPE_ENUM )
@@ -1562,9 +1554,8 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto names = et->Names();
 
 		for ( const auto& name_pair : et->Names() )
-			Emit("%s->AddNameInternal(\"%s\", %s);",
-				e_name.c_str(), name_pair.first.c_str(),
-				Fmt(int(name_pair.second)).c_str());
+			Emit("%s->AddNameInternal(\"%s\", %s);", e_name,
+				name_pair.first, Fmt(int(name_pair.second)));
 		}
 
 	// else nothing to do
