@@ -141,6 +141,17 @@ RecordValPtr record_constructor__CPP(std::vector<ValPtr> vals, RecordTypePtr t)
 	return rv;
 	}
 
+VectorValPtr vector_constructor__CPP(std::vector<ValPtr> vals, VectorTypePtr t)
+	{
+	auto vv = make_intrusive<VectorVal>(std::move(t));
+	auto n = vals.size();
+
+	for ( auto i = 0; i < n; ++i )
+		vv->Assign(i, vals[i]);
+
+	return vv;
+	}
+
 EventHandlerPtr register_event__CPP(const char* event)
 	{
 	EventHandler* h = event_registry->Lookup(std::string(event));

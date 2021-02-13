@@ -1015,7 +1015,14 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		}
 
 	case EXPR_VECTOR_CONSTRUCTOR:
-		return std::string("vector_constructor()");
+		{
+		auto vc = static_cast<const VectorConstructorExpr*>(e);
+		auto t = vc->GetType<TableType>();
+
+		return std::string("vector_constructor__CPP({") +
+			GenExpr(vc->GetOp1(), GEN_VAL_PTR) + "}, " +
+			"cast_intrusive<VectorType>(" + GenTypeName(t) + "))";
+		}
 
 	case EXPR_SCHEDULE:
 		{
@@ -1037,7 +1044,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		{
 		auto lb = static_cast<const LambdaExpr*>(e);
 		const auto& in = lb->Ingredients();
-		return std::string("LAMBDA");
+		return std::string("nullptr /* ### */");
 		}
 
 	case EXPR_FIELD_ASSIGN:
