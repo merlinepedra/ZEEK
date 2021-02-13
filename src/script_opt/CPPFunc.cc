@@ -6,6 +6,8 @@
 
 namespace zeek::detail {
 
+std::unordered_map<std::string, FuncPtr> compiled_funcs;
+
 void CPPFunc::Describe(ODesc* d) const
 	{
 	d->AddSP("compiled function");

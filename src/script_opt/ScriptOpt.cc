@@ -2,6 +2,7 @@
 
 #include "zeek/Options.h"
 #include "zeek/Reporter.h"
+#include "zeek/module_util.h"
 #include "zeek/Desc.h"
 #include "zeek/script_opt/ScriptOpt.h"
 #include "zeek/script_opt/ProfileFunc.h"
@@ -9,6 +10,7 @@
 #include "zeek/script_opt/Reduce.h"
 #include "zeek/script_opt/GenRDs.h"
 #include "zeek/script_opt/CPPCompile.h"
+#include "zeek/script_opt/CPPFunc.h"
 
 
 namespace zeek::detail {
@@ -227,6 +229,24 @@ void analyze_scripts()
 
 	if ( ! analysis_options.activate )
 		return;
+
+	if ( CPP_init_hook )
+		{
+		for ( auto& f : funcs )
+			{
+			auto name = std::string(f.Func()->Name());
+			auto cf = compiled_funcs.find(name);
+
+			if ( cf == compiled_funcs.end() )
+				continue;
+
+			auto func_global = lookup_ID(name.c_str(), GLOBAL_MODULE_NAME, false, false, false);
+			if ( func_global )
+				func_global->SetVal(make_intrusive<FuncVal>(cf->second));
+			}
+
+		return;
+		}
 
 	CPPCompile cpp(funcs);
 	cpp.CompileTo(stdout);
