@@ -305,24 +305,6 @@ private:
 	StmtPtr current_body;
 };
 
-class CPPFunc : public Func {
-public:
-	CPPFunc(const char* _name, bool _is_pure)
-		{
-		name = _name;
-		is_pure = _is_pure;
-		}
-
-	bool IsPure() const override	{ return is_pure; }
-	// ValPtr Invoke(zeek::Args* args, Frame* parent) const override;
-
-	void Describe(ODesc* d) const override;
-
-protected:
-	const char* name;
-	bool is_pure;
-};
-
 using built_in_func = BifReturnVal (*)(Frame* frame, const Args* args);
 
 class BuiltinFunc final : public Func {

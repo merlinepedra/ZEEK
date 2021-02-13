@@ -696,12 +696,6 @@ StmtPtr ScriptFunc::AddInits(
 	return stmt_series;
 	}
 
-void CPPFunc::Describe(ODesc* d) const
-	{
-	d->AddSP("compiled function");
-	d->Add(name);
-	}
-
 BuiltinFunc::BuiltinFunc(built_in_func arg_func, const char* arg_name,
                          bool arg_is_pure)
 : Func(BUILTIN_FUNC)

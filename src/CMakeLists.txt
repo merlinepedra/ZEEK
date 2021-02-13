@@ -326,6 +326,7 @@ set(MAIN_SRCS
     plugin/Plugin.cc
 
     script_opt/CPPCompile.cc
+    script_opt/CPPFunc.cc
     script_opt/DefItem.cc
     script_opt/DefSetsMgr.cc
     script_opt/Expr.cc

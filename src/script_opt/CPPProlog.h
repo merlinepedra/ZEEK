@@ -7,6 +7,7 @@
 #include "zeek/OpaqueVal.h"
 #include "zeek/Expr.h"
 #include "zeek/EventRegistry.h"
+#include "zeek/script_opt/CPPFunc.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
 namespace zeek {
