@@ -1202,6 +1202,8 @@ protected:
 	friend class Val;
 	friend class EnumType;
 
+	friend EnumValPtr make_enum__CPP(TypePtr t, int i);
+
 	template<class T, class... Ts>
 	friend IntrusivePtr<T> make_intrusive(Ts&&... args);
 

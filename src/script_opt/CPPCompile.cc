@@ -276,7 +276,6 @@ void CPPCompile::GenInvokeBody(const TypePtr& t, const char* args)
 		break;
 
 	case TYPE_INT:
-	case TYPE_ENUM:
 		Emit("return val_mgr->Int(Call(%s));", args);
 		break;
 
@@ -286,6 +285,10 @@ void CPPCompile::GenInvokeBody(const TypePtr& t, const char* args)
 
 	case TYPE_PORT:
 		Emit("return val_mgr->Port(Call(%s));", args);
+		break;
+
+	case TYPE_ENUM:
+		Emit("return make_enum__CPP(Call(%s));", args);
 		break;
 
 	default:
@@ -1273,7 +1276,6 @@ std::string CPPCompile::NativeToGT(const std::string& expr, const TypePtr& t,
 		return std::string("val_mgr->Bool(") + expr + ")";
 
 	case TYPE_INT:
-	case TYPE_ENUM:
 		return std::string("val_mgr->Int(") + expr + ")";
 
 	case TYPE_COUNT:
@@ -1281,6 +1283,9 @@ std::string CPPCompile::NativeToGT(const std::string& expr, const TypePtr& t,
 
 	case TYPE_PORT:
 		return std::string("val_mgr->Port(") + expr + ")";
+
+	case TYPE_ENUM:
+		return std::string("make_enum__CPP(") + expr + ")";
 
 	default:
 		return std::string("make_intrusive<") + IntrusiveVal(t) +
@@ -1933,7 +1938,7 @@ const char* CPPCompile::IntrusiveVal(const TypePtr& t)
 	case TYPE_BOOL:		return "BoolVal";
 	case TYPE_COUNT:	return "CountVal";
 	case TYPE_DOUBLE:	return "DoubleVal";
-	case TYPE_ENUM:		return "IntVal";	// use internal repr.
+	case TYPE_ENUM:		return "EnumVal";	// use internal repr.
 	case TYPE_INT:		return "IntVal";
 	case TYPE_INTERVAL:	return "DoubleVal";	// use internal repr.
 	case TYPE_PORT:		return "PortVal";

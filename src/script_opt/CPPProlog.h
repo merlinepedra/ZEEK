@@ -180,3 +180,9 @@ ValPtr schedule__CPP(double dt, EventHandlerPtr event, std::vector<ValPtr> args)
 	timer_mgr->Add(new ScheduleTimer(event, std::move(args), dt));
 	return nullptr;
 	}
+
+EnumValPtr make_enum__CPP(TypePtr t, int i)
+	{
+	auto et = cast_intrusive<EnumType>(t);
+	return make_intrusive<EnumVal>(et, i);
+	}
