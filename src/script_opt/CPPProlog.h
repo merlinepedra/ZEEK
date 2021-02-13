@@ -44,6 +44,13 @@ IDPtr lookup_global__CPP(const char* g)
 	return gl;
 	}
 
+Func* lookup_bif__CPP(const char* bif)
+	{
+	auto b = lookup_ID(bif, GLOBAL_MODULE_NAME, false, false, false);
+	ASSERT(b != nullptr && b->GetType()->Tag() == TYPE_FUNC);
+	return b->GetVal()->AsFunc();
+	}
+
 StringValPtr str_concat__CPP(const String* s1, const String* s2)
 	{
 	std::vector<const String*> strings(2);

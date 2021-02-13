@@ -128,8 +128,9 @@ void CPPCompile::AddBiF(const Func* b)
 	AddGlobal(n, "bif");
 
 	std::string ns(n);
+	Emit("Func* %s;", globals[ns].c_str());
 
-	Emit("BuiltinFunc* %s;", globals[ns].c_str());
+	inits[globals[ns]] = std::string("lookup_bif__CPP(\"") + ns + "\")";
 	}
 
 void CPPCompile::AddGlobal(const char* g, const char* suffix)
