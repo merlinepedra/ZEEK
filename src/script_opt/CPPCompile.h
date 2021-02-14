@@ -129,7 +129,8 @@ private:
 	std::string AttrsName(const AttributesPtr& attrs);
 	const char* AttrName(const AttrPtr& attr);
 
-	std::string GenTypeVar(const TypePtr& t);
+	void GenPreInit(const TypePtr& t);
+
 	void ExpandTypeVar(const TypePtr& t);
 	void DeclareFuncType(const TypePtr& t);
 
@@ -154,8 +155,34 @@ private:
 	const char* NativeAccessor(const TypePtr& t);
 	const char* IntrusiveVal(const TypePtr& t);
 
-	void AddInit(const std::string& lhs, const std::string& rhs);
-	void AddInit(const std::string& init);
+	void AddInit(const IntrusivePtr<Obj>& o,
+			const std::string& lhs, const std::string& rhs)
+		{ AddInit(o.get(), lhs + " = " + rhs + ";"); }
+	void AddInit(const Obj* o,
+			const std::string& lhs, const std::string& rhs)
+		{ AddInit(o, lhs + " = " + rhs + ";"); }
+	void AddInit(const IntrusivePtr<Obj>& o, const std::string& init)
+		{ AddInit(o.get(), init); }
+	void AddInit(const Obj* o, const std::string& init);
+
+	// For objects w/o initializations, but with dependencies.
+	void AddInit(const IntrusivePtr<Obj>& o)	{ AddInit(o.get()); }
+	void AddInit(const Obj* o);
+
+	// Records the fact that the initialization of object o1 depends
+	// on that of object o2.
+	void NoteInitDependency(const IntrusivePtr<Obj>& o1,
+				const IntrusivePtr<Obj>& o2)
+		{ NoteInitDependency(o1.get(), o2.get()); }
+	void NoteInitDependency(const Obj* o1, const IntrusivePtr<Obj>& o2)
+		{ NoteInitDependency(o1, o2.get()); }
+	void NoteInitDependency(const Obj* o1, const Obj* o2);
+	void NoteNonRecordInitDependency(const IntrusivePtr<Obj>& o,
+						const TypePtr& t)
+		{
+		if ( t && t->Tag() != TYPE_RECORD )
+			NoteInitDependency(o, t);
+		}
 
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);
@@ -266,8 +293,16 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
-	// Initializations in the order that they should be generated.
-	std::vector<std::string> inits;
+	// Maps an object requiring initialization to its initializers.
+	std::unordered_map<const Obj*, std::vector<std::string>> obj_inits;
+
+	// Maps an object requiring initializations to its dependencies
+	// on other such objects.
+	std::unordered_map<const Obj*, std::unordered_set<const Obj*>> obj_deps;
+
+	// A list of pre-initializations (those potentially required by
+	// other initializations, and that themselves have no dependencies).
+	std::vector<std::string> pre_inits;
 
 	// Maps types to indices in the global "types__CPP" array.
 	CPPTracker<const Type*, TypePtr> types = "types";

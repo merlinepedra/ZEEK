@@ -56,12 +56,102 @@ void CPPCompile::GenEpilog()
 	Emit("types__CPP = new TypePtr[%s];", Fmt(types.Size()));
 
 	NL();
-	for ( const auto& i : inits )
-		Emit("%s", i);
+	for ( const auto& i : pre_inits )
+		Emit(i);
+
+	NL();
+
+	std::unordered_set<const Obj*> to_do;
+	for ( const auto& oi : obj_inits )
+		to_do.insert(oi.first);
+
+	// Check for consistency.
+	for ( const auto& od : obj_deps )
+		{
+		const auto& o = od.first;
+
+		if ( to_do.count(o) == 0 )
+			{
+			fprintf(stderr, "object not in to_do: %s\n",
+				obj_desc(o).c_str());
+			exit(1);
+			}
+
+		for ( const auto& d : od.second )
+			{
+			if ( to_do.count(d) == 0 )
+				{
+				fprintf(stderr, "dep object for %s not in to_do: %s\n",
+					obj_desc(o).c_str(), obj_desc(d).c_str());
+				exit(1);
+				}
+			}
+		}
+
+	while ( to_do.size() > 0 )
+		{
+		std::unordered_set<const Obj*> done;
+
+		for ( const auto& o : to_do )
+			{
+			const auto& od = obj_deps.find(o);
+
+			bool has_pending_dep = false;
+
+			if ( od != obj_deps.end() )
+				{
+				for ( const auto& d : od->second )
+					if ( to_do.count(d) > 0 )
+						{
+						has_pending_dep = true;
+						break;
+						}
+				}
+
+			if ( has_pending_dep )
+				continue;
+
+			for ( const auto& i : obj_inits.find(o)->second )
+				Emit("%s", i);
+
+			done.insert(o);
+			}
+
+		if ( done.size() == 0 )
+			{
+#if 0
+			printf("Failed to make progress:\n");
+			for ( const auto& o : to_do )
+				{
+				if ( o )
+					{
+					printf("Pending %llx: %s\n", o, obj_desc(o).c_str());
+					for ( const auto& d : obj_deps.find(o)->second )
+						printf("%llx depends on %llx (%d)\n", o, d, to_do.count(d));
+					}
+				}
+			exit(1);
+#endif
+			ASSERT(0);
+			}
+
+		for ( const auto& o : done )
+			{
+			ASSERT(to_do.count(o) > 0);
+			to_do.erase(o);
+			}
+		}
+
+	for ( const auto& oi : obj_inits )
+		if ( oi.second.size() > 0 )
+			{
+			for ( const auto& i : oi.second )
+				Emit("%s", i);
+			NL();
+			}
 
 	// Now that the inits are done, we can finally define function
 	// types ...
-	NL();
 	for ( const auto& t : types.Keys() )
 		if ( t->Tag() == TYPE_FUNC )
 			DeclareFuncType(t);
@@ -92,7 +182,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 			{
 			AddGlobal(gn.c_str(), "gl");
 			Emit("IDPtr %s;", globals[gn]);
-			AddInit(globals[gn], 
+			AddInit(g, globals[gn],
 				std::string("lookup_global__CPP(\"") +
 				gn + "\");");
 			}
@@ -109,7 +199,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		auto ev = globals[std::string(e)];
 
 		Emit("EventHandlerPtr %s;", ev);
-		AddInit(ev, std::string("register_event__CPP(\"") + e + "\")");
+		AddInit(nullptr, ev, std::string("register_event__CPP(\"") + e + "\")");
 		}
 
 	for ( const auto& c : func.Profile()->Constants() )
@@ -128,7 +218,7 @@ void CPPCompile::AddBiF(const Func* b)
 	std::string ns(n);
 	Emit("Func* %s;", globals[ns]);
 
-	AddInit(globals[ns], std::string("lookup_bif__CPP(\"") + ns + "\")");
+	AddInit(b, globals[ns], std::string("lookup_bif__CPP(\"") + ns + "\")");
 	}
 
 void CPPCompile::AddGlobal(const std::string& g, const char* suffix)
@@ -183,7 +273,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
 
-		AddInit(const_name, def);
+		AddInit(c, const_name, def);
 		}
 
 	const_exprs[c] = constants[c_desc];
@@ -926,6 +1016,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		std::string attrs_name = "nullptr";
 		if ( attrs )
 			{
+			NoteInitDependency(e, attrs);
 			RecordAttributes(attrs);
 			attrs_name = AttrsName(attrs);
 			}
@@ -945,6 +1036,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		std::string attrs_name = "nullptr";
 		if ( attrs )
 			{
+			NoteInitDependency(e, attrs);
 			RecordAttributes(attrs);
 			attrs_name = AttrsName(attrs);
 			}
@@ -1212,7 +1304,7 @@ std::string CPPCompile::GenIntVector(const std::vector<int>& vec)
 	{
 	std::string res("{ ");
 
-	for ( auto i = 0; i < vec.size(); ++i )	
+	for ( auto i = 0; i < vec.size(); ++i )
 		{
 		res += Fmt(vec[i]);
 
@@ -1276,6 +1368,8 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	{
 	NL();
 
+	const auto& t = e->GetType();
+
 	// First, create a CPPFunc that we can compile to compute e.
 	auto name = std::string("wrapper_") + InitExprName(e);
 	Emit("class %s : public CPPFunc", name);
@@ -1285,13 +1379,12 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	Emit("%s() : CPPFunc(\"%s\", false)", name, name);
 
 	StartBlock();
-	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(e->GetType()));
+	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(t));
+	NoteInitDependency(e, t);
 	EndBlock();
 
 	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
 	StartBlock();
-
-	const auto& t = e->GetType();
 
 	if ( IsNativeType(t) )
 		GenInvokeBody(t, "");
@@ -1312,8 +1405,9 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	Emit("CallExprPtr %s;", init_expr_name);
 
-	AddInit(init_expr_name, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
-		name + ">())), make_intrusive<ListExpr>(), false);");
+	NoteNonRecordInitDependency(e, t);
+	AddInit(e, init_expr_name, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
+		name + ">())), make_intrusive<ListExpr>(), false)");
 	}
 
 std::string CPPCompile::InitExprName(const ExprPtr& e)
@@ -1335,11 +1429,16 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 	for ( auto i = 0; i < avec.size(); ++i )
 		{
 		const auto& attr = avec[i];
+		const auto& e = attr->GetExpr();
 
-		if ( attr->GetExpr() )
+		if ( e )
+			{
 			Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));",
 				AttrName(attr),
-				InitExprName(attr->GetExpr()));
+				InitExprName(e));
+			NoteInitDependency(attrs, e);
+			AddInit(attrs);
+			}
 		else
 			Emit("attrs.emplace_back(make_intrusive<Attr>(%s));",
 				AttrName(attr));
@@ -1385,8 +1484,10 @@ const char* CPPCompile::AttrName(const AttrPtr& attr)
 	}
 	}
 
-std::string CPPCompile::GenTypeVar(const TypePtr& t)
+void CPPCompile::GenPreInit(const TypePtr& t)
 	{
+	std::string pre_init;
+
 	switch ( t->Tag() ) {
 	case TYPE_ADDR:
 	case TYPE_ANY:
@@ -1402,96 +1503,72 @@ std::string CPPCompile::GenTypeVar(const TypePtr& t)
 	case TYPE_TIME:
 	case TYPE_TIMER:
 	case TYPE_VOID:
-		return std::string("base_type(") + TypeTagName(t->Tag()) + ")";
+		pre_init = std::string("base_type(") + TypeTagName(t->Tag()) + ")";
+		break;
 
 	case TYPE_ENUM:
-		return std::string("get_enum_type__CPP(\"") +
-			t->GetName() + "\")";
+		pre_init = std::string("get_enum_type__CPP(\"") +
+				t->GetName() + "\")";
+		break;
 
 	case TYPE_SUBNET:
-		return std::string("make_intrusive<SubNetType>()");
+		pre_init = std::string("make_intrusive<SubNetType>()");
+		break;
 
 	case TYPE_FILE:
-		return std::string("make_intrusive<FileType>(") +
-			GenTypeName(t->AsFileType()->Yield()) + ")";
+		pre_init = std::string("make_intrusive<FileType>(") +
+				GenTypeName(t->AsFileType()->Yield()) + ")";
+		break;
 
 	case TYPE_OPAQUE:
-		return std::string("make_intrusive<OpaqueType>(\"") +
-			t->AsOpaqueType()->Name() + "\")";
-
-	case TYPE_TYPE:
-		return std::string("make_intrusive<TypeType>(") +
-			GenTypeName(t->AsTypeType()->GetType()) + ")";
-
-	case TYPE_VECTOR:
-		return std::string("make_intrusive<VectorType>(") +
-			GenTypeName(t->AsVectorType()->Yield()) + ")";
-
-	case TYPE_LIST:
-		{
-		auto tl = t->AsTypeList()->GetTypes();
-		for ( auto i = 0; i < tl.size(); ++i )
-			(void) TypeIndex(tl[i]);
-
-		return std::string("make_intrusive<TypeList>()");
-		}
-
-	case TYPE_TABLE:
-		{
-		auto tbl = t->AsTableType();
-
-		if ( tbl->IsSet() )
-			return std::string("make_intrusive<SetType>(cast_intrusive<TypeList>(") +
-				GenTypeName(tbl->GetIndices()) +
-				" ), nullptr)";
-		else
-			return std::string("make_intrusive<TableType>(cast_intrusive<TypeList>(") +
-				GenTypeName(tbl->GetIndices()) + "), " +
-				GenTypeName(tbl->Yield()) + ")";
-		}
+		pre_init = std::string("make_intrusive<OpaqueType>(\"") +
+				t->AsOpaqueType()->Name() + "\")";
+		break;
 
 	case TYPE_RECORD:
-		{
-		auto r = t->AsRecordType()->Types();
+		pre_init = std::string("make_intrusive<RecordType>(new type_decl_list())");
+		break;
 
-		for ( auto i = 0; i < r->length(); ++i )
-			(void) TypeIndex((*r)[i]->type);
+	case TYPE_LIST:
+		pre_init = std::string("make_intrusive<TypeList>()");
+		break;
 
-		return std::string("make_intrusive<RecordType>(new type_decl_list())");
-		}
-
+	case TYPE_TYPE:
+	case TYPE_VECTOR:
+	case TYPE_TABLE:
 	case TYPE_FUNC:
-		// We do the work for these later, in DeclareFuncType(),
-		// because function types require the record types associated
-		// with their arguments to have been fully instantiated
-		// before constructing the FuncType.
-		return std::string("nullptr");
+		// Nothing to do for these, pre-initialization-wise.
+		return;
 
 	default:
 		reporter->InternalError("bad type in CPPCompile::GenType");
 	}
+
+	pre_inits.emplace_back(GenTypeName(t) + " = " + pre_init + ";");
 	}
 
 void CPPCompile::ExpandTypeVar(const TypePtr& t)
 	{
-	if ( t->Tag() == TYPE_LIST )
+	auto tn = GenTypeName(t);
+
+	switch ( t->Tag() ) {
+	case TYPE_LIST:
 		{
 		auto tl = t->AsTypeList()->GetTypes();
-		auto t_name = GenTypeName(t) + "->AsTypeList()";
+		auto t_name = tn + "->AsTypeList()";
 
 		for ( auto i = 0; i < tl.size(); ++i )
-			AddInit(t_name + "->Append(" +
+			AddInit(t, t_name + "->Append(" +
 				GenTypeName(tl[i]) + ");");
 		}
+		break;
 
-	else if ( t->Tag() == TYPE_RECORD )
+	case TYPE_RECORD:
 		{
-		NL();
-
 		auto r = t->AsRecordType()->Types();
-		auto t_name = GenTypeName(t) + "->AsRecordType()";
+		auto t_name = tn + "->AsRecordType()";
 
-		AddInit("{ type_decl_list tl;");
+		AddInit(t, "{ type_decl_list tl;");
 
 		for ( auto i = 0; i < r->length(); ++i )
 			{
@@ -1499,37 +1576,71 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 			auto type_accessor = GenTypeName(td->type);
 
 			if ( td->attrs )
-				AddInit(std::string("tl.append(new TypeDecl(\"") +
+				AddInit(t, std::string("tl.append(new TypeDecl(\"") +
 					td->id + "\", " + type_accessor +
 					", " + AttrsName(td->attrs) +"));");
 			else
-				AddInit(std::string("tl.append(new TypeDecl(\"") +
+				AddInit(t, std::string("tl.append(new TypeDecl(\"") +
 					td->id + "\", " + type_accessor +"));");
 			}
 
-		AddInit(t_name + "->AddFieldsDirectly(tl); }");
+		AddInit(t, t_name + "->AddFieldsDirectly(tl); }");
 		}
+		break;
 
-	else if ( t->Tag() == TYPE_ENUM )
+	case TYPE_ENUM:
 		{
-		NL();
-
-		auto e_name = GenTypeName(t) + "->AsEnumType()";
+		auto e_name = tn + "->AsEnumType()";
 		auto et = t->AsEnumType();
 		auto names = et->Names();
 
-		AddInit("{ auto et = " + e_name + ";");
-		AddInit("if ( et->Names().size() == 0 ) {");
+		AddInit(t, "{ auto et = " + e_name + ";");
+		AddInit(t, "if ( et->Names().size() == 0 ) {");
 
 		for ( const auto& name_pair : et->Names() )
-			AddInit(std::string("\tet->AddNameInternal(\"") +
-				name_pair.first + "\", " + 
+			AddInit(t, std::string("\tet->AddNameInternal(\"") +
+				name_pair.first + "\", " +
 				Fmt(int(name_pair.second)) + ");");
 
-		AddInit("}}");
+		AddInit(t, "}}");
 		}
+		break;
 
-	// else nothing to do
+	case TYPE_TYPE:
+		AddInit(t, tn, std::string("make_intrusive<TypeType>(") +
+				GenTypeName(t->AsTypeType()->GetType()) + ")");
+		break;
+
+	case TYPE_VECTOR:
+		AddInit(t, tn, std::string("make_intrusive<VectorType>(") +
+				GenTypeName(t->AsVectorType()->Yield()) + ")");
+		break;
+
+	case TYPE_TABLE:
+		{
+		auto tbl = t->AsTableType();
+
+		const auto& indices = tbl->GetIndices();
+		const auto& yield = tbl->Yield();
+
+		if ( tbl->IsSet() )
+			AddInit(t, tn,
+				std::string("make_intrusive<SetType>(cast_intrusive<TypeList>(") +
+				GenTypeName(indices) +
+				" ), nullptr)");
+		else
+			AddInit(t, tn,
+				std::string("make_intrusive<TableType>(cast_intrusive<TypeList>(") +
+				GenTypeName(indices) + "), " +
+				GenTypeName(yield) + ")");
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	AddInit(t);
 	}
 
 void CPPCompile::DeclareFuncType(const TypePtr& t)
@@ -1790,28 +1901,46 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 			break;
 
 		case TYPE_TYPE:
-			(void) TypeIndex(t->AsTypeType()->GetType());
+			{
+			const auto& tt = t->AsTypeType()->GetType();
+			NoteNonRecordInitDependency(t, tt);
+			(void) TypeIndex(tt);
+			}
 			break;
 
 		case TYPE_VECTOR:
-			(void) TypeIndex(t->AsVectorType()->Yield());
+			{
+			const auto& yield = t->AsVectorType()->Yield();
+			NoteNonRecordInitDependency(t, yield);
+			(void) TypeIndex(yield);
+			}
 			break;
 
 		case TYPE_LIST:
 			{
 			auto tl = t->AsTypeList()->GetTypes();
 			for ( auto i = 0; i < tl.size(); ++i )
+				{
+				NoteNonRecordInitDependency(t, tl[i]);
 				(void) TypeIndex(tl[i]);
+				}
 			}
 			break;
 
 		case TYPE_TABLE:
 			{
 			auto tbl = t->AsTableType();
-			(void) TypeIndex(tbl->GetIndices());
+			const auto& indices = tbl->GetIndices();
+			const auto& yield = tbl->Yield();
+
+			NoteNonRecordInitDependency(t, indices);
+			if ( yield )
+				NoteNonRecordInitDependency(t, yield);
+
+			(void) TypeIndex(indices);
 
 			if ( ! tbl->IsSet() )
-				(void) TypeIndex(tbl->Yield());
+				(void) TypeIndex(yield);
 			}
 			break;
 
@@ -1822,8 +1951,15 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 			for ( auto i = 0; i < r->length(); ++i )
 				{
 				const auto& r_i = (*r)[i];
+
+				NoteNonRecordInitDependency(t, r_i->type);
 				(void) TypeIndex(r_i->type);
-				RecordAttributes(r_i->attrs);
+
+				if ( r_i->attrs )
+					{
+					NoteInitDependency(t, r_i->attrs);
+					RecordAttributes(r_i->attrs);
+					}
 				}
 			}
 			break;
@@ -1831,10 +1967,15 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		case TYPE_FUNC:
 			{
 			auto f = t->AsFuncType();
+
+			NoteInitDependency(t, f->Params());
 			(void) TypeIndex(f->Params());
 
 			if ( f->Yield() )
+				{
+				NoteNonRecordInitDependency(t, f->Yield());
 				(void) TypeIndex(f->Yield());
+				}
 			}
 			break;
 
@@ -1850,7 +1991,7 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		// The following (indirectly) recurses, but the check at
 		// the top of this method keeps the code from reaching
 		// this point.
-		AddInit(GenTypeName(t), GenTypeVar(t));
+		GenPreInit(t);
 		return types.KeyIndex(tp);
 		}
 	else
@@ -1866,11 +2007,17 @@ void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
 
 	attributes.AddKey(attrs);
 
+	AddInit(attrs);
+
 	for ( const auto& a : attrs->GetAttrs() )
 		{
 		const auto& e = a->GetExpr();
 		if ( e )
+			{
 			init_exprs.AddKey(e);
+			AddInit(e);
+			NoteInitDependency(attrs, e);
+			}
 		}
 	}
 
@@ -1964,14 +2111,23 @@ const char* CPPCompile::IntrusiveVal(const TypePtr& t)
 	}
 	}
 
-void CPPCompile::AddInit(const std::string& lhs, const std::string& rhs)
+void CPPCompile::AddInit(const Obj* o, const std::string& init)
 	{
-	AddInit(lhs + " = " + rhs + ";");
+	obj_inits[o].emplace_back(init);
 	}
 
-void CPPCompile::AddInit(const std::string& init)
+void CPPCompile::AddInit(const Obj* o)
 	{
-	inits.emplace_back(init);
+	if ( obj_inits.count(o) == 0 )
+		{
+		std::vector<std::string> empty;
+		obj_inits[o] = empty;
+		}
+	}
+
+void CPPCompile::NoteInitDependency(const Obj* o1, const Obj* o2)
+	{
+	obj_deps[o1].emplace(o2);
 	}
 
 void CPPCompile::StartBlock()
