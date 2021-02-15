@@ -348,6 +348,8 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 
 	StartBlock();
 
+	Emit("fprintf(stderr, \"executing %s\\n\");", func.Func()->Name());
+
 	DeclareLocals(func);
 	GenStmt(func.Body());
 
