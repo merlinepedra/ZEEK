@@ -224,28 +224,31 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 
 		constants[c_desc] = const_name;
 
-		std::string def;
-
 		switch ( c->GetType()->Tag() ) {
 		case TYPE_STRING:
+			{
 			Emit("StringValPtr %s;", const_name);
-			def = std::string("make_intrusive<StringVal>(") +
+			auto def = std::string("make_intrusive<StringVal>(") +
 					c_desc + ")";
+			AddInit(c, const_name, def);
+			}
 			break;
 
 		case TYPE_PATTERN:
 			Emit("// ### Need to deal with case sensitivity, compiling");
 			Emit("PatternValPtr %s;", const_name);
 
-			def = std::string("make_intrusive<PatternVal>(new RE_Matcher(\"") +
-				v->AsPatternVal()->Get()->OrigText() + "\"));";
+			AddInit(c,
+				std::string("{ auto re = new RE_Matcher(\"") +
+				v->AsPatternVal()->Get()->OrigText() + "\");");
+			AddInit(c, "re->Compile();");
+			AddInit(c, const_name, "make_intrusive<PatternVal>(re)");
+			AddInit(c, "}");
 			break;
 
 		default:
 			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
-
-		AddInit(c, const_name, def);
 		}
 
 	const_exprs[c] = constants[c_desc];
