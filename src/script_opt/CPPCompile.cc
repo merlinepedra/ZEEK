@@ -348,7 +348,7 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 
 	StartBlock();
 
-	Emit("fprintf(stderr, \"executing %s\\n\");", func.Func()->Name());
+	// Emit("fprintf(stderr, \"executing %s\\n\");", func.Func()->Name());
 
 	DeclareLocals(func);
 	GenStmt(func.Body());
@@ -1501,7 +1501,17 @@ void CPPCompile::GenPreInit(const TypePtr& t)
 		break;
 
 	case TYPE_RECORD:
-		pre_init = std::string("make_intrusive<RecordType>(new type_decl_list())");
+		{
+		std::string name;
+
+		if ( t->GetName() != "" )
+			name = std::string("\"") + t->GetName() +
+					std::string("\"");
+		else
+			name = "nullptr";
+
+		pre_init = std::string("get_record_type__CPP(") + name + ")";
+		}
 		break;
 
 	case TYPE_LIST:
@@ -1543,7 +1553,10 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto r = t->AsRecordType()->Types();
 		auto t_name = tn + "->AsRecordType()";
 
-		AddInit(t, "{ type_decl_list tl;");
+		AddInit(t, std::string("if ( ") + t_name + "->NumFields() == 0 )");
+
+		AddInit(t, "{");
+		AddInit(t, "type_decl_list tl;");
 
 		for ( auto i = 0; i < r->length(); ++i )
 			{
@@ -1559,7 +1572,8 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 					td->id + "\", " + type_accessor +"));");
 			}
 
-		AddInit(t, t_name + "->AddFieldsDirectly(tl); }");
+		AddInit(t, t_name + "->AddFieldsDirectly(tl);");
+		AddInit(t, "}");
 		}
 		break;
 

@@ -183,6 +183,17 @@ ValPtr schedule__CPP(double dt, EventHandlerPtr event, std::vector<ValPtr> args)
 	return nullptr;
 	}
 
+RecordTypePtr get_record_type__CPP(const char* record_type_name)
+	{
+	IDPtr existing_type;
+
+	if ( record_type_name &&
+	     (existing_type = global_scope()->Find(record_type_name)) )
+		return cast_intrusive<RecordType>(existing_type->GetType());
+
+	return make_intrusive<RecordType>(new type_decl_list());
+	}
+
 EnumTypePtr get_enum_type__CPP(const std::string& enum_type_name)
 	{
 	auto existing_type = global_scope()->Find(enum_type_name);
