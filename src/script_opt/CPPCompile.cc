@@ -85,16 +85,6 @@ void CPPCompile::GenEpilog()
 					obj_desc(o).c_str(), obj_desc(d).c_str());
 				exit(1);
 				}
-
-#if 0
-{
-auto o_f = obj_inits.find(o);
-auto o_d = o_f->second.size() == 0 ? "<NA>" : o_f->second.begin()->c_str();
-auto d_f = obj_inits.find(d);
-auto d_d = d_f->second.size() == 0 ? "<NA>" : d_f->second.begin()->c_str();
-printf("%llx (%s) depends on %llx (%s) (%s <- %s)\n", o, o_d, d, d_d, obj_desc(o).c_str(), obj_desc(d).c_str());
-}
-#endif
 			}
 		}
 
@@ -121,32 +111,13 @@ printf("%llx (%s) depends on %llx (%s) (%s <- %s)\n", o, o_d, d, d_d, obj_desc(o
 			if ( has_pending_dep )
 				continue;
 
-#if 0
-printf("generating inits for %llx\n", o);
-#endif
 			for ( const auto& i : obj_inits.find(o)->second )
 				Emit("%s", i);
 
 			done.insert(o);
 			}
 
-		if ( done.size() == 0 )
-			{
-#if 0
-			printf("Failed to make progress:\n");
-			for ( const auto& o : to_do )
-				{
-				if ( o )
-					{
-					printf("Pending %llx: %s\n", o, obj_desc(o).c_str());
-					for ( const auto& d : obj_deps.find(o)->second )
-						printf("%llx depends on %llx (%d)\n", o, d, to_do.count(d));
-					}
-				}
-			exit(1);
-#endif
-			ASSERT(0);
-			}
+		ASSERT(done.size() > 0);
 
 		for ( const auto& o : done )
 			{
@@ -156,22 +127,6 @@ printf("generating inits for %llx\n", o);
 
 		NL();
 		}
-
-#if 0
-	for ( const auto& oi : obj_inits )
-		if ( oi.second.size() > 0 )
-			{
-			for ( const auto& i : oi.second )
-				Emit("%s", i);
-			NL();
-			}
-
-	// Now that the inits are done, we can finally define function
-	// types ...
-	for ( const auto& t : types.Keys() )
-		if ( t->Tag() == TYPE_FUNC )
-			DeclareFuncType(t);
-#endif
 
 	// ... and then instantiate the functions themselves.
 	NL();
@@ -1423,9 +1378,6 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	Emit("CallExprPtr %s;", init_expr_name);
 
-#if 0
-printf("init expr dependency: %s (%llx <- %llx)\n", init_expr_name.c_str(), e.get(), t.get());
-#endif
 	NoteInitDependency(e, t);
 	AddInit(e, init_expr_name, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
 		name + ">())), make_intrusive<ListExpr>(), false)");
