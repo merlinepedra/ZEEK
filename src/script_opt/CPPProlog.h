@@ -54,8 +54,8 @@ Func* lookup_bif__CPP(const char* bif)
 StringValPtr str_concat__CPP(const String* s1, const String* s2)
 	{
 	std::vector<const String*> strings(2);
-	strings.push_back(s1);
-	strings.push_back(s2);
+	strings[0] = s1;
+	strings[1] = s2;
 
 	return make_intrusive<StringVal>(concatenate(strings));
 	}
