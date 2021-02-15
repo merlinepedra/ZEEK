@@ -85,6 +85,16 @@ void CPPCompile::GenEpilog()
 					obj_desc(o).c_str(), obj_desc(d).c_str());
 				exit(1);
 				}
+
+#if 0
+{
+auto o_f = obj_inits.find(o);
+auto o_d = o_f->second.size() == 0 ? "<NA>" : o_f->second.begin()->c_str();
+auto d_f = obj_inits.find(d);
+auto d_d = d_f->second.size() == 0 ? "<NA>" : d_f->second.begin()->c_str();
+printf("%llx (%s) depends on %llx (%s) (%s <- %s)\n", o, o_d, d, d_d, obj_desc(o).c_str(), obj_desc(d).c_str());
+}
+#endif
 			}
 		}
 
@@ -111,6 +121,9 @@ void CPPCompile::GenEpilog()
 			if ( has_pending_dep )
 				continue;
 
+#if 0
+printf("generating inits for %llx\n", o);
+#endif
 			for ( const auto& i : obj_inits.find(o)->second )
 				Emit("%s", i);
 
@@ -140,8 +153,11 @@ void CPPCompile::GenEpilog()
 			ASSERT(to_do.count(o) > 0);
 			to_do.erase(o);
 			}
+
+		NL();
 		}
 
+#if 0
 	for ( const auto& oi : obj_inits )
 		if ( oi.second.size() > 0 )
 			{
@@ -155,6 +171,7 @@ void CPPCompile::GenEpilog()
 	for ( const auto& t : types.Keys() )
 		if ( t->Tag() == TYPE_FUNC )
 			DeclareFuncType(t);
+#endif
 
 	// ... and then instantiate the functions themselves.
 	NL();
@@ -1380,6 +1397,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	StartBlock();
 	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(t));
+
 	NoteInitDependency(e, t);
 	EndBlock();
 
@@ -1405,7 +1423,10 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	Emit("CallExprPtr %s;", init_expr_name);
 
-	NoteNonRecordInitDependency(e, t);
+#if 0
+printf("init expr dependency: %s (%llx <- %llx)\n", init_expr_name.c_str(), e.get(), t.get());
+#endif
+	NoteInitDependency(e, t);
 	AddInit(e, init_expr_name, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
 		name + ">())), make_intrusive<ListExpr>(), false)");
 	}
@@ -1633,6 +1654,39 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 				std::string("make_intrusive<TableType>(cast_intrusive<TypeList>(") +
 				GenTypeName(indices) + "), " +
 				GenTypeName(yield) + ")");
+		}
+		break;
+
+	case TYPE_FUNC:
+		{
+		auto f = t->AsFuncType();
+
+		auto args_type_accessor = GenTypeName(f->Params());
+		auto params = f->Params();
+		auto yt = f->Yield();
+
+		std::string yield_type_accessor;
+
+		if ( yt )
+			yield_type_accessor += GenTypeName(yt);
+		else
+			yield_type_accessor += "nullptr";
+
+		auto fl = f->Flavor();
+
+		std::string fl_name;
+		if ( fl == FUNC_FLAVOR_FUNCTION )
+			fl_name = "FUNC_FLAVOR_FUNCTION";
+		else if ( fl == FUNC_FLAVOR_EVENT )
+			fl_name = "FUNC_FLAVOR_EVENT";
+		else if ( fl == FUNC_FLAVOR_HOOK )
+			fl_name = "FUNC_FLAVOR_HOOK";
+
+		auto type_init = std::string("make_intrusive<FuncType>(cast_intrusive<RecordType>(") +
+			args_type_accessor + "), " +
+			yield_type_accessor + ", " + fl_name + ")";
+
+		AddInit(t, tn, type_init);
 		}
 		break;
 

@@ -16,8 +16,9 @@ public:
 		{
 		name = _name;
 		is_pure = _is_pure;
-		ASSERT(compiled_funcs.find(name) == compiled_funcs.end());
-		compiled_funcs[name] = {NewRef{}, this};
+
+		if ( compiled_funcs.count(name) == 0 )
+			compiled_funcs[name] = {NewRef{}, this};
 		}
 
 	bool IsPure() const override	{ return is_pure; }
