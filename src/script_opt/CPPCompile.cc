@@ -156,7 +156,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 			Emit("IDPtr %s;", globals[gn]);
 			AddInit(g, globals[gn],
 				std::string("lookup_global__CPP(\"") +
-				gn + "\");");
+				gn + "\")");
 			}
 
 		global_vars.emplace(g);
