@@ -343,8 +343,7 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	for ( auto i = 0; i < p->NumFields(); ++i )
 		params.emplace(std::string(p->FieldName(i)));
 
-	Emit("%s %s::Call(%s)", FullTypeName(yt), fname,
-		ParamDecl(ft));
+	Emit("%s %s::Call(%s)", FullTypeName(yt), fname, ParamDecl(ft));
 
 	StartBlock();
 
@@ -396,11 +395,10 @@ std::string CPPCompile::BindArgs(const FuncTypePtr& ft)
 		else
 			res += GenericValPtrToGT(arg_i, ft, GEN_VAL_PTR);
 
-		if ( i < n - 1 )
-			res += ", ";
+		res += ", ";
 		}
 
-	return res;
+	return res + "parent";
 	}
 
 void CPPCompile::GenStmt(const Stmt* s)
@@ -748,7 +746,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 			if ( compiled_funcs.count(func_name) > 0 )
 				{
-				gen += "_func->Call(" + GenArgs(args_l) + ")";
+				gen += "_func->Call(" + GenArgs(args_l) +
+					", f__CPP)";
 				return NativeToGT(gen, t, gt);
 				}
 			}
@@ -759,7 +758,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 		auto args_list = std::string(", {") +
 					GenExpr(args_l, GEN_VAL_PTR) + "}";
-		auto invoker = std::string("invoke__CPP(") + gen + args_list + ")";
+		auto invoker = std::string("invoke__CPP(") +
+					gen + args_list + ", f__CPP)";
 
 		if ( IsNativeType(t) && gt != GEN_VAL_PTR )
 			return invoker + NativeAccessor(t);
@@ -1362,13 +1362,13 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	StartBlock();
 
 	if ( IsNativeType(t) )
-		GenInvokeBody(t, "");
+		GenInvokeBody(t, "parent");
 	else
-		Emit("return Call();");
+		Emit("return Call(parent);");
 
 	EndBlock();
 
-	Emit("static %s Call()", FullTypeName(t));
+	Emit("static %s Call(Frame* f__CPP)", FullTypeName(t));
 	StartBlock();
 
 	Emit("return %s;", GenExpr(e, GEN_NATIVE));
@@ -1734,11 +1734,10 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft)
 		else
 			decl = decl + "const " + tn + "& " + fn;
 
-		if ( i < n - 1 )
-			decl += ", ";
+		decl += ", ";
 		}
 
-	return decl;
+	return decl + "Frame* f__CPP";
 	}
 
 bool CPPCompile::IsNativeType(const TypePtr& t) const

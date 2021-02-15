@@ -78,9 +78,9 @@ ValPtr index_table__CPP(TableValPtr t, std::vector<ValPtr> indices)
 	}
 
 // Call out to the given script or BiF function.
-inline ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args)
+inline ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args, Frame* frame)
 	{
-	return f->Invoke(&args, nullptr);
+	return f->Invoke(&args, frame);
 	}
 
 // Convert a bare Val* to its corresponding IntrusivePtr.
