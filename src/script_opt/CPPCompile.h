@@ -132,7 +132,6 @@ private:
 	void GenPreInit(const TypePtr& t);
 
 	void ExpandTypeVar(const TypePtr& t);
-	void DeclareFuncType(const TypePtr& t);
 
 	std::string GenTypeName(const TypePtr& t);
 

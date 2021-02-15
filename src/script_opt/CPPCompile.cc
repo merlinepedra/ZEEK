@@ -1649,38 +1649,6 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 	AddInit(t);
 	}
 
-void CPPCompile::DeclareFuncType(const TypePtr& t)
-	{
-	auto f = t->AsFuncType();
-
-	auto args_type_accessor = GenTypeName(f->Params());
-	auto params = f->Params();
-	auto yt = f->Yield();
-
-	std::string yield_type_accessor;
-
-	if ( yt )
-		yield_type_accessor += GenTypeName(yt);
-	else
-		yield_type_accessor += "nullptr";
-
-	auto fl = f->Flavor();
-
-	std::string fl_name;
-	if ( fl == FUNC_FLAVOR_FUNCTION )
-		fl_name = "FUNC_FLAVOR_FUNCTION";
-	else if ( fl == FUNC_FLAVOR_EVENT )
-		fl_name = "FUNC_FLAVOR_EVENT";
-	else if ( fl == FUNC_FLAVOR_HOOK )
-		fl_name = "FUNC_FLAVOR_HOOK";
-
-	auto type_init = std::string("make_intrusive<FuncType>(cast_intrusive<RecordType>(") +
-		args_type_accessor + "), " +
-		yield_type_accessor + ", " + fl_name + ")";
-
-	Emit("%s = %s;", GenTypeName(t), type_init);
-	}
-
 std::string CPPCompile::GenTypeName(const TypePtr& t)
 	{
 	return std::string("types__CPP[") + Fmt(TypeIndex(t)) + "]";
