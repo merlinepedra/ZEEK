@@ -2077,9 +2077,9 @@ const char* CPPCompile::IntrusiveVal(const TypePtr& t)
 	case TYPE_BOOL:		return "BoolVal";
 	case TYPE_COUNT:	return "CountVal";
 	case TYPE_DOUBLE:	return "DoubleVal";
-	case TYPE_ENUM:		return "EnumVal";	// use internal repr.
+	case TYPE_ENUM:		return "EnumVal";
 	case TYPE_INT:		return "IntVal";
-	case TYPE_INTERVAL:	return "DoubleVal";	// use internal repr.
+	case TYPE_INTERVAL:	return "IntervalVal";
 	case TYPE_PORT:		return "PortVal";
 	case TYPE_TIME:		return "TimeVal";
 
