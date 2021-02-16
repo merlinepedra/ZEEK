@@ -511,6 +511,8 @@ void RE_Matcher::MakeCaseInsensitive()
 	{
 	re_anywhere->MakeCaseInsensitive();
 	re_exact->MakeCaseInsensitive();
+
+	is_case_insensitive = true;
 	}
 
 bool RE_Matcher::Compile(bool lazy)

@@ -197,6 +197,7 @@ public:
 
 	// Makes the matcher as specified to date case-insensitive.
 	void MakeCaseInsensitive();
+	bool IsCaseInsensitive() const	{ return is_case_insensitive; }
 
 	bool Compile(bool lazy = false);
 
@@ -243,6 +244,8 @@ protected:
 
 	detail::Specific_RE_Matcher* re_anywhere;
 	detail::Specific_RE_Matcher* re_exact;
+
+	bool is_case_insensitive = false;
 };
 
 } // namespace zeek
