@@ -6,6 +6,7 @@
 #include "zeek/Val.h"
 #include "zeek/OpaqueVal.h"
 #include "zeek/Expr.h"
+#include "zeek/Event.h"
 #include "zeek/EventRegistry.h"
 #include "zeek/script_opt/CPPFunc.h"
 #include "zeek/script_opt/ScriptOpt.h"
