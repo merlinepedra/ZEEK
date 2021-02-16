@@ -141,8 +141,25 @@ void CPPCompile::GenEpilog()
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
 	{
-	return func.Profile()->NumWhenStmts() == 0 &&
-		func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION;
+	if ( func.Func()->Flavor() != FUNC_FLAVOR_FUNCTION )
+		return false;
+
+	const auto& pf = func.Profile();
+
+	if ( pf->NumWhenStmts() > 0 )
+		return false;
+
+	if ( pf->TypeSwitches().size() > 0 )
+		return false;
+
+	for ( const auto& sw : pf->ExprSwitches() )
+		{
+		auto it = sw->StmtExpr()->GetType()->InternalType();
+		if ( it != TYPE_INTERNAL_INT && it != TYPE_INTERNAL_UNSIGNED )
+			return false;
+		}
+
+	return true;
 	}
 
 void CPPCompile::DeclareGlobals(const FuncInfo& func)
@@ -674,9 +691,50 @@ void CPPCompile::GenStmt(const Stmt* s)
 		}
 		break;
 
-	case STMT_WHEN:
 	case STMT_SWITCH:
+		{
+		auto sw = static_cast<const SwitchStmt*>(s);
+		auto e = sw->StmtExpr();
+		auto cases = sw->Cases();
+
+		Emit("switch ( %s ) {", GenExpr(e, GEN_NATIVE));
+
+		bool is_int = e->GetType()->InternalType() == TYPE_INTERNAL_INT;
+
+		for ( const auto& c : *cases )
+			{
+			if ( c->ExprCases() )
+				{
+				const auto& c_e_s =
+					c->ExprCases()->AsListExpr()->Exprs();
+
+				for ( const auto& c_e : c_e_s )
+					{
+					auto c_v = c_e->Eval(nullptr);
+					ASSERT(c_v);
+					auto c_v_rep = Fmt(is_int ?
+								c_v->AsInt() :
+								c_v->AsCount());
+					Emit("case %s:", c_v_rep);
+					}
+				}
+
+			else
+				Emit("default:");
+
+			StartBlock();
+			GenStmt(c->Body());
+			EndBlock();
+			}
+
+		Emit("}");
+		}
+		break;
+
 	case STMT_FALLTHROUGH:
+		break;
+
+	case STMT_WHEN:
 		ASSERT(0);
 		break;
 

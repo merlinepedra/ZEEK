@@ -97,6 +97,8 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 		// incomplete list of locals that need to be tracked.
 
 		auto sw = s->AsSwitchStmt();
+		bool is_type_switch = false;
+
 		for ( auto& c : *sw->Cases() )
 			{
 			auto idl = c->TypeCases();
@@ -104,8 +106,15 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 				{
 				for ( auto id : *idl )
 					locals.insert(id);
+
+				is_type_switch = true;
 				}
 			}
+
+		if ( is_type_switch )
+			type_switches.insert(sw);
+		else
+			expr_switches.insert(sw);
 		}
 		break;
 

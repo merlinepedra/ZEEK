@@ -37,6 +37,10 @@ public:
 		{ return when_calls; }
 	const std::unordered_set<const char*>& Events() const
 		{ return events; }
+	const std::unordered_set<const SwitchStmt*>& ExprSwitches() const
+		{ return expr_switches; }
+	const std::unordered_set<const SwitchStmt*>& TypeSwitches() const
+		{ return type_switches; }
 	bool DoesIndirectCalls()		{ return does_indirect_calls; }
 
 	std::size_t HashVal()	{ return hash_val; }
@@ -81,6 +85,9 @@ protected:
 
 	// Names of generated events.
 	std::unordered_set<const char*> events;
+
+	std::unordered_set<const SwitchStmt*> expr_switches;
+	std::unordered_set<const SwitchStmt*> type_switches;
 
 	// True if the function makes a call through an expression rather
 	// than simply a function's (global) name.
