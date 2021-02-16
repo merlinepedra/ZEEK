@@ -1,6 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include "zeek/zeek-config.h"
+#include "zeek/Val.h"
 #include "zeek/File.h"
 
 #include <sys/types.h>

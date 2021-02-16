@@ -16,9 +16,15 @@
 #include "zeek/IntrusivePtr.h"
 #include "zeek/util.h"
 
+ZEEK_FORWARD_DECLARE_NAMESPACED(Val, zeek);
 ZEEK_FORWARD_DECLARE_NAMESPACED(PrintStmt, zeek::detail);
 ZEEK_FORWARD_DECLARE_NAMESPACED(Attributes, zeek::detail);
 ZEEK_FORWARD_DECLARE_NAMESPACED(RecordVal, zeek);
+
+namespace zeek { namespace detail {
+	using ValPtr = IntrusivePtr<Val>;
+	void do_print_stmt(const std::vector<ValPtr>& vals);
+} }
 
 namespace zeek {
 class Type;
@@ -79,7 +85,7 @@ public:
 
 protected:
 
-	friend class detail::PrintStmt;
+	friend void detail::do_print_stmt(const std::vector<detail::ValPtr>& vals);
 
 	File()	{ Init(); }
 	void Init();

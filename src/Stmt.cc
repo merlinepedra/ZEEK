@@ -267,8 +267,6 @@ TraversalCode ExprListStmt::Traverse(TraversalCallback* cb) const
 	HANDLE_TC_STMT_POST(tc);
 	}
 
-static File* print_stdout = nullptr;
-
 static EnumValPtr lookup_enum_val(const char* module_name, const char* name)
 	{
 	const auto& id = lookup_ID(name, module_name);
@@ -306,7 +304,14 @@ ValPtr PrintStmt::DoExec(std::vector<ValPtr> vals,
                          StmtFlowType& /* flow */) const
 	{
 	RegisterAccess();
+	do_print_stmt(vals);
+	return nullptr;
+	}
 
+static File* print_stdout = nullptr;
+
+void do_print_stmt(const std::vector<ValPtr>& vals)
+	{
 	if ( ! print_stdout )
 		print_stdout = new File(stdout);
 
@@ -317,7 +322,7 @@ ValPtr PrintStmt::DoExec(std::vector<ValPtr> vals,
 		{
 		f = (vals)[0]->AsFile();
 		if ( ! f->IsOpen() )
-			return nullptr;
+			return;
 
 		++offset;
 		}
@@ -331,7 +336,7 @@ ValPtr PrintStmt::DoExec(std::vector<ValPtr> vals,
 	case BifEnum::Log::REDIRECT_ALL:
 		{
 		print_log(vals);
-		return nullptr;
+		return;
 		}
 	case BifEnum::Log::REDIRECT_STDOUT:
 		if ( f->FileHandle() == stdout )
@@ -339,7 +344,7 @@ ValPtr PrintStmt::DoExec(std::vector<ValPtr> vals,
 			// Should catch even printing to a "manually opened" stdout file,
 			// like "/dev/stdout" or "-".
 			print_log(vals);
-			return nullptr;
+			return;
 			}
 		break;
 	default:
@@ -368,8 +373,6 @@ ValPtr PrintStmt::DoExec(std::vector<ValPtr> vals,
 		describe_vals(vals, &d, offset);
 		f->Write("\n", 1);
 		}
-
-	return nullptr;
 	}
 
 ExprStmt::ExprStmt(ExprPtr arg_e) : Stmt(STMT_EXPR), e(std::move(arg_e))

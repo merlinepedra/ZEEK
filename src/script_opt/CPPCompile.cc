@@ -657,6 +657,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		break;
 
 	case STMT_PRINT:
+
 	case STMT_EVENT:
 	case STMT_WHEN:
 	case STMT_SWITCH:
