@@ -1012,6 +1012,16 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 			"cast_intrusive<RecordType>(" + GenTypeName(t) + "))";
 		}
 
+	case EXPR_VECTOR_COERCE:
+		{
+		auto vc = static_cast<const VectorCoerceExpr*>(e);
+		const auto& op = vc->GetOp1();
+		const auto& t = vc->GetType<VectorType>();
+
+		return std::string("vector_coerce__CPP(" +
+			GenExpr(op, GEN_VAL_PTR) + ", " + GenTypeName(t) + ")");
+		}
+
 	case EXPR_SET_CONSTRUCTOR:
 		{
 		auto sc = static_cast<const SetConstructorExpr*>(e);
@@ -1118,7 +1128,6 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 	case EXPR_FIELD_ASSIGN:
 	case EXPR_EVENT:
-	case EXPR_VECTOR_COERCE:
 	case EXPR_CAST:
 	case EXPR_IS:
 	case EXPR_INDEX_SLICE_ASSIGN:

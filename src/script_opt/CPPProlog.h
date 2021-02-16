@@ -108,6 +108,16 @@ TableValPtr table_coerce__CPP(const ValPtr& v, const TypePtr& t)
 					tv->GetAttrs());
 	}
 
+VectorValPtr vector_coerce__CPP(const ValPtr& v, const TypePtr& t)
+	{
+	VectorVal* vv = v->AsVectorVal();
+
+	if ( vv->Size() > 0 )
+		reporter->Error("coercion of non-empty vector");
+
+	return make_intrusive<VectorVal>(cast_intrusive<VectorType>(t));
+	}
+
 TableValPtr set_constructor__CPP(std::vector<ValPtr> elements, TableTypePtr t,
 					AttributesPtr attrs)
 	{
