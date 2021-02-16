@@ -1241,8 +1241,12 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		// a "schedule" expression or an "event" statement.
 		ASSERT(0);
 
-	case EXPR_FIELD_ASSIGN:
 	case EXPR_CAST:
+		return std::string("cast_value_to_type(") +
+			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ", " +
+			TypeName(e->GetType()) + ")";
+
+	case EXPR_FIELD_ASSIGN:
 	case EXPR_IS:
 	case EXPR_INDEX_SLICE_ASSIGN:
 	case EXPR_INLINE:
