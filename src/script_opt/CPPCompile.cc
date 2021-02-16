@@ -740,8 +740,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		}
 
 	case EXPR_CLONE:
-		return std::string("copy(") +
-			GenExpr(static_cast<const CloneExpr*>(e), GEN_VAL_PTR) + ")";
+		gen = GenExpr(e->GetOp1(), GEN_VAL_PTR) + "->Clone()";
+		return GenericValPtrToGT(gen, t, gt);
 
 	case EXPR_INCR:		return GenUnary(e, gt, "++");
 	case EXPR_DECR:		return GenUnary(e, gt, "--");
