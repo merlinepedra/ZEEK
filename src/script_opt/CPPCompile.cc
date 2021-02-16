@@ -648,12 +648,18 @@ void CPPCompile::GenStmt(const Stmt* s)
 		}
 		break;
 
+	case STMT_NEXT:
+		Emit("continue;");
+		break;
+
+	case STMT_BREAK:
+		Emit("break;");
+		break;
+
 	case STMT_PRINT:
 	case STMT_EVENT:
 	case STMT_WHEN:
 	case STMT_SWITCH:
-	case STMT_NEXT:
-	case STMT_BREAK:
 	case STMT_FALLTHROUGH:
 		ASSERT(0);
 		break;
