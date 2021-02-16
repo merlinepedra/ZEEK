@@ -114,6 +114,10 @@ private:
 	std::string GenBinarySubNet(const Expr* e, GenType gt, const char* op);
 	std::string GenEQ(const Expr* e, GenType gt, const char* op);
 
+	std::string GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
+				const std::string& rhs_native,
+				const std::string& rhs_val_ptr);
+
 	std::string GenIntVector(const std::vector<int>& vec);
 
 	std::string NativeToGT(const std::string& expr, const TypePtr& t,

@@ -98,6 +98,12 @@ void assign_to_index__CPP(ValPtr v1, ValPtr v2, ValPtr v3)
 		reporter->Error("%s", err_msg);
 	}
 
+ValPtr vector_append__CPP(VectorValPtr v1, ValPtr v2)
+	{
+	v1->Assign(v1->Size(), v2);
+	return v2;
+	}
+
 TableValPtr table_coerce__CPP(const ValPtr& v, const TypePtr& t)
 	{
 	TableVal* tv = v->AsTableVal();

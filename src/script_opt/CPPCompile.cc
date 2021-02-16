@@ -815,7 +815,6 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 	case EXPR_ADD:		return GenBinary(e, gt, "+");
 	case EXPR_SUB:		return GenBinary(e, gt, "-");
-	case EXPR_ADD_TO:	return GenBinary(e, gt, "+=");
 	case EXPR_REMOVE_FROM:	return GenBinary(e, gt, "-=");
 	case EXPR_TIMES:	return GenBinary(e, gt, "*");
 	case EXPR_DIVIDE:	return GenBinary(e, gt, "/");
@@ -985,70 +984,31 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		auto op1 = e->GetOp1()->AsRefExprPtr()->GetOp1();
 		auto op2 = e->GetOp2();
 
-		switch ( op1->Tag() ) {
-		case EXPR_NAME:
-			{
-			auto n = op1->AsNameExpr()->Id();
-			auto name = IDNameStr(n);
+		auto rhs_native = GenExpr(op2, GEN_NATIVE);
+		auto rhs_val_ptr = GenExpr(op2, GEN_VAL_PTR);
 
-			if ( n->IsGlobal() )
-				gen = globals[name] + "->SetVal(" +
-					GenExpr(op2, GEN_VAL_PTR) + ")";
-			else
-				gen = name + " = " + GenExpr(op2, GEN_NATIVE);
-			}
-			break;
-
-		case EXPR_INDEX:
-			gen = std::string("assign_to_index__CPP(") +
-				GenExpr(op1->GetOp1(), GEN_VAL_PTR) + ", " +
-				"index_val__CPP({" +
-				GenExpr(op1->GetOp2(), GEN_VAL_PTR) + "}), " +
-				GenExpr(op2, GEN_VAL_PTR) + ")";
-			break;
-
-		case EXPR_FIELD:
-			gen = GenExpr(op1->GetOp1(), GEN_DONT_CARE) +
-				"->Assign(" +
-				Fmt(op1->AsFieldExpr()->Field()) + ", " +
-				GenExpr(op2, GEN_VAL_PTR) + ")";
-			break;
-
-		case EXPR_LIST:
-			{
-			if ( op2->Tag() != EXPR_NAME )
-				reporter->InternalError("compound RHS expression in multi-assignment");
-			auto rhs = op2->AsNameExpr()->Id()->Name();
-
-			gen = "(";
-
-			const auto& vars = op1->AsListExpr()->Exprs();
-
-			auto n = vars.length();
-			for ( auto i = 0; i < n; ++i )
-				{
-				const auto& var_i = vars[i];
-				if ( var_i->Tag() != EXPR_NAME )
-					reporter->InternalError("compound LHS expression in multi-assignment");
-				auto var = var_i->AsNameExpr();
-				gen = gen + var->Id()->Name() + " = " +
-					rhs + "->AsListVal()->Idx(" +
-					Fmt(i) + ")";
-
-				if ( i < n - 1 )
-					gen += ", ";
-				}
-
-			gen += ")";
-			}
-			break;
-
-		default:
-			reporter->InternalError("bad assigment node in CPPCompile::GenExpr");
+		return GenAssign(op1, op2, rhs_native, rhs_val_ptr);
 		}
 
-		return NativeToGT(gen, t, gt);
-		}
+	case EXPR_ADD_TO:
+		if ( t->Tag() == TYPE_VECTOR )
+			{
+			gen = std::string("vector_append__CPP(") +
+				GenExpr(e->GetOp1(), GEN_VAL_PTR) +
+				", " + GenExpr(e->GetOp2(), GEN_VAL_PTR) + ")";
+			return GenericValPtrToGT(gen, t, gt);
+			}
+
+		if ( t->Tag() == TYPE_STRING )
+			{
+			auto op1 = e->GetOp1()->AsRefExprPtr()->GetOp1();
+			auto rhs_native = GenBinaryString(e, GEN_NATIVE, "+=");
+			auto rhs_val_ptr = GenBinaryString(e, GEN_VAL_PTR, "+=");
+
+			return GenAssign(op1, nullptr, rhs_native, rhs_val_ptr);
+			}
+
+		return GenBinary(e, gt, "+=");
 
 	case EXPR_REF:
 		return GenExpr(e->GetOp1(), gt);
@@ -1382,7 +1342,6 @@ std::string CPPCompile::GenBinaryString(const Expr* e, GenType gt,
 	std::string res;
 
 	if ( e->Tag() == EXPR_ADD || e->Tag() == EXPR_ADD_TO )
-		// make_intrusive<StringVal>(concatenate(strings))
 		res = std::string("str_concat__CPP(") + v1 + ", " + v2 + ")";
 	else
 		res = std::string("(Bstr_cmp(") + v1 + ", " + v2 + ") " + op + " 0)";
@@ -1436,6 +1395,77 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt, const char* op)
 				GenExpr(op2, GEN_DONT_CARE) +
 				"->AsString())",
 				e->GetType(), gt);
+	}
+
+std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
+					const std::string& rhs_native,
+					const std::string& rhs_val_ptr)
+	{
+	std::string gen;
+
+	switch ( lhs->Tag() ) {
+	case EXPR_NAME:
+		{
+		auto n = lhs->AsNameExpr()->Id();
+		auto name = IDNameStr(n);
+
+		if ( n->IsGlobal() )
+			gen = globals[name] + "->SetVal(" +
+				rhs_val_ptr + ")";
+		else
+			gen = name + " = " + rhs_native;
+		}
+		break;
+
+	case EXPR_INDEX:
+		gen = std::string("assign_to_index__CPP(") +
+			GenExpr(lhs->GetOp1(), GEN_VAL_PTR) + ", " +
+			"index_val__CPP({" +
+			GenExpr(lhs->GetOp2(), GEN_VAL_PTR) + "}), " +
+			rhs_val_ptr + ")";
+		break;
+
+	case EXPR_FIELD:
+		gen = GenExpr(lhs->GetOp1(), GEN_DONT_CARE) +
+			"->Assign(" +
+			Fmt(lhs->AsFieldExpr()->Field()) + ", " +
+			rhs_val_ptr + ")";
+		break;
+
+	case EXPR_LIST:
+		{
+		if ( rhs->Tag() != EXPR_NAME )
+			reporter->InternalError("compound RHS expression in multi-assignment");
+		auto rhs_name = rhs->AsNameExpr()->Id()->Name();
+
+		gen = "(";
+
+		const auto& vars = lhs->AsListExpr()->Exprs();
+
+		auto n = vars.length();
+		for ( auto i = 0; i < n; ++i )
+			{
+			const auto& var_i = vars[i];
+			if ( var_i->Tag() != EXPR_NAME )
+				reporter->InternalError("compound LHS expression in multi-assignment");
+			auto var = var_i->AsNameExpr();
+			gen = gen + var->Id()->Name() + " = " +
+				rhs_name + "->AsListVal()->Idx(" +
+				Fmt(i) + ")";
+
+			if ( i < n - 1 )
+				gen += ", ";
+			}
+
+		gen += ")";
+		}
+		break;
+
+	default:
+		reporter->InternalError("bad assigment node in CPPCompile::GenExpr");
+	}
+
+	return gen;
 	}
 
 std::string CPPCompile::GenIntVector(const std::vector<int>& vec)
