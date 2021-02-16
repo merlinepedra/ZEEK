@@ -267,6 +267,14 @@ TraversalCode ExprListStmt::Traverse(TraversalCallback* cb) const
 	HANDLE_TC_STMT_POST(tc);
 	}
 
+ValPtr PrintStmt::DoExec(std::vector<ValPtr> vals,
+                         StmtFlowType& /* flow */) const
+	{
+	RegisterAccess();
+	do_print_stmt(vals);
+	return nullptr;
+	}
+
 static EnumValPtr lookup_enum_val(const char* module_name, const char* name)
 	{
 	const auto& id = lookup_ID(name, module_name);
@@ -298,14 +306,6 @@ static void print_log(const std::vector<ValPtr>& vals)
 	record->Assign(0, make_intrusive<TimeVal>(run_state::network_time));
 	record->Assign(1, std::move(vec));
 	log_mgr->Write(plval.get(), record.get());
-	}
-
-ValPtr PrintStmt::DoExec(std::vector<ValPtr> vals,
-                         StmtFlowType& /* flow */) const
-	{
-	RegisterAccess();
-	do_print_stmt(vals);
-	return nullptr;
 	}
 
 static File* print_stdout = nullptr;
