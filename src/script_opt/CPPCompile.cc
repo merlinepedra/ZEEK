@@ -139,6 +139,12 @@ void CPPCompile::GenEpilog()
 	Emit("} // zeek");
 	}
 
+bool CPPCompile::IsCompilable(const FuncInfo& func)
+	{
+	return func.Profile()->NumWhenStmts() == 0 &&
+		func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION;
+	}
+
 void CPPCompile::DeclareGlobals(const FuncInfo& func)
 	{
 	if ( ! IsCompilable(func) )
@@ -223,8 +229,9 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 					Fmt(int(constants.size()));
 
 		constants[c_desc] = const_name;
+		auto tag = c->GetType()->Tag();
 
-		switch ( c->GetType()->Tag() ) {
+		switch ( tag ) {
 		case TYPE_STRING:
 			{
 			Emit("StringValPtr %s;", const_name);
@@ -235,15 +242,36 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			break;
 
 		case TYPE_PATTERN:
-			Emit("// ### Need to deal with case sensitivity, compiling");
+			{
 			Emit("PatternValPtr %s;", const_name);
+
+			auto re = v->AsPatternVal()->Get();
 
 			AddInit(c,
 				std::string("{ auto re = new RE_Matcher(\"") +
-				v->AsPatternVal()->Get()->OrigText() + "\");");
+				re->OrigText() + "\");");
+			if ( re->IsCaseInsensitive() )
+				AddInit(c, "re->MakeCaseInsensitive();");
 			AddInit(c, "re->Compile();");
 			AddInit(c, const_name, "make_intrusive<PatternVal>(re)");
 			AddInit(c, "}");
+			}
+			break;
+
+		case TYPE_ADDR:
+		case TYPE_SUBNET:
+			{
+			auto prefix = (tag == TYPE_ADDR) ? "Addr" : "SubNet";
+
+			Emit("%sValPtr %s;", prefix, const_name);
+
+			ODesc d;
+			v->Describe(&d);
+
+			AddInit(c, const_name,
+				std::string("make_intrusive<") + prefix +
+				"Val>(\"" + d.Description() + "\")");
+			}
 			break;
 
 		default:

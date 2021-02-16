@@ -70,8 +70,7 @@ private:
 	void GenProlog();
 	void GenEpilog();
 
-	bool IsCompilable(const FuncInfo& func)
-		{ return func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION; }
+	bool IsCompilable(const FuncInfo& func);
 
 	void DeclareGlobals(const FuncInfo& func);
 	void AddBiF(const Func* b);
