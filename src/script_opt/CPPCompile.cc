@@ -191,10 +191,15 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 	for ( const auto& e : func.Profile()->Events() )
 		{
 		AddGlobal(e, "ev");
-		auto ev = globals[std::string(e)];
+		const auto& ev = globals[std::string(e)];
 
-		Emit("EventHandlerPtr %s;", ev);
-		AddInit(nullptr, ev, std::string("register_event__CPP(\"") + e + "\")");
+		if ( declared_events.count(ev) == 0 )
+			{
+			Emit("EventHandlerPtr %s;", ev);
+			AddInit(nullptr, ev,
+				std::string("register_event__CPP(\"") + e + "\")");
+			declared_events.insert(ev);
+			}
 		}
 
 	for ( const auto& c : func.Profile()->Constants() )
@@ -1242,9 +1247,10 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		ASSERT(0);
 
 	case EXPR_CAST:
-		return std::string("cast_value_to_type(") +
+		gen = std::string("cast_value_to_type(") +
 			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ", " +
-			TypeName(e->GetType()) + ")";
+			TypeName(t) + ")";
+		return GenericValPtrToGT(gen, t, gt);
 
 	case EXPR_FIELD_ASSIGN:
 	case EXPR_IS:

@@ -19,6 +19,7 @@ using StringValPtr = IntrusivePtr<zeek::StringVal>;
 using IntervalValPtr = IntrusivePtr<zeek::IntervalVal>;
 using PatternValPtr = IntrusivePtr<zeek::PatternVal>;
 using FuncValPtr = IntrusivePtr<zeek::FuncVal>;
+using FileValPtr = IntrusivePtr<zeek::FileVal>;
 using SubNetValPtr = IntrusivePtr<zeek::SubNetVal>;
 
 namespace detail {

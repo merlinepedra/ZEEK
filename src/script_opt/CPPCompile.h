@@ -269,6 +269,9 @@ private:
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
 
+	// Which event handlers we've declared.
+	std::unordered_set<std::string> declared_events;
+
 	// Maps event names to the names we use for them.
 	std::unordered_map<std::string, std::string> events;
 
