@@ -664,6 +664,16 @@ void CPPCompile::GenStmt(const Stmt* s)
 		break;
 
 	case STMT_EVENT:
+		{
+		auto ev_s = static_cast<const EventStmt*>(s)->StmtExprPtr();
+		auto ev_e = cast_intrusive<EventExpr>(ev_s);
+
+		Emit("event_mgr::Enqueue(%s, {%s});",
+			globals[std::string(ev_e->Name())],
+			GenExpr(ev_e->Args(), GEN_VAL_PTR));
+		}
+		break;
+
 	case STMT_WHEN:
 	case STMT_SWITCH:
 	case STMT_FALLTHROUGH:
@@ -1138,8 +1148,13 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		return std::string("nullptr /* ### */");
 		}
 
-	case EXPR_FIELD_ASSIGN:
 	case EXPR_EVENT:
+		// These should not wind up being directly generated,
+		// but instead deconstructed in the context of either
+		// a "schedule" expression or an "event" statement.
+		ASSERT(0);
+
+	case EXPR_FIELD_ASSIGN:
 	case EXPR_CAST:
 	case EXPR_IS:
 	case EXPR_INDEX_SLICE_ASSIGN:
