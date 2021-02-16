@@ -1009,6 +1009,35 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 				GenExpr(op2, GEN_VAL_PTR) + ")";
 			break;
 
+		case EXPR_LIST:
+			{
+			if ( op2->Tag() != EXPR_NAME )
+				reporter->InternalError("compound RHS expression in multi-assignment");
+			auto rhs = op2->AsNameExpr()->Id()->Name();
+
+			gen = "(";
+
+			const auto& vars = op1->AsListExpr()->Exprs();
+
+			auto n = vars.length();
+			for ( auto i = 0; i < n; ++i )
+				{
+				const auto& var_i = vars[i];
+				if ( var_i->Tag() != EXPR_NAME )
+					reporter->InternalError("compound LHS expression in multi-assignment");
+				auto var = var_i->AsNameExpr();
+				gen = gen + var->Id()->Name() + " = " +
+					rhs + "->AsListVal()->Idx(" +
+					Fmt(i) + ")";
+
+				if ( i < n - 1 )
+					gen += ", ";
+				}
+
+			gen += ")";
+			}
+			break;
+
 		default:
 			reporter->InternalError("bad assigment node in CPPCompile::GenExpr");
 		}
