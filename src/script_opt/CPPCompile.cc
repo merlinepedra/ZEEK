@@ -1008,8 +1008,21 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		auto op1 = e->GetOp1()->AsRefExprPtr()->GetOp1();
 		auto op2 = e->GetOp2();
 
+		const auto& t1 = op1->GetType();
+		const auto& t2 = op2->GetType();
+
 		auto rhs_native = GenExpr(op2, GEN_NATIVE);
 		auto rhs_val_ptr = GenExpr(op2, GEN_VAL_PTR);
+
+		auto lhs_is_any = t1->Tag() == TYPE_ANY;
+		auto rhs_is_any = t2->Tag() == TYPE_ANY;
+
+		if ( lhs_is_any && ! rhs_is_any )
+			rhs_native = rhs_val_ptr;
+
+		if ( rhs_is_any && ! lhs_is_any && t1->Tag() != TYPE_LIST )
+			rhs_native = rhs_val_ptr =
+				GenericValPtrToGT(rhs_val_ptr, t1, GEN_NATIVE);
 
 		return GenAssign(op1, op2, rhs_native, rhs_val_ptr);
 		}
