@@ -655,7 +655,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 			Emit("auto sval__CPP = %s;",
 				GenExpr(v, GEN_DONT_CARE));
 
-			Emit("for ( auto i__CPP = 0u; i__CPP < sval__CPP->Len(); ++i )");
+			Emit("for ( auto i__CPP = 0u; i__CPP < sval__CPP->Len(); ++i__CPP )");
 			StartBlock();
 
 			Emit("auto sv__CPP = make_intrusive<StringVal>(1, (const char*) sval__CPP->Bytes() + i__CPP);");
