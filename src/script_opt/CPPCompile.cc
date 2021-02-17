@@ -214,6 +214,7 @@ void CPPCompile::AddBiF(const Func* b)
 		return;
 
 	AddGlobal(n, "bif");
+	bifs.insert(n);
 
 	std::string ns(n);
 	Emit("Func* %s;", globals[ns]);
@@ -894,6 +895,13 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 				return NativeToGT(gen, t, gt);
 				}
+
+			// If the function is a global and isn't (known as)
+			// a BiF, then it will have been declared as a ValPtr
+			// and we need to convert it to a Func*.
+			if ( globals.count(func->Name()) > 0 &&
+			     bifs.count(func->Name()) == 0 )
+				gen = gen + "->AsFunc()";
 			}
 
 		else

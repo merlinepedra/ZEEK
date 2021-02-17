@@ -285,6 +285,9 @@ private:
 	// Functions that we've declared/compiled.
 	std::unordered_set<std::string> compiled_funcs;
 
+	// BiF's that we've processed.
+	std::unordered_set<std::string> bifs;
+
 	// Same for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;
 
