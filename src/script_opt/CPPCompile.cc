@@ -806,8 +806,28 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		gen = GenExpr(e->GetOp1(), GEN_VAL_PTR) + "->Clone()";
 		return GenericValPtrToGT(gen, t, gt);
 
-	case EXPR_INCR:		return GenUnary(e, gt, "++");
-	case EXPR_DECR:		return GenUnary(e, gt, "--");
+	case EXPR_INCR:
+	case EXPR_DECR:
+		{
+		// For compound operands (table indexing, record fields),
+		// Zeek's interpreter will actually evaluate the operand
+		// twice, so easiest is to just transform this node
+		// into the expanded equivalent.
+		auto op = e->GetOp1();
+		auto one = make_intrusive<ConstExpr>(val_mgr->Int(1));
+
+		ExprPtr rhs;
+		if ( e->Tag() == EXPR_INCR )
+			rhs = make_intrusive<AddExpr>(op, one);
+		else
+			rhs = make_intrusive<SubExpr>(op, one);
+
+		auto assign = make_intrusive<AssignExpr>(op, rhs, false,
+						nullptr, nullptr, false);
+
+		return GenExpr(assign, gt);
+		}
+
 	case EXPR_NOT:		return GenUnary(e, gt, "!");
 	case EXPR_COMPLEMENT:	return GenUnary(e, gt, "~");
 	case EXPR_POSITIVE:	return GenUnary(e, gt, "+");
