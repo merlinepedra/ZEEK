@@ -883,8 +883,12 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 			if ( compiled_funcs.count(func_name) > 0 )
 				{
-				gen += "_func->Call(" + GenArgs(args_l) +
-					", f__CPP)";
+				if ( args_l->Exprs().length() > 0 )
+					gen += "_func->Call(" +
+						GenArgs(args_l) + ", f__CPP)";
+				else
+					gen += "_func->Call(f__CPP)";
+
 				return NativeToGT(gen, t, gt);
 				}
 			}
