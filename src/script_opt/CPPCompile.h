@@ -145,7 +145,7 @@ private:
 	const char* IDName(const ID* id)	{ return IDNameStr(id).c_str(); }
 	const std::string& IDNameStr(const ID* id) const;
 
-	std::string ParamDecl(const FuncTypePtr& ft);
+	std::string ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf);
 
 	bool IsNativeType(const TypePtr& t) const;
 	const char* FullTypeName(const TypePtr& t);

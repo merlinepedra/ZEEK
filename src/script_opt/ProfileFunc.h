@@ -25,6 +25,10 @@ public:
 		{ return globals; }
 	const std::unordered_set<const ID*>& Locals() const
 		{ return locals; }
+	const std::unordered_set<const ID*>& Assignees() const
+		{ return assignees; }
+	const std::unordered_set<std::string>& AssigneeNames() const
+		{ return assignee_names; }
 	const std::unordered_set<const ID*>& Inits() const
 		{ return inits; }
 	const std::unordered_set<const ConstExpr*>& Constants() const
@@ -67,8 +71,17 @@ protected:
 	// Locals seen in the function.
 	std::unordered_set<const ID*> locals;
 
-	// Same for locals seen in initializations, so we can find
-	// unused aggregates.
+	// Identifiers (globals, locals, parameters) that are assigned to.
+	// Does not include implicit assignments due to initializations,
+	// which are instead captured in "inits".
+	std::unordered_set<const ID*> assignees;
+
+	// The same, but indexed by name, since in some contexts the
+	// corresponding identifier isn't accessible.
+	std::unordered_set<std::string> assignee_names;
+
+	// Same for locals seen in initializations, so we can find,
+	// for example, unused aggregates.
 	std::unordered_set<const ID*> inits;
 
 	// Constants seen in the function.

@@ -356,7 +356,8 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	EndBlock();
 
-	Emit("static %s Call(%s);", FullTypeName(yt), ParamDecl(ft));
+	Emit("static %s Call(%s);", FullTypeName(yt),
+		ParamDecl(ft, func.Profile()));
 
 	EndBlock(true);
 
@@ -396,7 +397,8 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	for ( auto i = 0; i < p->NumFields(); ++i )
 		params.emplace(std::string(p->FieldName(i)));
 
-	Emit("%s %s::Call(%s)", FullTypeName(yt), fname, ParamDecl(ft));
+	Emit("%s %s::Call(%s)", FullTypeName(yt), fname,
+		ParamDecl(ft, func.Profile()));
 
 	StartBlock();
 
@@ -1930,7 +1932,7 @@ const std::string& CPPCompile::IDNameStr(const ID* id) const
 	return ((CPPCompile*)(this))->locals[id];
 	}
 
-std::string CPPCompile::ParamDecl(const FuncTypePtr& ft)
+std::string CPPCompile::ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf)
 	{
 	const auto& params = ft->Params();
 	int n = params->NumFields();
@@ -1946,7 +1948,12 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft)
 		if ( IsNativeType(t) )
 			decl = decl + tn + " " + fn;
 		else
-			decl = decl + "const " + tn + "& " + fn;
+			{
+			if ( pf->AssigneeNames().count(fn) > 0 )
+				decl = decl + tn + " " + fn;
+			else
+				decl = decl + "const " + tn + "& " + fn;
+			}
 
 		decl += ", ";
 		}

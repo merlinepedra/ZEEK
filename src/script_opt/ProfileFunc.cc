@@ -174,6 +174,21 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		break;
 		}
 
+	case EXPR_ASSIGN:
+		{
+		if ( e->GetOp1()->Tag() == EXPR_REF )
+			{
+			auto lhs = e->GetOp1()->GetOp1();
+			if ( lhs->Tag() == EXPR_NAME )
+				{
+				auto id = lhs->AsNameExpr()->Id();
+				assignees.insert(id);
+				assignee_names.insert(id->Name());
+				}
+			}
+		break;
+		}
+
 	case EXPR_CALL:
 		{
 		auto c = e->AsCallExpr();
