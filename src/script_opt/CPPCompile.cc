@@ -614,7 +614,10 @@ void CPPCompile::GenStmt(const Stmt* s)
 			Emit("auto ind_lv__CPP = tv__CPP->RecreateIndex(*k__CPP);");
 
                         if ( value_var )
-				Emit("%s = current_tev__CPP->GetVal();",
+				Emit("%s = %s;",
+					GenericValPtrToGT("current_tev__CPP->GetVal()",
+						value_var->GetType(),
+						GEN_NATIVE),
 					IDName(value_var));
 
 			for ( int i = 0; i < loop_vars->length(); ++i )
