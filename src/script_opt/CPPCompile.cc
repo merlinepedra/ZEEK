@@ -615,10 +615,10 @@ void CPPCompile::GenStmt(const Stmt* s)
 
                         if ( value_var )
 				Emit("%s = %s;",
+					IDName(value_var),
 					GenericValPtrToGT("current_tev__CPP->GetVal()",
 						value_var->GetType(),
-						GEN_NATIVE),
-					IDName(value_var));
+						GEN_NATIVE));
 
 			for ( int i = 0; i < loop_vars->length(); ++i )
 				{
