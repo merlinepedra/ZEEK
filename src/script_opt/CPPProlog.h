@@ -79,6 +79,12 @@ ValPtr index_table__CPP(TableValPtr t, std::vector<ValPtr> indices)
 	return t->FindOrDefault(index_val__CPP(std::move(indices)));
 	}
 
+ValPtr index_string__CPP(StringValPtr svp, std::vector<ValPtr> indices)
+	{
+	return index_string(svp->AsString(),
+				index_val__CPP(std::move(indices)).get());
+	}
+
 // Call out to the given script or BiF function.
 inline ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args, Frame* frame)
 	{

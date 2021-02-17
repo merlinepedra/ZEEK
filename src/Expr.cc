@@ -2974,36 +2974,7 @@ ValPtr IndexExpr::Fold(Val* v1, Val* v2) const
 		break;
 
 	case TYPE_STRING:
-		{
-		const ListVal* lv = v2->AsListVal();
-		const String* s = v1->AsString();
-		int len = s->Len();
-		String* substring = nullptr;
-
-		if ( lv->Length() == 1 )
-			{
-			bro_int_t idx = lv->Idx(0)->AsInt();
-
-			if ( idx < 0 )
-				idx += len;
-
-			// Out-of-range index will return null pointer.
-			substring = s->GetSubstring(idx, 1);
-			}
-		else
-			{
-			bro_int_t first = get_slice_index(lv->Idx(0)->AsInt(), len);
-			bro_int_t last = get_slice_index(lv->Idx(1)->AsInt(), len);
-			bro_int_t substring_len = last - first;
-
-			if ( substring_len < 0 )
-				substring = nullptr;
-			else
-				substring = s->GetSubstring(first, substring_len);
-			}
-
-		return make_intrusive<StringVal>(substring ? substring : new String(""));
-		}
+		return index_string(v1->AsString(), v2->AsListVal());
 
 	default:
 		RuntimeError("type cannot be indexed");
@@ -3015,6 +2986,36 @@ ValPtr IndexExpr::Fold(Val* v1, Val* v2) const
 
 	RuntimeError("no such index");
 	return nullptr;
+	}
+
+StringValPtr index_string(const String* s, const ListVal* lv)
+	{
+	int len = s->Len();
+	String* substring = nullptr;
+
+	if ( lv->Length() == 1 )
+		{
+		bro_int_t idx = lv->Idx(0)->AsInt();
+
+		if ( idx < 0 )
+			idx += len;
+
+		// Out-of-range index will return null pointer.
+		substring = s->GetSubstring(idx, 1);
+		}
+	else
+		{
+		bro_int_t first = get_slice_index(lv->Idx(0)->AsInt(), len);
+		bro_int_t last = get_slice_index(lv->Idx(1)->AsInt(), len);
+		bro_int_t substring_len = last - first;
+
+		if ( substring_len < 0 )
+			substring = nullptr;
+		else
+			substring = s->GetSubstring(first, substring_len);
+		}
+
+	return make_intrusive<StringVal>(substring ? substring : new String(""));
 	}
 
 void IndexExpr::Assign(Frame* f, ValPtr v)

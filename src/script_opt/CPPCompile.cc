@@ -994,8 +994,10 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 			gen =  GenExpr(aggr, GEN_DONT_CARE) + "->At(" +
 				GenExpr(e->GetOp2(), GEN_NATIVE) + ")";
 
-		else
-			gen = std::string("INDEXBOTCH");
+		else if ( aggr_t->Tag() == TYPE_STRING )
+			gen = std::string("index_string__CPP(") +
+				GenExpr(aggr, GEN_NATIVE) + ", {" +
+				GenExpr(e->GetOp2(), GEN_VAL_PTR) + "})";
 
 		return GenericValPtrToGT(gen, t, gt);
 		}
