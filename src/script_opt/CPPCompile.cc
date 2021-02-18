@@ -845,13 +845,15 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		// twice, so easiest is to just transform this node
 		// into the expanded equivalent.
 		auto op = e->GetOp1();
-		auto one = make_intrusive<ConstExpr>(val_mgr->Int(1));
+		auto one = e->GetType()->InternalType() == TYPE_INTERNAL_INT ?
+				val_mgr->Int(1) : val_mgr->Count(1);
+		auto one_e = make_intrusive<ConstExpr>(one);
 
 		ExprPtr rhs;
 		if ( e->Tag() == EXPR_INCR )
-			rhs = make_intrusive<AddExpr>(op, one);
+			rhs = make_intrusive<AddExpr>(op, one_e);
 		else
-			rhs = make_intrusive<SubExpr>(op, one);
+			rhs = make_intrusive<SubExpr>(op, one_e);
 
 		auto assign = make_intrusive<AssignExpr>(op, rhs, false,
 						nullptr, nullptr, false);
