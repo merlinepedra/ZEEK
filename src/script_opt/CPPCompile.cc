@@ -260,7 +260,6 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 
 	auto v = c->Value();
 	ODesc d;
-	d.SetQuotes(true);
 	v->Describe(&d);
 
 	std::string c_desc(d.Description());
@@ -278,8 +277,8 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 		case TYPE_STRING:
 			{
 			Emit("StringValPtr %s;", const_name);
-			auto def = std::string("make_intrusive<StringVal>(") +
-					c_desc + ")";
+			auto def = std::string("make_intrusive<StringVal>(\"") +
+					CPPEscape(c_desc) + "\")";
 			AddInit(c, const_name, def);
 			}
 			break;
@@ -292,7 +291,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 
 			AddInit(c,
 				std::string("{ auto re = new RE_Matcher(\"") +
-				re->OrigText() + "\");");
+				CPPEscape(re->OrigText()) + "\");");
 			if ( re->IsCaseInsensitive() )
 				AddInit(c, "re->MakeCaseInsensitive();");
 			AddInit(c, "re->Compile();");
@@ -2440,6 +2439,24 @@ void CPPCompile::EndBlock(bool needs_semi)
 	{
 	Emit("}%s", needs_semi ? ";" : "");
 	--block_level;
+	}
+
+std::string CPPCompile::CPPEscape(const char* s) const
+	{
+	std::string res;
+
+	while ( *s )
+		{
+		switch ( *s ) {
+		case '\\':	res += "\\\\"; break;
+		case '"':	res += "\\\""; break;
+
+		default:	res += *s; break;
+		}
+		++s;
+		}
+
+	return res;
 	}
 
 void CPPCompile::Indent() const

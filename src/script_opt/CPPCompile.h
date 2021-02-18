@@ -261,6 +261,10 @@ private:
 		return std::string(d_s);
 		}
 
+	std::string CPPEscape(const std::string& s) const
+		{ return CPPEscape(s.c_str()); }
+	std::string CPPEscape(const char* s) const;
+
 	void NL() const
 		{
 		fputc('\n', write_file);
