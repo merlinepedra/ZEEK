@@ -32,8 +32,6 @@ public:
 	int NumParams() const	{ return num_params; }
 	const std::unordered_set<const ID*>& Assignees() const
 		{ return assignees; }
-	const std::unordered_set<std::string>& AssigneeNames() const
-		{ return assignee_names; }
 	const std::unordered_set<const ID*>& Inits() const
 		{ return inits; }
 	const std::unordered_set<const ConstExpr*>& Constants() const
@@ -91,10 +89,6 @@ protected:
 	// Does not include implicit assignments due to initializations,
 	// which are instead captured in "inits".
 	std::unordered_set<const ID*> assignees;
-
-	// The same, but indexed by name, since in some contexts the
-	// corresponding identifier isn't accessible.
-	std::unordered_set<std::string> assignee_names;
 
 	// Same for locals seen in initializations, so we can find,
 	// for example, unused aggregates.

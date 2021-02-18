@@ -414,9 +414,8 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	const auto& ft = func.Func()->GetType();
 	const auto& yt = ft->Yield();
 
-	const auto& p = ft->Params();
-	for ( auto i = 0; i < p->NumFields(); ++i )
-		params.emplace(std::string(p->FieldName(i)));
+	for ( const auto& p : func.Profile()->Params() )
+		params.emplace(p);
 
 	Emit("%s %s::Call(%s)", FullTypeName(yt), fname,
 		ParamDecl(ft, func.Profile()));
@@ -441,7 +440,7 @@ void CPPCompile::DeclareLocals(const FuncInfo& func)
 		{
 		auto ln = LocalName(l);
 
-		if ( params.count(ln) == 0 )
+		if ( params.count(l) == 0 )
 			{
 			Emit("%s %s;", FullTypeName(l->GetType()), ln);
 			did_decl = true;
@@ -2003,13 +2002,16 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf)
 		{
 		const auto& t = params->GetFieldType(i);
 		auto tn = FullTypeName(t);
-		auto fn = params->FieldName(i);
+		auto param_id = FindParam(i, pf);
+		auto fn = param_id ?
+				LocalName(param_id) :
+				(std::string("unused_param__CPP_") + Fmt(i));
 
 		if ( IsNativeType(t) )
 			decl = decl + tn + " " + fn;
 		else
 			{
-			if ( pf->AssigneeNames().count(fn) > 0 )
+			if ( param_id && pf->Assignees().count(param_id) > 0 )
 				decl = decl + tn + " " + fn;
 			else
 				decl = decl + "const " + tn + "& " + fn;
@@ -2019,6 +2021,17 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf)
 		}
 
 	return decl + "Frame* f__CPP";
+	}
+
+const ID* CPPCompile::FindParam(int i, const ProfileFunc* pf)
+	{
+	const auto& params = pf->Params();
+
+	for ( const auto& p : params )
+		if ( p->Offset() == i )
+			return p;
+
+	return nullptr;
 	}
 
 bool CPPCompile::IsNativeType(const TypePtr& t) const

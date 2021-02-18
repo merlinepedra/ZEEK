@@ -189,11 +189,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			{
 			auto lhs = e->GetOp1()->GetOp1();
 			if ( lhs->Tag() == EXPR_NAME )
-				{
-				auto id = lhs->AsNameExpr()->Id();
-				assignees.insert(id);
-				assignee_names.insert(id->Name());
-				}
+				assignees.insert(lhs->AsNameExpr()->Id());
 			}
 		break;
 		}

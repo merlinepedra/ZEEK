@@ -146,6 +146,7 @@ private:
 	const std::string& IDNameStr(const ID* id) const;
 
 	std::string ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf);
+	const ID* FindParam(int i, const ProfileFunc* pf);
 
 	bool IsNativeType(const TypePtr& t) const;
 	const char* FullTypeName(const TypePtr& t);
@@ -302,7 +303,7 @@ private:
 	std::unordered_map<const ID*, std::string> locals;
 
 	// The function's parameters.  Tracked so we don't re-declare them.
-	std::unordered_set<std::string> params;
+	std::unordered_set<const ID*> params;
 
 	// Maps (non-native) constants to associated C++ globals.
 	std::unordered_map<const ConstExpr*, std::string> const_exprs;
