@@ -1488,7 +1488,7 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 		auto name = IDNameStr(n);
 
 		if ( n->IsGlobal() )
-			gen = globals[name] + "->SetVal(" +
+			gen = globals[n->Name()] + "->SetVal(" +
 				rhs_val_ptr + ")";
 		else
 			gen = name + " = " + rhs_native;
