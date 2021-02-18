@@ -1514,7 +1514,6 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 		{
 		if ( rhs->Tag() != EXPR_NAME )
 			reporter->InternalError("compound RHS expression in multi-assignment");
-		auto rhs_name = rhs->AsNameExpr()->Id()->Name();
 
 		gen = "(";
 
@@ -1526,10 +1525,15 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 			const auto& var_i = vars[i];
 			if ( var_i->Tag() != EXPR_NAME )
 				reporter->InternalError("compound LHS expression in multi-assignment");
+			const auto& t_i = var_i->GetType();
 			auto var = var_i->AsNameExpr();
-			gen = gen + var->Id()->Name() + " = " +
-				rhs_name + "->AsListVal()->Idx(" +
-				Fmt(i) + ")";
+
+			auto rhs_i_base = GenExpr(rhs, GEN_DONT_CARE);
+			rhs_i_base += "->AsListVal()->Idx(" + Fmt(i) + ")";
+			auto rhs_i =
+				GenericValPtrToGT(rhs_i_base, t_i, GEN_NATIVE);
+
+			gen = gen + IDNameStr(var->Id()) + " = " + rhs_i;
 
 			if ( i < n - 1 )
 				gen += ", ";
