@@ -160,12 +160,14 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		{
 		auto n = e->AsNameExpr();
 		auto id = n->Id();
+
 		if ( id->IsGlobal() )
 			{
 			globals.insert(id);
 			all_globals.insert(id);
 			}
-		else
+
+		else if ( in_lambda == 0 )
 			{
 			if ( id->Offset() < num_params )
 				params.insert(id);
@@ -257,11 +259,20 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 	case EXPR_LAMBDA:
 		++num_lambdas;
+		++in_lambda;
 		break;
 
 	default:
 		break;
 	}
+
+	return TC_CONTINUE;
+	}
+
+TraversalCode ProfileFunc::PostExpr(const Expr* e)
+	{
+	if ( e->Tag() == EXPR_LAMBDA )
+		--in_lambda;
 
 	return TC_CONTINUE;
 	}

@@ -62,6 +62,7 @@ protected:
 	TraversalCode PreStmt(const Stmt*) override;
 	TraversalCode PostStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
+	TraversalCode PostExpr(const Expr*) override;
 
 	void TraverseRecord(const RecordType* r);
 
@@ -129,6 +130,10 @@ protected:
 	// Whether we're separately processing a "when" condition to
 	// mine out its script calls.
 	bool in_when = false;
+
+	// Whether we're inside a lambda expression.  A count rather
+	// than a boolean to support nested lambdas.
+	int in_lambda = 0;
 
 	// Whether to skip any locals we encounter - used to recurse into
 	// initialization statements.
