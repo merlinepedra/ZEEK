@@ -341,6 +341,9 @@ private:
 	// Maps function bodies to the names we use for them.
 	std::unordered_map<const Stmt*, std::string> body_names;
 
+	// Return type of the function we're currently compiling.
+	TypePtr ret_type = nullptr;
+
 	int block_level = 0;
 };
 

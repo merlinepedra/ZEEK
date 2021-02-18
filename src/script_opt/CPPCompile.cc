@@ -412,12 +412,12 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	params.clear();
 
 	const auto& ft = func.Func()->GetType();
-	const auto& yt = ft->Yield();
+	ret_type = ft->Yield();
 
 	for ( const auto& p : func.Profile()->Params() )
 		params.emplace(p);
 
-	Emit("%s %s::Call(%s)", FullTypeName(yt), fname,
+	Emit("%s %s::Call(%s)", FullTypeName(ret_type), fname,
 		ParamDecl(ft, func.Profile()));
 
 	StartBlock();
@@ -570,7 +570,15 @@ void CPPCompile::GenStmt(const Stmt* s)
 			break;
 			}
 
-		Emit("return %s;", GenExpr(e, GEN_NATIVE));
+		auto gt = ret_type->Tag() == TYPE_ANY ?
+				GEN_VAL_PTR : GEN_NATIVE;
+
+		auto ret = GenExpr(e, gt);
+
+		if ( e->GetType()->Tag() == TYPE_ANY )
+			ret = GenericValPtrToGT(ret, ret_type, gt);
+
+		Emit("return %s;", ret);
 		}
 		break;
 
