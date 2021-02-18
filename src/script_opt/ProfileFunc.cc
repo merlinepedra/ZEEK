@@ -16,10 +16,13 @@ TraversalCode ProfileFunc::PreFunction(const Func* f)
 	// do look for &default arguments, since those can contain
 	// globals and constants.  This is easy to do since the arguments
 	// are captured by a single record type.
+	const auto& ft = f->GetType();
+	const auto& params = ft->Params();
+	num_params = params->NumFields();
+
 	if ( analyze_attrs )
 		{
-		const auto& ft = f->GetType();
-		TraverseRecord(ft->Params().get());
+		TraverseRecord(params.get());
 
 		const auto& yield = ft->Yield();
 		if ( yield && yield->Tag() == TYPE_RECORD )
@@ -164,6 +167,9 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			}
 		else
 			{
+			if ( id->Offset() < num_params )
+				params.insert(id);
+
 			if ( ! skip_locals )
 				locals.insert(id);
 			}

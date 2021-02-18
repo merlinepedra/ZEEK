@@ -27,6 +27,9 @@ public:
 		{ return all_globals; }
 	const std::unordered_set<const ID*>& Locals() const
 		{ return locals; }
+	const std::unordered_set<const ID*>& Params() const
+		{ return params; }
+	int NumParams() const	{ return num_params; }
 	const std::unordered_set<const ID*>& Assignees() const
 		{ return assignees; }
 	const std::unordered_set<std::string>& AssigneeNames() const
@@ -75,6 +78,14 @@ protected:
 
 	// Locals seen in the function.
 	std::unordered_set<const ID*> locals;
+
+	// The function's parameters.  Only valid if a separate traversal
+	// of the Func* itself was made.
+	std::unordered_set<const ID*> params;
+
+	// How many parameters the function has; only valid with separate
+	// Func* traversal.
+	int num_params = -1;
 
 	// Identifiers (globals, locals, parameters) that are assigned to.
 	// Does not include implicit assignments due to initializations,
