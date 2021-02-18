@@ -67,6 +67,10 @@ void CPPCompile::GenEpilog()
 		Emit(i);
 
 	NL();
+	for ( const auto& f : compiled_funcs )
+		Emit("%s_func = make_intrusive<%s>();", f, f);
+
+	NL();
 
 	std::unordered_set<const Obj*> to_do;
 	for ( const auto& oi : obj_inits )
@@ -134,11 +138,6 @@ void CPPCompile::GenEpilog()
 
 		NL();
 		}
-
-	// ... and then instantiate the functions themselves.
-	NL();
-	for ( const auto& f : compiled_funcs )
-		Emit("%s_func = new %s();", f, f);
 
 	EndBlock(true);
 
@@ -381,7 +380,7 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	EndBlock(true);
 
-	Emit("%s* %s;", fname, fname + "_func");
+	Emit("IntrusivePtr<%s> %s;", fname, fname + "_func");
 
 	compiled_funcs.emplace(fname);
 	}
