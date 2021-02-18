@@ -67,10 +67,6 @@ void CPPCompile::GenEpilog()
 		Emit(i);
 
 	NL();
-	for ( const auto& f : compiled_funcs )
-		Emit("%s_func = make_intrusive<%s>();", f, f);
-
-	NL();
 
 	std::unordered_set<const Obj*> to_do;
 	for ( const auto& oi : obj_inits )
@@ -139,6 +135,11 @@ void CPPCompile::GenEpilog()
 		NL();
 		}
 
+	// ... and then instantiate the functions themselves.
+	NL();
+	for ( const auto& f : compiled_funcs )
+		Emit("%s_func = make_intrusive<%s_cl>();", f, f);
+
 	EndBlock(true);
 
 	Emit("} // zeek::detail");
@@ -186,12 +187,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		if ( compilable_funcs.count(gn) > 0 )
 			{
 			AddGlobal(g->Name(), "zf");
-			const auto& ggn = globals[gn];
-
-			Emit("FuncValPtr %s;", ggn);
-			AddInit(g, ggn,
-				std::string("make_intrusive<FuncVal>(") +
-				ggn + "c_func)");
+			Emit("FuncValPtr %s;", globals[gn]);
 			}
 
 		else
@@ -330,7 +326,7 @@ void CPPCompile::DeclareFunc(const FuncInfo& func)
 
 	NL();
 
-	auto fname = Canonicalize(func.Func()->Name()) + "__zfc";
+	auto fname = Canonicalize(func.Func()->Name()) + "__zf";
 	DeclareSubclass(func, fname);
 
 	body_names.emplace(func.Body().get(), fname);
@@ -349,11 +345,11 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	{
 	auto is_pure = func.Func()->IsPure();
 
-	Emit("class %s : public CPPFunc", fname);
+	Emit("class %s_cl : public CPPFunc", fname);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s() : CPPFunc(\"%s\", %s)", fname, func.Func()->Name(),
+	Emit("%s_cl() : CPPFunc(\"%s\", %s)", fname, func.Func()->Name(),
 		is_pure ? "true" : "false");
 	StartBlock();
 	GenSubclassTypeAssignment(func.Func());
@@ -380,7 +376,7 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	EndBlock(true);
 
-	Emit("IntrusivePtr<%s> %s;", fname, fname + "_func");
+	Emit("IntrusivePtr<%s_cl> %s;", fname, fname + "_func");
 
 	compiled_funcs.emplace(fname);
 	}
@@ -415,7 +411,7 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	for ( const auto& p : func.Profile()->Params() )
 		params.emplace(p);
 
-	Emit("%s %s::Call(%s)", FullTypeName(ret_type), fname,
+	Emit("%s %s_cl::Call(%s)", FullTypeName(ret_type), fname,
 		ParamDecl(ft, func.Profile()));
 
 	StartBlock();
@@ -1636,11 +1632,11 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	// First, create a CPPFunc that we can compile to compute e.
 	auto name = std::string("wrapper_") + InitExprName(e);
-	Emit("class %s : public CPPFunc", name);
+	Emit("class %s_cl : public CPPFunc", name);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s() : CPPFunc(\"%s\", false)", name, name);
+	Emit("%s_cl() : CPPFunc(\"%s\", false)", name, name);
 
 	StartBlock();
 	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(t));
@@ -1672,7 +1668,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	NoteInitDependency(e, t);
 	AddInit(e, init_expr_name, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
-		name + ">())), make_intrusive<ListExpr>(), false)");
+		name + "_cl>())), make_intrusive<ListExpr>(), false)");
 	}
 
 std::string CPPCompile::InitExprName(const ExprPtr& e)
