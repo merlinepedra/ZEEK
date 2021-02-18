@@ -3,6 +3,7 @@
 #include "zeek/Func.h"
 #include "zeek/Scope.h"
 #include "zeek/RE.h"
+#include "zeek/IPAddr.h"
 #include "zeek/Val.h"
 #include "zeek/OpaqueVal.h"
 #include "zeek/Expr.h"
