@@ -1287,8 +1287,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 
 	case EXPR_CAST:
 		gen = std::string("cast_value_to_type(") +
-			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ", " +
-			TypeName(t) + ")";
+			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ".get(), " +
+			GenTypeName(t) + ".get())";
 		return GenericValPtrToGT(gen, t, gt);
 
 	case EXPR_FIELD_ASSIGN:
