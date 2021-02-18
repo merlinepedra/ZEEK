@@ -192,7 +192,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 			Emit("FuncValPtr %s;", ggn);
 			AddInit(g, ggn,
 				std::string("make_intrusive<FuncVal>(") +
-				ggn + "_func)");
+				ggn + "c_func)");
 			}
 
 		else
