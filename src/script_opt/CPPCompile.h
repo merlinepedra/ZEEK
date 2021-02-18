@@ -285,6 +285,16 @@ private:
 	// Functions that we've declared/compiled.
 	std::unordered_set<std::string> compiled_funcs;
 
+	// Script functions that we are able to compile.  We compute
+	// these ahead of time so that when compiling script function A
+	// which makes a call to script function B, we know whether
+	// B will indeed be compiled, or if it'll be interpreted due to
+	// it including some functionality we don't currently support
+	// for compilation.
+	//
+	// Indexed by the name of the function.
+	std::unordered_set<std::string> compilable_funcs;
+
 	// BiF's that we've processed.
 	std::unordered_set<std::string> bifs;
 

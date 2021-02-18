@@ -15,6 +15,13 @@ void CPPCompile::CompileTo(FILE* f)
 	GenProlog();
 
 	for ( const auto& func : funcs )
+		if ( IsCompilable(func) )
+			compilable_funcs.insert(func.Func()->Name());
+
+	for ( const auto& func : funcs )
+		DeclareGlobals(func);
+
+	for ( const auto& func : funcs )
 		DeclareGlobals(func);
 
 	for ( const auto& func : funcs )
@@ -170,8 +177,14 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 	for ( const auto& b : func.Profile()->BiFCalls() )
 		AddBiF(b);
 
-	for ( const auto& g : func.Profile()->Globals() )
+	for ( const auto& g : func.Profile()->AllGlobals() )
 		{
+		if ( compilable_funcs.count(g->Name()) > 0 )
+			{
+			AddGlobal(g->Name(), "zf");
+			continue;
+			}
+
 		auto gn = std::string(g->Name());
 		if ( globals.count(gn) == 0 )
 			{
@@ -182,11 +195,9 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 				gn + "\")");
 			}
 
-		global_vars.emplace(g);
+		if ( bifs.count(gn) == 0 )
+			global_vars.emplace(g);
 		}
-
-	for ( const auto& s : func.Profile()->ScriptCalls() )
-		AddGlobal(s->Name(), "zf");
 
 	for ( const auto& e : func.Profile()->Events() )
 		{

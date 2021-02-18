@@ -158,7 +158,10 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		auto n = e->AsNameExpr();
 		auto id = n->Id();
 		if ( id->IsGlobal() )
+			{
 			globals.insert(id);
+			all_globals.insert(id);
+			}
 		else
 			{
 			if ( ! skip_locals )
@@ -208,6 +211,8 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			does_indirect_calls = true;
 			return TC_CONTINUE;
 			}
+
+		all_globals.insert(func.get());
 
 		auto func_v = func->GetVal();
 		if ( func_v )

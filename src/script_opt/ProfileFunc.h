@@ -23,6 +23,8 @@ public:
 
 	const std::unordered_set<const ID*>& Globals() const
 		{ return globals; }
+	const std::unordered_set<const ID*>& AllGlobals() const
+		{ return all_globals; }
 	const std::unordered_set<const ID*>& Locals() const
 		{ return locals; }
 	const std::unordered_set<const ID*>& Assignees() const
@@ -67,6 +69,9 @@ protected:
 	// Does *not* include globals solely seen as the function being
 	// called in a call.
 	std::unordered_set<const ID*> globals;
+
+	// Same, but also includes globals only seen as called functions.
+	std::unordered_set<const ID*> all_globals;
 
 	// Locals seen in the function.
 	std::unordered_set<const ID*> locals;
