@@ -106,8 +106,9 @@ IntrusivePtr<T> val_to_valptr__CPP(T* v) { return {NewRef{}, v}; }
 void assign_to_index__CPP(ValPtr v1, ValPtr v2, ValPtr v3)
 	{
 	bool iterators_invalidated;
-	auto err_msg = zeek::detail::assign_to_index(v1, v2, v3,
-							iterators_invalidated);
+	auto err_msg = zeek::detail::assign_to_index(std::move(v1),
+						std::move(v2), std::move(v3),
+						iterators_invalidated);
 	if ( err_msg )
 		reporter->Error("%s", err_msg);
 	}
