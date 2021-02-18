@@ -179,24 +179,33 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 
 	for ( const auto& g : func.Profile()->AllGlobals() )
 		{
-		if ( compilable_funcs.count(g->Name()) > 0 )
+		auto gn = std::string(g->Name());
+		if ( globals.count(gn) > 0 )
+			// Already processed.
+			continue;
+
+		if ( compilable_funcs.count(gn) > 0 )
 			{
 			AddGlobal(g->Name(), "zf");
-			continue;
+			const auto& ggn = globals[gn];
+
+			Emit("FuncValPtr %s;", ggn);
+			AddInit(g, ggn,
+				std::string("make_intrusive<FuncVal>(") +
+				ggn + "_func)");
 			}
 
-		auto gn = std::string(g->Name());
-		if ( globals.count(gn) == 0 )
+		else
 			{
 			AddGlobal(gn.c_str(), "gl");
 			Emit("IDPtr %s;", globals[gn]);
 			AddInit(g, globals[gn],
 				std::string("lookup_global__CPP(\"") +
 				gn + "\")");
-			}
 
-		if ( bifs.count(gn) == 0 )
-			global_vars.emplace(g);
+			if ( bifs.count(gn) == 0 )
+				global_vars.emplace(g);
+			}
 		}
 
 	for ( const auto& e : func.Profile()->Events() )
@@ -323,7 +332,7 @@ void CPPCompile::DeclareFunc(const FuncInfo& func)
 
 	NL();
 
-	auto fname = Canonicalize(func.Func()->Name()) + "__zf";
+	auto fname = Canonicalize(func.Func()->Name()) + "__zfc";
 	DeclareSubclass(func, fname);
 
 	body_names.emplace(func.Body().get(), fname);
@@ -779,8 +788,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		if ( global_vars.count(n) > 0 )
 			return GenericValPtrToGT(globals[n->Name()] + "->GetVal()",
 							t, gt);
-		else
-			return NativeToGT(IDNameStr(n), t, gt);
+
+		return NativeToGT(IDNameStr(n), t, gt);
 		}
 
 	case EXPR_CONST:
@@ -1446,18 +1455,24 @@ std::string CPPCompile::GenBinarySubNet(const Expr* e, GenType gt,
 std::string CPPCompile::GenEQ(const Expr* e, GenType gt, const char* op)
 	{
 	auto op1 = e->GetOp1();
-
-	if ( op1->GetType()->Tag() != TYPE_PATTERN )
-		return GenBinary(e, gt, op);
-
-	auto op2 = e->GetOp1();
+	auto op2 = e->GetOp2();
+	auto tag = op1->GetType()->Tag();
 	std::string negated(e->Tag() == EXPR_EQ ? "" : "! ");
 
-	return NativeToGT(negated + GenExpr(op1, GEN_DONT_CARE) +
-				"->MatchExactly(" +
-				GenExpr(op2, GEN_DONT_CARE) +
-				"->AsString())",
-				e->GetType(), gt);
+	if ( tag == TYPE_PATTERN )
+		return NativeToGT(negated + GenExpr(op1, GEN_DONT_CARE) +
+					"->MatchExactly(" +
+					GenExpr(op2, GEN_DONT_CARE) +
+					"->AsString())",
+					e->GetType(), gt);
+
+	if ( tag == TYPE_FUNC )
+		return NativeToGT(negated + "util::streq(" +
+			GenExpr(op1, GEN_DONT_CARE) + "->AsFunc()->Name(), " +
+			GenExpr(op2, GEN_DONT_CARE) + "->AsFunc()->Name())",
+			e->GetType(), gt);
+
+	return GenBinary(e, gt, op);
 	}
 
 std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
