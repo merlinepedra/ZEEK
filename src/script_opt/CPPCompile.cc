@@ -518,7 +518,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto e = s->AsExprStmt()->StmtExpr();
 
 		if ( e )
-			Emit("%s;", GenExpr(e, GEN_DONT_CARE));
+			Emit("%s;", GenExpr(e, GEN_DONT_CARE, true));
 		}
 		break;
 
@@ -785,7 +785,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 	}
 	}
 
-std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
+std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	{
 	const auto& t = e->GetType();
 
@@ -862,7 +862,12 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt)
 		auto assign = make_intrusive<AssignExpr>(op, rhs, false,
 						nullptr, nullptr, false);
 
-		return GenExpr(assign, gt);
+		gen = GenExpr(assign, GEN_DONT_CARE);
+
+		if ( ! top_level )
+			gen = "(" + gen + ", " + GenExpr(op, gt) + ")";
+
+		return gen;
 		}
 
 	case EXPR_NOT:		return GenUnary(e, gt, "!");

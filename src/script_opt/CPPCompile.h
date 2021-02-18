@@ -99,9 +99,9 @@ private:
 		GEN_VAL_PTR,
 	};
 
-	std::string GenExpr(const ExprPtr& e, GenType gt)
-		{ return GenExpr(e.get(), gt); }
-	std::string GenExpr(const Expr* e, GenType gt);
+	std::string GenExpr(const ExprPtr& e, GenType gt, bool top_level = false)
+		{ return GenExpr(e.get(), gt, top_level); }
+	std::string GenExpr(const Expr* e, GenType gt, bool top_level = false);
 
 	std::string GenArgs(const Expr* e);
 
