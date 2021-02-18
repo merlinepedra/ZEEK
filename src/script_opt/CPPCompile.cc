@@ -723,9 +723,13 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto ev_s = static_cast<const EventStmt*>(s)->StmtExprPtr();
 		auto ev_e = cast_intrusive<EventExpr>(ev_s);
 
-		Emit("event_mgr.Enqueue(%s, %s);",
-			globals[std::string(ev_e->Name())],
-			GenExpr(ev_e->Args(), GEN_VAL_PTR));
+		if ( ev_e->Args()->Exprs().length() > 0 )
+			Emit("event_mgr.Enqueue(%s, %s);",
+				globals[std::string(ev_e->Name())],
+				GenExpr(ev_e->Args(), GEN_VAL_PTR));
+		else
+			Emit("event_mgr.Enqueue(%s, Args{});",
+				globals[std::string(ev_e->Name())]);
 		}
 		break;
 
