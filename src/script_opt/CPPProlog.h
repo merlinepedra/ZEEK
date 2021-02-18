@@ -63,6 +63,12 @@ StringValPtr str_concat__CPP(const String* s1, const String* s2)
 	return make_intrusive<StringVal>(concatenate(strings));
 	}
 
+bool str_in__CPP(const String* s1, const String* s2)
+	{
+	auto s = reinterpret_cast<const unsigned char*>(s1->CheckString());
+	return util::strstr_n(s2->Len(), s2->Bytes(), s1->Len(), s) != -1;
+	}
+
 ListValPtr index_val__CPP(std::vector<ValPtr> indices)
 	{
 	auto ind_v = make_intrusive<ListVal>(TYPE_ANY);
