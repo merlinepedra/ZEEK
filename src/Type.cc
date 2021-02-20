@@ -1070,6 +1070,12 @@ void RecordType::DescribeFields(ODesc* d) const
 			else
 				td->type->Describe(d);
 
+			if ( td->attrs )
+				{
+				d->SP();
+				td->attrs->Describe(d);
+				}
+
 			d->Add(";");
 			}
 		}
