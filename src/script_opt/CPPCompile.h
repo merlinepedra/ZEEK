@@ -157,6 +157,8 @@ private:
 					GenType gt);
 
 	void GenInitExpr(const ExprPtr& e);
+	bool IsSimpleInitExpr(const ExprPtr& e) const
+		{ return e->Tag() == EXPR_CONST; }
 	std::string InitExprName(const ExprPtr& e);
 
 	void GenAttrs(const AttributesPtr& attrs);

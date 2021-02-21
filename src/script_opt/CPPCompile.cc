@@ -1688,6 +1688,8 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 	const auto& avec = attrs->GetAttrs();
 	Emit("auto attrs = std::vector<AttrPtr>();");
 
+	AddInit(attrs);
+
 	for ( auto i = 0; i < avec.size(); ++i )
 		{
 		const auto& attr = avec[i];
@@ -1695,11 +1697,18 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 
 		if ( e )
 			{
+			std::string e_arg;
+			if ( IsSimpleInitExpr(e) )
+				e_arg = std::string("make_intrusive<ConstExpr>(") +
+					GenExpr(e, GEN_VAL_PTR) + ")";
+			else
+				{
+				e_arg = InitExprName(e);
+				NoteInitDependency(attrs, e);
+				}
+
 			Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));",
-				AttrName(attr),
-				InitExprName(e));
-			NoteInitDependency(attrs, e);
-			AddInit(attrs);
+				AttrName(attr), e_arg);
 			}
 		else
 			Emit("attrs.emplace_back(make_intrusive<Attr>(%s));",
@@ -2308,30 +2317,32 @@ void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
 		return;
 
 	attributes.AddKey(attrs);
+	AddInit(attrs);
 
 	auto a_rep = attributes.GetRep(attrs);
 	if ( a_rep != attrs.get() )
 		{
 		NoteInitDependency(attrs.get(), a_rep);
-		AddInit(attrs);
+		return;
 		}
-
-	AddInit(attrs);
 
 	for ( const auto& a : attrs->GetAttrs() )
 		{
 		const auto& e = a->GetExpr();
 		if ( e )
 			{
-			init_exprs.AddKey(e);
-			AddInit(e);
-			NoteInitDependency(attrs, e);
-
-			auto e_rep = init_exprs.GetRep(e);
-			if ( e_rep != e.get() )
+			if ( IsSimpleInitExpr(e) )
+				// Make sure any complex constants it uses
+				// get noted.
+				(void) GenExpr(e, GEN_VAL_PTR);
+			else
 				{
-				NoteInitDependency(e.get(), e_rep);
+				init_exprs.AddKey(e);
 				AddInit(e);
+				NoteInitDependency(attrs, e);
+				auto e_rep = init_exprs.GetRep(e);
+				if ( e_rep != e.get() )
+					NoteInitDependency(e.get(), e_rep);
 				}
 			}
 		}
