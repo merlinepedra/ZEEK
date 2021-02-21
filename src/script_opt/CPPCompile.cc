@@ -1,6 +1,5 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include "zeek/Desc.h"
 #include "zeek/RE.h"
 #include "zeek/script_opt/CPPCompile.h"
 #include "zeek/script_opt/ProfileFunc.h"
@@ -45,14 +44,14 @@ void CPPCompile::GenEpilog()
 	{
 	NL();
 
-	for ( const auto& e : init_exprs.Keys() )
+	for ( const auto& e : init_exprs.DistinctKeys() )
 		GenInitExpr(e);
 
-	for ( const auto& a : attributes.Keys() )
+	for ( const auto& a : attributes.DistinctKeys() )
 		GenAttrs(a);
 
 	// Generate the guts of compound types.
-	for ( const auto& t : types.Keys() )
+	for ( const auto& t : types.DistinctKeys() )
 		ExpandTypeVar(t);
 
 	NL();
@@ -60,7 +59,7 @@ void CPPCompile::GenEpilog()
 
 	StartBlock();
 
-	Emit("types__CPP = new TypePtr[%s];", Fmt(types.Size()));
+	Emit("types__CPP = new TypePtr[%s];", Fmt(types.DistinctSize()));
 
 	NL();
 	for ( const auto& i : pre_inits )
@@ -2280,6 +2279,13 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		}
 
 		types.AddKey(t);
+
+		auto t_rep = types.GetRep(t);
+		if ( t_rep != t.get() )
+			{
+			NoteInitDependency(t.get(), t_rep);
+			AddInit(t);
+			}
 		}
 
 	if ( types.HasKey(t) )
@@ -2303,6 +2309,13 @@ void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
 
 	attributes.AddKey(attrs);
 
+	auto a_rep = attributes.GetRep(attrs);
+	if ( a_rep != attrs.get() )
+		{
+		NoteInitDependency(attrs.get(), a_rep);
+		AddInit(attrs);
+		}
+
 	AddInit(attrs);
 
 	for ( const auto& a : attrs->GetAttrs() )
@@ -2313,6 +2326,13 @@ void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
 			init_exprs.AddKey(e);
 			AddInit(e);
 			NoteInitDependency(attrs, e);
+
+			auto e_rep = init_exprs.GetRep(e);
+			if ( e_rep != e.get() )
+				{
+				NoteInitDependency(e.get(), e_rep);
+				AddInit(e);
+				}
 			}
 		}
 	}

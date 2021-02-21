@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "zeek/Desc.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
 
@@ -26,8 +27,17 @@ public:
 		if ( HasKey(key) )
 			return;
 
-		map[key.get()] = map.size();
-		keys.emplace_back(key);
+		auto iname = InternalName(key);
+
+		if ( map2.count(iname) == 0 )
+			{
+			map2[iname] = map2.size();
+			reps[iname] = key.get();
+			keys2.push_back(key);
+			}
+
+		map[key.get()] = iname;
+		keys.push_back(key);
 		}
 
 	std::string KeyName(T1 key)
@@ -35,26 +45,47 @@ public:
 		ASSERT(HasKey(key));
 
 		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%d", map[key]);
+		snprintf(d_s, sizeof d_s, "%d", map2[map[key]]);
 
 		return base_name + "_" + std::string(d_s) + "__CPP";
 		}
 	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
 
-	int KeyIndex(T1 key)	{ return map[key]; }
-	int KeyIndex(T2 key)	{ return map[key.get()]; }
+	int KeyIndex(T1 key)	{ return map2[map[key]]; }
+	int KeyIndex(T2 key)	{ return map2[map[key.get()]]; }
 
-	const std::vector<T2>& Keys() const	{ return keys; }
+	const std::vector<T2>& Keys() const		{ return keys; }
+	const std::vector<T2>& DistinctKeys() const	{ return keys2; }
 
-	int Size() const	{ return keys.size(); }
+	int Size() const		{ return keys.size(); }
+	int DistinctSize() const	{ return keys2.size(); }
+
+	const T1& GetRep(T2 key) 	{ return reps[map[key.get()]]; }
 
 private:
-	// Maps keys to distinct values.
-	std::unordered_map<T1, int> map;
+	std::string InternalName(T2 key) const
+		{
+		ODesc d;
+		key->Describe(&d);
+		return d.Description();
+		}
+
+	// Maps keys to internal names.
+	std::unordered_map<T1, std::string> map;
+
+	// Maps internal names to distinct values.
+	std::unordered_map<std::string, int> map2;
 
 	// Tracks the set of keys, to facilitate iterating over them.
 	// Parallel to "map".
 	std::vector<T2> keys;
+
+	// Similar, but only for "representative" keys, i.e., those
+	// associated with distinct slots in map2.
+	std::vector<T2> keys2;
+
+	// Maps internal names to representatives.
+	std::unordered_map<std::string, T1> reps;
 
 	// Used to construct key names.
 	std::string base_name;
