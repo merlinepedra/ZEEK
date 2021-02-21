@@ -143,7 +143,7 @@ static zeek::detail::Location func_hdr_location;
 zeek::EnumType* cur_enum_type = nullptr;
 static zeek::detail::ID* cur_decl_type_id = nullptr;
 
-static void parser_new_enum (void)
+static void parse_new_enum (void)
 	{
 	/* Starting a new enum definition. */
 	assert(cur_enum_type == nullptr);
@@ -154,7 +154,7 @@ static void parser_new_enum (void)
 		zeek::reporter->FatalError("incorrect syntax for enum type declaration");
 	}
 
-static void parser_redef_enum (zeek::detail::ID *id)
+static void parse_redef_enum (zeek::detail::ID *id)
 	{
 	/* Redef an enum. id points to the enum to be redefined.
 	   Let cur_enum_type point to it. */
@@ -958,7 +958,7 @@ type:
 				$$ = 0;
 				}
 
-	|	TOK_ENUM '{' { zeek::detail::set_location(@1); parser_new_enum(); } enum_body '}'
+	|	TOK_ENUM '{' { zeek::detail::set_location(@1); parse_new_enum(); } enum_body '}'
 				{
 				zeek::detail::set_location(@1, @5);
 				$4->UpdateLocationEndInfo(@5);
@@ -1151,7 +1151,7 @@ decl:
 			}
 
 	|	TOK_REDEF TOK_ENUM global_id TOK_ADD_TO '{'
-			{ ++in_enum_redef; parser_redef_enum($3); zeek::detail::zeekygen_mgr->Redef($3, ::filename); }
+			{ ++in_enum_redef; parse_redef_enum($3); zeek::detail::zeekygen_mgr->Redef($3, ::filename); }
 		enum_body '}' ';'
 			{
 			--in_enum_redef;
