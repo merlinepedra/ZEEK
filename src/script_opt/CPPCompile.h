@@ -113,7 +113,8 @@ private:
 
 	void DeclareSubclass(const FuncInfo& func, const std::string& fname);
 	void GenSubclassTypeAssignment(Func* f);
-	void GenInvokeBody(const TypePtr& t, const std::string& args);
+	void GenInvokeBody(const std::string& fname, const TypePtr& t,
+				const std::string& args);
 
 	void DefineBody(const FuncInfo& func, const std::string& fname);
 

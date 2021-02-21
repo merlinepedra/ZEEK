@@ -186,7 +186,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		if ( compilable_funcs.count(gn) > 0 )
 			{
 			AddGlobal(g->Name(), "zf");
-			Emit("FuncValPtr %s;", globals[gn]);
+			Emit("FuncValPtr %s_fv;", globals[gn]);
 			}
 
 		else
@@ -342,6 +342,12 @@ void CPPCompile::CompileFunc(const FuncInfo& func)
 
 void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	{
+	const auto& ft = func.Func()->GetType();
+	const auto& yt = ft->Yield();
+
+	Emit("static %s %s(%s);", FullTypeName(yt), fname,
+		ParamDecl(ft, func.Profile()));
+
 	auto is_pure = func.Func()->IsPure();
 
 	Emit("class %s_cl : public CPPFunc", fname);
@@ -354,24 +360,18 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	GenSubclassTypeAssignment(func.Func());
 	EndBlock();
 
-	const auto& ft = func.Func()->GetType();
-	const auto& yt = ft->Yield();
-
 	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
 	StartBlock();
 
 	if ( IsNativeType(yt) )
 		{
 		auto args = BindArgs(func.Func()->GetType());
-		GenInvokeBody(yt, args);
+		GenInvokeBody(fname, yt, args);
 		}
 	else
-		Emit("return Call(%s);", BindArgs(func.Func()->GetType()));
+		Emit("return %s(%s);", fname, BindArgs(func.Func()->GetType()));
 
 	EndBlock();
-
-	Emit("static %s Call(%s);", FullTypeName(yt),
-		ParamDecl(ft, func.Profile()));
 
 	EndBlock(true);
 
@@ -386,9 +386,10 @@ void CPPCompile::GenSubclassTypeAssignment(Func* f)
 		GenTypeName(f->GetType()));
 	}
 
-void CPPCompile::GenInvokeBody(const TypePtr& t, const std::string& args)
+void CPPCompile::GenInvokeBody(const std::string& fname, const TypePtr& t,
+				const std::string& args)
 	{
-	auto call = std::string("Call(") + args + ")";
+	auto call = fname + "(" + args + ")";
 
 	if ( t->Tag() == TYPE_VOID )
 		{
@@ -410,7 +411,7 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	for ( const auto& p : func.Profile()->Params() )
 		params.emplace(p);
 
-	Emit("%s %s_cl::Call(%s)", FullTypeName(ret_type), fname,
+	Emit("%s %s(%s)", FullTypeName(ret_type), fname,
 		ParamDecl(ft, func.Profile()));
 
 	StartBlock();
@@ -788,8 +789,17 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	case EXPR_NAME:
 		{
 		auto n = e->AsNameExpr()->Id();
+		bool is_global_var = global_vars.count(n) > 0;
 
-		if ( global_vars.count(n) > 0 )
+		if ( t->Tag() == TYPE_FUNC && ! is_global_var )
+			{
+			auto func = n->Name();
+			if ( globals.count(func) > 0 && bifs.count(func) == 0 )
+				return GenericValPtrToGT(IDNameStr(n) + "_fv",
+								t, gt);
+			}
+
+		if ( is_global_var )
 			return GenericValPtrToGT(globals[n->Name()] + "->GetVal()",
 							t, gt);
 
@@ -913,16 +923,17 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 
 		if ( f->Tag() == EXPR_NAME )
 			{
-			auto func = f->AsNameExpr()->Id();
-			auto func_name = IDNameStr(func);
+			auto f_id = f->AsNameExpr()->Id();
+			auto func = f_id->Name();
+			auto fname = Canonicalize(func) + "__zf";
 
-			if ( compiled_funcs.count(func_name) > 0 )
+			if ( compiled_funcs.count(fname) > 0 )
 				{
 				if ( args_l->Exprs().length() > 0 )
-					gen += "_func->Call(" +
+					gen = fname + "(" +
 						GenArgs(args_l) + ", f__CPP)";
 				else
-					gen += "_func->Call(f__CPP)";
+					gen = fname + "(f__CPP)";
 
 				return NativeToGT(gen, t, gt);
 				}
@@ -930,9 +941,12 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			// If the function is a global and isn't (known as)
 			// a BiF, then it will have been declared as a ValPtr
 			// and we need to convert it to a Func*.
-			if ( globals.count(func->Name()) > 0 &&
-			     bifs.count(func->Name()) == 0 )
-				gen = gen + "->AsFunc()";
+			if ( globals.count(func) > 0 && bifs.count(func) == 0 )
+				{
+				if ( global_vars.count(f_id) == 0 )
+					gen += + "_fv";
+				gen += + "->AsFunc()";
+				}
 			}
 
 		else
@@ -1478,10 +1492,28 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt, const char* op)
 					e->GetType(), gt);
 
 	if ( tag == TYPE_FUNC )
-		return NativeToGT(negated + "util::streq(" +
-			GenExpr(op1, GEN_DONT_CARE) + "->AsFunc()->Name(), " +
-			GenExpr(op2, GEN_DONT_CARE) + "->AsFunc()->Name())",
-			e->GetType(), gt);
+		{
+		auto f1 = op1->Tag() == EXPR_NAME ?
+				op1->AsNameExpr()->Id()->Name() : nullptr;
+		auto f2 = op2->Tag() == EXPR_NAME ?
+				op2->AsNameExpr()->Id()->Name() : nullptr;
+
+		if ( f1 && f2 )
+			return util::streq(f1, f2) ? "true" : "false";
+
+		auto gen_f1 = GenExpr(op1, GEN_DONT_CARE);
+		auto gen_f2 = GenExpr(op2, GEN_DONT_CARE);
+
+		gen_f1 += "->AsFunc()->Name()";
+		gen_f2 += "->AsFunc()->Name()";
+
+		if ( f1 ) gen_f1 = std::string("\"") + f1 + "\"";
+		if ( f2 ) gen_f2 = std::string("\"") + f2 + "\"";
+
+		auto gen = "util::streq(" + gen_f1 + ", " + gen_f2 + ")";
+
+		return NativeToGT(negated + gen, e->GetType(), gt);
+		}
 
 	return GenBinary(e, gt, op);
 	}
@@ -1630,9 +1662,13 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	NL();
 
 	const auto& t = e->GetType();
+	auto ename = InitExprName(e);
 
 	// First, create a CPPFunc that we can compile to compute e.
-	auto name = std::string("wrapper_") + InitExprName(e);
+	auto name = std::string("wrapper_") + ename;
+
+	Emit("static %s %s(Frame* f__CPP);", FullTypeName(t), name);
+
 	Emit("class %s_cl : public CPPFunc", name);
 	StartBlock();
 
@@ -1649,13 +1685,13 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	StartBlock();
 
 	if ( IsNativeType(t) )
-		GenInvokeBody(t, "parent");
+		GenInvokeBody(name, t, "parent");
 	else
-		Emit("return Call(parent);");
+		Emit("return %s(parent);", name);
 
 	EndBlock();
 
-	Emit("static %s Call(Frame* f__CPP)", FullTypeName(t));
+	Emit("static %s %s(Frame* f__CPP)", FullTypeName(t), name);
 	StartBlock();
 
 	Emit("return %s;", GenExpr(e, GEN_NATIVE));
@@ -1663,12 +1699,10 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	EndBlock(true);
 
-	auto init_expr_name = InitExprName(e);
-
-	Emit("CallExprPtr %s;", init_expr_name);
+	Emit("CallExprPtr %s;", ename);
 
 	NoteInitDependency(e, t);
-	AddInit(e, init_expr_name, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
+	AddInit(e, ename, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
 		name + "_cl>())), make_intrusive<ListExpr>(), false)");
 	}
 
