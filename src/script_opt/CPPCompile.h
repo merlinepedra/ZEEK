@@ -321,6 +321,11 @@ private:
 	// Globals that correspond to variables, not functions.
 	std::unordered_set<const ID*> global_vars;
 
+	// Globals that correspond to functions that are also used as
+	// variables (i.e., in contexts where they're not just a function
+	// being directly called.
+	std::unordered_set<const ID*> global_func_vars;
+
 	// Functions that we've declared/compiled.
 	std::unordered_set<std::string> compiled_funcs;
 

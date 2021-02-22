@@ -14,11 +14,16 @@ void CPPCompile::CompileTo(FILE* f)
 	GenProlog();
 
 	for ( const auto& func : funcs )
+		{
 		if ( IsCompilable(func) )
+			{
 			compilable_funcs.insert(func.Func()->Name());
 
-	for ( const auto& func : funcs )
-		DeclareGlobals(func);
+			for ( const auto& g : func.Profile()->AllGlobals() )
+				if ( func.Profile()->Globals().count(g) > 0 )
+					global_func_vars.insert(g);
+			}
+		}
 
 	for ( const auto& func : funcs )
 		DeclareGlobals(func);
@@ -173,10 +178,12 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 	if ( ! IsCompilable(func) )
 		return;
 
-	for ( const auto& b : func.Profile()->BiFCalls() )
+	const auto pf = func.Profile();
+
+	for ( const auto& b : pf->BiFCalls() )
 		AddBiF(b);
 
-	for ( const auto& g : func.Profile()->AllGlobals() )
+	for ( const auto& g : pf->AllGlobals() )
 		{
 		auto gn = std::string(g->Name());
 		if ( globals.count(gn) > 0 )
@@ -185,24 +192,26 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 
 		if ( compilable_funcs.count(gn) > 0 )
 			{
-			AddGlobal(g->Name(), "zf");
-			Emit("FuncValPtr %s_fv;", globals[gn]);
+			if ( global_func_vars.count(g) == 0 )
+				{
+				// No need to create a script global for the
+				// function, as it's not used other than in
+				// a call.
+				AddGlobal(g->Name(), "zf");
+				continue;
+				}
 			}
 
-		else
-			{
-			AddGlobal(gn.c_str(), "gl");
-			Emit("IDPtr %s;", globals[gn]);
-			AddInit(g, globals[gn],
-				std::string("lookup_global__CPP(\"") +
-				gn + "\")");
+		AddGlobal(gn.c_str(), "gl");
+		Emit("IDPtr %s;", globals[gn]);
+		AddInit(g, globals[gn], std::string("lookup_global__CPP(\"") +
+					gn + "\")");
 
-			if ( bifs.count(gn) == 0 )
-				global_vars.emplace(g);
-			}
+		if ( bifs.count(gn) == 0 )
+			global_vars.emplace(g);
 		}
 
-	for ( const auto& e : func.Profile()->Events() )
+	for ( const auto& e : pf->Events() )
 		{
 		AddGlobal(e, "ev");
 		const auto& ev = globals[std::string(e)];
@@ -216,7 +225,7 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 			}
 		}
 
-	for ( const auto& c : func.Profile()->Constants() )
+	for ( const auto& c : pf->Constants() )
 		AddConstant(c);
 	}
 
@@ -795,8 +804,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			{
 			auto func = n->Name();
 			if ( globals.count(func) > 0 && bifs.count(func) == 0 )
-				return GenericValPtrToGT(IDNameStr(n) + "_fv",
-								t, gt);
+				return GenericValPtrToGT(IDNameStr(n), t, gt);
 			}
 
 		if ( is_global_var )
@@ -942,11 +950,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			// a BiF, then it will have been declared as a ValPtr
 			// and we need to convert it to a Func*.
 			if ( globals.count(func) > 0 && bifs.count(func) == 0 )
-				{
-				if ( global_vars.count(f_id) == 0 )
-					gen += + "_fv";
 				gen += + "->AsFunc()";
-				}
 			}
 
 		else
