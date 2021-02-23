@@ -1716,6 +1716,19 @@ bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e) const
 	case EXPR_NAME:
 		return true;
 
+	case EXPR_RECORD_COERCE:
+		{ // look for coercion of empty record
+		auto op = e->GetOp1();
+
+		if ( op->Tag() != EXPR_RECORD_CONSTRUCTOR )
+			return false;
+
+		auto rc = static_cast<const RecordConstructorExpr*>(op.get());
+		const auto& exprs = rc->Op()->AsListExpr()->Exprs();
+
+		return exprs.length() == 0;
+		}
+
 	default:
 		return false;
 	}
@@ -1744,39 +1757,46 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 		const auto& attr = avec[i];
 		const auto& e = attr->GetExpr();
 
-		if ( e )
+		if ( ! e )
 			{
-			std::string e_arg;
-			if ( IsSimpleInitExpr(e) )
-				{
-				switch ( e->Tag() ) {
-				case EXPR_CONST:
-					e_arg = std::string("make_intrusive<ConstExpr>(") +
-						GenExpr(e, GEN_VAL_PTR) + ")";
-					break;
-
-				case EXPR_NAME:
-					e_arg = std::string("make_intrusive<NameExpr>(") +
-						globals[e->AsNameExpr()->Id()->Name()] +
-						")";
-					break;
-
-				default:
-					reporter->InternalError("bad expr tag in CPPCompile::GenAttrs");
-				}
-				}
-			else
-				{
-				e_arg = InitExprName(e);
-				NoteInitDependency(attrs, e);
-				}
-
-			Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));",
-				AttrName(attr), e_arg);
-			}
-		else
 			Emit("attrs.emplace_back(make_intrusive<Attr>(%s));",
 				AttrName(attr));
+			continue;
+			}
+
+		std::string e_arg;
+		if ( IsSimpleInitExpr(e) )
+			{
+			switch ( e->Tag() ) {
+			case EXPR_CONST:
+				e_arg = std::string("make_intrusive<ConstExpr>(") +
+					GenExpr(e, GEN_VAL_PTR) + ")";
+				break;
+
+			case EXPR_NAME:
+				e_arg = std::string("make_intrusive<NameExpr>(") +
+					globals[e->AsNameExpr()->Id()->Name()] +
+					")";
+				break;
+
+			case EXPR_RECORD_COERCE:
+				e_arg = std::string("make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>(make_intrusive<ListExpr>()), cast_intrusive<RecordType>(") +
+					GenTypeName(e->GetType()) + "))";
+				break;
+
+			default:
+				reporter->InternalError("bad expr tag in CPPCompile::GenAttrs");
+			}
+			}
+
+		else
+			{
+			e_arg = InitExprName(e);
+			NoteInitDependency(attrs, e);
+			}
+
+		Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));",
+			AttrName(attr), e_arg);
 		}
 
 	Emit("return make_intrusive<Attributes>(attrs, nullptr, true, false);");
