@@ -1710,6 +1710,18 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 		name + "_cl>())), make_intrusive<ListExpr>(), false)");
 	}
 
+bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e) const
+	{
+	switch ( e->Tag() ) {
+	case EXPR_CONST:
+	case EXPR_NAME:
+		return true;
+
+	default:
+		return false;
+	}
+	}
+
 std::string CPPCompile::InitExprName(const ExprPtr& e)
 	{
 	return init_exprs.KeyName(e);
@@ -1737,8 +1749,23 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 			{
 			std::string e_arg;
 			if ( IsSimpleInitExpr(e) )
-				e_arg = std::string("make_intrusive<ConstExpr>(") +
-					GenExpr(e, GEN_VAL_PTR) + ")";
+				{
+				switch ( e->Tag() ) {
+				case EXPR_CONST:
+					e_arg = std::string("make_intrusive<ConstExpr>(") +
+						GenExpr(e, GEN_VAL_PTR) + ")";
+					break;
+
+				case EXPR_NAME:
+					e_arg = std::string("make_intrusive<NameExpr>(") +
+						globals[e->AsNameExpr()->Id()->Name()] +
+						")";
+					break;
+
+				default:
+					reporter->InternalError("bad expr tag in CPPCompile::GenAttrs");
+				}
+				}
 			else
 				{
 				e_arg = InitExprName(e);
@@ -2369,8 +2396,7 @@ void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
 		if ( e )
 			{
 			if ( IsSimpleInitExpr(e) )
-				// Make sure any complex constants it uses
-				// get noted.
+				// Make sure any dependencies it has get noted.
 				(void) GenExpr(e, GEN_VAL_PTR);
 			else
 				{
