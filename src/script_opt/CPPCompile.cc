@@ -1694,14 +1694,13 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 		Emit("return %s(parent);", name);
 
 	EndBlock();
+	EndBlock(true);
 
 	Emit("static %s %s(Frame* f__CPP)", FullTypeName(t), name);
 	StartBlock();
 
 	Emit("return %s;", GenExpr(e, GEN_NATIVE));
 	EndBlock();
-
-	EndBlock(true);
 
 	Emit("CallExprPtr %s;", ename);
 
