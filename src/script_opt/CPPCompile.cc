@@ -2326,13 +2326,13 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		}
 
 		types.AddKey(t);
+		AddInit(t);
 
 		auto t_rep = types.GetRep(t);
-		if ( t_rep != t.get() )
-			{
+		if ( t_rep == t.get() )
+			GenPreInit(t);
+		else
 			NoteInitDependency(t.get(), t_rep);
-			AddInit(t);
-			}
 		}
 
 	if ( types.HasKey(t) )
@@ -2340,7 +2340,6 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		// The following (indirectly) recurses, but the check at
 		// the top of this method keeps the code from reaching
 		// this point.
-		GenPreInit(t);
 		return types.KeyIndex(tp);
 		}
 	else
