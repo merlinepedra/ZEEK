@@ -67,10 +67,22 @@ const AddToExpr* Expr::AsAddToExpr() const
 	return (const AddToExpr*) this;
 	}
 
+const IsExpr* Expr::AsIsExpr() const
+	{
+	CHECK_TAG(tag, EXPR_IS, "ExprVal::AsIsExpr", expr_name)
+	return (const IsExpr*) this;
+	}
+
 const InlineExpr* Expr::AsInlineExpr() const
 	{
 	CHECK_TAG(tag, EXPR_INLINE, "ExprVal::AsInlineExpr", expr_name)
 	return (const InlineExpr*) this;
+	}
+
+const AnyIndexExpr* Expr::AsAnyIndexExpr() const
+	{
+	CHECK_TAG(tag, EXPR_ANY_INDEX, "ExprVal::AsAnyIndexExpr", expr_name)
+	return (const AnyIndexExpr*) this;
 	}
 
 ExprPtr Expr::GetOp1() const { return nullptr; }
@@ -1002,7 +1014,7 @@ static bool is_pattern_cascade(ExprPtr e, IDPtr& id,
 		     rhs->Tag() != EXPR_NAME )
 			return false;
 
-		auto rhs_id = rhs->AsNameExpr()->IdPtr();
+		const auto& rhs_id = rhs->AsNameExpr()->IdPtr();
 
 		if ( id && rhs_id != id )
 			return false;
