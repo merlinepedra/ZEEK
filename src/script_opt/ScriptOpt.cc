@@ -78,8 +78,39 @@ void optimize_func(ScriptFunc* f, std::shared_ptr<ProfileFunc> pf,
 	f->ReplaceBody(body, new_body);
 	body = new_body;
 
+	if ( analysis_options.optimize_AST )
+		{
+		pf = std::make_shared<ProfileFunc>(false);
+		body->Traverse(pf.get());
+
+		RD_Decorate reduced_rds(pf);
+		reduced_rds.TraverseFunction(f, scope, body);
+
+		if ( reporter->Errors() > 0 )
+			{
+			pop_scope();
+			return;
+			}
+
+		rc->SetDefSetsMgr(reduced_rds.GetDefSetsMgr());
+
+		new_body = rc->Reduce(body);
+
+		if ( reporter->Errors() > 0 )
+			{
+			pop_scope();
+			return;
+			}
+
+		if ( analysis_options.only_func || analysis_options.dump_xform )
+			printf("Optimized: %s\n", obj_desc(new_body.get()).c_str());
+
+		f->ReplaceBody(body, new_body);
+		body = new_body;
+		}
+
 	// Profile the new body.
-	pf = std::make_shared<ProfileFunc>(false);
+	pf = std::make_shared<ProfileFunc>();
 	body->Traverse(pf.get());
 
 	// Compute its reaching definitions.
@@ -133,6 +164,7 @@ void analyze_scripts()
 		check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
 		check_env_opt("ZEEK_DUMP_UDS", analysis_options.dump_uds);
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
+		check_env_opt("ZEEK_OPT", analysis_options.optimize_AST);
 		check_env_opt("ZEEK_XFORM", analysis_options.activate);
 
 		auto usage = getenv("ZEEK_USAGE_ISSUES");
@@ -148,6 +180,7 @@ void analyze_scripts()
 			}
 
 		if ( analysis_options.only_func ||
+		     analysis_options.optimize_AST ||
 		     analysis_options.usage_issues > 0 )
 			analysis_options.activate = true;
 
