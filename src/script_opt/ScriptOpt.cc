@@ -190,6 +190,12 @@ void analyze_scripts()
 	if ( ! analysis_options.activate && ! analysis_options.inliner )
 		return;
 
+	if ( analysis_options.usage_issues > 0 && analysis_options.optimize_AST )
+		{
+		fprintf(stderr, "warning: \"-O optimize-ast\" option is incompatible with -u option, deactivating optimization\n");
+		analysis_options.optimize_AST = false;
+		}
+
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
 	std::unordered_map<const ScriptFunc*, std::shared_ptr<ProfileFunc>>
