@@ -192,7 +192,7 @@ void analyze_scripts()
 
 	if ( analysis_options.usage_issues > 0 && analysis_options.optimize_AST )
 		{
-		fprintf(stderr, "warning: \"-O optimize-ast\" option is incompatible with -u option, deactivating optimization\n");
+		fprintf(stderr, "warning: \"-O optimize-AST\" option is incompatible with -u option, deactivating optimization\n");
 		analysis_options.optimize_AST = false;
 		}
 
