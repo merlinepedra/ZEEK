@@ -423,17 +423,10 @@ bool Reducer::ExprValid(const ID* id, const Expr* e1, const Expr* e2) const
 
 	ids.push_back(id);
 
-	// Compute variables involved in the expression.
-	auto op1 = e1->GetOp1();
-	auto op2 = e1->GetOp2();
-	auto op3 = e1->GetOp3();
-
-	if ( op1 && op1->Tag() == EXPR_NAME )
-		ids.push_back(op1->AsNameExpr()->Id());
-	if ( op2 && op2->Tag() == EXPR_NAME )
-		ids.push_back(op2->AsNameExpr()->Id());
-	if ( op3 && op3->Tag() == EXPR_NAME )
-		ids.push_back(op3->AsNameExpr()->Id());
+	// Identify variables involved in the expression.
+	CheckIDs(e1->GetOp1().get(), ids);
+	CheckIDs(e1->GetOp2().get(), ids);
+	CheckIDs(e1->GetOp3().get(), ids);
 
 	if ( e1->Tag() == EXPR_NAME )
 		ids.push_back(e1->AsNameExpr()->Id());
@@ -442,6 +435,22 @@ bool Reducer::ExprValid(const ID* id, const Expr* e1, const Expr* e2) const
 	reduction_root->Traverse(&vc);
 
 	return vc.IsValid();
+	}
+
+void Reducer::CheckIDs(const Expr* e, std::vector<const ID*>& ids) const
+	{
+	if ( ! e )
+		return;
+
+	if ( e->Tag() == EXPR_LIST )
+		{
+		const auto& e_l = e->AsListExpr()->Exprs();
+		for ( auto i = 0; i < e_l.length(); ++i )
+			CheckIDs(e_l[i], ids);
+		}
+
+	else if ( e->Tag() == EXPR_NAME )
+		ids.push_back(e->AsNameExpr()->Id());
 	}
 
 bool Reducer::IsCSE(const AssignExpr* a, const NameExpr* lhs, const Expr* rhs)

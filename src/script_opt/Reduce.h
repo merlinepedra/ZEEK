@@ -199,6 +199,12 @@ protected:
 	// remains valid for substitution at e2.
 	bool ExprValid(const ID* id, const Expr* e1, const Expr* e2) const;
 
+	// Inspects the given expression for identifiers, adding any
+	// observed to the given vector.  Assumes reduced form, so only
+	// NameExpr's and ListExpr's are of interest - does not traverse
+	// into compound expressions.
+	void CheckIDs(const Expr* e, std::vector<const ID*>& ids) const;
+
 	IDPtr GenTemporary(const TypePtr& t, ExprPtr rhs);
 	std::shared_ptr<TempVar> FindTemporary(const ID* id) const;
 
