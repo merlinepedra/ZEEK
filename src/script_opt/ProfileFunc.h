@@ -50,7 +50,7 @@ public:
 		{ return type_switches; }
 	bool DoesIndirectCalls()		{ return does_indirect_calls; }
 
-	std::size_t HashVal()	{ return hash_val; }
+	unsigned long long HashVal()	{ return hash_val; }
 
 	int NumStmts()		{ return num_stmts; }
 	int NumWhenStmts()	{ return num_when_stmts; }
@@ -118,7 +118,7 @@ protected:
 	bool does_indirect_calls = false;
 
 	// Hash value.  Only valid if constructor requested it.
-	std::size_t hash_val = 0;
+	unsigned long long hash_val = 0;
 
 	// How many statements / when statements / lambda expressions /
 	// expressions appear in the function body.
@@ -161,9 +161,16 @@ protected:
 		MergeInHash(h);
 		}
 
-	void UpdateHash(const IntrusivePtr<Obj>& o);
+	void UpdateHash(const char* val)
+		{
+		auto h = std::hash<std::string>{}(std::string(val));
+		MergeInHash(h);
+		}
 
-	void MergeInHash(std::size_t h)
+	void UpdateHash(const Obj* o);
+	void UpdateHash(const IntrusivePtr<Obj>& o)	{ UpdateHash(o.get()); }
+
+	void MergeInHash(unsigned long long h)
 		{
 		// Taken from Boost.  See for example
 		// https://www.boost.org/doc/libs/1_35_0/doc/html/boost/hash_combine_id241013.html

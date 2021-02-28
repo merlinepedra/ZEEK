@@ -178,12 +178,17 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 		if ( compute_hash )
 			{
-			UpdateHash({NewRef{}, id});
+			UpdateHash(id);
 			CheckType(e->GetType());
 			}
 
 		break;
 		}
+
+	case EXPR_FIELD:
+		if ( compute_hash )
+			UpdateHash(e->AsFieldExpr()->Field());
+		break;
 
 	case EXPR_ASSIGN:
 		{
@@ -208,7 +213,10 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			}
 
 		auto n = f->AsNameExpr();
-		IDPtr func = {NewRef{}, n->Id()};
+		auto func = n->Id();
+
+		if ( compute_hash )
+			UpdateHash(func);
 
 		if ( ! func->IsGlobal() )
 			{
@@ -216,7 +224,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			return TC_CONTINUE;
 			}
 
-		all_globals.insert(func.get());
+		all_globals.insert(func);
 
 		auto func_v = func->GetVal();
 		if ( func_v )
@@ -314,7 +322,7 @@ void ProfileFunc::CheckType(const TypePtr& t)
 	UpdateHash(t);
 	}
 
-void ProfileFunc::UpdateHash(const IntrusivePtr<zeek::Obj>& o)
+void ProfileFunc::UpdateHash(const Obj* o)
 	{
 	ODesc d;
 	o->Describe(&d);

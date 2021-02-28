@@ -284,7 +284,7 @@ private:
 	std::string Fmt(bro_uint_t u)
 		{
 		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%llu", u);
+		snprintf(d_s, sizeof d_s, "%lluULL", u);
 		return std::string(d_s);
 		}
 
@@ -328,6 +328,9 @@ private:
 
 	// Functions that we've declared/compiled.
 	std::unordered_set<std::string> compiled_funcs;
+
+	// Maps function names to hashes of bodies.
+	std::unordered_map<std::string, unsigned long long> body_hashes;
 
 	// Script functions that we are able to compile.  We compute
 	// these ahead of time so that when compiling script function A

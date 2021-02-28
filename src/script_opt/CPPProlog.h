@@ -11,6 +11,7 @@
 #include "zeek/Event.h"
 #include "zeek/EventRegistry.h"
 #include "zeek/script_opt/CPPFunc.h"
+#include "zeek/script_opt/CPPStmt.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
 namespace zeek {
@@ -40,6 +41,13 @@ int flag_init_CPP()
 	}
 
 static int dummy = flag_init_CPP();
+
+std::unordered_map<unsigned long long, CPPStmt*> compiled_bodies;
+
+void register_body__CPP(CPPStmt* body, unsigned long long hash)
+	{
+	compiled_bodies[hash] = body;
+	}
 
 IDPtr lookup_global__CPP(const char* g)
 	{

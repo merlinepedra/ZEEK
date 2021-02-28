@@ -139,10 +139,11 @@ void CPPCompile::GenEpilog()
 		NL();
 		}
 
-	// ... and then instantiate the functions themselves.
+	// ... and then instantiate the bodies themselves.
 	NL();
 	for ( const auto& f : compiled_funcs )
-		Emit("%s_func = make_intrusive<%s_cl>();", f, f);
+		Emit("register_body__CPP(new %s_cl2(\"%s\"), %s);",
+			f, f, Fmt(body_hashes[f]));
 
 	EndBlock(true);
 
@@ -386,11 +387,11 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	Emit("IntrusivePtr<%s_cl> %s;", fname, fname + "_func");
 
-	Emit("class %s_cl2 : public Stmt", fname);
+	Emit("class %s_cl2 : public CPPStmt", fname);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s_cl2() : Stmt(STMT_CPP) { }", fname);
+	Emit("%s_cl2(const char* name) : CPPStmt(name) { }", fname);
 
 	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) const override");
 	StartBlock();
@@ -407,9 +408,8 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	EndBlock(true);
 
-	Emit("IntrusivePtr<%s_cl2> %s;", fname, fname + "_stmt");
-
 	compiled_funcs.emplace(fname);
+	body_hashes[fname] = func.Profile()->HashVal();
 	}
 
 void CPPCompile::GenSubclassTypeAssignment(Func* f)
