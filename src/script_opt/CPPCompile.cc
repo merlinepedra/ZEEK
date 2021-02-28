@@ -142,7 +142,7 @@ void CPPCompile::GenEpilog()
 	// ... and then instantiate the bodies themselves.
 	NL();
 	for ( const auto& f : compiled_funcs )
-		Emit("register_body__CPP(new %s_cl2(\"%s\"), %s);",
+		Emit("register_body__CPP(new %s_cl(\"%s\"), %s);",
 			f, f, Fmt(body_hashes[f]));
 
 	EndBlock(true);
@@ -358,20 +358,16 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	Emit("static %s %s(%s);", FullTypeName(yt), fname,
 		ParamDecl(ft, func.Profile()));
 
-	auto is_pure = func.Func()->IsPure();
-
-	Emit("class %s_cl : public CPPFunc", fname);
+	Emit("class %s_cl : public CPPStmt", fname);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s_cl() : CPPFunc(\"%s\", %s)", fname, func.Func()->Name(),
-		is_pure ? "true" : "false");
-	StartBlock();
-	GenSubclassTypeAssignment(func.Func());
-	EndBlock();
+	Emit("%s_cl(const char* name) : CPPStmt(name) { }", fname);
 
-	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
+	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) const override");
 	StartBlock();
+
+	Emit("flow = FLOW_RETURN;");
 
 	if ( IsNativeType(yt) )
 		{
@@ -380,29 +376,6 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 		}
 	else
 		Emit("return %s(%s);", fname, BindArgs(func.Func()->GetType()));
-
-	EndBlock();
-
-	EndBlock(true);
-
-	Emit("IntrusivePtr<%s_cl> %s;", fname, fname + "_func");
-
-	Emit("class %s_cl2 : public CPPStmt", fname);
-	StartBlock();
-
-	Emit("public:");
-	Emit("%s_cl2(const char* name) : CPPStmt(name) { }", fname);
-
-	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) const override");
-	StartBlock();
-
-	if ( IsNativeType(yt) )
-		{
-		auto args = BindArgs2(func.Func()->GetType());
-		GenInvokeBody(fname, yt, args);
-		}
-	else
-		Emit("return %s(%s);", fname, BindArgs2(func.Func()->GetType()));
 
 	EndBlock();
 
@@ -480,29 +453,6 @@ void CPPCompile::DeclareLocals(const FuncInfo& func)
 	}
 
 std::string CPPCompile::BindArgs(const FuncTypePtr& ft)
-	{
-	const auto& params = ft->Params();
-
-	std::string res;
-
-	int n = params->Types()->size();
-	for ( auto i = 0; i < n; ++i )
-		{
-		auto arg_i = std::string("(*args)[") + Fmt(i) + "]";
-		const auto& ft = params->GetFieldType(i);
-
-		if ( IsNativeType(ft) )
-			res += arg_i + NativeAccessor(ft);
-		else
-			res += GenericValPtrToGT(arg_i, ft, GEN_VAL_PTR);
-
-		res += ", ";
-		}
-
-	return res + "parent";
-	}
-
-std::string CPPCompile::BindArgs2(const FuncTypePtr& ft)
 	{
 	const auto& params = ft->Params();
 

@@ -119,7 +119,6 @@ private:
 	void DefineBody(const FuncInfo& func, const std::string& fname);
 
 	std::string BindArgs(const FuncTypePtr& ft);
-	std::string BindArgs2(const FuncTypePtr& ft);
 
 	void DeclareLocals(const FuncInfo& func);
 

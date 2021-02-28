@@ -235,14 +235,14 @@ void analyze_scripts()
 		for ( auto& f : funcs )
 			{
 			auto name = std::string(f.Func()->Name());
-			auto cf = compiled_funcs.find(name);
+			auto hash = f.Profile()->HashVal();
 
-			if ( cf == compiled_funcs.end() )
+			auto body = compiled_bodies.find(hash);
+
+			if ( body == compiled_bodies.end() )
 				continue;
 
-			auto func_global = lookup_ID(name.c_str(), GLOBAL_MODULE_NAME, false, false, false);
-			if ( func_global )
-				func_global->SetVal(make_intrusive<FuncVal>(cf->second));
+			f.Func()->ReplaceBody(f.Body(), {NewRef{}, body->second});
 			}
 
 		return;
