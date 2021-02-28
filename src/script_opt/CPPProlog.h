@@ -109,14 +109,40 @@ template <typename T>
 IntrusivePtr<T> val_to_valptr__CPP(T* v) { return {NewRef{}, v}; }
 
 // Execute an assignment "v1[v2] = v3".
-void assign_to_index__CPP(ValPtr v1, ValPtr v2, ValPtr v3)
+TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	{
 	bool iterators_invalidated;
-	auto err_msg = zeek::detail::assign_to_index(std::move(v1),
-						std::move(v2), std::move(v3),
-						iterators_invalidated);
+	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
+							std::move(v3),
+							iterators_invalidated);
 	if ( err_msg )
 		reporter->Error("%s", err_msg);
+
+	return v1;
+	}
+
+VectorValPtr assign_to_index__CPP(VectorValPtr v1, ValPtr v2, ValPtr v3)
+	{
+	bool iterators_invalidated;
+	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
+							std::move(v3),
+							iterators_invalidated);
+	if ( err_msg )
+		reporter->Error("%s", err_msg);
+
+	return v1;
+	}
+
+StringValPtr assign_to_index__CPP(StringValPtr v1, ValPtr v2, ValPtr v3)
+	{
+	bool iterators_invalidated;
+	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
+							std::move(v3),
+							iterators_invalidated);
+	if ( err_msg )
+		reporter->Error("%s", err_msg);
+
+	return v1;
 	}
 
 ValPtr vector_append__CPP(VectorValPtr v1, ValPtr v2)
