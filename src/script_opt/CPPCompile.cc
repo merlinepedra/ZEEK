@@ -1120,6 +1120,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		}
 
 	case EXPR_ADD_TO:
+		{
 		if ( t->Tag() == TYPE_VECTOR )
 			{
 			gen = std::string("vector_append__CPP(") +
@@ -1128,16 +1129,27 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			return GenericValPtrToGT(gen, t, gt);
 			}
 
+		// Second GetOp1 is because for non-vectors, LHS will be
+		// a RefExpr.
+		auto lhs = e->GetOp1()->GetOp1();
+
 		if ( t->Tag() == TYPE_STRING )
 			{
-			auto op1 = e->GetOp1()->AsRefExprPtr()->GetOp1();
 			auto rhs_native = GenBinaryString(e, GEN_NATIVE, "+=");
 			auto rhs_val_ptr = GenBinaryString(e, GEN_VAL_PTR, "+=");
 
-			return GenAssign(op1, nullptr, rhs_native, rhs_val_ptr);
+			return GenAssign(lhs, nullptr, rhs_native, rhs_val_ptr);
+			}
+
+		if ( lhs->Tag() != EXPR_NAME )
+			{ // LHS is a compound, expand x += y to x = x + y
+			auto rhs = make_intrusive<AddExpr>(lhs, e->GetOp2());
+			auto assign = make_intrusive<AssignExpr>(lhs, rhs, false, nullptr, nullptr, false);
+			return GenExpr(assign, gt);
 			}
 
 		return GenBinary(e, gt, "+=");
+		}
 
 	case EXPR_REF:
 		return GenExpr(e->GetOp1(), gt);
