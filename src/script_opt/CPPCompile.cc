@@ -974,10 +974,11 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 				return NativeToGT(gen, t, gt);
 				}
 
-			// If the function is a global and isn't (known as)
-			// a BiF, then it will have been declared as a ValPtr
-			// and we need to convert it to a Func*.
-			if ( globals.count(func) > 0 && bifs.count(func) == 0 )
+			// If the function isn't (known as) a BiF, then it
+			// will have been declared as a ValPtr (or a
+			// FuncValPtr, if a local), and we need to convert
+			// it to a Func*.
+			if ( bifs.count(func) == 0 )
 				gen += + "->AsFunc()";
 			}
 
