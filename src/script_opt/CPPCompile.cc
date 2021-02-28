@@ -17,7 +17,8 @@ void CPPCompile::CompileTo(FILE* f)
 		{
 		if ( IsCompilable(func) )
 			{
-			compilable_funcs.insert(func.Func()->Name());
+			if ( func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION )
+				compilable_funcs.insert(BodyName(func));
 
 			for ( const auto& g : func.Profile()->AllGlobals() )
 				if ( func.Profile()->Globals().count(g) > 0 )
@@ -153,7 +154,7 @@ void CPPCompile::GenEpilog()
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
 	{
-	if ( func.Func()->Flavor() != FUNC_FLAVOR_FUNCTION )
+	if ( func.Func()->Flavor() == FUNC_FLAVOR_HOOK )
 		return false;
 
 	const auto& pf = func.Profile();
@@ -335,7 +336,7 @@ void CPPCompile::DeclareFunc(const FuncInfo& func)
 
 	NL();
 
-	auto fname = Canonicalize(func.Func()->Name()) + "__zf";
+	auto fname = Canonicalize(BodyName(func).c_str()) + "__zf";
 	DeclareSubclass(func, fname);
 
 	body_names.emplace(func.Body().get(), fname);
@@ -396,7 +397,7 @@ void CPPCompile::GenInvokeBody(const std::string& fname, const TypePtr& t,
 	{
 	auto call = fname + "(" + args + ")";
 
-	if ( t->Tag() == TYPE_VOID )
+	if ( ! t || t->Tag() == TYPE_VOID )
 		{
 		Emit("%s;", call);
 		Emit("return nullptr;");
@@ -421,7 +422,7 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 
 	StartBlock();
 
-	// Emit("fprintf(stderr, \"executing %s\\n\");", func.Func()->Name());
+	// Emit("fprintf(stderr, \"executing %s\\n\");", BodyName(func));
 
 	DeclareLocals(func);
 	GenStmt(func.Body());
@@ -450,6 +451,31 @@ void CPPCompile::DeclareLocals(const FuncInfo& func)
 
 	if ( did_decl )
 		NL();
+	}
+
+std::string CPPCompile::BodyName(const FuncInfo& func)
+	{
+	const auto& f = func.Func();
+	const auto& bodies = f->GetBodies();
+
+	std::string fname = f->Name();
+
+	if ( bodies.size() > 1 )
+		{
+		const auto& body = func.Body();
+
+		int i;
+		for ( i = 0; i < bodies.size(); ++i )
+			if ( bodies[i].stmts == body )
+				break;
+
+		if ( i >= bodies.size() )
+			reporter->InternalError("can't find body in CPPCompile::BodyName");
+
+		fname = fname + "__" + Fmt(i);
+		}
+
+	return fname;
 	}
 
 std::string CPPCompile::BindArgs(const FuncTypePtr& ft)
@@ -493,6 +519,12 @@ void CPPCompile::GenStmt(const Stmt* s)
 			auto type_name = IntrusiveVal(t);
 			auto type_type = TypeType(t);
 			auto type_ind = GenTypeName(t);
+
+			if ( locals.count(aggr.get()) == 0 )
+				{
+				// fprintf(stderr, "aggregate %s unused\n", obj_desc(aggr.get()).c_str());
+				continue;
+				}
 
 			Emit("%s = make_intrusive<%s>(cast_intrusive<%s>(%s));",
 				IDName(aggr), type_name,
@@ -2136,6 +2168,9 @@ const ID* CPPCompile::FindParam(int i, const ProfileFunc* pf)
 
 bool CPPCompile::IsNativeType(const TypePtr& t) const
 	{
+	if ( ! t )
+		return true;
+
 	switch ( t->Tag() ) {
 	case TYPE_BOOL:
 	case TYPE_COUNT:
@@ -2200,6 +2235,9 @@ const char* CPPCompile::TypeName(const TypePtr& t)
 
 const char* CPPCompile::FullTypeName(const TypePtr& t)
 	{
+	if ( ! t )
+		return "void";
+
 	switch ( t->Tag() ) {
 	case TYPE_BOOL:
 	case TYPE_COUNT:

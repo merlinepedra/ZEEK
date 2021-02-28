@@ -122,6 +122,8 @@ private:
 
 	void DeclareLocals(const FuncInfo& func);
 
+	std::string BodyName(const FuncInfo& func);
+
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
 	void GenStmt(const Stmt* s);
 
