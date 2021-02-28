@@ -239,10 +239,8 @@ void analyze_scripts()
 
 			auto body = compiled_bodies.find(hash);
 
-			if ( body == compiled_bodies.end() )
-				continue;
-
-			f.Func()->ReplaceBody(f.Body(), {NewRef{}, body->second});
+			if ( body != compiled_bodies.end() )
+				f.Func()->ReplaceBody(f.Body(), body->second);
 			}
 
 		return;

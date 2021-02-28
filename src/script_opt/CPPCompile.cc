@@ -142,7 +142,7 @@ void CPPCompile::GenEpilog()
 	// ... and then instantiate the bodies themselves.
 	NL();
 	for ( const auto& f : compiled_funcs )
-		Emit("register_body__CPP(new %s_cl(\"%s\"), %s);",
+		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
 			f, f, Fmt(body_hashes[f]));
 
 	EndBlock(true);

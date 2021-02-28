@@ -41,7 +41,7 @@ protected:
 	std::string name;
 };
 
-extern std::unordered_map<unsigned long long, CPPStmt*> compiled_bodies;
+extern std::unordered_map<unsigned long long, IntrusivePtr<CPPStmt>> compiled_bodies;
 
 } // namespace detail
 

@@ -41,7 +41,7 @@ int flag_init_CPP()
 
 static int dummy = flag_init_CPP();
 
-void register_body__CPP(CPPStmt* body, unsigned long long hash)
+void register_body__CPP(IntrusivePtr<CPPStmt> body, unsigned long long hash)
 	{
 	compiled_bodies[hash] = body;
 	}

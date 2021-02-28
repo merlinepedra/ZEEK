@@ -6,7 +6,7 @@
 
 namespace zeek::detail {
 
-std::unordered_map<unsigned long long, CPPStmt*> compiled_bodies;
+std::unordered_map<unsigned long long, IntrusivePtr<CPPStmt>> compiled_bodies;
 
 void CPPFunc::Describe(ODesc* d) const
 	{
