@@ -386,6 +386,29 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	Emit("IntrusivePtr<%s_cl> %s;", fname, fname + "_func");
 
+	Emit("class %s_cl2 : public Stmt", fname);
+	StartBlock();
+
+	Emit("public:");
+	Emit("%s_cl2() : Stmt(STMT_CPP) { }", fname);
+
+	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) const override");
+	StartBlock();
+
+	if ( IsNativeType(yt) )
+		{
+		auto args = BindArgs2(func.Func()->GetType());
+		GenInvokeBody(fname, yt, args);
+		}
+	else
+		Emit("return %s(%s);", fname, BindArgs2(func.Func()->GetType()));
+
+	EndBlock();
+
+	EndBlock(true);
+
+	Emit("IntrusivePtr<%s_cl2> %s;", fname, fname + "_stmt");
+
 	compiled_funcs.emplace(fname);
 	}
 
@@ -477,6 +500,29 @@ std::string CPPCompile::BindArgs(const FuncTypePtr& ft)
 		}
 
 	return res + "parent";
+	}
+
+std::string CPPCompile::BindArgs2(const FuncTypePtr& ft)
+	{
+	const auto& params = ft->Params();
+
+	std::string res;
+
+	int n = params->Types()->size();
+	for ( auto i = 0; i < n; ++i )
+		{
+		auto arg_i = std::string("f->GetElement(") + Fmt(i) + ")";
+		const auto& ft = params->GetFieldType(i);
+
+		if ( IsNativeType(ft) )
+			res += arg_i + NativeAccessor(ft);
+		else
+			res += GenericValPtrToGT(arg_i, ft, GEN_VAL_PTR);
+
+		res += ", ";
+		}
+
+	return res + "f";
 	}
 
 void CPPCompile::GenStmt(const Stmt* s)
@@ -2010,7 +2056,6 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		auto f = t->AsFuncType();
 
 		auto args_type_accessor = GenTypeName(f->Params());
-		auto params = f->Params();
 		auto yt = f->Yield();
 
 		std::string yield_type_accessor;
