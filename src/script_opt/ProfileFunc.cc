@@ -19,12 +19,19 @@ TraversalCode ProfileFunc::PreFunction(const Func* f)
 	const auto& ft = f->GetType();
 	const auto& params = ft->Params();
 	num_params = params->NumFields();
+	const auto& yield = ft->Yield();
+
+	if ( compute_hash )
+		{
+		CheckType(params);
+		if ( yield )
+			CheckType(yield);
+		}
 
 	if ( analyze_attrs )
 		{
 		TraverseRecord(params.get());
 
-		const auto& yield = ft->Yield();
 		if ( yield && yield->Tag() == TYPE_RECORD )
 			TraverseRecord(yield->AsRecordType());
 		}
