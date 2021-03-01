@@ -96,6 +96,7 @@ public:
 	CPPCompile(std::vector<FuncInfo>& _funcs) : funcs(_funcs) { }
 
 	void CompileTo(FILE* f);
+	void CompileTo(FILE* f, unsigned int addl_tag);
 
 private:
 	void GenProlog();
@@ -387,6 +388,10 @@ private:
 
 	// Maps function bodies to the names we use for them.
 	std::unordered_map<const Stmt*, std::string> body_names;
+
+	// If non-zero, provides a tag used for auxiliary/additional
+	// compilation units.
+	int addl_tag = 0;
 
 	// Return type of the function we're currently compiling.
 	TypePtr ret_type = nullptr;

@@ -1,3 +1,7 @@
+// See the file "COPYING" in the main distribution directory for copyright.
+
+#pragma once
+
 #include "zeek/module_util.h"
 #include "zeek/ZeekString.h"
 #include "zeek/Func.h"

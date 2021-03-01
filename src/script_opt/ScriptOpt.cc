@@ -1,5 +1,9 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "zeek/Options.h"
 #include "zeek/Reporter.h"
 #include "zeek/module_util.h"
@@ -250,14 +254,36 @@ void analyze_scripts()
 
 	if ( analysis_options.add_CPP )
 		{
-		for ( auto& f : funcs )
+		for ( auto& func : funcs )
 			{
-			auto hash = f.Profile()->HashVal();
+			auto hash = func.Profile()->HashVal();
 			if ( compiled_bodies.count(hash) > 0 )
-				f.SetSkip();
+				func.SetSkip();
+			}
+
+		const auto fname = "CPP-gen-addl.h";
+		auto f = fopen(fname, "a");
+		if ( ! f )
+			{
+			fprintf(stderr, "can't open add-C++ target file %s\n",
+				fname);
+			exit(1);
+			}
+
+		struct stat st;
+		if ( fstat(fileno(f), &st) != 0 )
+			{
+			char buf[256];
+			util::zeek_strerror_r(errno, buf, sizeof(buf));
+			reporter->Error("fstat failed on %s: %s", fname, buf);
+			fclose(f);
+			exit(1);
 			}
 
 		CPPCompile cpp(funcs);
+		cpp.CompileTo(f, st.st_size);
+		fclose(f);
+
 		return;
 		}
 

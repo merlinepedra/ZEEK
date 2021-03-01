@@ -40,10 +40,22 @@ void CPPCompile::CompileTo(FILE* f)
 	GenEpilog();
 	}
 
+void CPPCompile::CompileTo(FILE* f, unsigned int _addl_tag)
+	{
+	addl_tag = _addl_tag + 1;
+	CompileTo(f);
+	}
+
 void CPPCompile::GenProlog()
 	{
-	Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
-	Emit("namespace CPP {\n");
+	if ( addl_tag > 0 )
+		Emit("namespace CPP_%s {\n", Fmt(addl_tag));
+	else
+		{
+		Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
+		Emit("namespace CPP {\n");
+		}
+
 	Emit("TypePtr* types__CPP;\n");
 	}
 
@@ -157,10 +169,15 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("static int dummy = hook_in_init();\n");
 
-	Emit("} // zeek::detail::CPP\n");
-	Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
-	Emit("} // zeek::detail");
-	Emit("} // zeek");
+	if ( addl_tag > 0 )
+		Emit("} // zeek::detail::CPP_%s\n", Fmt(addl_tag));
+	else
+		{
+		Emit("} // zeek::detail::CPP\n");
+		Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
+		Emit("} // zeek::detail");
+		Emit("} // zeek");
+		}
 	}
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
