@@ -42,8 +42,9 @@ void CPPCompile::CompileTo(FILE* f)
 
 void CPPCompile::GenProlog()
 	{
-	Emit("#include \"zeek/script_opt/CPPProlog.h\"");
-	NL();
+	Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
+	Emit("namespace CPP {\n");
+	Emit("TypePtr* types__CPP;\n");
 	}
 
 void CPPCompile::GenEpilog()
@@ -65,9 +66,8 @@ void CPPCompile::GenEpilog()
 
 	StartBlock();
 
-	Emit("types__CPP = new TypePtr[%s];", Fmt(types.DistinctSize()));
+	Emit("types__CPP = new TypePtr[%s];\n", Fmt(types.DistinctSize()));
 
-	NL();
 	for ( const auto& i : pre_inits )
 		Emit(i);
 
@@ -148,6 +148,17 @@ void CPPCompile::GenEpilog()
 
 	EndBlock(true);
 
+	NL();
+	Emit("int hook_in_init()");
+	StartBlock();
+	Emit("CPP_init_funcs.push_back(init__CPP);");
+        Emit("return 0;");
+	EndBlock();
+	NL();
+	Emit("static int dummy = hook_in_init();\n");
+
+	Emit("} // zeek::detail::CPP\n");
+	Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
 	Emit("} // zeek::detail");
 	Emit("} // zeek");
 	}

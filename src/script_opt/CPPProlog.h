@@ -27,15 +27,21 @@ using SubNetValPtr = IntrusivePtr<zeek::SubNetVal>;
 
 namespace detail {
 
-TypePtr* types__CPP;
-
 // Helper functions.
 
-extern void init__CPP();
+typedef void (*CPP_init_func)();
+
+std::vector<CPP_init_func> CPP_init_funcs;
+
+void init_CPPs()
+	{
+	for ( auto f : CPP_init_funcs )
+		f();
+	}
 
 int flag_init_CPP()
 	{
-	CPP_init_hook = init__CPP;
+	CPP_init_hook = init_CPPs;
 	return 0;
 	}
 
