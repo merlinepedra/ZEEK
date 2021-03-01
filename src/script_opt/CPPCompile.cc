@@ -836,8 +836,17 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			}
 
 		if ( is_global_var )
-			return GenericValPtrToGT(globals[n->Name()] + "->GetVal()",
-							t, gt);
+			{
+			if ( n->IsType() )
+				gen = std::string("make_intrusive<TypeVal>(") +
+							globals[n->Name()] +
+							"->GetType(), true)";
+
+			else
+				gen = globals[n->Name()] + "->GetVal()";
+
+			return GenericValPtrToGT(gen, t, gt);
+			}
 
 		return NativeToGT(IDNameStr(n), t, gt);
 		}
