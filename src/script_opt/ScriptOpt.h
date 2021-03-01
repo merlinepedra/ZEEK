@@ -36,6 +36,10 @@ struct AnalyOpt {
 	// If true, generate C++;
 	bool gen_CPP = false;
 
+	// If true, generate C++ for those script bodies that don't already
+	// have generated code.
+	bool add_CPP = false;
+
 	// If true, use C++ bodies if available.
 	bool use_CPP = false;
 
@@ -78,6 +82,9 @@ public:
 	void SetProfile(std::unique_ptr<ProfileFunc> _pf);
 	void SetSaveFile(std::string _sf)	{ save_file = std::move(_sf); }
 
+	bool Skip() const	{ return skip; }
+	void SetSkip()		{ skip = true; }
+
 protected:
 	ScriptFuncPtr func;
 	ScopePtr scope;
@@ -87,6 +94,9 @@ protected:
 	// If we're saving this function in a file, this is the name
 	// of the file to use.
 	std::string save_file;
+
+	// Whether to skip compiling this function.
+	bool skip = false;
 };
 
 

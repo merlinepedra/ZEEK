@@ -158,6 +158,7 @@ static void set_analysis_option(const char* opt, Options& opts)
 		{
 		fprintf(stderr, "--optimize options:\n");
 		fprintf(stderr, "    all	equivalent to \"inline\" and \"activate\"\n");
+		fprintf(stderr, "    add-C++	generate C++ for any missing script bodies\n");
 		fprintf(stderr, "    dump-xform	dump transformed scripts to stdout; implies xform\n");
 		fprintf(stderr, "    gen-C++	generate C++ script bodies\n");
 		fprintf(stderr, "    help	print this list\n");
@@ -171,7 +172,9 @@ static void set_analysis_option(const char* opt, Options& opts)
 
 	auto& a_o = opts.analysis_options;
 
-	if ( util::streq(opt, "dump-xform") )
+	if ( util::streq(opt, "add-C++") )
+		a_o.add_CPP = true;
+	else if ( util::streq(opt, "dump-xform") )
 		a_o.activate = a_o.dump_xform = true;
 	else if ( util::streq(opt, "gen-C++") )
 		a_o.gen_CPP = true;

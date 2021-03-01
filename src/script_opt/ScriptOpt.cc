@@ -129,11 +129,19 @@ void analyze_scripts()
 		check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
 		check_env_opt("ZEEK_XFORM", analysis_options.activate);
+		check_env_opt("ZEEK_ADD_CPP", analysis_options.add_CPP);
 		check_env_opt("ZEEK_GEN_CPP", analysis_options.gen_CPP);
 		check_env_opt("ZEEK_REPORT_CPP", analysis_options.report_CPP);
 		check_env_opt("ZEEK_USE_CPP", analysis_options.use_CPP);
 
-		if ( analysis_options.gen_CPP && analysis_options.use_CPP )
+		if ( analysis_options.gen_CPP && analysis_options.add_CPP )
+			{
+			fprintf(stderr, "gen-C++ incompatible with add-C++\n");
+			exit(1);
+			}
+
+		if ( (analysis_options.gen_CPP || analysis_options.add_CPP) &&
+		     analysis_options.use_CPP )
 			{
 			fprintf(stderr, "generating C++ incompatible with using C++\n");
 			exit(1);
@@ -166,7 +174,7 @@ void analyze_scripts()
 
 	if ( ! analysis_options.activate && ! analysis_options.inliner &&
 	     ! analysis_options.gen_CPP && ! analysis_options.report_CPP &&
-	     ! analysis_options.use_CPP )
+	     ! analysis_options.add_CPP && ! analysis_options.use_CPP )
 		// Avoid profiling overhead.
 		return;
 
@@ -231,13 +239,25 @@ void analyze_scripts()
 		for ( auto& f : funcs )
 			{
 			auto hash = f.Profile()->HashVal();
-
 			auto body = compiled_bodies.find(hash);
 
 			if ( body != compiled_bodies.end() )
 				f.Func()->ReplaceBody(f.Body(), body->second);
 			}
 
+		return;
+		}
+
+	if ( analysis_options.add_CPP )
+		{
+		for ( auto& f : funcs )
+			{
+			auto hash = f.Profile()->HashVal();
+			if ( compiled_bodies.count(hash) > 0 )
+				f.SetSkip();
+			}
+
+		CPPCompile cpp(funcs);
 		return;
 		}
 

@@ -165,6 +165,9 @@ void CPPCompile::GenEpilog()
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
 	{
+	if ( func.Skip() )
+		return false;
+
 	const auto& pf = func.Profile();
 
 	if ( pf->NumWhenStmts() > 0 )
