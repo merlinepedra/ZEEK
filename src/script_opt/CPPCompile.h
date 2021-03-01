@@ -391,6 +391,10 @@ private:
 	// Return type of the function we're currently compiling.
 	TypePtr ret_type = nullptr;
 
+	// Nested level of loops/switches for which "break"'s should be
+	// C++ breaks rather than a "hook" break.
+	int break_level = 0;
+
 	int block_level = 0;
 };
 

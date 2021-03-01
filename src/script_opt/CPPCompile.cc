@@ -154,9 +154,6 @@ void CPPCompile::GenEpilog()
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
 	{
-	if ( func.Func()->Flavor() == FUNC_FLAVOR_HOOK )
-		return false;
-
 	const auto& pf = func.Profile();
 
 	if ( pf->NumWhenStmts() > 0 )
@@ -355,8 +352,11 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	{
 	const auto& ft = func.Func()->GetType();
 	const auto& yt = ft->Yield();
+	bool is_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
 
-	Emit("static %s %s(%s);", FullTypeName(yt), fname,
+	auto yt_decl = is_hook ? "bool" : FullTypeName(yt);
+
+	Emit("static %s %s(%s);", yt_decl, fname,
 		ParamDecl(ft, func.Profile()));
 
 	Emit("class %s_cl : public CPPStmt", fname);
@@ -375,8 +375,19 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 		auto args = BindArgs(func.Func()->GetType());
 		GenInvokeBody(fname, yt, args);
 		}
+
 	else
+		{
+		if ( is_hook )
+			{
+			Emit("if ( ! %s(%s) )", fname, BindArgs(func.Func()->GetType()));
+			StartBlock();
+			Emit("flow = FLOW_BREAK;");
+			EndBlock();
+			}
+
 		Emit("return %s(%s);", fname, BindArgs(func.Func()->GetType()));
+		}
 
 	EndBlock();
 
@@ -412,13 +423,13 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	params.clear();
 
 	const auto& ft = func.Func()->GetType();
-	ret_type = ft->Yield();
+	bool is_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
+	auto ret_type = is_hook ? "bool" : FullTypeName(ft->Yield());
 
 	for ( const auto& p : func.Profile()->Params() )
 		params.emplace(p);
 
-	Emit("%s %s(%s)", FullTypeName(ret_type), fname,
-		ParamDecl(ft, func.Profile()));
+	Emit("%s %s(%s)", ret_type, fname, ParamDecl(ft, func.Profile()));
 
 	StartBlock();
 
@@ -426,6 +437,9 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 
 	DeclareLocals(func);
 	GenStmt(func.Body());
+
+	if ( is_hook )
+		Emit("return true;");
 
 	EndBlock();
 	}
@@ -582,7 +596,9 @@ void CPPCompile::GenStmt(const Stmt* s)
 		Emit("while ( %s )",
 			GenExpr(w->Condition(), GEN_NATIVE));
 		StartBlock();
+		++break_level;
 		GenStmt(w->Body());
+		--break_level;
 		EndBlock();
 		}
 		break;
@@ -595,7 +611,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		{
 		auto e = s->AsReturnStmt()->StmtExpr();
 
-		if ( ! e || e->GetType()->Tag() == TYPE_VOID )
+		if ( ! ret_type || ! e || e->GetType()->Tag() == TYPE_VOID )
 			{
 			Emit("return;");
 			break;
@@ -693,7 +709,9 @@ void CPPCompile::GenStmt(const Stmt* s)
 						IDName(var), Fmt(i), acc);
 				}
 
+			++break_level;
 			GenStmt(f->LoopBody());
+			--break_level;
 			EndBlock();
 			EndBlock();
 			}
@@ -739,7 +757,10 @@ void CPPCompile::GenStmt(const Stmt* s)
 		break;
 
 	case STMT_BREAK:
-		Emit("break;");
+		if ( break_level > 0 )
+			Emit("break;");
+		else
+			Emit("return false;");
 		break;
 
 	case STMT_PRINT:
@@ -774,6 +795,8 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 		bool is_int = e->GetType()->InternalType() == TYPE_INTERNAL_INT;
 
+		++break_level;
+
 		for ( const auto& c : *cases )
 			{
 			if ( c->ExprCases() )
@@ -799,6 +822,8 @@ void CPPCompile::GenStmt(const Stmt* s)
 			GenStmt(c->Body());
 			EndBlock();
 			}
+
+		--break_level;
 
 		Emit("}");
 		}
