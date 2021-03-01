@@ -126,12 +126,24 @@ void analyze_scripts()
 
 	if ( ! did_init )
 		{
-		if ( CPP_init_hook )
-			(*CPP_init_hook)();
-
 		check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
 		check_env_opt("ZEEK_XFORM", analysis_options.activate);
+		check_env_opt("ZEEK_GEN_CPP", analysis_options.gen_CPP);
+		check_env_opt("ZEEK_REPORT_CPP", analysis_options.report_CPP);
+		check_env_opt("ZEEK_USE_CPP", analysis_options.use_CPP);
+
+		if ( analysis_options.gen_CPP && analysis_options.use_CPP )
+			{
+			fprintf(stderr, "generating C++ incompatible with using C++\n");
+			exit(1);
+			}
+
+		if ( analysis_options.use_CPP && ! CPP_init_hook )
+			{
+			fprintf(stderr, "no C++ functions available to use\n");
+			exit(1);
+			}
 
 		auto usage = getenv("ZEEK_USAGE_ISSUES");
 
@@ -152,7 +164,10 @@ void analyze_scripts()
 		did_init = true;
 		}
 
-	if ( ! analysis_options.activate && ! analysis_options.inliner )
+	if ( ! analysis_options.activate && ! analysis_options.inliner &&
+	     ! analysis_options.gen_CPP && ! analysis_options.report_CPP &&
+	     ! analysis_options.use_CPP )
+		// Avoid profiling overhead.
 		return;
 
 	// Now that everything's parsed and BiF's have been initialized,
@@ -165,6 +180,72 @@ void analyze_scripts()
 		f.Func()->Traverse(f.Profile());
 		f.Body()->Traverse(f.Profile());
 		func_profs[f.Func()] = f.Profile();
+		}
+
+	if ( CPP_init_hook )
+		(*CPP_init_hook)();
+
+	if ( analysis_options.report_CPP )
+		{
+		if ( ! CPP_init_hook )
+			{
+			printf("no C++ script bodies available\n");
+			exit(0);
+			}
+
+		printf("C++ script bodies available that match loaded scripts:\n");
+
+		std::unordered_set<unsigned long long> already_reported;
+
+		for ( auto& f : funcs )
+			{
+			auto name = f.Func()->Name();
+			auto hash = f.Profile()->HashVal();
+			bool have = compiled_bodies.count(hash) > 0;
+
+			printf("script function %s (hash %llu): %s\n",
+				name, hash, have ? "yes" : "no");
+
+			if ( have )
+				already_reported.insert(hash);
+			}
+
+		printf("\nAdditional C++ script bodies available:\n");
+		int addl = 0;
+		for ( auto b : compiled_bodies )
+			if ( already_reported.count(b.first) == 0 )
+				{
+				printf("%s body (hash %llu)\n",
+					b.second->Name().c_str(), b.first);
+				++addl;
+				}
+
+		if ( addl == 0 )
+			printf("(none)\n");
+			
+		exit(0);
+		}
+
+	if ( analysis_options.use_CPP )
+		{
+		for ( auto& f : funcs )
+			{
+			auto hash = f.Profile()->HashVal();
+
+			auto body = compiled_bodies.find(hash);
+
+			if ( body != compiled_bodies.end() )
+				f.Func()->ReplaceBody(f.Body(), body->second);
+			}
+
+		return;
+		}
+
+	if ( analysis_options.gen_CPP )
+		{
+		CPPCompile cpp(funcs);
+		cpp.CompileTo(stdout);
+		return;
 		}
 
 	// Figure out which functions either directly or indirectly
@@ -229,26 +310,6 @@ void analyze_scripts()
 
 	if ( ! analysis_options.activate )
 		return;
-
-	if ( CPP_init_hook )
-		{
-		for ( auto& f : funcs )
-			{
-			auto name = std::string(f.Func()->Name());
-			auto hash = f.Profile()->HashVal();
-
-			auto body = compiled_bodies.find(hash);
-
-			if ( body != compiled_bodies.end() )
-				f.Func()->ReplaceBody(f.Body(), body->second);
-			}
-
-		return;
-		}
-
-	CPPCompile cpp(funcs);
-	cpp.CompileTo(stdout);
-	return;
 
 	for ( auto& f : funcs )
 		{

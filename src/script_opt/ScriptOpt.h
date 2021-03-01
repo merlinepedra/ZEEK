@@ -33,6 +33,15 @@ struct AnalyOpt {
 	// If true, do global inlining.
 	bool inliner = false;
 
+	// If true, generate C++;
+	bool gen_CPP = false;
+
+	// If true, use C++ bodies if available.
+	bool use_CPP = false;
+
+	// If true, report on available C++ bodies.
+	bool report_CPP = false;
+
 	// If true, report which functions are directly and indirectly
 	// recursive, and exit.  Only germane if running the inliner.
 	bool report_recursive = false;
