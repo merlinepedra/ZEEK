@@ -352,9 +352,9 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	{
 	const auto& ft = func.Func()->GetType();
 	const auto& yt = ft->Yield();
-	bool is_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
+	in_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
 
-	auto yt_decl = is_hook ? "bool" : FullTypeName(yt);
+	auto yt_decl = in_hook ? "bool" : FullTypeName(yt);
 
 	Emit("static %s %s(%s);", yt_decl, fname,
 		ParamDecl(ft, func.Profile()));
@@ -378,7 +378,7 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 
 	else
 		{
-		if ( is_hook )
+		if ( in_hook )
 			{
 			Emit("if ( ! %s(%s) )", fname, BindArgs(func.Func()->GetType()));
 			StartBlock();
@@ -423,13 +423,15 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	params.clear();
 
 	const auto& ft = func.Func()->GetType();
-	bool is_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
-	auto ret_type = is_hook ? "bool" : FullTypeName(ft->Yield());
+
+	ret_type = ft->Yield();
+	in_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
+	auto ret_type_str = in_hook ? "bool" : FullTypeName(ret_type);
 
 	for ( const auto& p : func.Profile()->Params() )
 		params.emplace(p);
 
-	Emit("%s %s(%s)", ret_type, fname, ParamDecl(ft, func.Profile()));
+	Emit("%s %s(%s)", ret_type_str, fname, ParamDecl(ft, func.Profile()));
 
 	StartBlock();
 
@@ -438,8 +440,11 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	DeclareLocals(func);
 	GenStmt(func.Body());
 
-	if ( is_hook )
+	if ( in_hook )
+		{
 		Emit("return true;");
+		in_hook = false;
+		}
 
 	EndBlock();
 	}
@@ -613,7 +618,10 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 		if ( ! ret_type || ! e || e->GetType()->Tag() == TYPE_VOID )
 			{
-			Emit("return;");
+			if ( in_hook )
+				Emit("return true;");
+			else
+				Emit("return;");
 			break;
 			}
 
@@ -673,6 +681,8 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 		auto t = v->GetType()->Tag();
 
+		++break_level;
+
 		if ( t == TYPE_TABLE )
 			{
 			Emit("auto tv__CPP = %s;", GenExpr(v, GEN_DONT_CARE));
@@ -709,9 +719,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 						IDName(var), Fmt(i), acc);
 				}
 
-			++break_level;
 			GenStmt(f->LoopBody());
-			--break_level;
 			EndBlock();
 			EndBlock();
 			}
@@ -747,6 +755,8 @@ void CPPCompile::GenStmt(const Stmt* s)
 
 		else
 			reporter->InternalError("bad for statement in CPPCompile::GenStmt");
+
+		--break_level;
 
 		Emit("} // end of for scope");
 		}
@@ -1388,10 +1398,17 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			GenTypeName(t) + ".get())";
 		return GenericValPtrToGT(gen, t, gt);
 
-	case EXPR_FIELD_ASSIGN:
 	case EXPR_IS:
+		gen = std::string("can_cast_value_to_type(")
+			+ GenExpr(e->GetOp1(), GEN_VAL_PTR) + ".get(), " +
+			GenTypeName(t) + ".get())";
+		return NativeToGT(gen, t, gt);
+
+	case EXPR_FIELD_ASSIGN:
 	case EXPR_INDEX_SLICE_ASSIGN:
 	case EXPR_INLINE:
+		// These are only generated for reduced ASTs, which
+		// we shouldn't be compiling.
 		ASSERT(0);
 
 	default:

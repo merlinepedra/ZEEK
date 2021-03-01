@@ -391,6 +391,9 @@ private:
 	// Return type of the function we're currently compiling.
 	TypePtr ret_type = nullptr;
 
+	// Whether we're parsing a hook.
+	bool in_hook = false;
+
 	// Nested level of loops/switches for which "break"'s should be
 	// C++ breaks rather than a "hook" break.
 	int break_level = 0;
