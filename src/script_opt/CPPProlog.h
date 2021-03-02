@@ -51,9 +51,14 @@ int flag_init_CPP()
 
 static int dummy = flag_init_CPP();
 
-void register_body__CPP(IntrusivePtr<CPPStmt> body, unsigned long long hash)
+void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash)
 	{
 	compiled_bodies[hash] = body;
+	}
+
+void register_type__CPP(int type_index, hash_type type_hash)
+	{
+	compiled_types[type_hash] = type_index;
 	}
 
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)

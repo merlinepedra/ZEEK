@@ -13,16 +13,16 @@ void CPPTracker<T1, T2>::AddKey(T2 key)
 	if ( HasKey(key) )
 		return;
 
-	auto iname = InternalName(key);
+	auto h = Hash(key);
 
-	if ( map2.count(iname) == 0 )
+	if ( map2.count(h) == 0 )
 		{
-		map2[iname] = map2.size();
-		reps[iname] = key.get();
+		map2[h] = map2.size();
+		reps[h] = key.get();
 		keys2.push_back(key);
 		}
 
-	map[key.get()] = iname;
+	map[key.get()] = h;
 	keys.push_back(key);
 	}
 
@@ -38,11 +38,13 @@ std::string CPPTracker<T1, T2>::KeyName(T1 key)
 	}
 
 template<class T1, class T2>
-std::string CPPTracker<T1, T2>::InternalName(T2 key) const
+hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 	{
 	ODesc d;
 	key->Describe(&d);
-	return d.Description();
+	std::string desc = d.Description();
+	auto h = std::hash<std::string>{}(desc);
+	return hash_type(h);
 	}
 
 
@@ -196,6 +198,11 @@ void CPPCompile::GenEpilog()
 	for ( const auto& f : compiled_funcs )
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
 			f, f, Fmt(body_hashes[f]));
+
+	NL();
+	for ( const auto& t : types.DistinctKeys() )
+		Emit("register_type__CPP(%s, %s);",
+			Fmt(types.KeyIndex(t)), Fmt(types.Hash(t)));
 
 	EndBlock(true);
 

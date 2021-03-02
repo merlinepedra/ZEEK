@@ -3,6 +3,7 @@
 #pragma once
 
 #include "zeek/Desc.h"
+#include "zeek/script_opt/CPPFunc.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
 
@@ -38,14 +39,14 @@ public:
 
 	const T1& GetRep(T2 key) 	{ return reps[map[key.get()]]; }
 
+	hash_type Hash(T2 key) const;
+
 private:
-	std::string InternalName(T2 key) const;
+	// Maps keys to internal representations.
+	std::unordered_map<T1, hash_type> map;
 
-	// Maps keys to internal names.
-	std::unordered_map<T1, std::string> map;
-
-	// Maps internal names to distinct values.
-	std::unordered_map<std::string, int> map2;
+	// Maps internal representations to distinct values.
+	std::unordered_map<hash_type, int> map2;
 
 	// Tracks the set of keys, to facilitate iterating over them.
 	// Parallel to "map".
@@ -56,7 +57,7 @@ private:
 	std::vector<T2> keys2;
 
 	// Maps internal names to representatives.
-	std::unordered_map<std::string, T1> reps;
+	std::unordered_map<hash_type, T1> reps;
 
 	// Used to construct key names.
 	std::string base_name;
@@ -254,7 +255,7 @@ private:
 		return std::string(d_s);
 		}
 
-	std::string Fmt(bro_uint_t u)
+	std::string Fmt(hash_type u)
 		{
 		char d_s[64];
 		snprintf(d_s, sizeof d_s, "%lluULL", u);
