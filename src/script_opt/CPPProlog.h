@@ -58,7 +58,11 @@ void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash)
 
 void register_type__CPP(int type_index, hash_type type_hash)
 	{
-	compiled_types[type_hash] = type_index;
+	char buf[8192];
+	snprintf(buf, sizeof buf, "zeek::detail::CPP::types__CPP[%d]",
+			type_index);
+
+	compiled_types[type_hash] = buf;
 	}
 
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)

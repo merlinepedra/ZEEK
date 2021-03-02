@@ -199,10 +199,13 @@ void CPPCompile::GenEpilog()
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
 			f, f, Fmt(body_hashes[f]));
 
-	NL();
-	for ( const auto& t : types.DistinctKeys() )
-		Emit("register_type__CPP(%s, %s);",
-			Fmt(types.KeyIndex(t)), Fmt(types.Hash(t)));
+	if ( addl_tag == 0 )
+		{
+		NL();
+		for ( const auto& t : types.DistinctKeys() )
+			Emit("register_type__CPP(%s, %s);",
+				Fmt(types.KeyIndex(t)), Fmt(types.Hash(t)));
+		}
 
 	EndBlock(true);
 

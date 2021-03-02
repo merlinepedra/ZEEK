@@ -44,7 +44,7 @@ protected:
 using hash_type = unsigned long long;
 
 extern std::unordered_map<hash_type, IntrusivePtr<CPPStmt>> compiled_bodies;
-extern std::unordered_map<hash_type, int> compiled_types;
+extern std::unordered_map<hash_type, std::string> compiled_types;
 
 } // namespace detail
 
