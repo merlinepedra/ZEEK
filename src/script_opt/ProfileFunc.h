@@ -64,7 +64,7 @@ protected:
 	TraversalCode PreExpr(const Expr*) override;
 	TraversalCode PostExpr(const Expr*) override;
 
-	void TraverseRecord(const RecordType* r);
+	void TraverseType(const TypePtr& t);
 
 	// Globals seen in the function.
 	//
@@ -187,6 +187,12 @@ protected:
 	// sub-records but also records that have no names.
 	std::unordered_set<std::string> seen_types;
 	std::unordered_set<const Type*> seen_type_ptrs;
+
+	// Types that we've traversed for profiling.  Distinct from seen_types
+	// because this is used to prevent infinite recursion in the fact
+	// of recursive types, and needs to not be short-circuited due to
+	// prior hashing.
+	std::unordered_set<const Type*> profiled_types;
 };
 
 

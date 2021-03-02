@@ -29,12 +29,7 @@ TraversalCode ProfileFunc::PreFunction(const Func* f)
 		}
 
 	if ( analyze_attrs )
-		{
-		TraverseRecord(params.get());
-
-		if ( yield && yield->Tag() == TYPE_RECORD )
-			TraverseRecord(yield->AsRecordType());
-		}
+		TraverseType(ft);
 
 	// We do *not* continue into the body.  This is because for
 	// functions with multiple bodies, we don't want to conflate
@@ -59,11 +54,8 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 			{
 			inits.insert(id.get());
 
-			const auto& it = id->GetType();
-			if ( it->Tag() != TYPE_RECORD || ! analyze_attrs )
-				continue;
-
-			TraverseRecord(it->AsRecordType());
+			if ( analyze_attrs )
+				TraverseType(id->GetType());
 			}
 
 		skip_locals = true;
@@ -147,6 +139,11 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	{
 	++num_exprs;
 
+	const auto& t = e->GetType();
+
+	if ( analyze_attrs )
+		TraverseType(t);
+
 	auto tag = e->Tag();
 
 	if ( compute_hash )
@@ -186,7 +183,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		if ( compute_hash )
 			{
 			UpdateHash(id);
-			CheckType(e->GetType());
+			CheckType(t);
 			}
 
 		break;
@@ -260,16 +257,17 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		// Recurse into the arguments.
 		auto args = c->Args();
 		args->Traverse(this);
+
+		// Do the following explicitly, since we won't be recursing
+		// into the LHS global.
+		if ( analyze_attrs )
+			TraverseType(n->GetType());
+
 		return TC_ABORTSTMT;
 		}
 
 	case EXPR_EVENT:
 		events.insert(e->AsEventExpr()->Name());
-		break;
-
-	case EXPR_RECORD_COERCE:
-		if ( analyze_attrs )
-			TraverseRecord(e->GetType()->AsRecordType());
 		break;
 
 	case EXPR_LAMBDA:
@@ -292,23 +290,91 @@ TraversalCode ProfileFunc::PostExpr(const Expr* e)
 	return TC_CONTINUE;
 	}
 
-void ProfileFunc::TraverseRecord(const RecordType* r)
+void ProfileFunc::TraverseType(const TypePtr& t)
 	{
-	auto fields = r->Types();
-	for ( const auto& f : *fields )
+	if ( ! t || profiled_types.count(t.get()) > 0 )
+		return;
+
+	if ( compute_hash )
+		CheckType(t);
+
+	profiled_types.insert(t.get());
+
+	switch ( t->Tag() ) {
+	case TYPE_ADDR:
+	case TYPE_ANY:
+	case TYPE_BOOL:
+	case TYPE_COUNT:
+	case TYPE_DOUBLE:
+	case TYPE_ENUM:
+	case TYPE_ERROR:
+	case TYPE_INT:
+	case TYPE_INTERVAL:
+	case TYPE_OPAQUE:
+	case TYPE_PATTERN:
+	case TYPE_PORT:
+	case TYPE_STRING:
+	case TYPE_SUBNET:
+	case TYPE_TIME:
+	case TYPE_TIMER:
+	case TYPE_UNION:
+	case TYPE_VOID:
+		break;
+
+	case TYPE_RECORD:
 		{
-		if ( f->type->Tag() == TYPE_RECORD )
-			TraverseRecord(f->type->AsRecordType());
-
-		if ( f->attrs )
+		auto fields = t->AsRecordType()->Types();
+		for ( const auto& f : *fields )
 			{
-			auto attrs = f->attrs->GetAttrs();
+			TraverseType(f->type);
 
-			for ( const auto& a : attrs )
-				if ( a->GetExpr() )
-					a->GetExpr()->Traverse(this);
+			if ( f->attrs )
+				{
+				auto attrs = f->attrs->GetAttrs();
+
+				for ( const auto& a : attrs )
+					if ( a->GetExpr() )
+						a->GetExpr()->Traverse(this);
+				}
 			}
 		}
+		break;
+
+	case TYPE_TABLE:
+		{
+		auto tbl = t->AsTableType();
+		TraverseType(tbl->GetIndices());
+		TraverseType(tbl->Yield());
+		}
+		break;
+
+	case TYPE_FUNC:
+		{
+		auto ft = t->AsFuncType();
+		TraverseType(ft->Params());
+		TraverseType(ft->Yield());
+		}
+		break;
+
+	case TYPE_LIST:
+		{
+		for ( const auto& tl : t->AsTypeList()->GetTypes() )
+			TraverseType(tl);
+		}
+		break;
+
+	case TYPE_VECTOR:
+		TraverseType(t->AsVectorType()->Yield());
+		break;
+
+	case TYPE_FILE:
+		TraverseType(t->AsFileType()->Yield());
+		break;
+
+	case TYPE_TYPE:
+		TraverseType(t->AsTypeType()->GetType());
+		break;
+	}
 	}
 
 void ProfileFunc::CheckType(const TypePtr& t)

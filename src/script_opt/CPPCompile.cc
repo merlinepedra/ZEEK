@@ -213,6 +213,11 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 	for ( const auto& b : pf->BiFCalls() )
 		AddBiF(b);
 
+	// Globals can have types that ultimately refer to other globals, so
+	// we first add all the globals, and then spin through again to do
+	// their initializations.
+	std::unordered_set<const ID*> pending_globals;
+
 	for ( const auto& g : pf->AllGlobals() )
 		{
 		auto gn = std::string(g->Name());
@@ -234,11 +239,20 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 
 		AddGlobal(gn.c_str(), "gl");
 		Emit("IDPtr %s;", globals[gn]);
-		AddInit(g, globals[gn], std::string("lookup_global__CPP(\"") +
-					gn + "\")");
 
 		if ( bifs.count(gn) == 0 )
 			global_vars.emplace(g);
+
+		pending_globals.insert(g);
+		}
+
+	for ( const auto& g : pending_globals )
+		{
+		auto gn = std::string(g->Name());
+
+		AddInit(g, globals[gn], std::string("lookup_global__CPP(\"") +
+					gn + "\", " +
+					GenTypeName(g->GetType()) + ")");
 		}
 
 	for ( const auto& e : pf->Events() )

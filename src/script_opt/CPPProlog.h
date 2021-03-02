@@ -56,10 +56,16 @@ void register_body__CPP(IntrusivePtr<CPPStmt> body, unsigned long long hash)
 	compiled_bodies[hash] = body;
 	}
 
-IDPtr lookup_global__CPP(const char* g)
+IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 	{
 	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);
-	ASSERT(gl != nullptr);
+
+	if ( ! gl )
+		{
+		gl = install_ID(g, GLOBAL_MODULE_NAME, true, false);
+		gl->SetType(t);
+		}
+
 	return gl;
 	}
 
