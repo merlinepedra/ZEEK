@@ -250,6 +250,8 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		{
 		auto gn = std::string(g->Name());
 
+		NoteInitDependency(g, g->GetType());
+
 		AddInit(g, globals[gn], std::string("lookup_global__CPP(\"") +
 					gn + "\", " +
 					GenTypeName(g->GetType()) + ")");
@@ -1901,6 +1903,9 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 			continue;
 			}
 
+		NoteInitDependency(attrs, e);
+		AddInit(e);
+
 		std::string e_arg;
 		if ( IsSimpleInitExpr(e) )
 			{
@@ -1927,10 +1932,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 			}
 
 		else
-			{
 			e_arg = InitExprName(e);
-			NoteInitDependency(attrs, e);
-			}
 
 		Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));",
 			AttrName(attr), e_arg);
