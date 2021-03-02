@@ -326,8 +326,8 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 
 	for ( const auto& e : pf->Events() )
 		{
-		AddGlobal(e, "ev");
-		const auto& ev = globals[std::string(e)];
+		AddGlobal(e, "gl");
+		auto ev = globals[std::string(e)] + "_ev";
 
 		if ( declared_events.count(ev) == 0 )
 			{
@@ -900,11 +900,11 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto ev_e = cast_intrusive<EventExpr>(ev_s);
 
 		if ( ev_e->Args()->Exprs().length() > 0 )
-			Emit("event_mgr.Enqueue(%s, %s);",
+			Emit("event_mgr.Enqueue(%s_ev, %s);",
 				globals[std::string(ev_e->Name())],
 				GenExpr(ev_e->Args(), GEN_VAL_PTR));
 		else
-			Emit("event_mgr.Enqueue(%s, Args{});",
+			Emit("event_mgr.Enqueue(%s_ev, Args{});",
 				globals[std::string(ev_e->Name())]);
 		}
 		break;
@@ -1490,7 +1490,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			when_s += " + run_state::network_time";
 
 		return std::string("schedule__CPP(") + when_s +
-			", " + globals[event_name] + ", { " +
+			", " + globals[event_name] + "_ev, { " +
 			GenExpr(event->Args(), GEN_VAL_PTR) + " })";
 		}
 
