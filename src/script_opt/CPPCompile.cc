@@ -1358,6 +1358,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		std::string attrs_name = "nullptr";
 		if ( attrs )
 			{
+			AddInit(e);
 			NoteInitDependency(e, attrs);
 			RecordAttributes(attrs);
 			attrs_name = AttrsName(attrs);
@@ -1916,12 +1917,14 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 				break;
 
 			case EXPR_NAME:
+				NoteInitDependency(e, e->AsNameExpr()->IdPtr());
 				e_arg = std::string("make_intrusive<NameExpr>(") +
 					globals[e->AsNameExpr()->Id()->Name()] +
 					")";
 				break;
 
 			case EXPR_RECORD_COERCE:
+				NoteInitDependency(e, e->GetType());
 				e_arg = std::string("make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>(make_intrusive<ListExpr>()), cast_intrusive<RecordType>(") +
 					GenTypeName(e->GetType()) + "))";
 				break;
