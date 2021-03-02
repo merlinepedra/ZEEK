@@ -1438,13 +1438,17 @@ void EnumType::Describe(ODesc* d) const
 	if ( d->IsBinary() )
 		{
 		d->Add(int(t));
-		d->Add(GetName());
+		if ( ! d->IsShort() )
+			d->Add(GetName());
 		}
 	else
 		{
 		d->Add(type_name(t));
-		d->SP();
-		d->Add(GetName());
+		if ( ! d->IsShort() )
+			{
+			d->SP();
+			d->Add(GetName());
+			}
 		}
 	}
 
