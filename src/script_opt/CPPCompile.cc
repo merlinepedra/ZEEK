@@ -551,6 +551,31 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 
 	// Emit("fprintf(stderr, \"executing %s\\n\");", BodyName(func));
 
+	// Declare any parameters that originate from a type signature of
+	// "any" but were concretized in this declaration.
+	const auto& formals = ft->Params();
+	int n = formals->NumFields();
+
+	for ( auto i = 0; i < n; ++i )
+		{
+		const auto& t = formals->GetFieldType(i);
+		if ( t->Tag() != TYPE_ANY )
+			continue;
+
+		auto param_id = FindParam(i, func.Profile());
+		if ( ! param_id )
+			continue;
+
+		const auto& pt = param_id->GetType();
+		if ( pt->Tag() == TYPE_ANY )
+			continue;
+
+		auto any_i = std::string("any_param__CPP_") + Fmt(i);
+
+		Emit("%s %s = %s;", FullTypeName(pt), LocalName(param_id),
+			GenericValPtrToGT(any_i, pt, GEN_NATIVE));
+		}
+
 	DeclareLocals(func);
 	GenStmt(func.Body());
 
@@ -2322,9 +2347,18 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf)
 		const auto& t = params->GetFieldType(i);
 		auto tn = FullTypeName(t);
 		auto param_id = FindParam(i, pf);
-		auto fn = param_id ?
-				LocalName(param_id) :
-				(std::string("unused_param__CPP_") + Fmt(i));
+		std::string fn;
+
+		if ( param_id )
+			{
+			if ( t->Tag() == TYPE_ANY &&
+			     param_id->GetType()->Tag() != TYPE_ANY )
+				fn = std::string("any_param__CPP_") + Fmt(i);
+			else
+				fn = LocalName(param_id);
+			}
+		else
+			fn = std::string("unused_param__CPP_") + Fmt(i);
 
 		if ( IsNativeType(t) )
 			decl = decl + tn + " " + fn;
