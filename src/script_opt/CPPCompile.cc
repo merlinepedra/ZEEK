@@ -2677,7 +2677,8 @@ std::string CPPCompile::Canonicalize(const char* name) const
 		cname = cname + c;
 		}
 
-	return cname;
+	// Add a trailing '_' to avoid conflicts with C++ keywords.
+	return cname + "_";
 	}
 
 const char* CPPCompile::NativeAccessor(const TypePtr& t)
