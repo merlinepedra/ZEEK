@@ -17,9 +17,20 @@ void CPPTracker<T1, T2>::AddKey(T2 key)
 
 	if ( map2.count(h) == 0 )
 		{
-		map2[h] = map2.size();
+		int index;
+		if ( mapper && mapper->count(h) > 0 )
+			{
+			index = (*mapper)[h];
+			inherited.insert(h);
+			}
+		else
+			{
+			index = num_non_inherited++;
+			keys2.push_back(key);
+			}
+
+		map2[h] = index;
 		reps[h] = key.get();
-		keys2.push_back(key);
 		}
 
 	map[key.get()] = h;
@@ -31,10 +42,17 @@ std::string CPPTracker<T1, T2>::KeyName(T1 key)
 	{
 	ASSERT(HasKey(key));
 
-	char d_s[64];
-	snprintf(d_s, sizeof d_s, "%d", map2[map[key]]);
+	auto hash = map[key];
+	auto index = map2[hash];
 
-	return base_name + "_" + std::string(d_s) + "__CPP";
+	std::string scope;
+	if ( IsInherited(hash) )
+		scope = "zeek::detail::CPP::";
+
+	char d_s[64];
+	snprintf(d_s, sizeof d_s, "%d", index);
+
+	return scope + std::string(base_name) + "_" + std::string(d_s) + "__CPP";
 	}
 
 template<class T1, class T2>
@@ -2237,7 +2255,13 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 
 std::string CPPCompile::GenTypeName(const TypePtr& t)
 	{
-	return std::string("types__CPP[") + Fmt(TypeIndex(t)) + "]";
+	auto ind = TypeIndex(t);
+
+	std::string scope;
+	if ( types.IsInherited(t) )
+		scope = "zeek::detail::CPP::";
+
+	return scope + std::string("types__CPP[") + Fmt(ind) + "]";
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag) const
@@ -2570,11 +2594,14 @@ int CPPCompile::TypeIndex(const TypePtr& t)
 		types.AddKey(t);
 		AddInit(t);
 
-		auto t_rep = types.GetRep(t);
-		if ( t_rep == t.get() )
-			GenPreInit(t);
-		else
-			NoteInitDependency(t.get(), t_rep);
+		if ( ! types.IsInherited(t) )
+			{
+			auto t_rep = types.GetRep(t);
+			if ( t_rep == t.get() )
+				GenPreInit(t);
+			else
+				NoteInitDependency(t.get(), t_rep);
+			}
 		}
 
 	if ( types.HasKey(t) )

@@ -42,9 +42,10 @@ protected:
 };
 
 using hash_type = unsigned long long;
+using VarMapper = std::unordered_map<hash_type, int>;
 
 extern std::unordered_map<hash_type, IntrusivePtr<CPPStmt>> compiled_bodies;
-extern std::unordered_map<hash_type, std::string> compiled_types;
+extern VarMapper compiled_types;
 
 } // namespace detail
 

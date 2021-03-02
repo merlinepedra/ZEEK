@@ -14,8 +14,8 @@ namespace zeek::detail {
 template <class T1, class T2>
 class CPPTracker {
 public:
-	CPPTracker(const char* _base_name)
-	: base_name(_base_name)
+	CPPTracker(const char* _base_name, VarMapper* _mapper = nullptr)
+	: base_name(_base_name), mapper(_mapper)
 		{
 		}
 
@@ -32,12 +32,18 @@ public:
 	int KeyIndex(T2 key)	{ return map2[map[key.get()]]; }
 
 	const std::vector<T2>& Keys() const		{ return keys; }
+
+	// A key is "distinct" if it's both (1) a representative and
+	// (2) not inherited.
 	const std::vector<T2>& DistinctKeys() const	{ return keys2; }
 
 	int Size() const		{ return keys.size(); }
-	int DistinctSize() const	{ return keys2.size(); }
+	int DistinctSize() const	{ return num_non_inherited; }
 
 	const T1& GetRep(T2 key) 	{ return reps[map[key.get()]]; }
+
+	bool IsInherited(const T2& key)	{ return IsInherited(map[key.get()]); }
+	bool IsInherited(hash_type h)	{ return inherited.count(h) > 0; }
 
 	hash_type Hash(T2 key) const;
 
@@ -45,8 +51,12 @@ private:
 	// Maps keys to internal representations.
 	std::unordered_map<T1, hash_type> map;
 
-	// Maps internal representations to distinct values.
+	// Maps internal representations to distinct values.  Per the second
+	// structure, these may-or-may-not be indices into the zeek::detail::CPP
+	// ("inherited") space.
 	std::unordered_map<hash_type, int> map2;
+	std::unordered_set<hash_type> inherited;	// which are inherited
+	int num_non_inherited = 0;	// distinct non-inherited map2 entries
 
 	// Tracks the set of keys, to facilitate iterating over them.
 	// Parallel to "map".
@@ -61,6 +71,9 @@ private:
 
 	// Used to construct key names.
 	std::string base_name;
+
+	// If non-nil, the mapper to consult for previous names.
+	VarMapper* mapper;
 };
 
 class CPPCompile {
@@ -344,7 +357,7 @@ private:
 	std::vector<std::string> pre_inits;
 
 	// Maps types to indices in the global "types__CPP" array.
-	CPPTracker<const Type*, TypePtr> types = "types";
+	CPPTracker<const Type*, TypePtr> types = {"types", &compiled_types};
 
 	// Used to prevent analysis of mutually-referring types from
 	// leading to infinite recursion.
