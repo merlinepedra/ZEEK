@@ -1193,7 +1193,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		else if ( t1->Tag() == TYPE_ADDR && t2->Tag() == TYPE_SUBNET )
 			gen = std::string("(") + GenExpr(op2, GEN_DONT_CARE) +
 				")->Contains(" +
-				GenExpr(op1, GEN_VAL_PTR) + ")";
+				GenExpr(op1, GEN_VAL_PTR) + "->Get())";
 
 		else if ( t2->Tag() == TYPE_VECTOR )
 			// v1->AsListVal()->Idx(0)->CoerceToUnsigned()
