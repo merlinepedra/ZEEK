@@ -7,6 +7,45 @@
 
 namespace zeek::detail {
 
+template<class T1, class T2>
+void CPPTracker<T1, T2>::AddKey(T2 key)
+	{
+	if ( HasKey(key) )
+		return;
+
+	auto iname = InternalName(key);
+
+	if ( map2.count(iname) == 0 )
+		{
+		map2[iname] = map2.size();
+		reps[iname] = key.get();
+		keys2.push_back(key);
+		}
+
+	map[key.get()] = iname;
+	keys.push_back(key);
+	}
+
+template<class T1, class T2>
+std::string CPPTracker<T1, T2>::KeyName(T1 key)
+	{
+	ASSERT(HasKey(key));
+
+	char d_s[64];
+	snprintf(d_s, sizeof d_s, "%d", map2[map[key]]);
+
+	return base_name + "_" + std::string(d_s) + "__CPP";
+	}
+
+template<class T1, class T2>
+std::string CPPTracker<T1, T2>::InternalName(T2 key) const
+	{
+	ODesc d;
+	key->Describe(&d);
+	return d.Description();
+	}
+
+
 void CPPCompile::CompileTo(FILE* f)
 	{
 	write_file = f;

@@ -10,7 +10,7 @@ namespace zeek::detail {
 
 // Helper class that tracks distinct instances of a given key.  T1 is the
 // pointer version of the type and T2 the IntrusivePtr version.
-template <typename T1, typename T2>
+template <class T1, class T2>
 class CPPTracker {
 public:
 	CPPTracker(const char* _base_name)
@@ -22,33 +22,9 @@ public:
 	bool HasKey(T2 key) const	{ return HasKey(key.get()); }
 
 	// Only adds the key if it's not already present.
-	void AddKey(T2 key)
-		{
-		if ( HasKey(key) )
-			return;
+	void AddKey(T2 key);
 
-		auto iname = InternalName(key);
-
-		if ( map2.count(iname) == 0 )
-			{
-			map2[iname] = map2.size();
-			reps[iname] = key.get();
-			keys2.push_back(key);
-			}
-
-		map[key.get()] = iname;
-		keys.push_back(key);
-		}
-
-	std::string KeyName(T1 key)
-		{
-		ASSERT(HasKey(key));
-
-		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%d", map2[map[key]]);
-
-		return base_name + "_" + std::string(d_s) + "__CPP";
-		}
+	std::string KeyName(T1 key);
 	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
 
 	int KeyIndex(T1 key)	{ return map2[map[key]]; }
@@ -63,12 +39,7 @@ public:
 	const T1& GetRep(T2 key) 	{ return reps[map[key.get()]]; }
 
 private:
-	std::string InternalName(T2 key) const
-		{
-		ODesc d;
-		key->Describe(&d);
-		return d.Description();
-		}
+	std::string InternalName(T2 key) const;
 
 	// Maps keys to internal names.
 	std::unordered_map<T1, std::string> map;

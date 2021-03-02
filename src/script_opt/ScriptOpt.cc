@@ -262,6 +262,7 @@ void analyze_scripts()
 			}
 
 		const auto fname = "CPP-gen-addl.h";
+		// const auto fname = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-gen-addl.h";
 		auto f = fopen(fname, "a");
 		if ( ! f )
 			{
