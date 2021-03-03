@@ -78,12 +78,16 @@ private:
 
 class CPPCompile {
 public:
-	CPPCompile(std::vector<FuncInfo>& _funcs) : funcs(_funcs) { }
-
-	void CompileTo(FILE* f);
-	void CompileTo(FILE* f, unsigned int addl_tag);
+	CPPCompile(std::vector<FuncInfo>& _funcs, const char* gen_file,
+			const char* hash_file, bool append);
+	~CPPCompile();
 
 private:
+	void LoadHashes(FILE* f);
+	void LogHash(hash_type hash);
+
+	void Compile();
+
 	void GenProlog();
 	void GenEpilog();
 
@@ -293,8 +297,17 @@ private:
 
 	void Indent() const;
 
+	void Lock(const char* fname, FILE* f);
+	void Unlock(const char* fname, FILE* f);
+
 	std::vector<FuncInfo>& funcs;
+
+	const char* gen_name;
 	FILE* write_file;
+
+	const char* hash_name;
+	FILE* hf_r = nullptr;
+	FILE* hf_w = nullptr;
 
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
@@ -317,7 +330,10 @@ private:
 	std::unordered_set<std::string> compiled_funcs;
 
 	// Maps function names to hashes of bodies.
-	std::unordered_map<std::string, unsigned long long> body_hashes;
+	std::unordered_map<std::string, hash_type> body_hashes;
+
+	// Hashes of entities promised to exist earlier in the generated file.
+	std::unordered_set<hash_type> known_hashes;
 
 	// Script functions that we are able to compile.  We compute
 	// these ahead of time so that when compiling script function A

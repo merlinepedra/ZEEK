@@ -1,9 +1,5 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include "zeek/Options.h"
 #include "zeek/Reporter.h"
 #include "zeek/module_util.h"
@@ -140,20 +136,20 @@ void analyze_scripts()
 
 		if ( analysis_options.gen_CPP && analysis_options.add_CPP )
 			{
-			fprintf(stderr, "gen-C++ incompatible with add-C++\n");
+			reporter->Error("gen-C++ incompatible with add-C++");
 			exit(1);
 			}
 
 		if ( (analysis_options.gen_CPP || analysis_options.add_CPP) &&
 		     analysis_options.use_CPP )
 			{
-			fprintf(stderr, "generating C++ incompatible with using C++\n");
+			reporter->Error("generating C++ incompatible with using C++");
 			exit(1);
 			}
 
 		if ( analysis_options.use_CPP && ! CPP_init_hook )
 			{
-			fprintf(stderr, "no C++ functions available to use\n");
+			reporter->Error("no C++ functions available to use");
 			exit(1);
 			}
 
@@ -252,47 +248,25 @@ void analyze_scripts()
 		return;
 		}
 
-	if ( analysis_options.add_CPP )
+	if ( analysis_options.gen_CPP || analysis_options.add_CPP )
 		{
-		for ( auto& func : funcs )
+		if ( analysis_options.add_CPP )
 			{
-			auto hash = func.Profile()->HashVal();
-			if ( compiled_bodies.count(hash) > 0 )
-				func.SetSkip();
+			for ( auto& func : funcs )
+				{
+				auto hash = func.Profile()->HashVal();
+				if ( compiled_bodies.count(hash) > 0 )
+					func.SetSkip();
+				}
 			}
 
-		const auto fname = "CPP-gen-addl.h";
-		// const auto fname = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-gen-addl.h";
-		auto f = fopen(fname, "a");
-		if ( ! f )
-			{
-			fprintf(stderr, "can't open add-C++ target file %s\n",
-				fname);
-			exit(1);
-			}
+		const auto gen_name = "CPP-gen-addl.h";
+		const auto hash_name = "CPP-hashes.dat";
 
-		struct stat st;
-		if ( fstat(fileno(f), &st) != 0 )
-			{
-			char buf[256];
-			util::zeek_strerror_r(errno, buf, sizeof(buf));
-			reporter->Error("fstat failed on %s: %s", fname, buf);
-			fclose(f);
-			exit(1);
-			}
+		CPPCompile cpp(funcs, gen_name, hash_name,
+				analysis_options.add_CPP);
 
-		CPPCompile cpp(funcs);
-		cpp.CompileTo(f, st.st_size);
-		fclose(f);
-
-		return;
-		}
-
-	if ( analysis_options.gen_CPP )
-		{
-		CPPCompile cpp(funcs);
-		cpp.CompileTo(stdout);
-		return;
+		exit(0);
 		}
 
 	// Figure out which functions either directly or indirectly

@@ -1,5 +1,10 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+
 #include "zeek/RE.h"
 #include "zeek/script_opt/CPPCompile.h"
 #include "zeek/script_opt/ProfileFunc.h"
@@ -66,10 +71,94 @@ hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 	}
 
 
-void CPPCompile::CompileTo(FILE* f)
+CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, const char* _gen_name,
+			const char* _hash_name, bool append)
+: funcs(_funcs), gen_name(_gen_name), hash_name(_hash_name)
 	{
-	write_file = f;
+	if ( append )
+		{
+		hf_r = fopen(hash_name, "r");
+		if ( ! hf_r )
+			{
+			reporter->Error("can't open auxiliary C++ hash file %s for reading",
+					hash_name);
+			exit(1);
+			}
 
+		Lock(hash_name, hf_r);
+		LoadHashes(hf_r);
+		}
+
+	auto hf_w = fopen(hash_name, "a");
+	if ( ! hf_w )
+		{
+		reporter->Error("can't open auxiliary C++ hash file %s for writing",
+				hash_name);
+		exit(1);
+		}
+
+	auto mode = append ? "a" : "w";
+	write_file = fopen(gen_name, mode);
+	if ( ! write_file )
+		{
+		reporter->Error("can't open C++ target file %s", gen_name);
+		exit(1);
+		}
+
+	if ( append )
+		{
+		struct stat st;
+		if ( fstat(fileno(write_file), &st) != 0 )
+			{
+			char buf[256];
+			util::zeek_strerror_r(errno, buf, sizeof(buf));
+			reporter->Error("fstat failed on %s: %s", gen_name, buf);
+			exit(1);
+			}
+
+		addl_tag = st.st_size + 1;
+		Compile();
+		}
+
+	else
+		Compile();
+	}
+
+CPPCompile::~CPPCompile()
+	{
+	if ( hf_r )
+		{
+		Unlock(hash_name, hf_r);
+		fclose(hf_r);
+		}
+
+	fclose(hf_w);
+	}
+
+void CPPCompile::LoadHashes(FILE* f)
+	{
+	char buf[8192];
+	while ( fgets(buf, sizeof buf, f) )
+		{
+		auto hash = atoll(buf);
+
+		if ( hash == 0 )
+			{
+			reporter->Error("bad %s hash file entry: %s", hash_name, buf);
+			exit(1);
+			}
+
+		known_hashes.insert(hash);
+		}
+	}
+
+void CPPCompile::LogHash(hash_type hash)
+	{
+	fprintf(hf_w, "%llu\n", hash);
+	}
+
+void CPPCompile::Compile()
+	{
 	GenProlog();
 
 	for ( const auto& func : funcs )
@@ -97,12 +186,6 @@ void CPPCompile::CompileTo(FILE* f)
 		CompileFunc(func);
 
 	GenEpilog();
-	}
-
-void CPPCompile::CompileTo(FILE* f, unsigned int _addl_tag)
-	{
-	addl_tag = _addl_tag + 1;
-	CompileTo(f);
 	}
 
 void CPPCompile::GenProlog()
@@ -217,13 +300,15 @@ void CPPCompile::GenEpilog()
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
 			f, f, Fmt(body_hashes[f]));
 
-	if ( addl_tag == 0 )
-		{
-		NL();
-		for ( const auto& t : types.DistinctKeys() )
+	NL();
+	for ( const auto& t : types.DistinctKeys() )
+		if ( ! types.IsInherited(t) )
+			{
+			auto hash = types.Hash(t);
 			Emit("register_type__CPP(%s, %s);",
-				Fmt(types.KeyIndex(t)), Fmt(types.Hash(t)));
-		}
+				Fmt(types.KeyIndex(t)), Fmt(hash));
+			LogHash(hash);
+			}
 
 	EndBlock(true);
 
@@ -2831,6 +2916,28 @@ void CPPCompile::Indent() const
 	{
 	for ( auto i = 0; i < block_level; ++i )
 		fprintf(write_file, "%s", "\t");
+	}
+
+void CPPCompile::Lock(const char* fname, FILE* f)
+	{
+	if ( flock(fileno(f), LOCK_EX) < 0 )
+		{
+		char buf[256];
+		util::zeek_strerror_r(errno, buf, sizeof(buf));
+		reporter->Error("flock failed on %s: %s", fname, buf);
+		exit(1);
+		}
+	}
+
+void CPPCompile::Unlock(const char* fname, FILE* f)
+	{
+	if ( flock(fileno(f), LOCK_UN) < 0 )
+		{
+		char buf[256];
+		util::zeek_strerror_r(errno, buf, sizeof(buf));
+		reporter->Error("un-flock failed on %s: %s", fname, buf);
+		exit(1);
+		}
 	}
 
 } // zeek::detail
