@@ -7,7 +7,7 @@
 namespace zeek::detail {
 
 std::unordered_map<hash_type, IntrusivePtr<CPPStmt>> compiled_bodies;
-VarMapper compiled_types;
+VarMapper compiled_items;
 
 void CPPFunc::Describe(ODesc* d) const
 	{

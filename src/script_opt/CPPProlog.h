@@ -56,9 +56,10 @@ void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash)
 	compiled_bodies[hash] = body;
 	}
 
-void register_type__CPP(int type_index, hash_type type_hash)
+void register_item__CPP(int type_index, int scope, hash_type type_hash)
 	{
-	compiled_types[type_hash] = type_index;
+	ASSERT(compiled_items.count(type_hash) == 0);
+	compiled_items[type_hash] = CompiledItemPair(type_index, scope);
 	}
 
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)

@@ -51,10 +51,10 @@ private:
 	// Maps keys to internal representations.
 	std::unordered_map<T1, hash_type> map;
 
-	// Maps internal representations to distinct values.  Per the second
-	// structure, these may-or-may-not be indices into the zeek::detail::CPP
-	// ("inherited") space.
+	// Maps internal representations to distinct values.  These
+	// may-or-may-not be indices into an "inherited" namespace scope.
 	std::unordered_map<hash_type, int> map2;
+	std::unordered_map<hash_type, std::string> scope2;	// only if inherited
 	std::unordered_set<hash_type> inherited;	// which are inherited
 	int num_non_inherited = 0;	// distinct non-inherited map2 entries
 
@@ -177,8 +177,8 @@ private:
 	const char* FullTypeName(const TypePtr& t);
 	const char* TypeName(const TypePtr& t);
 	const char* TypeType(const TypePtr& t);
-	int TypeIndex(const TypePtr& t);
-	void RecordAttributes(const AttributesPtr& attrs);
+	void RegisterType(const TypePtr& t);
+	void RegisterAttributes(const AttributesPtr& attrs);
 
 	const char* NativeAccessor(const TypePtr& t);
 	const char* IntrusiveVal(const TypePtr& t);
@@ -264,27 +264,6 @@ private:
 	std::string LocalName(const ID* l) const;
 
 	std::string Canonicalize(const char* name) const;
-
-	std::string Fmt(int i)
-		{
-		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%d", i);
-		return std::string(d_s);
-		}
-
-	std::string Fmt(hash_type u)
-		{
-		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%lluULL", u);
-		return std::string(d_s);
-		}
-
-	std::string Fmt(double d)
-		{
-		char d_s[64];
-		snprintf(d_s, sizeof d_s, "%lf", d);
-		return std::string(d_s);
-		}
 
 	std::string CPPEscape(const std::string& s) const
 		{ return CPPEscape(s.c_str()); }
@@ -373,19 +352,19 @@ private:
 	std::vector<std::string> pre_inits;
 
 	// Maps types to indices in the global "types__CPP" array.
-	CPPTracker<const Type*, TypePtr> types = {"types", &compiled_types};
+	CPPTracker<const Type*, TypePtr> types = {"types", &compiled_items};
 
 	// Used to prevent analysis of mutually-referring types from
 	// leading to infinite recursion.
 	std::unordered_set<const Type*> processed_types;
 
 	// Similar for attributes, so we can reconstruct record types.
-	CPPTracker<const Attributes*, AttributesPtr> attributes = "attrs";
+	CPPTracker<const Attributes*, AttributesPtr> attributes = {"attrs", &compiled_items};
 
 	// Expressions for which we need to generate initialization-time
 	// code.  Currently, these are only expressions appearing in
 	// attributes.
-	CPPTracker<const Expr*, ExprPtr> init_exprs = "gen_init_expr";
+	CPPTracker<const Expr*, ExprPtr> init_exprs = {"gen_init_expr", &compiled_items};
 
 	// Maps function bodies to the names we use for them.
 	std::unordered_map<const Stmt*, std::string> body_names;

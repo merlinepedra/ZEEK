@@ -12,6 +12,29 @@
 
 namespace zeek::detail {
 
+// Helper functions.
+std::string Fmt(int i)
+	{
+	char d_s[64];
+	snprintf(d_s, sizeof d_s, "%d", i);
+	return std::string(d_s);
+	}
+
+std::string Fmt(hash_type u)
+	{
+	char d_s[64];
+	snprintf(d_s, sizeof d_s, "%lluULL", u);
+	return std::string(d_s);
+	}
+
+std::string Fmt(double d)
+	{
+	char d_s[64];
+	snprintf(d_s, sizeof d_s, "%lf", d);
+	return std::string(d_s);
+	}
+
+
 template<class T1, class T2>
 void CPPTracker<T1, T2>::AddKey(T2 key)
 	{
@@ -25,7 +48,9 @@ void CPPTracker<T1, T2>::AddKey(T2 key)
 		int index;
 		if ( mapper && mapper->count(h) > 0 )
 			{
-			index = (*mapper)[h];
+			const auto& pair = (*mapper)[h];
+			index = pair.index;
+			scope2[h] = Fmt(pair.scope);
 			inherited.insert(h);
 			}
 		else
@@ -52,12 +77,9 @@ std::string CPPTracker<T1, T2>::KeyName(T1 key)
 
 	std::string scope;
 	if ( IsInherited(hash) )
-		scope = "zeek::detail::CPP::";
+		scope = "zeek::detail::CPP_" + scope2[hash] + "::";
 
-	char d_s[64];
-	snprintf(d_s, sizeof d_s, "%d", index);
-
-	return scope + std::string(base_name) + "_" + std::string(d_s) + "__CPP";
+	return scope + std::string(base_name) + "_" + Fmt(index) + "__CPP";
 	}
 
 template<class T1, class T2>
@@ -66,7 +88,7 @@ hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 	ODesc d;
 	key->Describe(&d);
 	std::string desc = d.Description();
-	auto h = std::hash<std::string>{}(desc);
+	auto h = std::hash<std::string>{}(base_name + desc);
 	return hash_type(h);
 	}
 
@@ -321,11 +343,10 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("static int dummy = hook_in_init();\n");
 
-	if ( addl_tag > 0 )
-		Emit("} // zeek::detail::CPP_%s\n", Fmt(addl_tag));
-	else
+	Emit("} // zeek::detail::CPP_%s\n", Fmt(addl_tag));
+
+	if ( addl_tag == 0 )
 		{
-		Emit("} // zeek::detail::CPP\n");
 		Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
 		Emit("} // zeek::detail");
 		Emit("} // zeek");
@@ -1516,7 +1537,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		if ( attrs )
 			{
 			NoteInitDependency(e, attrs);
-			RecordAttributes(attrs);
+			RegisterAttributes(attrs);
 			attrs_name = AttrsName(attrs);
 			}
 
@@ -1537,7 +1558,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			{
 			AddInit(e);
 			NoteInitDependency(e, attrs);
-			RecordAttributes(attrs);
+			RegisterAttributes(attrs);
 			attrs_name = AttrsName(attrs);
 			}
 
@@ -2365,13 +2386,8 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 
 std::string CPPCompile::GenTypeName(const TypePtr& t)
 	{
-	auto ind = TypeIndex(t);
-
-	std::string scope;
-	if ( types.IsInherited(t) )
-		scope = "zeek::detail::CPP::";
-
-	return scope + std::string("types__CPP[") + Fmt(ind) + "]";
+	RegisterType(t);
+	return types.KeyName(t);
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag) const
@@ -2586,157 +2602,136 @@ const char* CPPCompile::TypeType(const TypePtr& t)
 	}
 	}
 
-int CPPCompile::TypeIndex(const TypePtr& t)
+void CPPCompile::RegisterType(const TypePtr& t)
 	{
 	auto tp = t.get();
 
-	if ( types.HasKey(t) )
-		// Do this check first, so we can recurse below when
-		// adding a new type.
-		return types.KeyIndex(tp);
+	if ( types.HasKey(t) || processed_types.count(tp) > 0 )
+		return;
 
-	if ( processed_types.count(tp) == 0 )
+	// Add the type before going further, to avoid loops due to types
+	// that reference each other.
+	processed_types.insert(tp);
+
+	switch ( t->Tag() ) {
+	case TYPE_ADDR:
+	case TYPE_ANY:
+	case TYPE_BOOL:
+	case TYPE_COUNT:
+	case TYPE_DOUBLE:
+	case TYPE_ENUM:
+	case TYPE_ERROR:
+	case TYPE_INT:
+	case TYPE_INTERVAL:
+	case TYPE_PATTERN:
+	case TYPE_PORT:
+	case TYPE_STRING:
+	case TYPE_TIME:
+	case TYPE_TIMER:
+	case TYPE_VOID:
+	case TYPE_OPAQUE:
+	case TYPE_SUBNET:
+	case TYPE_FILE:
+		// Nothing to do.
+		break;
+
+	case TYPE_TYPE:
 		{
-		ASSERT(! types.HasKey(t));
+		const auto& tt = t->AsTypeType()->GetType();
+		NoteNonRecordInitDependency(t, tt);
+		RegisterType(tt);
+		}
+		break;
 
-		// Add the type before going further, to avoid loops due to
-		// types that reference each other.
-		processed_types.insert(tp);
+	case TYPE_VECTOR:
+		{
+		const auto& yield = t->AsVectorType()->Yield();
+		NoteNonRecordInitDependency(t, yield);
+		RegisterType(yield);
+		}
+		break;
 
-		// Recursively do its subtypes, so that they will be
-		// available when we ultimately do this type.
-		switch ( t->Tag() ) {
-		case TYPE_ADDR:
-		case TYPE_ANY:
-		case TYPE_BOOL:
-		case TYPE_COUNT:
-		case TYPE_DOUBLE:
-		case TYPE_ENUM:
-		case TYPE_ERROR:
-		case TYPE_INT:
-		case TYPE_INTERVAL:
-		case TYPE_PATTERN:
-		case TYPE_PORT:
-		case TYPE_STRING:
-		case TYPE_TIME:
-		case TYPE_TIMER:
-		case TYPE_VOID:
-		case TYPE_OPAQUE:
-		case TYPE_SUBNET:
-		case TYPE_FILE:
-			// Nothing to do.
-			break;
-
-		case TYPE_TYPE:
+	case TYPE_LIST:
+		{
+		auto tl = t->AsTypeList()->GetTypes();
+		for ( auto i = 0; i < tl.size(); ++i )
 			{
-			const auto& tt = t->AsTypeType()->GetType();
-			NoteNonRecordInitDependency(t, tt);
-			(void) TypeIndex(tt);
+			NoteNonRecordInitDependency(t, tl[i]);
+			RegisterType(tl[i]);
 			}
-			break;
+		}
+		break;
 
-		case TYPE_VECTOR:
-			{
-			const auto& yield = t->AsVectorType()->Yield();
+	case TYPE_TABLE:
+		{
+		auto tbl = t->AsTableType();
+		const auto& indices = tbl->GetIndices();
+		const auto& yield = tbl->Yield();
+
+		NoteNonRecordInitDependency(t, indices);
+		if ( yield )
 			NoteNonRecordInitDependency(t, yield);
-			(void) TypeIndex(yield);
-			}
-			break;
 
-		case TYPE_LIST:
-			{
-			auto tl = t->AsTypeList()->GetTypes();
-			for ( auto i = 0; i < tl.size(); ++i )
-				{
-				NoteNonRecordInitDependency(t, tl[i]);
-				(void) TypeIndex(tl[i]);
-				}
-			}
-			break;
+		RegisterType(indices);
 
-		case TYPE_TABLE:
-			{
-			auto tbl = t->AsTableType();
-			const auto& indices = tbl->GetIndices();
-			const auto& yield = tbl->Yield();
-
-			NoteNonRecordInitDependency(t, indices);
-			if ( yield )
-				NoteNonRecordInitDependency(t, yield);
-
-			(void) TypeIndex(indices);
-
-			if ( ! tbl->IsSet() )
-				(void) TypeIndex(yield);
-			}
-			break;
-
-		case TYPE_RECORD:
-			{
-			auto r = t->AsRecordType()->Types();
-
-			for ( auto i = 0; i < r->length(); ++i )
-				{
-				const auto& r_i = (*r)[i];
-
-				NoteNonRecordInitDependency(t, r_i->type);
-				(void) TypeIndex(r_i->type);
-
-				if ( r_i->attrs )
-					{
-					NoteInitDependency(t, r_i->attrs);
-					RecordAttributes(r_i->attrs);
-					}
-				}
-			}
-			break;
-
-		case TYPE_FUNC:
-			{
-			auto f = t->AsFuncType();
-
-			NoteInitDependency(t, f->Params());
-			(void) TypeIndex(f->Params());
-
-			if ( f->Yield() )
-				{
-				NoteNonRecordInitDependency(t, f->Yield());
-				(void) TypeIndex(f->Yield());
-				}
-			}
-			break;
-
-		default:
-			reporter->InternalError("bad type in CPPCompile::TypeIndex");
+		if ( ! tbl->IsSet() )
+			RegisterType(yield);
 		}
+		break;
 
-		types.AddKey(t);
-		AddInit(t);
-
-		if ( ! types.IsInherited(t) )
-			{
-			auto t_rep = types.GetRep(t);
-			if ( t_rep == t.get() )
-				GenPreInit(t);
-			else
-				NoteInitDependency(t.get(), t_rep);
-			}
-		}
-
-	if ( types.HasKey(t) )
+	case TYPE_RECORD:
 		{
-		// The following (indirectly) recurses, but the check at
-		// the top of this method keeps the code from reaching
-		// this point.
-		return types.KeyIndex(tp);
+		auto r = t->AsRecordType()->Types();
+
+		for ( auto i = 0; i < r->length(); ++i )
+			{
+			const auto& r_i = (*r)[i];
+
+			NoteNonRecordInitDependency(t, r_i->type);
+			RegisterType(r_i->type);
+
+			if ( r_i->attrs )
+				{
+				NoteInitDependency(t, r_i->attrs);
+				RegisterAttributes(r_i->attrs);
+				}
+			}
 		}
-	else
-		// This can happen when two types refer to one another.
-		// Presumably our caller is discarding what we return.
-		return -1;
+		break;
+
+	case TYPE_FUNC:
+		{
+		auto f = t->AsFuncType();
+
+		NoteInitDependency(t, f->Params());
+		RegisterType(f->Params());
+
+		if ( f->Yield() )
+			{
+			NoteNonRecordInitDependency(t, f->Yield());
+			RegisterType(f->Yield());
+			}
+		}
+		break;
+
+	default:
+		reporter->InternalError("bad type in CPPCompile::RegisterType");
 	}
 
-void CPPCompile::RecordAttributes(const AttributesPtr& attrs)
+	types.AddKey(t);
+	AddInit(t);
+
+	if ( ! types.IsInherited(t) )
+		{
+		auto t_rep = types.GetRep(t);
+		if ( t_rep == t.get() )
+			GenPreInit(t);
+		else
+			NoteInitDependency(t.get(), t_rep);
+		}
+	}
+
+void CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
 	{
 	if ( ! attrs || attributes.HasKey(attrs) )
 		return;
