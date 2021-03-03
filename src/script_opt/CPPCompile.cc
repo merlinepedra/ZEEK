@@ -280,9 +280,9 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 	for ( const auto& b : pf->BiFCalls() )
 		AddBiF(b);
 
-	// Globals can have types that ultimately refer to other globals, so
-	// we first add all the globals, and then spin through again to do
-	// their initializations.
+	// Globals can have types that ultimately refer to other globals, or
+	// to constants, so we first add all the globals, and then after
+	// that spin through again to do their initializations.
 	std::unordered_set<const ID*> pending_globals;
 
 	for ( const auto& g : pf->AllGlobals() )
@@ -313,17 +313,6 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		pending_globals.insert(g);
 		}
 
-	for ( const auto& g : pending_globals )
-		{
-		auto gn = std::string(g->Name());
-
-		NoteInitDependency(g, g->GetType());
-
-		AddInit(g, globals[gn], std::string("lookup_global__CPP(\"") +
-					gn + "\", " +
-					GenTypeName(g->GetType()) + ")");
-		}
-
 	for ( const auto& e : pf->Events() )
 		{
 		AddGlobal(e, "gl");
@@ -340,6 +329,17 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 
 	for ( const auto& c : pf->Constants() )
 		AddConstant(c);
+
+	for ( const auto& g : pending_globals )
+		{
+		auto gn = std::string(g->Name());
+
+		NoteInitDependency(g, g->GetType());
+
+		AddInit(g, globals[gn], std::string("lookup_global__CPP(\"") +
+					gn + "\", " +
+					GenTypeName(g->GetType()) + ")");
+		}
 	}
 
 void CPPCompile::AddBiF(const Func* b)
