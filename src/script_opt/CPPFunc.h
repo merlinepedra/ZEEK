@@ -3,6 +3,7 @@
 #pragma once
 
 #include "zeek/Func.h"
+#include "zeek/script_opt/ProfileFunc.h"
 
 namespace zeek {
 
@@ -40,8 +41,6 @@ protected:
 
 	std::string name;
 };
-
-using hash_type = unsigned long long;
 
 struct CompiledItemPair { int index; int scope; };
 
