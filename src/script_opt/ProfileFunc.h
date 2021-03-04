@@ -36,6 +36,8 @@ public:
 		{ return inits; }
 	const std::unordered_set<const ConstExpr*>& Constants() const
 		{ return constants; }
+	const std::unordered_set<const Type*>& Types() const
+		{ return types; }
 	const std::unordered_set<ScriptFunc*>& ScriptCalls() const
 		{ return script_calls; }
 	const std::unordered_set<Func*>& BiFCalls() const
@@ -97,6 +99,9 @@ protected:
 
 	// Constants seen in the function.
 	std::unordered_set<const ConstExpr*> constants;
+
+	// Types seen in the function.
+	std::unordered_set<const Type*> types;
 
 	// Script functions that this script calls.
 	std::unordered_set<ScriptFunc*> script_calls;
@@ -179,20 +184,13 @@ protected:
 		hash_val ^= h + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
 		}
 
-	// Types that we've already processed.  Hashing types can be
-	// quite expensive since some of the common Zeek record types
-	// (e.g., notices) are huge, so useful to not do them more than
-	// once.  We track two forms, one by name (if available) and one
-	// by raw pointer (if not).  Doing so allows us to track named
-	// sub-records but also records that have no names.
-	std::unordered_set<std::string> seen_types;
-	std::unordered_set<const Type*> seen_type_ptrs;
-
-	// Types that we've traversed for profiling.  Distinct from seen_types
-	// because this is used to prevent infinite recursion in the fact
-	// of recursive types, and needs to not be short-circuited due to
-	// prior hashing.
-	std::unordered_set<const Type*> profiled_types;
+	// Hashing types can be quite expensive, since some of the common
+	// Zeek record types (e.g., notices) are huge, so it's useful to
+	// not do them more than once.  We already take care of that by
+	// not revisiting the same pointer, but there's also a significant
+	// gain by not hashing due to seeing the same name even if associated
+	// with a different pointer.
+	std::unordered_set<std::string> seen_type_names;
 };
 
 

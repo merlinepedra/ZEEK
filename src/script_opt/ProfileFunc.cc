@@ -11,25 +11,7 @@ namespace zeek::detail {
 
 TraversalCode ProfileFunc::PreFunction(const Func* f)
 	{
-	// Traverse the function arguments.  We don't track their names,
-	// since unfortunately those can differ between bodies, but we
-	// do look for &default arguments, since those can contain
-	// globals and constants.  This is easy to do since the arguments
-	// are captured by a single record type.
-	const auto& ft = f->GetType();
-	const auto& params = ft->Params();
-	num_params = params->NumFields();
-	const auto& yield = ft->Yield();
-
-	if ( compute_hash )
-		{
-		CheckType(params);
-		if ( yield )
-			CheckType(yield);
-		}
-
-	if ( analyze_attrs )
-		TraverseType(ft);
+	TraverseType(f->GetType());
 
 	// We do *not* continue into the body.  This is because for
 	// functions with multiple bodies, we don't want to conflate
@@ -139,25 +121,17 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	{
 	++num_exprs;
 
-	const auto& t = e->GetType();
-
-	if ( analyze_attrs )
-		TraverseType(t);
-
-	auto tag = e->Tag();
+	TraverseType(e->GetType());
 
 	if ( compute_hash )
-		UpdateHash(int(tag));
+		UpdateHash(int(e->Tag()));
 
-	switch ( tag ) {
+	switch ( e->Tag() ) {
 	case EXPR_CONST:
 		constants.insert(e->AsConstExpr());
 
 		if ( compute_hash )
-			{
-			CheckType(e->GetType());
 			UpdateHash(e->AsConstExpr()->ValuePtr());
-			}
 		break;
 
 	case EXPR_NAME:
@@ -181,10 +155,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			}
 
 		if ( compute_hash )
-			{
 			UpdateHash(id);
-			CheckType(t);
-			}
 
 		break;
 		}
@@ -260,8 +231,15 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 		// Do the following explicitly, since we won't be recursing
 		// into the LHS global.
-		if ( analyze_attrs )
-			TraverseType(n->GetType());
+
+		// Note that the type of the expression and the type of the
+		// function can actually be *different* due to the NameExpr
+		// being constructed based on a forward reference and then
+		// the global getting a different (constructed) type when
+		// the function is actually declared.  Geez.  So hedge our
+		// bets.
+		TraverseType(n->GetType());
+		TraverseType(func->GetType());
 
 		return TC_ABORTSTMT;
 		}
@@ -292,13 +270,13 @@ TraversalCode ProfileFunc::PostExpr(const Expr* e)
 
 void ProfileFunc::TraverseType(const TypePtr& t)
 	{
-	if ( ! t || profiled_types.count(t.get()) > 0 )
+	if ( ! t || types.count(t.get()) > 0 )
 		return;
 
 	if ( compute_hash )
 		CheckType(t);
 
-	profiled_types.insert(t.get());
+	types.insert(t.get());
 
 	switch ( t->Tag() ) {
 	case TYPE_ADDR:
@@ -380,17 +358,11 @@ void ProfileFunc::TraverseType(const TypePtr& t)
 void ProfileFunc::CheckType(const TypePtr& t)
 	{
 	auto& tn = t->GetName();
-	if ( tn.size() > 0 && seen_types.count(tn) > 0 )
+	if ( tn.size() > 0 && seen_type_names.count(tn) > 0 )
 		// No need to hash this in again, as we've already done so.
 		return;
 
-	if ( seen_type_ptrs.count(t.get()) > 0 )
-		// We've seen the raw pointer, even though it doesn't have
-		// a name.
-		return;
-
-	seen_types.insert(tn);
-	seen_type_ptrs.insert(t.get());
+	seen_type_names.insert(tn);
 
 	UpdateHash(t);
 	}
