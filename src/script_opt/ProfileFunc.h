@@ -68,7 +68,6 @@ public:
 protected:
 	TraversalCode PreFunction(const Func*) override;
 	TraversalCode PreStmt(const Stmt*) override;
-	TraversalCode PostStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
 
 	void TraverseType(const TypePtr& t);
@@ -152,10 +151,6 @@ protected:
 	// Whether we're separately processing a "when" condition to
 	// mine out its script calls.
 	bool in_when = false;
-
-	// Whether to skip any locals we encounter - used to recurse into
-	// initialization statements.
-	bool skip_locals = false;
 
 	// We only compute a hash over the function if requested, since
 	// it's somewhat expensive.

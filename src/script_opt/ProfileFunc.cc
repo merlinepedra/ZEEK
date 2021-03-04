@@ -34,7 +34,6 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 
 	switch ( tag ) {
 	case STMT_INIT:
-		{
 		for ( const auto& id : s->AsInitStmt()->Inits() )
 			{
 			inits.insert(id.get());
@@ -43,9 +42,10 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 				TraverseType(id->GetType());
 			}
 
-		skip_locals = true;
-		}
-		break;
+		// Don't traverse further into the statement, since we
+		// don't want to view the identifiers as locals unless
+		// they're also used elsewhere.
+		return TC_ABORTSTMT;
 
 	case STMT_WHEN:
 		++num_when_stmts;
@@ -112,14 +112,6 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 	return TC_CONTINUE;
 	}
 
-TraversalCode ProfileFunc::PostStmt(const Stmt* s)
-	{
-	if ( s->Tag() == STMT_INIT )
-		skip_locals = false;
-
-	return TC_CONTINUE;
-	}
-
 TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	{
 	exprs.push_back(e);
@@ -153,8 +145,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			if ( id->Offset() < num_params )
 				params.insert(id);
 
-			if ( ! skip_locals )
-				locals.insert(id);
+			locals.insert(id);
 			}
 
 		if ( compute_hash )
