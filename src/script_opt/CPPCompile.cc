@@ -83,6 +83,17 @@ std::string CPPTracker<T1, T2>::KeyName(T1 key)
 	}
 
 template<class T1, class T2>
+void CPPTracker<T1, T2>::LogIfNew(T2 key, int scope, FILE* log_file)
+	{
+	if ( IsInherited(key) )
+		return;
+
+	auto hash = map[key.get()];
+	auto index = map2[hash];
+	fprintf(log_file, "%llu %d %d\n", hash, index, scope);
+	}
+
+template<class T1, class T2>
 hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 	{
 	ODesc d;
@@ -111,7 +122,7 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, const char* _gen_name,
 		LoadHashes(hf_r);
 		}
 
-	auto hf_w = fopen(hash_name, "a");
+	hf_w = fopen(hash_name, "a");
 	if ( ! hf_w )
 		{
 		reporter->Error("can't open auxiliary C++ hash file %s for writing",
@@ -148,13 +159,14 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, const char* _gen_name,
 
 CPPCompile::~CPPCompile()
 	{
+	fclose(hf_w);
+
 	if ( hf_r )
 		{
+		fflush(hf_r);
 		Unlock(hash_name, hf_r);
 		fclose(hf_r);
 		}
-
-	fclose(hf_w);
 	}
 
 void CPPCompile::LoadHashes(FILE* f)
@@ -162,21 +174,19 @@ void CPPCompile::LoadHashes(FILE* f)
 	char buf[8192];
 	while ( fgets(buf, sizeof buf, f) )
 		{
-		auto hash = atoll(buf);
+		hash_type hash;
+		int index;
+		int scope;
 
-		if ( hash == 0 )
+		if ( sscanf(buf, "%llu %d %d", &hash, &index, &scope) != 3 ||
+		     hash == 0 )
 			{
 			reporter->Error("bad %s hash file entry: %s", hash_name, buf);
 			exit(1);
 			}
 
-		known_hashes.insert(hash);
+		compiled_items[hash] = CompiledItemPair{index, scope};
 		}
-	}
-
-void CPPCompile::LogHash(hash_type hash)
-	{
-	fprintf(hf_w, "%llu\n", hash);
 	}
 
 void CPPCompile::Compile()
@@ -197,7 +207,18 @@ void CPPCompile::Compile()
 		}
 
 	for ( const auto& func : funcs )
+		if ( IsCompilable(func) )
+			{
+			for ( const auto& t : func.Profile()->Types() )
+				RegisterType({NewRef{}, (Type*)(t)});
+			}
+
+	for ( const auto& func : funcs )
 		DeclareGlobals(func);
+
+	for ( const auto& t : types.DistinctKeys() )
+		if ( ! types.IsInherited(t) )
+			Emit("TypePtr %s;", types.KeyName(t));
 
 	for ( const auto& func : funcs )
 		DeclareFunc(func);
@@ -207,20 +228,18 @@ void CPPCompile::Compile()
 	for ( const auto& func : funcs )
 		CompileFunc(func);
 
+	for ( const auto& a : compiled_script_attrs )
+		RegisterAttributes(a);
+
 	GenEpilog();
 	}
 
 void CPPCompile::GenProlog()
 	{
-	if ( addl_tag > 0 )
-		Emit("namespace CPP_%s {\n", Fmt(addl_tag));
-	else
-		{
+	if ( addl_tag == 0 )
 		Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
-		Emit("namespace CPP {\n");
-		}
 
-	Emit("TypePtr* types__CPP;\n");
+	Emit("namespace CPP_%s {\n", Fmt(addl_tag));
 	}
 
 void CPPCompile::GenEpilog()
@@ -228,21 +247,28 @@ void CPPCompile::GenEpilog()
 	NL();
 
 	for ( const auto& e : init_exprs.DistinctKeys() )
+		{
 		GenInitExpr(e);
+		init_exprs.LogIfNew(e, addl_tag, hf_w);
+		}
 
 	for ( const auto& a : attributes.DistinctKeys() )
+		{
 		GenAttrs(a);
+		attributes.LogIfNew(a, addl_tag, hf_w);
+		}
 
 	// Generate the guts of compound types.
 	for ( const auto& t : types.DistinctKeys() )
+		{
 		ExpandTypeVar(t);
+		types.LogIfNew(t, addl_tag, hf_w);
+		}
 
 	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();
-
-	Emit("types__CPP = new TypePtr[%s];\n", Fmt(types.DistinctSize()));
 
 	for ( const auto& i : pre_inits )
 		Emit(i);
@@ -321,16 +347,6 @@ void CPPCompile::GenEpilog()
 	for ( const auto& f : compiled_funcs )
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
 			f, f, Fmt(body_hashes[f]));
-
-	NL();
-	for ( const auto& t : types.DistinctKeys() )
-		if ( ! types.IsInherited(t) )
-			{
-			auto hash = types.Hash(t);
-			Emit("register_type__CPP(%s, %s);",
-				Fmt(types.KeyIndex(t)), Fmt(hash));
-			LogHash(hash);
-			}
 
 	EndBlock(true);
 
@@ -2386,7 +2402,6 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 
 std::string CPPCompile::GenTypeName(const TypePtr& t)
 	{
-	RegisterType(t);
 	return types.KeyName(t);
 	}
 
@@ -2604,14 +2619,12 @@ const char* CPPCompile::TypeType(const TypePtr& t)
 
 void CPPCompile::RegisterType(const TypePtr& t)
 	{
-	auto tp = t.get();
-
-	if ( types.HasKey(t) || processed_types.count(tp) > 0 )
+	if ( types.HasKey(t) || processed_types.count(t.get()) > 0 )
 		return;
 
 	// Add the type before going further, to avoid loops due to types
 	// that reference each other.
-	processed_types.insert(tp);
+	processed_types.insert(t.get());
 
 	switch ( t->Tag() ) {
 	case TYPE_ADDR:
@@ -2693,7 +2706,7 @@ void CPPCompile::RegisterType(const TypePtr& t)
 			if ( r_i->attrs )
 				{
 				NoteInitDependency(t, r_i->attrs);
-				RegisterAttributes(r_i->attrs);
+				compiled_script_attrs.push_back(r_i->attrs);
 				}
 			}
 		}
@@ -2724,7 +2737,7 @@ void CPPCompile::RegisterType(const TypePtr& t)
 	if ( ! types.IsInherited(t) )
 		{
 		auto t_rep = types.GetRep(t);
-		if ( t_rep == t.get() )
+		if ( t_rep == t )
 			GenPreInit(t);
 		else
 			NoteInitDependency(t.get(), t_rep);

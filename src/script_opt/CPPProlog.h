@@ -56,12 +56,6 @@ void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash)
 	compiled_bodies[hash] = body;
 	}
 
-void register_item__CPP(int type_index, int scope, hash_type type_hash)
-	{
-	ASSERT(compiled_items.count(type_hash) == 0);
-	compiled_items[type_hash] = CompiledItemPair(type_index, scope);
-	}
-
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 	{
 	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);

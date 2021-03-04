@@ -45,6 +45,8 @@ public:
 	bool IsInherited(const T2& key)	{ return IsInherited(map[key.get()]); }
 	bool IsInherited(hash_type h)	{ return inherited.count(h) > 0; }
 
+	void LogIfNew(T2 key, int scope, FILE* log_file);
+
 	hash_type Hash(T2 key) const;
 
 private:
@@ -84,7 +86,6 @@ public:
 
 private:
 	void LoadHashes(FILE* f);
-	void LogHash(hash_type hash);
 
 	void Compile();
 
@@ -311,9 +312,6 @@ private:
 	// Maps function names to hashes of bodies.
 	std::unordered_map<std::string, hash_type> body_hashes;
 
-	// Hashes of entities promised to exist earlier in the generated file.
-	std::unordered_set<hash_type> known_hashes;
-
 	// Script functions that we are able to compile.  We compute
 	// these ahead of time so that when compiling script function A
 	// which makes a call to script function B, we know whether
@@ -326,6 +324,9 @@ private:
 
 	// BiF's that we've processed.
 	std::unordered_set<std::string> bifs;
+
+	// Attributes seen across the compiled scripts.
+	std::vector<AttributesPtr> compiled_script_attrs;
 
 	// Same for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;
