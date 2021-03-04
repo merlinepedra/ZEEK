@@ -11,7 +11,10 @@ namespace zeek::detail {
 
 TraversalCode ProfileFunc::PreFunction(const Func* f)
 	{
-	TraverseType(f->GetType());
+	const auto& ft = f->GetType();
+	num_params = ft->Params()->NumFields();
+
+	TraverseType(ft);
 
 	// We do *not* continue into the body.  This is because for
 	// functions with multiple bodies, we don't want to conflate
@@ -86,7 +89,7 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 		for ( auto& c : *sw->Cases() )
 			{
 			auto idl = c->TypeCases();
-			if ( idl ) 
+			if ( idl )
 				{
 				for ( auto id : *idl )
 					locals.insert(id);
