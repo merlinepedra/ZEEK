@@ -9,18 +9,13 @@
 namespace zeek::detail {
 
 
-TraversalCode ProfileFunc::PreFunction(const Func* f)
+ProfileFunc::ProfileFunc(const Func* func, const StmtPtr& body)
 	{
-	const auto& ft = f->GetType();
+	const auto& ft = func->GetType();
 	num_params = ft->Params()->NumFields();
+	types.insert(ft.get());
 
-	TraverseType(ft);
-
-	// We do *not* continue into the body.  This is because for
-	// functions with multiple bodies, we don't want to conflate
-	// the properties of those bodies.  Instead, our caller needs
-	// to explicitly pick the body of interest.
-	return TC_ABORTSTMT;
+	body->Traverse(this);
 	}
 
 TraversalCode ProfileFunc::PreStmt(const Stmt* s)

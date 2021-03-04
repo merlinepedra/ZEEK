@@ -15,6 +15,8 @@ using hash_type = unsigned long long;
 
 class ProfileFunc : public TraversalCallback {
 public:
+	ProfileFunc(const Func* func, const StmtPtr& body);
+
 	// If the argument is true, then we compute a hash over the function's
 	// AST to (pseudo-)uniquely identify it.
 	ProfileFunc(bool _compute_hash = false, bool _analyze_attrs = false)
@@ -66,7 +68,6 @@ public:
 	int NumWhenStmts()	{ return num_when_stmts; }
 
 protected:
-	TraversalCode PreFunction(const Func*) override;
 	TraversalCode PreStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
 

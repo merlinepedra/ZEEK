@@ -81,9 +81,7 @@ void optimize_func(ScriptFunc* f, ProfileFunc* pf, ScopePtr scope_ptr,
 	f->ReplaceBody(body, new_body);
 	body = new_body;
 
-	ProfileFunc new_pf;
-	f->Traverse(&new_pf);
-	body->Traverse(&new_pf);
+	ProfileFunc new_pf(f, body);
 
 	RD_Decorate reduced_rds(&new_pf);
 	reduced_rds.TraverseFunction(f, scope, body);
@@ -184,9 +182,7 @@ void analyze_scripts()
 
 	for ( auto& f : funcs )
 		{
-		f.SetProfile(std::make_unique<ProfileFunc>(true, true));
-		f.Func()->Traverse(f.Profile());
-		f.Body()->Traverse(f.Profile());
+		f.SetProfile(std::make_unique<ProfileFunc>(f.Func(), f.Body()));
 		func_profs[f.Func()] = f.Profile();
 		}
 
