@@ -95,6 +95,7 @@ class HasFieldExpr;
 class IndexAssignExpr;
 class IndexExpr;
 class InlineExpr;
+class LambdaExpr;
 class ListExpr;
 class NameExpr;
 class RefExpr;
@@ -213,6 +214,7 @@ public:
 	ZEEK_EXPR_ACCESSOR_DECLS(IndexAssignExpr)
 	ZEEK_EXPR_ACCESSOR_DECLS(IndexExpr)
 	ZEEK_EXPR_ACCESSOR_DECLS(InlineExpr)
+	ZEEK_EXPR_ACCESSOR_DECLS(LambdaExpr)
 	ZEEK_EXPR_ACCESSOR_DECLS(ListExpr)
 	ZEEK_EXPR_ACCESSOR_DECLS(NameExpr)
 	ZEEK_EXPR_ACCESSOR_DECLS(RefExpr)

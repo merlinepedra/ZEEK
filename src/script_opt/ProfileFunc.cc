@@ -25,7 +25,7 @@ TraversalCode ProfileFunc::PreFunction(const Func* f)
 
 TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 	{
-	++num_stmts;
+	stmts.push_back(s);
 
 	auto tag = s->Tag();
 
@@ -122,7 +122,7 @@ TraversalCode ProfileFunc::PostStmt(const Stmt* s)
 
 TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	{
-	++num_exprs;
+	exprs.push_back(e);
 
 	TraverseType(e->GetType());
 
@@ -131,7 +131,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 	switch ( e->Tag() ) {
 	case EXPR_CONST:
-		constants.insert(e->AsConstExpr());
+		constants.push_back(e->AsConstExpr());
 
 		if ( compute_hash )
 			UpdateHash(e->AsConstExpr()->ValuePtr());
@@ -148,7 +148,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			all_globals.insert(id);
 			}
 
-		else if ( in_lambda == 0 )
+		else
 			{
 			if ( id->Offset() < num_params )
 				params.insert(id);
@@ -252,21 +252,19 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		break;
 
 	case EXPR_LAMBDA:
-		++num_lambdas;
-		++in_lambda;
-		break;
+		{
+		auto l = e->AsLambdaExpr();
+		lambdas.push_back(l);
+		for ( const auto& i : l->OuterIDs() )
+			locals.insert(i);
+
+		// Avoid recursing into the body.
+		return TC_ABORTSTMT;
+		}
 
 	default:
 		break;
 	}
-
-	return TC_CONTINUE;
-	}
-
-TraversalCode ProfileFunc::PostExpr(const Expr* e)
-	{
-	if ( e->Tag() == EXPR_LAMBDA )
-		--in_lambda;
 
 	return TC_CONTINUE;
 	}

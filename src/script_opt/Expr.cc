@@ -73,6 +73,12 @@ const InlineExpr* Expr::AsInlineExpr() const
 	return (const InlineExpr*) this;
 	}
 
+const LambdaExpr* Expr::AsLambdaExpr() const
+	{
+	CHECK_TAG(tag, EXPR_LAMBDA, "ExprVal::AsLambdaExpr", expr_name)
+	return (const LambdaExpr*) this;
+	}
+
 ExprPtr Expr::GetOp1() const { return nullptr; }
 ExprPtr Expr::GetOp2() const { return nullptr; }
 ExprPtr Expr::GetOp3() const { return nullptr; }

@@ -36,7 +36,13 @@ public:
 		{ return assignees; }
 	const std::unordered_set<const ID*>& Inits() const
 		{ return inits; }
-	const std::unordered_set<const ConstExpr*>& Constants() const
+	const std::vector<const Stmt*>& Stmts() const
+		{ return stmts; }
+	const std::vector<const Expr*>& Exprs() const
+		{ return exprs; }
+	const std::vector<const LambdaExpr*>& Lambdas() const
+		{ return lambdas; }
+	const std::vector<const ConstExpr*>& Constants() const
 		{ return constants; }
 	const std::unordered_set<const Type*>& Types() const
 		{ return types; }
@@ -56,17 +62,14 @@ public:
 
 	hash_type HashVal()	{ return hash_val; }
 
-	int NumStmts()		{ return num_stmts; }
+	int NumLambdas()	{ return lambdas.size(); }
 	int NumWhenStmts()	{ return num_when_stmts; }
-	int NumExprs()		{ return num_exprs; }
-	int NumLambdas()	{ return num_lambdas; }
 
 protected:
 	TraversalCode PreFunction(const Func*) override;
 	TraversalCode PreStmt(const Stmt*) override;
 	TraversalCode PostStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
-	TraversalCode PostExpr(const Expr*) override;
 
 	void TraverseType(const TypePtr& t);
 
@@ -99,10 +102,24 @@ protected:
 	// for example, unused aggregates.
 	std::unordered_set<const ID*> inits;
 
-	// Constants seen in the function.
-	std::unordered_set<const ConstExpr*> constants;
+	// Statements seen in the function.  Does not include indirect
+	// statements, such as those in lambda bodies.
+	std::vector<const Stmt*> stmts;
 
-	// Types seen in the function.
+	// Expressions seen in the function.  Does not include indirect
+	// expressions (such as those appearing in attributes of types.
+	std::vector<const Expr*> exprs;
+
+	// Lambdas seen in the function.  We don't profile lambda bodies,
+	// but rather make them available for separate profiling if
+	// appropriate.
+	std::vector<const LambdaExpr*> lambdas;
+
+	// Constants seen in the function.
+	std::vector<const ConstExpr*> constants;
+
+	// Types seen in the function.  A set rather than a vector because
+	// the same type can be seen numerous times.
 	std::unordered_set<const Type*> types;
 
 	// Script functions that this script calls.
@@ -127,20 +144,14 @@ protected:
 	// Hash value.  Only valid if constructor requested it.
 	hash_type hash_val = 0;
 
-	// How many statements / when statements / lambda expressions /
-	// expressions appear in the function body.
-	int num_stmts = 0;
+	// How many when statements expressions appear in the function body.
+	// We could track these like we do for vectors, but to date all
+	// that's mattered is whether a given body contains any.
 	int num_when_stmts = 0;
-	int num_lambdas = 0;
-	int num_exprs = 0;
 
 	// Whether we're separately processing a "when" condition to
 	// mine out its script calls.
 	bool in_when = false;
-
-	// Whether we're inside a lambda expression.  A count rather
-	// than a boolean to support nested lambdas.
-	int in_lambda = 0;
 
 	// Whether to skip any locals we encounter - used to recurse into
 	// initialization statements.
