@@ -8,6 +8,7 @@
 #include "zeek/Expr.h"
 #include "zeek/Stmt.h"
 #include "zeek/Traverse.h"
+#include "zeek/script_opt/ScriptOpt.h"
 
 namespace zeek::detail {
 
@@ -16,6 +17,7 @@ using hash_type = unsigned long long;
 class ProfileFunc : public TraversalCallback {
 public:
 	ProfileFunc(const Func* func, const StmtPtr& body);
+	ProfileFunc(const LambdaExpr* func);
 
 	// If the argument is true, then we compute a hash over the function's
 	// AST to (pseudo-)uniquely identify it.
@@ -68,6 +70,8 @@ public:
 	int NumWhenStmts()	{ return num_when_stmts; }
 
 protected:
+	void Profile(const FuncType* ft, const StmtPtr& body);
+
 	TraversalCode PreStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
 
@@ -200,6 +204,68 @@ protected:
 	// gain by not hashing due to seeing the same name even if associated
 	// with a different pointer.
 	std::unordered_set<std::string> seen_type_names;
+};
+
+// Collectively profile an entire collection of functions.
+class ProfileFuncs {
+public:
+	// Updates entries in "funcs" to include profiles.
+	ProfileFuncs(std::vector<FuncInfo>& funcs);
+
+	const std::unordered_set<const ID*>& Globals() const
+		{ return globals; }
+	const std::unordered_set<const ID*>& AllGlobals() const
+		{ return all_globals; }
+	const std::unordered_set<const ConstExpr*>& Constants() const
+		{ return constants; }
+	const std::unordered_set<const Type*>& Types() const
+		{ return types; }
+	const std::unordered_set<ScriptFunc*>& ScriptCalls() const
+		{ return script_calls; }
+	const std::unordered_set<Func*>& BiFCalls() const
+		{ return BiF_calls; }
+
+	const std::unordered_map<const LambdaExpr*,
+				std::shared_ptr<ProfileFunc>>& Lambdas() const
+		{ return lambdas; }
+
+	const ProfileFunc* FuncProf(const ScriptFunc* f)
+		{ return func_profs[f]; }
+
+protected:
+	void MergeInProfile(ProfileFunc* pf);
+
+	// Globals seen across the function, other than those solely seen
+	// as the function being called in a call.
+	std::unordered_set<const ID*> globals;
+
+	// Same, but also includes globals only seen as called functions.
+	std::unordered_set<const ID*> all_globals;
+
+	// Constants seen in the function.
+	std::unordered_set<const ConstExpr*> constants;
+
+	// Types seen in the function.  A set rather than a vector because
+	// the same type can be seen numerous times.
+	std::unordered_set<const Type*> types;
+
+	// Script functions that this script calls.
+	std::unordered_set<ScriptFunc*> script_calls;
+
+	// Same for BiF's.
+	std::unordered_set<Func*> BiF_calls;
+
+	// Maps lambda expressions to their bodies (which are recursively
+	// expanded).
+	std::unordered_map<const LambdaExpr*, std::shared_ptr<ProfileFunc>>
+		lambdas;
+
+	// Maps script functions to associated profiles.  This isn't
+	// actually well-defined in the case of event handlers and hooks,
+	// which can have multiple bodies.  However, the need for this
+	// is temporary (it's for skipping compilation of functions that
+	// appear in "when" clauses), and in that context it suffices.
+	std::unordered_map<const ScriptFunc*, const ProfileFunc*> func_profs;
 };
 
 

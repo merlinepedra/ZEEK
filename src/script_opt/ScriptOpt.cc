@@ -178,13 +178,7 @@ void analyze_scripts()
 
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
-	std::unordered_map<const ScriptFunc*, const ProfileFunc*> func_profs;
-
-	for ( auto& f : funcs )
-		{
-		f.SetProfile(std::make_unique<ProfileFunc>(f.Func(), f.Body()));
-		func_profs[f.Func()] = f.Profile();
-		}
+	ProfileFuncs pfs(funcs);
 
 	if ( CPP_init_hook )
 		(*CPP_init_hook)();
@@ -306,7 +300,7 @@ void analyze_scripts()
 			{
 			when_funcs.insert(wf);
 
-			for ( auto& wff : func_profs[wf]->ScriptCalls() )
+			for ( auto& wff : pfs.FuncProf(wf)->ScriptCalls() )
 				{
 				if ( when_funcs.count(wff) > 0 )
 					// We've already processed this

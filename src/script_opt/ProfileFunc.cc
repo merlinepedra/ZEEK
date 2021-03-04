@@ -11,10 +11,18 @@ namespace zeek::detail {
 
 ProfileFunc::ProfileFunc(const Func* func, const StmtPtr& body)
 	{
-	const auto& ft = func->GetType();
-	num_params = ft->Params()->NumFields();
-	types.insert(ft.get());
+	Profile(func->GetType().get(), body);
+	}
 
+ProfileFunc::ProfileFunc(const LambdaExpr* func)
+	{
+	Profile(func->GetType()->AsFuncType(), func->Ingredients().body);
+	}
+
+void ProfileFunc::Profile(const FuncType* ft, const StmtPtr& body)
+	{
+	num_params = ft->Params()->NumFields();
+	types.insert(ft);
 	body->Traverse(this);
 	}
 
@@ -361,6 +369,67 @@ void ProfileFunc::UpdateHash(const Obj* o)
 	std::string desc(d.Description());
 	auto h = std::hash<std::string>{}(desc);
 	MergeInHash(h);
+	}
+
+
+ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
+	{
+	std::vector<const LambdaExpr*> lambda_exprs;
+
+	for ( auto& f : funcs )
+		{
+		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body());
+
+		MergeInProfile(pf.get());
+
+		for ( auto& l : pf->Lambdas() )
+			lambda_exprs.push_back(l);
+
+		f.SetProfile(std::move(pf));
+
+		func_profs[f.Func()] = f.Profile();
+		}
+
+	while ( lambda_exprs.size() > 0 )
+		{
+		std::vector<const LambdaExpr*> new_lambda_exprs;
+
+		for ( auto& l : lambda_exprs )
+			{
+			auto pf = std::make_shared<ProfileFunc>(l);
+
+			MergeInProfile(pf.get());
+
+			for ( auto& l2 : pf->Lambdas() )
+				new_lambda_exprs.push_back(l2);
+
+			ASSERT(lambdas.count(l) == 0);
+			lambdas[l] = pf;
+			}
+
+		lambda_exprs = new_lambda_exprs;
+		}
+	}
+
+void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
+	{
+	for ( auto& i : pf->Globals() )
+		globals.insert(i);
+
+	for ( auto& i : pf->AllGlobals() )
+		all_globals.insert(i);
+
+	for ( auto& i : pf->Constants() )
+		constants.insert(i);
+
+	for ( auto& i : pf->Types() )
+		types.insert(i);
+
+	for ( auto& i : pf->ScriptCalls() )
+		script_calls.insert(i);
+
+	for ( auto& i : pf->BiFCalls() )
+		BiF_calls.insert(i);
 	}
 
 
