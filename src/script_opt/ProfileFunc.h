@@ -50,7 +50,7 @@ public:
 		{ return BiF_globals; }
 	const std::unordered_set<ScriptFunc*>& WhenCalls() const
 		{ return when_calls; }
-	const std::unordered_set<const char*>& Events() const
+	const std::unordered_set<std::string>& Events() const
 		{ return events; }
 	const std::unordered_set<const SwitchStmt*>& ExprSwitches() const
 		{ return expr_switches; }
@@ -137,7 +137,7 @@ protected:
 	std::unordered_set<ScriptFunc*> when_calls;
 
 	// Names of generated events.
-	std::unordered_set<const char*> events;
+	std::unordered_set<std::string> events;
 
 	std::unordered_set<const SwitchStmt*> expr_switches;
 	std::unordered_set<const SwitchStmt*> type_switches;
@@ -181,7 +181,7 @@ public:
 		{ return script_calls; }
 	const std::unordered_set<const ID*>& BiFGlobals() const
 		{ return BiF_globals; }
-	const std::unordered_set<const char*>& Events() const
+	const std::unordered_set<std::string>& Events() const
 		{ return events; }
 	const std::unordered_set<const LambdaExpr*>& Lambdas() const
 		{ return lambdas; }
@@ -239,7 +239,7 @@ protected:
 	std::unordered_set<const ID*> BiF_globals;
 
 	// Names of generated events.
-	std::unordered_set<const char*> events;
+	std::unordered_set<std::string> events;
 
 	// And for lambda's.
 	std::unordered_set<const LambdaExpr*> lambdas;
