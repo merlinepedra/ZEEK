@@ -127,7 +127,7 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 			exit(1);
 			}
 
-		Lock(func_hash_name, f_hf_r);
+		lock_file(func_hash_name, f_hf_r);
 		LoadFuncHashes(f_hf_r);
 		LoadObjHashes(o_hf_r);
 		}
@@ -178,7 +178,7 @@ CPPCompile::~CPPCompile()
 	if ( f_hf_r )
 		{
 		fflush(f_hf_r);
-		Unlock(func_hash_name, f_hf_r);
+		unlock_file(func_hash_name, f_hf_r);
 		fclose(f_hf_r);
 		fclose(o_hf_r);
 		}
@@ -2944,7 +2944,8 @@ void CPPCompile::Indent() const
 		fprintf(write_file, "%s", "\t");
 	}
 
-void CPPCompile::Lock(const std::string& fname, FILE* f)
+
+void lock_file(const std::string& fname, FILE* f)
 	{
 	if ( flock(fileno(f), LOCK_EX) < 0 )
 		{
@@ -2955,7 +2956,7 @@ void CPPCompile::Lock(const std::string& fname, FILE* f)
 		}
 	}
 
-void CPPCompile::Unlock(const std::string& fname, FILE* f)
+void unlock_file(const std::string& fname, FILE* f)
 	{
 	if ( flock(fileno(f), LOCK_UN) < 0 )
 		{
@@ -2965,7 +2966,6 @@ void CPPCompile::Unlock(const std::string& fname, FILE* f)
 		exit(1);
 		}
 	}
-
 
 bool is_CPP_compilable(const ProfileFunc* pf)
 	{

@@ -287,9 +287,6 @@ private:
 
 	void Indent() const;
 
-	void Lock(const std::string& fname, FILE* f);
-	void Unlock(const std::string& fname, FILE* f);
-
 	std::vector<FuncInfo>& funcs;
 	ProfileFuncs& pfs;
 
@@ -393,5 +390,8 @@ private:
 };
 
 extern bool is_CPP_compilable(const ProfileFunc* pf);
+
+extern void lock_file(const std::string& fname, FILE* f);
+extern void unlock_file(const std::string& fname, FILE* f);
 
 } // zeek::detail
