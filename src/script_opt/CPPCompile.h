@@ -95,7 +95,7 @@ private:
 	bool IsCompilable(const FuncInfo& func);
 
 	void DeclareGlobals(const FuncInfo& func);
-	void AddBiF(const Func* b);
+	void AddBiF(const ID* b);
 	void AddGlobal(const std::string& g, const char* suffix);
 	void AddConstant(const ConstExpr* c);
 
@@ -303,11 +303,6 @@ private:
 	// Globals that correspond to variables, not functions.
 	std::unordered_set<const ID*> global_vars;
 
-	// Globals that correspond to functions that are also used as
-	// variables (i.e., in contexts where they're not just a function
-	// being directly called.
-	std::unordered_set<const ID*> global_func_vars;
-
 	// Functions that we've declared/compiled.
 	std::unordered_set<std::string> compiled_funcs;
 
@@ -323,9 +318,6 @@ private:
 	//
 	// Indexed by the name of the function.
 	std::unordered_set<std::string> compilable_funcs;
-
-	// BiF's that we've processed.
-	std::unordered_set<std::string> bifs;
 
 	// Same for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;

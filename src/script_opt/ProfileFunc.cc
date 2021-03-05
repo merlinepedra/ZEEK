@@ -304,6 +304,9 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 	for ( auto& i : pf->ScriptCalls() )
 		script_calls.insert(i);
 
+	for ( auto& i : pf->BiFGlobals() )
+		BiF_globals.insert(i);
+
 	for ( auto& i : pf->BiFCalls() )
 		BiF_calls.insert(i);
 

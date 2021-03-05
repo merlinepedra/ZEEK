@@ -194,6 +194,11 @@ void CPPCompile::Compile()
 	{
 	GenProlog();
 
+	for ( const auto& func : funcs )
+		if ( IsCompilable(func) &&
+		     func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION )
+			compilable_funcs.insert(BodyName(func));
+
 	for ( const auto& t : pfs.Types() )
 		{
 		TypePtr tp{NewRef{}, (Type*)(t)};
@@ -201,16 +206,36 @@ void CPPCompile::Compile()
 		RegisterType(tp);
 		}
 
-	for ( const auto& func : funcs )
-		{
-		if ( IsCompilable(func) )
-			{
-			if ( func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION )
-				compilable_funcs.insert(BodyName(func));
+	auto& gl = pfs.Globals();
+	auto& s_funcs = pfs.ScriptCalls();
+	auto& bifs = pfs.BiFGlobals();
 
-			for ( const auto& g : func.Profile()->AllGlobals() )
-				if ( func.Profile()->Globals().count(g) > 0 )
-					global_func_vars.insert(g);
+	for ( auto& g : pfs.AllGlobals() )
+		{
+		auto gn = std::string(g->Name());
+
+		if ( bifs.count(g) > 0 )
+			AddBiF(g);
+
+		else if ( compilable_funcs.count(gn) && gl.count(g) == 0 )
+			// No need to create a script global for the function,
+			// as it's not used other than in a call.
+			AddGlobal(g->Name(), "zf");
+
+		else
+			{
+			const auto& t = g->GetType();
+
+			NoteInitDependency(g, t);
+
+			AddGlobal(gn.c_str(), "gl");
+			Emit("IDPtr %s;", globals[gn]);
+
+			global_vars.emplace(g);
+
+			AddInit(g, globals[gn],
+				std::string("lookup_global__CPP(\"") + gn +
+				"\", " + GenTypeName(t) + ")");
 			}
 		}
 
@@ -397,41 +422,10 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 
 	const auto pf = func.Profile();
 
-	for ( const auto& b : pf->BiFCalls() )
-		AddBiF(b);
-
 	// Globals can have types that ultimately refer to other globals, or
 	// to constants, so we first add all the globals, and then after
 	// that spin through again to do their initializations.
 	std::unordered_set<const ID*> pending_globals;
-
-	for ( const auto& g : pf->AllGlobals() )
-		{
-		auto gn = std::string(g->Name());
-		if ( globals.count(gn) > 0 )
-			// Already processed.
-			continue;
-
-		if ( compilable_funcs.count(gn) > 0 )
-			{
-			if ( global_func_vars.count(g) == 0 )
-				{
-				// No need to create a script global for the
-				// function, as it's not used other than in
-				// a call.
-				AddGlobal(g->Name(), "zf");
-				continue;
-				}
-			}
-
-		AddGlobal(gn.c_str(), "gl");
-		Emit("IDPtr %s;", globals[gn]);
-
-		if ( bifs.count(gn) == 0 )
-			global_vars.emplace(g);
-
-		pending_globals.insert(g);
-		}
 
 	for ( const auto& e : pf->Events() )
 		{
@@ -462,15 +456,11 @@ void CPPCompile::DeclareGlobals(const FuncInfo& func)
 		}
 	}
 
-void CPPCompile::AddBiF(const Func* b)
+void CPPCompile::AddBiF(const ID* b)
 	{
 	auto n = b->Name();
 
-	if ( globals.count(n) > 0 )
-		return;
-
 	AddGlobal(n, "bif");
-	bifs.insert(n);
 
 	std::string ns(n);
 	Emit("Func* %s;", globals[ns]);
@@ -1125,7 +1115,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		if ( t->Tag() == TYPE_FUNC && ! is_global_var )
 			{
 			auto func = n->Name();
-			if ( globals.count(func) > 0 && bifs.count(func) == 0 )
+			if ( globals.count(func) > 0 &&
+			     pfs.BiFGlobals().count(n) == 0 )
 				return GenericValPtrToGT(IDNameStr(n), t, gt);
 			}
 
@@ -1263,8 +1254,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		if ( f->Tag() == EXPR_NAME )
 			{
 			auto f_id = f->AsNameExpr()->Id();
-			auto func = f_id->Name();
-			auto fname = Canonicalize(func) + "__zf";
+			auto fname = Canonicalize(f_id->Name()) + "__zf";
 
 			if ( compiled_funcs.count(fname) > 0 )
 				{
@@ -1277,11 +1267,10 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 				return NativeToGT(gen, t, gt);
 				}
 
-			// If the function isn't (known as) a BiF, then it
-			// will have been declared as a ValPtr (or a
-			// FuncValPtr, if a local), and we need to convert
-			// it to a Func*.
-			if ( bifs.count(func) == 0 )
+			// If the function isn't a BiF, then it will have
+			// been declared as a ValPtr (or a FuncValPtr, if
+			// a local), and we need to convert it to a Func*.
+			if ( pfs.BiFGlobals().count(f_id) == 0 )
 				gen += + "->AsFunc()";
 			}
 
