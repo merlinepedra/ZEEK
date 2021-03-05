@@ -203,10 +203,11 @@ void CPPCompile::Compile()
 		{
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		types.AddKey(tp, pfs.HashType(t));
+		}
 
+	for ( const auto& t : types.DistinctKeys() )
 		if ( ! types.IsInherited(t) )
 			Emit("TypePtr %s;", types.KeyName(t));
-		}
 
 	auto& gl = pfs.Globals();
 	auto& bifs = pfs.BiFGlobals();
