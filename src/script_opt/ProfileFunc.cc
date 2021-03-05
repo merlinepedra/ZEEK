@@ -1,6 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include "zeek/script_opt/ProfileFunc.h"
+#include "zeek/script_opt/CPPCompile.h"
 #include "zeek/Desc.h"
 #include "zeek/Stmt.h"
 #include "zeek/Func.h"
@@ -303,7 +304,11 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
 
 		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body());
 
-		MergeInProfile(pf.get());
+		if ( is_CPP_compilable(pf.get()) )
+			MergeInProfile(pf.get());
+		else
+			f.SetSkip();
+
 		f.SetProfile(std::move(pf));
 		func_profs[f.Func()] = f.Profile();
 		}
