@@ -236,9 +236,6 @@ void CPPCompile::Compile()
 	for ( const auto& func : funcs )
 		CompileFunc(func);
 
-	for ( const auto& a : compiled_script_attrs )
-		RegisterAttributes(a);
-
 	GenEpilog();
 	}
 
@@ -2641,7 +2638,7 @@ void CPPCompile::RegisterType(const TypePtr& t)
 			if ( r_i->attrs )
 				{
 				NoteInitDependency(t, r_i->attrs);
-				compiled_script_attrs.push_back(r_i->attrs);
+				RegisterAttributes(r_i->attrs);
 				}
 			}
 		}

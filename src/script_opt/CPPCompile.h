@@ -327,9 +327,6 @@ private:
 	// BiF's that we've processed.
 	std::unordered_set<std::string> bifs;
 
-	// Attributes seen across the compiled scripts.
-	std::vector<AttributesPtr> compiled_script_attrs;
-
 	// Same for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;
 
