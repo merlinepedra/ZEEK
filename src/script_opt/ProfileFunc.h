@@ -42,8 +42,12 @@ public:
 		{ return constants; }
 	const std::unordered_set<const ID*>& Identifiers() const
 		{ return ids; }
+	const std::vector<const ID*>& OrderedIdentifiers() const
+		{ return ordered_ids; }
 	const std::unordered_set<const Type*>& Types() const
 		{ return types; }
+	const std::vector<const Type*>& OrderedTypes() const
+		{ return ordered_types; }
 	const std::unordered_set<ScriptFunc*>& ScriptCalls() const
 		{ return script_calls; }
 	const std::unordered_set<const ID*>& BiFGlobals() const
@@ -73,7 +77,10 @@ protected:
 	TraversalCode PreExpr(const Expr*) override;
 	TraversalCode PreID(const ID*) override;
 
-	void RecordType(const TypePtr& t);
+	void RecordType(const Type* t);
+	void RecordType(const TypePtr& t)	{ RecordType(t.get()); }
+
+	void RecordID(const ID* id);
 
 	// Globals seen in the function.
 	//
@@ -123,9 +130,15 @@ protected:
 	// Identifiers seen in the function.
 	std::unordered_set<const ID*> ids;
 
+	// The same, but in a deterministic order.
+	std::vector<const ID*> ordered_ids;
+
 	// Types seen in the function.  A set rather than a vector because
 	// the same type can be seen numerous times.
 	std::unordered_set<const Type*> types;
+
+	// The same, but in a deterministic order.
+	std::vector<const Type*> ordered_types;
 
 	// Script functions that this script calls.
 	std::unordered_set<ScriptFunc*> script_calls;

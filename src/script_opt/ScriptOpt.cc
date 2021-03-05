@@ -178,7 +178,7 @@ void analyze_scripts()
 
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
-	ProfileFuncs pfs(funcs);
+	auto pfs = std::make_unique<ProfileFuncs>(funcs);
 
 	if ( CPP_init_hook )
 		(*CPP_init_hook)();
@@ -248,12 +248,16 @@ void analyze_scripts()
 				if ( compiled_bodies.count(hash) > 0 )
 					func.SetSkip();
 				}
+
+			// Now that we've presumably marked a lot of functions
+			// as skippable, recompute the global profile.
+			pfs = std::make_unique<ProfileFuncs>(funcs);
 			}
 
 		const auto gen_name = "CPP-gen-addl.h";
 		const auto hash_name = "CPP-hashes.dat";
 
-		CPPCompile cpp(funcs, pfs, gen_name, hash_name,
+		CPPCompile cpp(funcs, *pfs, gen_name, hash_name,
 				analysis_options.add_CPP);
 
 		exit(0);
@@ -300,7 +304,7 @@ void analyze_scripts()
 			{
 			when_funcs.insert(wf);
 
-			for ( auto& wff : pfs.FuncProf(wf)->ScriptCalls() )
+			for ( auto& wff : pfs->FuncProf(wf)->ScriptCalls() )
 				{
 				if ( when_funcs.count(wff) > 0 )
 					// We've already processed this

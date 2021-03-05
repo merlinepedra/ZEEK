@@ -29,7 +29,7 @@ ProfileFunc::ProfileFunc(const Expr* e)
 void ProfileFunc::Profile(const FuncType* ft, const StmtPtr& body)
 	{
 	num_params = ft->Params()->NumFields();
-	types.insert(ft);
+	RecordType(ft);
 	body->Traverse(this);
 	}
 
@@ -231,7 +231,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		RecordType(n->GetType());
 		RecordType(func->GetType());
 
-		ids.insert(func);
+		RecordID(func);
 
 		return TC_ABORTSTMT;
 		}
@@ -247,7 +247,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		for ( const auto& i : l->OuterIDs() )
 			{
 			locals.insert(i);
-			ids.insert(i);
+			RecordID(i);
 			}
 
 		// Avoid recursing into the body.
@@ -263,14 +263,32 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 TraversalCode ProfileFunc::PreID(const ID* id)
 	{
-	ids.insert(id);
+	RecordID(id);
 	return TC_ABORTSTMT;
 	}
 
-void ProfileFunc::RecordType(const TypePtr& t)
+void ProfileFunc::RecordType(const Type* t)
 	{
-	if ( t )
-		types.insert(t.get());
+	if ( ! t )
+		return;
+
+	if ( types.count(t) > 0 )
+		return;
+
+	types.insert(t);
+	ordered_types.push_back(t);
+	}
+
+void ProfileFunc::RecordID(const ID* id)
+	{
+	if ( ! id )
+		return;
+
+	if ( ids.count(id) > 0 )
+		return;
+
+	ids.insert(id);
+	ordered_ids.push_back(id);
 	}
 
 
@@ -359,17 +377,20 @@ void ProfileFuncs::ComputeProfileHash(ProfileFunc* pf)
 	for ( auto i : pf->Exprs() )
 		h = MergeHashes(h, Hash(i->Tag()));
 
-	for ( auto i : pf->Identifiers() )
+	for ( auto i : pf->OrderedIdentifiers() )
 		h = MergeHashes(h, hash_string(i->Name()));
 
 	for ( auto i : pf->Constants() )
 		h = MergeHashes(h, hash_obj(i->Value()));
 
-	for ( auto i : pf->Types() )
+	for ( auto i : pf->OrderedTypes() )
 		h = MergeHashes(h, HashType(i));
 
 	for ( auto i : pf->Lambdas() )
 		h = MergeHashes(h, hash_obj(i));
+
+	for ( auto i : pf->AdditionalInts() )
+		h = MergeHashes(h, Hash(i));
 
 	pf->SetHashVal(h);
 	}
