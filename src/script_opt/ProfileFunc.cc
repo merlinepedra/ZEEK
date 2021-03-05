@@ -427,11 +427,14 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	case TYPE_TIMER:
 	case TYPE_UNION:
 	case TYPE_VOID:
+		h = MergeHashes(h, hash_obj(t));
 		break;
 
 	case TYPE_RECORD:
 		{
 		auto fields = t->AsRecordType()->Types();
+		h = MergeHashes(h, Hash(fields->size()));
+
 		for ( const auto& f : *fields )
 			{
 			h = MergeHashes(h, HashType(f->type));
@@ -471,8 +474,12 @@ hash_type ProfileFuncs::HashType(const Type* t)
 
 	case TYPE_LIST:
 		{
-		for ( const auto& tl : t->AsTypeList()->GetTypes() )
-			h = MergeHashes(h, HashType(tl));
+		auto& tl = t->AsTypeList()->GetTypes();
+
+		h = MergeHashes(h, Hash(tl.size()));
+
+		for ( const auto& tl_i : tl )
+			h = MergeHashes(h, HashType(tl_i));
 		}
 		break;
 
@@ -489,6 +496,7 @@ hash_type ProfileFuncs::HashType(const Type* t)
 		break;
 	}
 
+	type_hashes[t] = h;
 	return h;
 	}
 
@@ -498,7 +506,8 @@ hash_type hash_obj(const Obj* o)
 	ODesc d;
 	o->Describe(&d);
 	std::string desc(d.Description());
-	return std::hash<std::string>{}(desc);
+	auto h = std::hash<std::string>{}(desc);
+	return h;
 	}
 
 } // namespace zeek::detail

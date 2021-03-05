@@ -123,7 +123,9 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 		LoadHashes(hf_r);
 		}
 
-	hf_w = fopen(hash_name, "a");
+	auto mode = append ? "a" : "w";
+
+	hf_w = fopen(hash_name, mode);
 	if ( ! hf_w )
 		{
 		reporter->Error("can't open auxiliary C++ hash file %s for writing",
@@ -131,7 +133,6 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 		exit(1);
 		}
 
-	auto mode = append ? "a" : "w";
 	write_file = fopen(gen_name, mode);
 	if ( ! write_file )
 		{
