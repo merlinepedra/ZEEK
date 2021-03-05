@@ -42,6 +42,7 @@ public:
 
 	const T1& GetRep(T2 key) 	{ return reps[map[key.get()]]; }
 
+	bool IsInherited(T1 key)	{ return IsInherited(map[key]); }
 	bool IsInherited(const T2& key)	{ return IsInherited(map[key.get()]); }
 	bool IsInherited(hash_type h)	{ return inherited.count(h) > 0; }
 
@@ -293,9 +294,6 @@ private:
 
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
-
-	// Which event handlers we've declared.
-	std::unordered_set<std::string> declared_events;
 
 	// Maps event names to the names we use for them.
 	std::unordered_map<std::string, std::string> events;

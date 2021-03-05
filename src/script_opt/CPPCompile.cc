@@ -204,10 +204,12 @@ void CPPCompile::Compile()
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		types.AddKey(tp, pfs.HashType(t));
 		RegisterType(tp);
+
+		if ( ! types.IsInherited(t) )
+			Emit("TypePtr %s;", types.KeyName(t));
 		}
 
 	auto& gl = pfs.Globals();
-	auto& s_funcs = pfs.ScriptCalls();
 	auto& bifs = pfs.BiFGlobals();
 
 	for ( auto& g : pfs.AllGlobals() )
@@ -239,12 +241,18 @@ void CPPCompile::Compile()
 			}
 		}
 
-	for ( const auto& func : funcs )
-		DeclareGlobals(func);
+	for ( const auto& c : pfs.Constants() )
+		AddConstant(c);
 
-	for ( const auto& t : types.DistinctKeys() )
-		if ( ! types.IsInherited(t) )
-			Emit("TypePtr %s;", types.KeyName(t));
+	for ( const auto& e : pfs.Events() )
+		{
+		AddGlobal(e, "gl");
+		auto ev = globals[std::string(e)] + "_ev";
+
+		Emit("EventHandlerPtr %s;", ev);
+		AddInit(nullptr, ev,
+			std::string("register_event__CPP(\"") + e + "\")");
+		}
 
 	for ( const auto& func : funcs )
 		DeclareFunc(func);
@@ -413,47 +421,6 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 		}
 
 	return true;
-	}
-
-void CPPCompile::DeclareGlobals(const FuncInfo& func)
-	{
-	if ( ! IsCompilable(func) )
-		return;
-
-	const auto pf = func.Profile();
-
-	// Globals can have types that ultimately refer to other globals, or
-	// to constants, so we first add all the globals, and then after
-	// that spin through again to do their initializations.
-	std::unordered_set<const ID*> pending_globals;
-
-	for ( const auto& e : pf->Events() )
-		{
-		AddGlobal(e, "gl");
-		auto ev = globals[std::string(e)] + "_ev";
-
-		if ( declared_events.count(ev) == 0 )
-			{
-			Emit("EventHandlerPtr %s;", ev);
-			AddInit(nullptr, ev,
-				std::string("register_event__CPP(\"") + e + "\")");
-			declared_events.insert(ev);
-			}
-		}
-
-	for ( const auto& c : pf->Constants() )
-		AddConstant(c);
-
-	for ( const auto& g : pending_globals )
-		{
-		auto gn = std::string(g->Name());
-
-		NoteInitDependency(g, g->GetType());
-
-		AddInit(g, globals[gn], std::string("lookup_global__CPP(\"") +
-					gn + "\", " +
-					GenTypeName(g->GetType()) + ")");
-		}
 	}
 
 void CPPCompile::AddBiF(const ID* b)
