@@ -530,7 +530,7 @@ void CPPCompile::DeclareFunc(const FuncInfo& func)
 
 	NL();
 
-	auto fname = Canonicalize(BodyName(func).c_str()) + "__zf";
+	auto fname = Canonicalize(BodyName(func).c_str()) + "_zf";
 	DeclareSubclass(func, fname);
 
 	body_names.emplace(func.Body().get(), fname);
@@ -1227,7 +1227,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		if ( f->Tag() == EXPR_NAME )
 			{
 			auto f_id = f->AsNameExpr()->Id();
-			auto fname = Canonicalize(f_id->Name()) + "__zf";
+			auto fname = Canonicalize(f_id->Name()) + "_zf";
 
 			if ( compiled_funcs.count(fname) > 0 )
 				{

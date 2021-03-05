@@ -261,7 +261,7 @@ private:
 
 	std::string GlobalName(const std::string& g, const char* suffix)
 		{
-		return Canonicalize(g.c_str()) + "__" + suffix;
+		return Canonicalize(g.c_str()) + "_" + suffix;
 		}
 
 	std::string LocalName(const ID* l) const;
