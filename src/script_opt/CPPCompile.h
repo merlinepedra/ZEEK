@@ -23,7 +23,7 @@ public:
 	bool HasKey(T2 key) const	{ return HasKey(key.get()); }
 
 	// Only adds the key if it's not already present.
-	void AddKey(T2 key);
+	void AddKey(T2 key, hash_type h = 0);
 
 	std::string KeyName(T1 key);
 	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
@@ -47,9 +47,9 @@ public:
 
 	void LogIfNew(T2 key, int scope, FILE* log_file);
 
+private:
 	hash_type Hash(T2 key) const;
 
-private:
 	// Maps keys to internal representations.
 	std::unordered_map<T1, hash_type> map;
 
@@ -80,8 +80,8 @@ private:
 
 class CPPCompile {
 public:
-	CPPCompile(std::vector<FuncInfo>& _funcs, const char* gen_file,
-			const char* hash_file, bool append);
+	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs,
+		const char* gen_file, const char* hash_file, bool append);
 	~CPPCompile();
 
 private:
@@ -281,6 +281,7 @@ private:
 	void Unlock(const char* fname, FILE* f);
 
 	std::vector<FuncInfo>& funcs;
+	ProfileFuncs& pfs;
 
 	const char* gen_name;
 	FILE* write_file;

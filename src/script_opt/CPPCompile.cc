@@ -36,12 +36,13 @@ std::string Fmt(double d)
 
 
 template<class T1, class T2>
-void CPPTracker<T1, T2>::AddKey(T2 key)
+void CPPTracker<T1, T2>::AddKey(T2 key, hash_type h)
 	{
 	if ( HasKey(key) )
 		return;
 
-	auto h = Hash(key);
+	if ( h == 0 )
+		h = Hash(key);
 
 	if ( map2.count(h) == 0 )
 		{
@@ -104,9 +105,9 @@ hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 	}
 
 
-CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, const char* _gen_name,
-			const char* _hash_name, bool append)
-: funcs(_funcs), gen_name(_gen_name), hash_name(_hash_name)
+CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
+		const char* _gen_name, const char* _hash_name, bool append)
+: funcs(_funcs), pfs(_pfs), gen_name(_gen_name), hash_name(_hash_name)
 	{
 	if ( append )
 		{
