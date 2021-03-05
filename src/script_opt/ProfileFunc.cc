@@ -287,8 +287,8 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
 		func_profs[f.Func()] = f.Profile();
 		}
 
-	DrainPendingExprs();
 	ComputeTypeHashes(types);
+	DrainPendingExprs();
 	ComputeBodyHashes(funcs);
 	}
 
@@ -323,10 +323,7 @@ void ProfileFuncs::DrainPendingExprs()
 			auto pf = std::make_shared<ProfileFunc>(e);
 
 			expr_profs[e] = pf;
-
 			MergeInProfile(pf.get());
-			// The merge could have added lambdas.
-			DrainPendingExprs();
 
 			ComputeTypeHashes(pf->Types());
 			}
@@ -335,12 +332,8 @@ void ProfileFuncs::DrainPendingExprs()
 
 void ProfileFuncs::ComputeTypeHashes(const std::unordered_set<const Type*>& type_set)
 	{
-	pending_exprs.clear();
-
 	for ( auto t : type_set )
 		(void) HashType(t);
-
-	DrainPendingExprs();
 	}
 
 void ProfileFuncs::ComputeBodyHashes(std::vector<FuncInfo>& funcs)
