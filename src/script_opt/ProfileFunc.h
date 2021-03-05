@@ -17,15 +17,7 @@ using hash_type = unsigned long long;
 class ProfileFunc : public TraversalCallback {
 public:
 	ProfileFunc(const Func* func, const StmtPtr& body);
-	ProfileFunc(const LambdaExpr* func);
-
-	// If the argument is true, then we compute a hash over the function's
-	// AST to (pseudo-)uniquely identify it.
-	ProfileFunc(bool _compute_hash = false, bool _analyze_attrs = false)
-		{
-		compute_hash = _compute_hash;
-		analyze_attrs = _analyze_attrs;
-		}
+	ProfileFunc(const Expr* func);
 
 	const std::unordered_set<const ID*>& Globals() const
 		{ return globals; }
@@ -48,6 +40,8 @@ public:
 		{ return lambdas; }
 	const std::vector<const ConstExpr*>& Constants() const
 		{ return constants; }
+	const std::unordered_set<const ID*>& Identifiers() const
+		{ return ids; }
 	const std::unordered_set<const Type*>& Types() const
 		{ return types; }
 	const std::unordered_set<ScriptFunc*>& ScriptCalls() const
@@ -64,7 +58,10 @@ public:
 		{ return type_switches; }
 	bool DoesIndirectCalls()		{ return does_indirect_calls; }
 
-	hash_type HashVal()	{ return hash_val; }
+	const std::vector<int>& AdditionalInts() const	{ return addl_ints; }
+
+	void SetHashVal(hash_type hash)	{ hash_val = hash; }
+	hash_type HashVal() const	{ return hash_val; }
 
 	int NumLambdas()	{ return lambdas.size(); }
 	int NumWhenStmts()	{ return num_when_stmts; }
@@ -74,8 +71,9 @@ protected:
 
 	TraversalCode PreStmt(const Stmt*) override;
 	TraversalCode PreExpr(const Expr*) override;
+	TraversalCode PreID(const ID*) override;
 
-	void TraverseType(const TypePtr& t);
+	void RecordType(const TypePtr& t);
 
 	// Globals seen in the function.
 	//
@@ -122,6 +120,9 @@ protected:
 	// Constants seen in the function.
 	std::vector<const ConstExpr*> constants;
 
+	// Identifiers seen in the function.
+	std::unordered_set<const ID*> ids;
+
 	// Types seen in the function.  A set rather than a vector because
 	// the same type can be seen numerous times.
 	std::unordered_set<const Type*> types;
@@ -145,7 +146,11 @@ protected:
 	// than simply a function's (global) name.
 	bool does_indirect_calls = false;
 
-	// Hash value.  Only valid if constructor requested it.
+	// Additional integers present in the body that should be factored
+	// into its hash.
+	std::vector<int> addl_ints;
+
+	// Associated hash value.
 	hash_type hash_val = 0;
 
 	// How many when statements expressions appear in the function body.
@@ -156,54 +161,6 @@ protected:
 	// Whether we're separately processing a "when" condition to
 	// mine out its script calls.
 	bool in_when = false;
-
-	// We only compute a hash over the function if requested, since
-	// it's somewhat expensive.
-	bool compute_hash;
-
-	// Whether to profile attributes associated with records that might
-	// be instantiated.  Controllable because in most contexts, we
-	// don't want them included.
-	bool analyze_attrs = false;
-
-	// The following are for computing a consistent hash that isn't
-	// too profligate in how much it needs to compute over.
-
-	// Checks whether we've already noted this type, and, if not,
-	// updates the hash with it.
-	void CheckType(const TypePtr& t);
-
-	void UpdateHash(int val)
-		{
-		auto h = std::hash<int>{}(val);
-		MergeInHash(h);
-		}
-
-	void UpdateHash(const char* val)
-		{
-		auto h = std::hash<std::string>{}(std::string(val));
-		MergeInHash(h);
-		}
-
-	void UpdateHash(const Obj* o);
-	void UpdateHash(const IntrusivePtr<Obj>& o)	{ UpdateHash(o.get()); }
-
-	void MergeInHash(hash_type h)
-		{
-		// Taken from Boost.  See for example
-		// https://www.boost.org/doc/libs/1_35_0/doc/html/boost/hash_combine_id241013.html
-		// or
-		// https://stackoverflow.com/questions/4948780/magic-number-in-boosthash-combine
-		hash_val ^= h + 0x9e3779b9 + (hash_val << 6) + (hash_val >> 2);
-		}
-
-	// Hashing types can be quite expensive, since some of the common
-	// Zeek record types (e.g., notices) are huge, so it's useful to
-	// not do them more than once.  We already take care of that by
-	// not revisiting the same pointer, but there's also a significant
-	// gain by not hashing due to seeing the same name even if associated
-	// with a different pointer.
-	std::unordered_set<std::string> seen_type_names;
 };
 
 // Collectively profile an entire collection of functions.
@@ -224,49 +181,97 @@ public:
 		{ return script_calls; }
 	const std::unordered_set<Func*>& BiFCalls() const
 		{ return BiF_calls; }
-
-	const std::unordered_map<const LambdaExpr*,
-				std::shared_ptr<ProfileFunc>>& Lambdas() const
+	const std::unordered_set<const LambdaExpr*>& Lambdas() const
 		{ return lambdas; }
 
-	const ProfileFunc* FuncProf(const ScriptFunc* f)
+	ProfileFunc* FuncProf(const ScriptFunc* f)
 		{ return func_profs[f]; }
+
+	// This is only externally germane for LambdaExpr's.
+	ProfileFunc* ExprProf(const Expr* e)
+		{ return expr_profs[e].get(); }
 
 protected:
 	void MergeInProfile(ProfileFunc* pf);
 
-	// Globals seen across the function, other than those solely seen
+	void DrainPendingExprs();
+
+	// Computes hashes for the given set of types.  Potentially recursive
+	// upon discovering additional types.
+	void ComputeTypeHashes(const std::unordered_set<const Type*>& type_set);
+
+	void ComputeBodyHashes(std::vector<FuncInfo>& funcs);
+	void ComputeProfileHash(ProfileFunc* pf);
+
+	hash_type HashType(const TypePtr& t)	{ return HashType(t.get()); }
+	hash_type HashType(const Type* t);
+
+	hash_type Hash(int val)		{ return std::hash<int>{}(val); }
+
+	hash_type MergeHashes(hash_type h1, hash_type h2)
+		{
+		// Taken from Boost.  See for example
+		// https://www.boost.org/doc/libs/1_35_0/doc/html/boost/hash_combine_id241013.html
+		// or
+		// https://stackoverflow.com/questions/4948780/magic-number-in-boosthash-combine
+		return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
+		}
+
+	// Globals seen across the functions, other than those solely seen
 	// as the function being called in a call.
 	std::unordered_set<const ID*> globals;
 
 	// Same, but also includes globals only seen as called functions.
 	std::unordered_set<const ID*> all_globals;
 
-	// Constants seen in the function.
+	// Constants seen across the functions.
 	std::unordered_set<const ConstExpr*> constants;
 
-	// Types seen in the function.  A set rather than a vector because
-	// the same type can be seen numerous times.
+	// Types seen across the functions.
 	std::unordered_set<const Type*> types;
 
-	// Script functions that this script calls.
+	// Script functions that get called.
 	std::unordered_set<ScriptFunc*> script_calls;
 
 	// Same for BiF's.
 	std::unordered_set<Func*> BiF_calls;
 
-	// Maps lambda expressions to their bodies (which are recursively
-	// expanded).
-	std::unordered_map<const LambdaExpr*, std::shared_ptr<ProfileFunc>>
-		lambdas;
+	// And for lambda's.
+	std::unordered_set<const LambdaExpr*> lambdas;
 
 	// Maps script functions to associated profiles.  This isn't
 	// actually well-defined in the case of event handlers and hooks,
 	// which can have multiple bodies.  However, the need for this
 	// is temporary (it's for skipping compilation of functions that
 	// appear in "when" clauses), and in that context it suffices.
-	std::unordered_map<const ScriptFunc*, const ProfileFunc*> func_profs;
+	std::unordered_map<const ScriptFunc*, ProfileFunc*> func_profs;
+
+	// Maps expressions to their profiles.  This is only germane
+	// externally for LambdaExpr's, but internally it abets memory
+	// management.
+	std::unordered_map<const Expr*, std::shared_ptr<ProfileFunc>> expr_profs;
+
+	// Maps types to their hashes.
+	std::unordered_map<const Type*, hash_type> type_hashes;
+
+	// For types with names, tracks the ones we've already hashed.
+	std::unordered_set<std::string> seen_type_names;
+
+	// Expressions that we've discovered that we need to further
+	// profile.  These can arise for example due to lambdas or
+	// record attributes.
+	std::vector<const Expr*> pending_exprs;
 };
+
+// Helper functions.
+inline hash_type hash_string(const char* val)
+	{
+	return std::hash<std::string>{}(std::string(val));
+	}
+
+extern hash_type hash_obj(const Obj* o);
+inline hash_type hash_obj(const IntrusivePtr<Obj>& o)
+	{ return hash_obj(o.get()); }
 
 
 } // namespace zeek::detail

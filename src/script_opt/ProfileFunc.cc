@@ -14,9 +14,16 @@ ProfileFunc::ProfileFunc(const Func* func, const StmtPtr& body)
 	Profile(func->GetType().get(), body);
 	}
 
-ProfileFunc::ProfileFunc(const LambdaExpr* func)
+ProfileFunc::ProfileFunc(const Expr* e)
 	{
-	Profile(func->GetType()->AsFuncType(), func->Ingredients().body);
+	if ( e->Tag() == EXPR_LAMBDA )
+		{
+		auto func = e->AsLambdaExpr();
+		Profile(func->GetType()->AsFuncType(), func->Ingredients().body);
+		}
+
+	else
+		e->Traverse(this);
 	}
 
 void ProfileFunc::Profile(const FuncType* ft, const StmtPtr& body)
@@ -32,17 +39,12 @@ TraversalCode ProfileFunc::PreStmt(const Stmt* s)
 
 	auto tag = s->Tag();
 
-	if ( compute_hash )
-		UpdateHash(int(tag));
-
 	switch ( tag ) {
 	case STMT_INIT:
 		for ( const auto& id : s->AsInitStmt()->Inits() )
 			{
 			inits.insert(id.get());
-
-			if ( analyze_attrs )
-				TraverseType(id->GetType());
+			RecordType(id->GetType());
 			}
 
 		// Don't traverse further into the statement, since we
@@ -119,17 +121,11 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	{
 	exprs.push_back(e);
 
-	TraverseType(e->GetType());
-
-	if ( compute_hash )
-		UpdateHash(int(e->Tag()));
+	RecordType(e->GetType());
 
 	switch ( e->Tag() ) {
 	case EXPR_CONST:
 		constants.push_back(e->AsConstExpr());
-
-		if ( compute_hash )
-			UpdateHash(e->AsConstExpr()->ValuePtr());
 		break;
 
 	case EXPR_NAME:
@@ -150,16 +146,11 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 			locals.insert(id);
 			}
-
-		if ( compute_hash )
-			UpdateHash(id);
-
 		break;
 		}
 
 	case EXPR_FIELD:
-		if ( compute_hash )
-			UpdateHash(e->AsFieldExpr()->Field());
+		addl_ints.push_back(e->AsFieldExpr()->Field());
 		break;
 
 	case EXPR_ASSIGN:
@@ -186,9 +177,6 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 		auto n = f->AsNameExpr();
 		auto func = n->Id();
-
-		if ( compute_hash )
-			UpdateHash(func);
 
 		if ( ! func->IsGlobal() )
 			{
@@ -235,8 +223,10 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		// the global getting a different (constructed) type when
 		// the function is actually declared.  Geez.  So hedge our
 		// bets.
-		TraverseType(n->GetType());
-		TraverseType(func->GetType());
+		RecordType(n->GetType());
+		RecordType(func->GetType());
+
+		ids.insert(func);
 
 		return TC_ABORTSTMT;
 		}
@@ -250,7 +240,10 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		auto l = e->AsLambdaExpr();
 		lambdas.push_back(l);
 		for ( const auto& i : l->OuterIDs() )
+			{
 			locals.insert(i);
+			ids.insert(i);
+			}
 
 		// Avoid recursing into the body.
 		return TC_ABORTSTMT;
@@ -263,15 +256,162 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 	return TC_CONTINUE;
 	}
 
-void ProfileFunc::TraverseType(const TypePtr& t)
+TraversalCode ProfileFunc::PreID(const ID* id)
 	{
-	if ( ! t || types.count(t.get()) > 0 )
-		return;
+	ids.insert(id);
+	return TC_ABORTSTMT;
+	}
 
-	if ( compute_hash )
-		CheckType(t);
+void ProfileFunc::RecordType(const TypePtr& t)
+	{
+	if ( t )
+		types.insert(t.get());
+	}
 
-	types.insert(t.get());
+
+ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
+	{
+	std::vector<const LambdaExpr*> lambda_exprs;
+
+	for ( auto& f : funcs )
+		{
+		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body());
+
+		MergeInProfile(pf.get());
+		f.SetProfile(std::move(pf));
+		func_profs[f.Func()] = f.Profile();
+		}
+
+	DrainPendingExprs();
+	ComputeTypeHashes(types);
+	ComputeBodyHashes(funcs);
+	}
+
+void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
+	{
+	for ( auto& i : pf->Globals() )
+		globals.insert(i);
+
+	for ( auto& i : pf->AllGlobals() )
+		all_globals.insert(i);
+
+	for ( auto& i : pf->Constants() )
+		constants.insert(i);
+
+	for ( auto& i : pf->Types() )
+		types.insert(i);
+
+	for ( auto& i : pf->ScriptCalls() )
+		script_calls.insert(i);
+
+	for ( auto& i : pf->BiFCalls() )
+		BiF_calls.insert(i);
+
+	for ( auto& i : pf->Lambdas() )
+		{
+		lambdas.insert(i);
+		pending_exprs.push_back(i);
+		}
+	}
+
+void ProfileFuncs::DrainPendingExprs()
+	{
+	while ( pending_exprs.size() > 0 )
+		{
+		// Copy the pending expressions so we can loop over them
+		// while accruing additions.
+		auto pe = pending_exprs;
+		pending_exprs.clear();
+
+		for ( auto e : pe )
+			{
+			auto pf = std::make_shared<ProfileFunc>(e);
+
+			expr_profs[e] = pf;
+
+			MergeInProfile(pf.get());
+			// The merge could have added lambdas.
+			DrainPendingExprs();
+
+			ComputeTypeHashes(pf->Types());
+			}
+		}
+	}
+
+void ProfileFuncs::ComputeTypeHashes(const std::unordered_set<const Type*>& type_set)
+	{
+	pending_exprs.clear();
+
+	for ( auto t : type_set )
+		(void) HashType(t);
+
+	DrainPendingExprs();
+	}
+
+void ProfileFuncs::ComputeBodyHashes(std::vector<FuncInfo>& funcs)
+	{
+	for ( auto& f : funcs )
+		ComputeProfileHash(f.Profile());
+
+	for ( auto& l : lambdas )
+		ComputeProfileHash(ExprProf(l));
+	}
+
+void ProfileFuncs::ComputeProfileHash(ProfileFunc* pf)
+	{
+	hash_type h = 0;
+
+	for ( auto i : pf->Stmts() )
+		h = MergeHashes(h, Hash(i->Tag()));
+
+	for ( auto i : pf->Exprs() )
+		h = MergeHashes(h, Hash(i->Tag()));
+
+	for ( auto i : pf->Identifiers() )
+		h = MergeHashes(h, hash_string(i->Name()));
+
+	for ( auto i : pf->Constants() )
+		h = MergeHashes(h, hash_obj(i->Value()));
+
+	for ( auto i : pf->Types() )
+		h = MergeHashes(h, HashType(i));
+
+	for ( auto i : pf->Lambdas() )
+		h = MergeHashes(h, hash_obj(i));
+
+	pf->SetHashVal(h);
+	}
+
+hash_type ProfileFuncs::HashType(const Type* t)
+	{
+	if ( ! t )
+		return 0;
+
+	if ( type_hashes.count(t) > 0 )
+		return type_hashes[t];
+
+	auto& tn = t->GetName();
+	if ( tn.size() > 0 )
+		{
+		if ( seen_type_names.count(tn) > 0 )
+			// It's okay to return 0 for this type because
+			// we've incorporated its structure elsewhere
+			// in our overall hash.
+			return 0;
+
+		seen_type_names.insert(tn);
+		}
+
+	auto h = Hash(t->Tag());
+
+	// Enter an initial value for this type's hash.  We'll update it
+	// at the end, but having it here first will prevent recursive
+	// records from leading to infinite recursion as we traverse them.
+	// It's okay that the initial value is degenerate, as if we access
+	// it during the traversal that will only happen due to a recursive
+	// type, in which case the other elements of that type will serve
+	// to differentiate its hash.
+	type_hashes[t] = h;
 
 	switch ( t->Tag() ) {
 	case TYPE_ADDR:
@@ -299,15 +439,20 @@ void ProfileFunc::TraverseType(const TypePtr& t)
 		auto fields = t->AsRecordType()->Types();
 		for ( const auto& f : *fields )
 			{
-			TraverseType(f->type);
+			h = MergeHashes(h, HashType(f->type));
+
+			// We don't hash the field name, as in some contexts
+			// those are ignored.
 
 			if ( f->attrs )
 				{
+				h = MergeHashes(h, hash_obj(f->attrs));
+
 				auto attrs = f->attrs->GetAttrs();
 
 				for ( const auto& a : attrs )
 					if ( a->GetExpr() )
-						a->GetExpr()->Traverse(this);
+						pending_exprs.push_back(a->GetExpr().get());
 				}
 			}
 		}
@@ -316,121 +461,49 @@ void ProfileFunc::TraverseType(const TypePtr& t)
 	case TYPE_TABLE:
 		{
 		auto tbl = t->AsTableType();
-		TraverseType(tbl->GetIndices());
-		TraverseType(tbl->Yield());
+		h = MergeHashes(h, HashType(tbl->GetIndices()));
+		h = MergeHashes(h, HashType(tbl->Yield()));
 		}
 		break;
 
 	case TYPE_FUNC:
 		{
 		auto ft = t->AsFuncType();
-		TraverseType(ft->Params());
-		TraverseType(ft->Yield());
+		h = MergeHashes(h, HashType(ft->Params()));
+		h = MergeHashes(h, HashType(ft->Yield()));
 		}
 		break;
 
 	case TYPE_LIST:
 		{
 		for ( const auto& tl : t->AsTypeList()->GetTypes() )
-			TraverseType(tl);
+			h = MergeHashes(h, HashType(tl));
 		}
 		break;
 
 	case TYPE_VECTOR:
-		TraverseType(t->AsVectorType()->Yield());
+		h = MergeHashes(h, HashType(t->AsVectorType()->Yield()));
 		break;
 
 	case TYPE_FILE:
-		TraverseType(t->AsFileType()->Yield());
+		h = MergeHashes(h, HashType(t->AsFileType()->Yield()));
 		break;
 
 	case TYPE_TYPE:
-		TraverseType(t->AsTypeType()->GetType());
+		h = MergeHashes(h, HashType(t->AsTypeType()->GetType()));
 		break;
 	}
+
+	return h;
 	}
 
-void ProfileFunc::CheckType(const TypePtr& t)
-	{
-	auto& tn = t->GetName();
-	if ( tn.size() > 0 && seen_type_names.count(tn) > 0 )
-		// No need to hash this in again, as we've already done so.
-		return;
 
-	seen_type_names.insert(tn);
-
-	UpdateHash(t);
-	}
-
-void ProfileFunc::UpdateHash(const Obj* o)
+hash_type hash_obj(const Obj* o)
 	{
 	ODesc d;
 	o->Describe(&d);
 	std::string desc(d.Description());
-	auto h = std::hash<std::string>{}(desc);
-	MergeInHash(h);
+	return std::hash<std::string>{}(desc);
 	}
-
-
-ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
-	{
-	std::vector<const LambdaExpr*> lambda_exprs;
-
-	for ( auto& f : funcs )
-		{
-		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body());
-
-		MergeInProfile(pf.get());
-
-		for ( auto& l : pf->Lambdas() )
-			lambda_exprs.push_back(l);
-
-		f.SetProfile(std::move(pf));
-
-		func_profs[f.Func()] = f.Profile();
-		}
-
-	while ( lambda_exprs.size() > 0 )
-		{
-		std::vector<const LambdaExpr*> new_lambda_exprs;
-
-		for ( auto& l : lambda_exprs )
-			{
-			auto pf = std::make_shared<ProfileFunc>(l);
-
-			MergeInProfile(pf.get());
-
-			for ( auto& l2 : pf->Lambdas() )
-				new_lambda_exprs.push_back(l2);
-
-			ASSERT(lambdas.count(l) == 0);
-			lambdas[l] = pf;
-			}
-
-		lambda_exprs = new_lambda_exprs;
-		}
-	}
-
-void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
-	{
-	for ( auto& i : pf->Globals() )
-		globals.insert(i);
-
-	for ( auto& i : pf->AllGlobals() )
-		all_globals.insert(i);
-
-	for ( auto& i : pf->Constants() )
-		constants.insert(i);
-
-	for ( auto& i : pf->Types() )
-		types.insert(i);
-
-	for ( auto& i : pf->ScriptCalls() )
-		script_calls.insert(i);
-
-	for ( auto& i : pf->BiFCalls() )
-		BiF_calls.insert(i);
-	}
-
 
 } // namespace zeek::detail
