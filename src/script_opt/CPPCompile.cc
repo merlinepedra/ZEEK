@@ -203,7 +203,6 @@ void CPPCompile::Compile()
 		{
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		types.AddKey(tp, pfs.HashType(t));
-		RegisterType(tp);
 
 		if ( ! types.IsInherited(t) )
 			Emit("TypePtr %s;", types.KeyName(t));
@@ -243,6 +242,12 @@ void CPPCompile::Compile()
 
 	for ( const auto& c : pfs.Constants() )
 		AddConstant(c);
+
+	for ( const auto& t : pfs.Types() )
+		{
+		TypePtr tp{NewRef{}, (Type*)(t)};
+		RegisterType(tp);
+		}
 
 	for ( const auto& e : pfs.Events() )
 		{

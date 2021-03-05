@@ -146,6 +146,11 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 			locals.insert(id);
 			}
+
+		// This can differ from the type of the encompassing
+		// expression.
+		RecordType(id->GetType());
+
 		break;
 		}
 
