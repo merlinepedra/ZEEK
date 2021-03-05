@@ -215,6 +215,8 @@ void CPPCompile::Compile()
 		if ( ! types.IsInherited(t) )
 			Emit("TypePtr %s;", types.KeyName(t));
 
+	NL();
+
 	auto& gl = pfs.Globals();
 	auto& bifs = pfs.BiFGlobals();
 
@@ -242,7 +244,7 @@ void CPPCompile::Compile()
 
 		const auto& t = g->GetType();
 
-		NoteInitDependency(g, t);
+		NoteInitDependency(g, TypeRep(t));
 
 		AddGlobal(gn.c_str(), "gl");
 		Emit("IDPtr %s;", globals[gn]);
@@ -2026,7 +2028,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	StartBlock();
 	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(t));
 
-	NoteInitDependency(e, t);
+	NoteInitDependency(e, TypeRep(t));
 	EndBlock();
 
 	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
@@ -2048,7 +2050,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	Emit("CallExprPtr %s;", ename);
 
-	NoteInitDependency(e, t);
+	NoteInitDependency(e, TypeRep(t));
 	AddInit(e, ename, std::string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>(make_intrusive<") +
 		name + "_cl>())), make_intrusive<ListExpr>(), false)");
 	}
@@ -2128,7 +2130,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 				break;
 
 			case EXPR_RECORD_COERCE:
-				NoteInitDependency(e, e->GetType());
+				NoteInitDependency(e, TypeRep(e->GetType()));
 				e_arg = std::string("make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>(make_intrusive<ListExpr>()), cast_intrusive<RecordType>(") +
 					GenTypeName(e->GetType()) + "))";
 				break;

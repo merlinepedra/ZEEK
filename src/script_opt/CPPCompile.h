@@ -211,6 +211,8 @@ private:
 	void NoteInitDependency(const IntrusivePtr<Obj>& o1,
 				const IntrusivePtr<Obj>& o2)
 		{ NoteInitDependency(o1.get(), o2.get()); }
+	void NoteInitDependency(const IntrusivePtr<Obj>& o1, const Obj* o2)
+		{ NoteInitDependency(o1.get(), o2); }
 	void NoteInitDependency(const Obj* o1, const IntrusivePtr<Obj>& o2)
 		{ NoteInitDependency(o1, o2.get()); }
 	void NoteInitDependency(const Obj* o1, const Obj* o2);
