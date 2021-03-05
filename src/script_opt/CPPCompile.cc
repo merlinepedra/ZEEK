@@ -216,30 +216,40 @@ void CPPCompile::Compile()
 	for ( auto& g : pfs.AllGlobals() )
 		{
 		auto gn = std::string(g->Name());
+		bool is_bif = bifs.count(g) > 0;
 
-		if ( bifs.count(g) > 0 )
-			AddBiF(g);
-
-		else if ( compilable_funcs.count(gn) && gl.count(g) == 0 )
-			// No need to create a script global for the function,
-			// as it's not used other than in a call.
-			AddGlobal(g->Name(), "zf");
-
-		else
+		if ( gl.count(g) == 0 )
 			{
-			const auto& t = g->GetType();
+			// Only used in the context of calls.  If it's
+			// compilable, the we'll call it directly.
+			if ( compilable_funcs.count(gn) > 0 )
+				{
+				AddGlobal(g->Name(), "zf");
+				continue;
+				}
 
-			NoteInitDependency(g, t);
-
-			AddGlobal(gn.c_str(), "gl");
-			Emit("IDPtr %s;", globals[gn]);
-
-			global_vars.emplace(g);
-
-			AddInit(g, globals[gn],
-				std::string("lookup_global__CPP(\"") + gn +
-				"\", " + GenTypeName(t) + ")");
+			if ( is_bif )
+				{
+				AddBiF(g, false);
+				continue;
+				}
 			}
+
+		const auto& t = g->GetType();
+
+		NoteInitDependency(g, t);
+
+		AddGlobal(gn.c_str(), "gl");
+		Emit("IDPtr %s;", globals[gn]);
+
+		global_vars.emplace(g);
+
+		AddInit(g, globals[gn],
+			std::string("lookup_global__CPP(\"") + gn +
+			"\", " + GenTypeName(t) + ")");
+
+		if ( is_bif )
+			AddBiF(g, true);
 		}
 
 	for ( const auto& c : pfs.Constants() )
@@ -430,16 +440,19 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 	return true;
 	}
 
-void CPPCompile::AddBiF(const ID* b)
+void CPPCompile::AddBiF(const ID* b, bool is_var)
 	{
-	auto n = b->Name();
+	auto n = std::string(b->Name());
+
+	if ( is_var )
+		n = n + "_";	// make the name distinct
 
 	AddGlobal(n, "bif");
 
-	std::string ns(n);
-	Emit("Func* %s;", globals[ns]);
+	Emit("Func* %s;", globals[n]);
 
-	AddInit(b, globals[ns], std::string("lookup_bif__CPP(\"") + ns + "\")");
+	AddInit(b, globals[n],
+		std::string("lookup_bif__CPP(\"") + b->Name() + "\")");
 	}
 
 void CPPCompile::AddGlobal(const std::string& g, const char* suffix)
@@ -1228,7 +1241,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		if ( f->Tag() == EXPR_NAME )
 			{
 			auto f_id = f->AsNameExpr()->Id();
-			auto fname = Canonicalize(f_id->Name()) + "_zf";
+			auto id_name = f_id->Name();
+			auto fname = Canonicalize(id_name) + "_zf";
 
 			if ( compiled_funcs.count(fname) > 0 )
 				{
@@ -1244,8 +1258,17 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			// If the function isn't a BiF, then it will have
 			// been declared as a ValPtr (or a FuncValPtr, if
 			// a local), and we need to convert it to a Func*.
+			//
+			// If it is a BiF *that's also a global variable*,
+			// then we need to look up the BiF version of the
+			// global.
 			if ( pfs.BiFGlobals().count(f_id) == 0 )
 				gen += + "->AsFunc()";
+
+			else if ( pfs.Globals().count(f_id) > 0 )
+				// The BiF version has an extra "_", per
+				// AddBiF(..., true).
+				gen = globals[std::string(id_name) + "_"];
 			}
 
 		else

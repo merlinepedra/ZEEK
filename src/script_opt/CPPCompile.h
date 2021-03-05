@@ -96,7 +96,7 @@ private:
 	bool IsCompilable(const FuncInfo& func);
 
 	void DeclareGlobals(const FuncInfo& func);
-	void AddBiF(const ID* b);
+	void AddBiF(const ID* b, bool is_var);
 	void AddGlobal(const std::string& g, const char* suffix);
 	void AddConstant(const ConstExpr* c);
 
