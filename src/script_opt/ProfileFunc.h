@@ -181,6 +181,8 @@ public:
 		{ return script_calls; }
 	const std::unordered_set<const ID*>& BiFGlobals() const
 		{ return BiF_globals; }
+	const std::unordered_set<const char*>& Events() const
+		{ return events; }
 	const std::unordered_set<const LambdaExpr*>& Lambdas() const
 		{ return lambdas; }
 
@@ -235,6 +237,9 @@ protected:
 
 	// Same for BiF's.
 	std::unordered_set<const ID*> BiF_globals;
+
+	// Names of generated events.
+	std::unordered_set<const char*> events;
 
 	// And for lambda's.
 	std::unordered_set<const LambdaExpr*> lambdas;
