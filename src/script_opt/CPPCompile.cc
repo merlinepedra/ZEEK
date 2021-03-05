@@ -2218,13 +2218,16 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 			const auto& td = (*r)[i];
 			auto type_accessor = GenTypeName(td->type);
 
+			auto td_name = std::string("util::copy_string(\"") +
+					td->id + "\")";
+
 			if ( td->attrs )
-				AddInit(t, std::string("tl.append(new TypeDecl(\"") +
-					td->id + "\", " + type_accessor +
+				AddInit(t, std::string("tl.append(new TypeDecl(") +
+					td_name + ", " + type_accessor +
 					", " + AttrsName(td->attrs) +"));");
 			else
-				AddInit(t, std::string("tl.append(new TypeDecl(\"") +
-					td->id + "\", " + type_accessor +"));");
+				AddInit(t, std::string("tl.append(new TypeDecl(") +
+					td_name + ", " + type_accessor +"));");
 			}
 
 		AddInit(t, t_name + "->AddFieldsDirectly(tl);");
