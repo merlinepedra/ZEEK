@@ -294,26 +294,13 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
 
 void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 	{
-	for ( auto& i : pf->Globals() )
-		globals.insert(i);
-
-	for ( auto& i : pf->AllGlobals() )
-		all_globals.insert(i);
-
-	for ( auto& i : pf->Constants() )
-		constants.insert(i);
-
-	for ( auto& i : pf->Types() )
-		types.insert(i);
-
-	for ( auto& i : pf->ScriptCalls() )
-		script_calls.insert(i);
-
-	for ( auto& i : pf->BiFGlobals() )
-		BiF_globals.insert(i);
-
-	for ( auto& i : pf->Events() )
-		events.insert(i);
+	all_globals.insert(pf->AllGlobals().begin(), pf->AllGlobals().end());
+	globals.insert(pf->Globals().begin(), pf->Globals().end());
+	constants.insert(pf->Constants().begin(), pf->Constants().end());
+	types.insert(pf->Types().begin(), pf->Types().end());
+	script_calls.insert(pf->ScriptCalls().begin(), pf->ScriptCalls().end());
+	BiF_globals.insert(pf->BiFGlobals().begin(), pf->BiFGlobals().end());
+	events.insert(pf->Events().begin(), pf->Events().end());
 
 	for ( auto& i : pf->Lambdas() )
 		{
