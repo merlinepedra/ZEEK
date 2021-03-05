@@ -255,7 +255,9 @@ void analyze_scripts()
 			}
 
 		const auto gen_name = "CPP-gen-addl.h";
-		const auto hash_name = "CPP-hashes.dat";
+		const auto hash_name = "CPP-hashes";
+		// const auto gen_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-gen-addl.h";
+		// const auto hash_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-hashes";
 
 		CPPCompile cpp(funcs, *pfs, gen_name, hash_name,
 				analysis_options.add_CPP);

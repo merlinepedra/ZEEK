@@ -83,11 +83,12 @@ private:
 class CPPCompile {
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs,
-		const char* gen_file, const char* hash_file, bool append);
+		const char* gen_name, const char* hash_name_base, bool append);
 	~CPPCompile();
 
 private:
-	void LoadHashes(FILE* f);
+	void LoadFuncHashes(FILE* f);
+	void LoadObjHashes(FILE* f);
 
 	void Compile();
 
@@ -286,18 +287,22 @@ private:
 
 	void Indent() const;
 
-	void Lock(const char* fname, FILE* f);
-	void Unlock(const char* fname, FILE* f);
+	void Lock(const std::string& fname, FILE* f);
+	void Unlock(const std::string& fname, FILE* f);
 
 	std::vector<FuncInfo>& funcs;
 	ProfileFuncs& pfs;
 
-	const char* gen_name;
+	std::string gen_name;
 	FILE* write_file;
 
-	const char* hash_name;
-	FILE* hf_r = nullptr;
-	FILE* hf_w = nullptr;
+	std::string func_hash_name;
+	FILE* f_hf_r = nullptr;
+	FILE* f_hf_w = nullptr;
+
+	std::string obj_hash_name;
+	FILE* o_hf_r = nullptr;
+	FILE* o_hf_w = nullptr;
 
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
@@ -313,6 +318,10 @@ private:
 
 	// Maps function names to hashes of bodies.
 	std::unordered_map<std::string, hash_type> body_hashes;
+
+	// Tracks previously compiled bodies based on hashes, mapping them
+	// to a fully qualified name.
+	std::unordered_map<hash_type, std::string> previously_compiled;
 
 	// Script functions that we are able to compile.  We compute
 	// these ahead of time so that when compiling script function A

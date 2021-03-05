@@ -110,37 +110,43 @@ hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 
 
 CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
-		const char* _gen_name, const char* _hash_name, bool append)
-: funcs(_funcs), pfs(_pfs), gen_name(_gen_name), hash_name(_hash_name)
+		const char* _gen_name, const char* hash_name_base, bool append)
+: funcs(_funcs), pfs(_pfs), gen_name(_gen_name)
 	{
+	func_hash_name = std::string(hash_name_base) + ".func.dat";
+	obj_hash_name = std::string(hash_name_base) + ".obj.dat";
+
 	if ( append )
 		{
-		hf_r = fopen(hash_name, "r");
-		if ( ! hf_r )
+		f_hf_r = fopen(func_hash_name.c_str(), "r");
+		o_hf_r = fopen(obj_hash_name.c_str(), "r");
+		if ( ! f_hf_r || ! o_hf_r )
 			{
-			reporter->Error("can't open auxiliary C++ hash file %s for reading",
-					hash_name);
+			reporter->Error("can't open auxiliary C++ hash files %s/%s for reading",
+					func_hash_name.c_str(), obj_hash_name.c_str());
 			exit(1);
 			}
 
-		Lock(hash_name, hf_r);
-		LoadHashes(hf_r);
+		Lock(func_hash_name, f_hf_r);
+		LoadFuncHashes(f_hf_r);
+		LoadObjHashes(o_hf_r);
 		}
 
 	auto mode = append ? "a" : "w";
 
-	hf_w = fopen(hash_name, mode);
-	if ( ! hf_w )
+	f_hf_w = fopen(func_hash_name.c_str(), mode);
+	o_hf_w = fopen(obj_hash_name.c_str(), mode);
+	if ( ! f_hf_w || ! o_hf_w )
 		{
-		reporter->Error("can't open auxiliary C++ hash file %s for writing",
-				hash_name);
+		reporter->Error("can't open auxiliary C++ hash files %s/%s for writing",
+				func_hash_name.c_str(), obj_hash_name.c_str());
 		exit(1);
 		}
 
-	write_file = fopen(gen_name, mode);
+	write_file = fopen(gen_name.c_str(), mode);
 	if ( ! write_file )
 		{
-		reporter->Error("can't open C++ target file %s", gen_name);
+		reporter->Error("can't open C++ target file %s", gen_name.c_str());
 		exit(1);
 		}
 
@@ -151,7 +157,7 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 			{
 			char buf[256];
 			util::zeek_strerror_r(errno, buf, sizeof(buf));
-			reporter->Error("fstat failed on %s: %s", gen_name, buf);
+			reporter->Error("fstat failed on %s: %s", gen_name.c_str(), buf);
 			exit(1);
 			}
 
@@ -165,17 +171,43 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 
 CPPCompile::~CPPCompile()
 	{
-	fclose(hf_w);
+	fclose(write_file);
+	fclose(f_hf_w);
+	fclose(o_hf_w);
 
-	if ( hf_r )
+	if ( f_hf_r )
 		{
-		fflush(hf_r);
-		Unlock(hash_name, hf_r);
-		fclose(hf_r);
+		fflush(f_hf_r);
+		Unlock(func_hash_name, f_hf_r);
+		fclose(f_hf_r);
+		fclose(o_hf_r);
 		}
 	}
 
-void CPPCompile::LoadHashes(FILE* f)
+void CPPCompile::LoadFuncHashes(FILE* f)
+	{
+	char buf[8192];
+	while ( fgets(buf, sizeof buf, f) )
+		{
+		hash_type hash;
+
+		if ( sscanf(buf, "%llu", &hash) != 1 || hash == 0 )
+			{
+			reporter->Error("bad %s hash file entry: %s", func_hash_name.c_str(), buf);
+			exit(1);
+			}
+
+		if ( ! fgets(buf, sizeof buf, f) )
+			{
+			reporter->Error("missing final %s hash file entry", func_hash_name.c_str());
+			exit(1);
+			}
+
+		previously_compiled[hash] = std::string(buf);
+		}
+	}
+
+void CPPCompile::LoadObjHashes(FILE* f)
 	{
 	char buf[8192];
 	while ( fgets(buf, sizeof buf, f) )
@@ -187,7 +219,7 @@ void CPPCompile::LoadHashes(FILE* f)
 		if ( sscanf(buf, "%llu %d %d", &hash, &index, &scope) != 3 ||
 		     hash == 0 )
 			{
-			reporter->Error("bad %s hash file entry: %s", hash_name, buf);
+			reporter->Error("bad %s hash file entry: %s", obj_hash_name.c_str(), buf);
 			exit(1);
 			}
 
@@ -305,20 +337,20 @@ void CPPCompile::GenEpilog()
 	for ( const auto& e : init_exprs.DistinctKeys() )
 		{
 		GenInitExpr(e);
-		init_exprs.LogIfNew(e, addl_tag, hf_w);
+		init_exprs.LogIfNew(e, addl_tag, o_hf_w);
 		}
 
 	for ( const auto& a : attributes.DistinctKeys() )
 		{
 		GenAttrs(a);
-		attributes.LogIfNew(a, addl_tag, hf_w);
+		attributes.LogIfNew(a, addl_tag, o_hf_w);
 		}
 
 	// Generate the guts of compound types.
 	for ( const auto& t : types.DistinctKeys() )
 		{
 		ExpandTypeVar(t);
-		types.LogIfNew(t, addl_tag, hf_w);
+		types.LogIfNew(t, addl_tag, o_hf_w);
 		}
 
 	NL();
@@ -2907,24 +2939,24 @@ void CPPCompile::Indent() const
 		fprintf(write_file, "%s", "\t");
 	}
 
-void CPPCompile::Lock(const char* fname, FILE* f)
+void CPPCompile::Lock(const std::string& fname, FILE* f)
 	{
 	if ( flock(fileno(f), LOCK_EX) < 0 )
 		{
 		char buf[256];
 		util::zeek_strerror_r(errno, buf, sizeof(buf));
-		reporter->Error("flock failed on %s: %s", fname, buf);
+		reporter->Error("flock failed on %s: %s", fname.c_str(), buf);
 		exit(1);
 		}
 	}
 
-void CPPCompile::Unlock(const char* fname, FILE* f)
+void CPPCompile::Unlock(const std::string& fname, FILE* f)
 	{
 	if ( flock(fileno(f), LOCK_UN) < 0 )
 		{
 		char buf[256];
 		util::zeek_strerror_r(errno, buf, sizeof(buf));
-		reporter->Error("un-flock failed on %s: %s", fname, buf);
+		reporter->Error("un-flock failed on %s: %s", fname.c_str(), buf);
 		exit(1);
 		}
 	}
