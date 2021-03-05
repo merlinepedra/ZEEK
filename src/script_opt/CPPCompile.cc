@@ -215,13 +215,6 @@ void CPPCompile::Compile()
 		}
 
 	for ( const auto& func : funcs )
-		if ( IsCompilable(func) )
-			{
-			for ( const auto& t : func.Profile()->Types() )
-				RegisterType({NewRef{}, (Type*)(t)});
-			}
-
-	for ( const auto& func : funcs )
 		DeclareGlobals(func);
 
 	for ( const auto& t : types.DistinctKeys() )
