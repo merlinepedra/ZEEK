@@ -383,4 +383,6 @@ private:
 	int block_level = 0;
 };
 
+extern bool is_CPP_compilable(const ProfileFunc* pf);
+
 } // zeek::detail

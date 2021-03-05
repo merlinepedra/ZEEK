@@ -430,22 +430,7 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 	if ( func.Skip() )
 		return false;
 
-	const auto& pf = func.Profile();
-
-	if ( pf->NumWhenStmts() > 0 )
-		return false;
-
-	if ( pf->TypeSwitches().size() > 0 )
-		return false;
-
-	for ( const auto& sw : pf->ExprSwitches() )
-		{
-		auto it = sw->StmtExpr()->GetType()->InternalType();
-		if ( it != TYPE_INTERNAL_INT && it != TYPE_INTERNAL_UNSIGNED )
-			return false;
-		}
-
-	return true;
+	return is_CPP_compilable(func.Profile());
 	}
 
 void CPPCompile::AddBiF(const ID* b, bool is_var)
@@ -2942,6 +2927,25 @@ void CPPCompile::Unlock(const char* fname, FILE* f)
 		reporter->Error("un-flock failed on %s: %s", fname, buf);
 		exit(1);
 		}
+	}
+
+
+bool is_CPP_compilable(const ProfileFunc* pf)
+	{
+	if ( pf->NumWhenStmts() > 0 )
+		return false;
+
+	if ( pf->TypeSwitches().size() > 0 )
+		return false;
+
+	for ( const auto& sw : pf->ExprSwitches() )
+		{
+		auto it = sw->StmtExpr()->GetType()->InternalType();
+		if ( it != TYPE_INTERNAL_INT && it != TYPE_INTERNAL_UNSIGNED )
+			return false;
+		}
+
+	return true;
 	}
 
 } // zeek::detail

@@ -67,8 +67,8 @@ public:
 	void SetHashVal(hash_type hash)	{ hash_val = hash; }
 	hash_type HashVal() const	{ return hash_val; }
 
-	int NumLambdas()	{ return lambdas.size(); }
-	int NumWhenStmts()	{ return num_when_stmts; }
+	int NumLambdas() const		{ return lambdas.size(); }
+	int NumWhenStmts() const	{ return num_when_stmts; }
 
 protected:
 	void Profile(const FuncType* ft, const StmtPtr& body);
