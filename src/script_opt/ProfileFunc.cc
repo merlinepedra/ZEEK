@@ -280,6 +280,9 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
 
 	for ( auto& f : funcs )
 		{
+		if ( f.Skip() )
+			continue;
+
 		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body());
 
 		MergeInProfile(pf.get());
@@ -339,7 +342,8 @@ void ProfileFuncs::ComputeTypeHashes(const std::unordered_set<const Type*>& type
 void ProfileFuncs::ComputeBodyHashes(std::vector<FuncInfo>& funcs)
 	{
 	for ( auto& f : funcs )
-		ComputeProfileHash(f.Profile());
+		if ( ! f.Skip() )
+			ComputeProfileHash(f.Profile());
 
 	for ( auto& l : lambdas )
 		ComputeProfileHash(ExprProf(l));
