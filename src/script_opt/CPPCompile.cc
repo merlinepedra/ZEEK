@@ -203,6 +203,11 @@ void CPPCompile::LoadFuncHashes(FILE* f)
 			exit(1);
 			}
 
+		// Remove trailing newline.
+		int n = strlen(buf);
+		if ( n > 0 && buf[n-1] == '\n' )
+			buf[n-1] = '\0';
+
 		previously_compiled[hash] = std::string(buf);
 		}
 	}
