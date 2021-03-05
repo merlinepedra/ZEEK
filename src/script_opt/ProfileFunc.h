@@ -259,8 +259,10 @@ protected:
 	// Maps types to their hashes.
 	std::unordered_map<const Type*, hash_type> type_hashes;
 
-	// For types with names, tracks the ones we've already hashed.
-	std::unordered_set<std::string> seen_type_names;
+	// For types with names, tracks the ones we've already hashed,
+	// so we can avoid work for distinct pointers that refer to the
+	// same underlying type.
+	std::unordered_map<std::string, hash_type> seen_type_names;
 
 	// Expressions that we've discovered that we need to further
 	// profile.  These can arise for example due to lambdas or

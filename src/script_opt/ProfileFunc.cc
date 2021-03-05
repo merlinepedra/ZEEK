@@ -386,15 +386,11 @@ hash_type ProfileFuncs::HashType(const Type* t)
 		return type_hashes[t];
 
 	auto& tn = t->GetName();
-	if ( tn.size() > 0 )
+	if ( tn.size() > 0 && seen_type_names.count(tn) > 0 )
 		{
-		if ( seen_type_names.count(tn) > 0 )
-			// It's okay to return 0 for this type because
-			// we've incorporated its structure elsewhere
-			// in our overall hash.
-			return 0;
-
-		seen_type_names.insert(tn);
+		auto h = seen_type_names[tn];
+		type_hashes[t] = h;
+		return h;
 		}
 
 	auto h = Hash(t->Tag());
@@ -497,6 +493,10 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	}
 
 	type_hashes[t] = h;
+
+	if ( tn.size() > 0 )
+		seen_type_names[tn] = h;
+
 	return h;
 	}
 
