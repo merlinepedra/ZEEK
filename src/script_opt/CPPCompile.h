@@ -158,8 +158,6 @@ private:
 	std::string AttrsName(const AttributesPtr& attrs);
 	const char* AttrName(const AttrPtr& attr);
 
-	void GenPreInit(const TypePtr& t);
-
 	void ExpandTypeVar(const TypePtr& t);
 
 	std::string GenTypeName(const TypePtr& t);
@@ -178,7 +176,10 @@ private:
 	const char* FullTypeName(const TypePtr& t);
 	const char* TypeName(const TypePtr& t);
 	const char* TypeType(const TypePtr& t);
+
 	void RegisterType(const TypePtr& t);
+	void GenPreInit(const TypePtr& t);
+
 	void RegisterAttributes(const AttributesPtr& attrs);
 
 	const char* NativeAccessor(const TypePtr& t);

@@ -191,6 +191,9 @@ public:
 	ProfileFunc* ExprProf(const Expr* e)
 		{ return expr_profs[e].get(); }
 
+	hash_type HashType(const TypePtr& t)	{ return HashType(t.get()); }
+	hash_type HashType(const Type* t);
+
 protected:
 	void MergeInProfile(ProfileFunc* pf);
 
@@ -202,9 +205,6 @@ protected:
 
 	void ComputeBodyHashes(std::vector<FuncInfo>& funcs);
 	void ComputeProfileHash(ProfileFunc* pf);
-
-	hash_type HashType(const TypePtr& t)	{ return HashType(t.get()); }
-	hash_type HashType(const Type* t);
 
 	hash_type Hash(int val)		{ return std::hash<int>{}(val); }
 

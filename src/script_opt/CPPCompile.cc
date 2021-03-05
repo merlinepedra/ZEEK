@@ -194,6 +194,13 @@ void CPPCompile::Compile()
 	{
 	GenProlog();
 
+	for ( const auto& t : pfs.Types() )
+		{
+		TypePtr tp{NewRef{}, (Type*)(t)};
+		types.AddKey(tp, pfs.HashType(t));
+		RegisterType(tp);
+		}
+
 	for ( const auto& func : funcs )
 		{
 		if ( IsCompilable(func) )
@@ -2196,79 +2203,6 @@ const char* CPPCompile::AttrName(const AttrPtr& attr)
 	}
 	}
 
-void CPPCompile::GenPreInit(const TypePtr& t)
-	{
-	std::string pre_init;
-
-	switch ( t->Tag() ) {
-	case TYPE_ADDR:
-	case TYPE_ANY:
-	case TYPE_BOOL:
-	case TYPE_COUNT:
-	case TYPE_DOUBLE:
-	case TYPE_ERROR:
-	case TYPE_INT:
-	case TYPE_INTERVAL:
-	case TYPE_PATTERN:
-	case TYPE_PORT:
-	case TYPE_STRING:
-	case TYPE_TIME:
-	case TYPE_TIMER:
-	case TYPE_VOID:
-		pre_init = std::string("base_type(") + TypeTagName(t->Tag()) + ")";
-		break;
-
-	case TYPE_ENUM:
-		pre_init = std::string("get_enum_type__CPP(\"") +
-				t->GetName() + "\")";
-		break;
-
-	case TYPE_SUBNET:
-		pre_init = std::string("make_intrusive<SubNetType>()");
-		break;
-
-	case TYPE_FILE:
-		pre_init = std::string("make_intrusive<FileType>(") +
-				GenTypeName(t->AsFileType()->Yield()) + ")";
-		break;
-
-	case TYPE_OPAQUE:
-		pre_init = std::string("make_intrusive<OpaqueType>(\"") +
-				t->AsOpaqueType()->Name() + "\")";
-		break;
-
-	case TYPE_RECORD:
-		{
-		std::string name;
-
-		if ( t->GetName() != "" )
-			name = std::string("\"") + t->GetName() +
-					std::string("\"");
-		else
-			name = "nullptr";
-
-		pre_init = std::string("get_record_type__CPP(") + name + ")";
-		}
-		break;
-
-	case TYPE_LIST:
-		pre_init = std::string("make_intrusive<TypeList>()");
-		break;
-
-	case TYPE_TYPE:
-	case TYPE_VECTOR:
-	case TYPE_TABLE:
-	case TYPE_FUNC:
-		// Nothing to do for these, pre-initialization-wise.
-		return;
-
-	default:
-		reporter->InternalError("bad type in CPPCompile::GenType");
-	}
-
-	pre_inits.emplace_back(GenTypeName(t) + " = " + pre_init + ";");
-	}
-
 void CPPCompile::ExpandTypeVar(const TypePtr& t)
 	{
 	auto tn = GenTypeName(t);
@@ -2620,7 +2554,7 @@ const char* CPPCompile::TypeType(const TypePtr& t)
 
 void CPPCompile::RegisterType(const TypePtr& t)
 	{
-	if ( types.HasKey(t) || processed_types.count(t.get()) > 0 )
+	if ( processed_types.count(t.get()) > 0 )
 		return;
 
 	// Add the type before going further, to avoid loops due to types
@@ -2683,13 +2617,13 @@ void CPPCompile::RegisterType(const TypePtr& t)
 		const auto& yield = tbl->Yield();
 
 		NoteNonRecordInitDependency(t, indices);
-		if ( yield )
-			NoteNonRecordInitDependency(t, yield);
-
 		RegisterType(indices);
 
-		if ( ! tbl->IsSet() )
+		if ( yield )
+			{
+			NoteNonRecordInitDependency(t, yield);
 			RegisterType(yield);
+			}
 		}
 		break;
 
@@ -2732,7 +2666,6 @@ void CPPCompile::RegisterType(const TypePtr& t)
 		reporter->InternalError("bad type in CPPCompile::RegisterType");
 	}
 
-	types.AddKey(t);
 	AddInit(t);
 
 	if ( ! types.IsInherited(t) )
@@ -2743,6 +2676,79 @@ void CPPCompile::RegisterType(const TypePtr& t)
 		else
 			NoteInitDependency(t.get(), t_rep);
 		}
+	}
+
+void CPPCompile::GenPreInit(const TypePtr& t)
+	{
+	std::string pre_init;
+
+	switch ( t->Tag() ) {
+	case TYPE_ADDR:
+	case TYPE_ANY:
+	case TYPE_BOOL:
+	case TYPE_COUNT:
+	case TYPE_DOUBLE:
+	case TYPE_ERROR:
+	case TYPE_INT:
+	case TYPE_INTERVAL:
+	case TYPE_PATTERN:
+	case TYPE_PORT:
+	case TYPE_STRING:
+	case TYPE_TIME:
+	case TYPE_TIMER:
+	case TYPE_VOID:
+		pre_init = std::string("base_type(") + TypeTagName(t->Tag()) + ")";
+		break;
+
+	case TYPE_ENUM:
+		pre_init = std::string("get_enum_type__CPP(\"") +
+				t->GetName() + "\")";
+		break;
+
+	case TYPE_SUBNET:
+		pre_init = std::string("make_intrusive<SubNetType>()");
+		break;
+
+	case TYPE_FILE:
+		pre_init = std::string("make_intrusive<FileType>(") +
+				GenTypeName(t->AsFileType()->Yield()) + ")";
+		break;
+
+	case TYPE_OPAQUE:
+		pre_init = std::string("make_intrusive<OpaqueType>(\"") +
+				t->AsOpaqueType()->Name() + "\")";
+		break;
+
+	case TYPE_RECORD:
+		{
+		std::string name;
+
+		if ( t->GetName() != "" )
+			name = std::string("\"") + t->GetName() +
+					std::string("\"");
+		else
+			name = "nullptr";
+
+		pre_init = std::string("get_record_type__CPP(") + name + ")";
+		}
+		break;
+
+	case TYPE_LIST:
+		pre_init = std::string("make_intrusive<TypeList>()");
+		break;
+
+	case TYPE_TYPE:
+	case TYPE_VECTOR:
+	case TYPE_TABLE:
+	case TYPE_FUNC:
+		// Nothing to do for these, pre-initialization-wise.
+		return;
+
+	default:
+		reporter->InternalError("bad type in CPPCompile::GenType");
+	}
+
+	pre_inits.emplace_back(GenTypeName(t) + " = " + pre_init + ";");
 	}
 
 void CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
