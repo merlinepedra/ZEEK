@@ -287,7 +287,7 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
 		func_profs[f.Func()] = f.Profile();
 		}
 
-	ComputeTypeHashes(types);
+	ComputeTypeHashes(main_types);
 	DrainPendingExprs();
 	ComputeBodyHashes(funcs);
 	}
@@ -297,7 +297,7 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 	all_globals.insert(pf->AllGlobals().begin(), pf->AllGlobals().end());
 	globals.insert(pf->Globals().begin(), pf->Globals().end());
 	constants.insert(pf->Constants().begin(), pf->Constants().end());
-	types.insert(pf->Types().begin(), pf->Types().end());
+	main_types.insert(pf->Types().begin(), pf->Types().end());
 	script_calls.insert(pf->ScriptCalls().begin(), pf->ScriptCalls().end());
 	BiF_globals.insert(pf->BiFGlobals().begin(), pf->BiFGlobals().end());
 	events.insert(pf->Events().begin(), pf->Events().end());
@@ -381,8 +381,12 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	auto& tn = t->GetName();
 	if ( tn.size() > 0 && seen_type_names.count(tn) > 0 )
 		{
-		auto h = seen_type_names[tn];
+		auto seen_t = seen_type_names[tn];
+		auto h = type_hashes[seen_t];
+
 		type_hashes[t] = h;
+		type_to_rep[t] = type_to_rep[seen_t];
+
 		return h;
 		}
 
@@ -487,8 +491,17 @@ hash_type ProfileFuncs::HashType(const Type* t)
 
 	type_hashes[t] = h;
 
+	if ( type_hash_reps.count(h) == 0 )
+		{
+		type_hash_reps[h] = t;
+		type_to_rep[t] = t;
+		rep_types.push_back(t);
+		}
+	else
+		type_to_rep[t] = type_hash_reps[h];
+
 	if ( tn.size() > 0 )
-		seen_type_names[tn] = h;
+		seen_type_names[tn] = t;
 
 	return h;
 	}

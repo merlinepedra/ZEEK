@@ -64,6 +64,8 @@ void CPPTracker<T1, T2>::AddKey(T2 key, hash_type h)
 		reps[h] = key.get();
 		}
 
+	ASSERT(h != 0);
+
 	map[key.get()] = h;
 	keys.push_back(key);
 	}
@@ -74,6 +76,8 @@ std::string CPPTracker<T1, T2>::KeyName(T1 key)
 	ASSERT(HasKey(key));
 
 	auto hash = map[key];
+	ASSERT(hash != 0);
+
 	auto index = map2[hash];
 
 	std::string scope;
@@ -200,10 +204,11 @@ void CPPCompile::Compile()
 		     func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION )
 			compilable_funcs.insert(BodyName(func));
 
-	for ( const auto& t : pfs.Types() )
+	for ( const auto& t : pfs.RepTypes() )
 		{
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		types.AddKey(tp, pfs.HashType(t));
+		ASSERT(pfs.HashType(t) != 0);
 		}
 
 	for ( const auto& t : types.DistinctKeys() )
@@ -255,8 +260,9 @@ void CPPCompile::Compile()
 	for ( const auto& c : pfs.Constants() )
 		AddConstant(c);
 
-	for ( const auto& t : pfs.Types() )
+	for ( const auto& t : pfs.RepTypes() )
 		{
+		ASSERT(types.HasKey(t));
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		RegisterType(tp);
 		}
@@ -2311,9 +2317,9 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 	AddInit(t);
 	}
 
-std::string CPPCompile::GenTypeName(const TypePtr& t)
+std::string CPPCompile::GenTypeName(const Type* t)
 	{
-	return types.KeyName(t);
+	return types.KeyName(TypeRep(t));
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag) const
@@ -2528,14 +2534,16 @@ const char* CPPCompile::TypeType(const TypePtr& t)
 	}
 	}
 
-void CPPCompile::RegisterType(const TypePtr& t)
+void CPPCompile::RegisterType(const TypePtr& tp)
 	{
-	if ( processed_types.count(t.get()) > 0 )
+	auto t = TypeRep(tp);
+
+	if ( processed_types.count(t) > 0 )
 		return;
 
 	// Add the type before going further, to avoid loops due to types
 	// that reference each other.
-	processed_types.insert(t.get());
+	processed_types.insert(t);
 
 	switch ( t->Tag() ) {
 	case TYPE_ADDR:
@@ -2627,7 +2635,7 @@ void CPPCompile::RegisterType(const TypePtr& t)
 		{
 		auto f = t->AsFuncType();
 
-		NoteInitDependency(t, f->Params());
+		NoteInitDependency(t, TypeRep(f->Params()));
 		RegisterType(f->Params());
 
 		if ( f->Yield() )
@@ -2650,11 +2658,11 @@ void CPPCompile::RegisterType(const TypePtr& t)
 		if ( t_rep == t )
 			GenPreInit(t);
 		else
-			NoteInitDependency(t.get(), t_rep);
+			NoteInitDependency(t, t_rep);
 		}
 	}
 
-void CPPCompile::GenPreInit(const TypePtr& t)
+void CPPCompile::GenPreInit(const Type* t)
 	{
 	std::string pre_init;
 

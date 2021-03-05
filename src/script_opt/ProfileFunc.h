@@ -175,8 +175,10 @@ public:
 		{ return all_globals; }
 	const std::unordered_set<const ConstExpr*>& Constants() const
 		{ return constants; }
-	const std::unordered_set<const Type*>& Types() const
-		{ return types; }
+	const std::unordered_set<const Type*>& MainTypes() const
+		{ return main_types; }
+	const std::vector<const Type*>& RepTypes() const
+		{ return rep_types; }
 	const std::unordered_set<ScriptFunc*>& ScriptCalls() const
 		{ return script_calls; }
 	const std::unordered_set<const ID*>& BiFGlobals() const
@@ -192,6 +194,8 @@ public:
 	// This is only externally germane for LambdaExpr's.
 	ProfileFunc* ExprProf(const Expr* e)
 		{ return expr_profs[e].get(); }
+
+	const Type* TypeRep(const Type* orig)	{ ASSERT(type_to_rep.count(orig) > 0); return type_to_rep[orig]; }
 
 	hash_type HashType(const TypePtr& t)	{ return HashType(t.get()); }
 	hash_type HashType(const Type* t);
@@ -229,8 +233,16 @@ protected:
 	// Constants seen across the functions.
 	std::unordered_set<const ConstExpr*> constants;
 
-	// Types seen across the functions.
-	std::unordered_set<const Type*> types;
+	// Types seen across the functions.  Does not include subtypes.
+	std::unordered_set<const Type*> main_types;
+
+	// "Representative" types seen across the functions.  Includes
+	// subtypes.  These all have unique hashes, and are returned by
+	// calls to TypeRep().
+	std::vector<const Type*> rep_types;
+
+	// Maps a type to its representative (which might be itself).
+	std::unordered_map<const Type*, const Type*> type_to_rep;
 
 	// Script functions that get called.
 	std::unordered_set<ScriptFunc*> script_calls;
@@ -259,10 +271,13 @@ protected:
 	// Maps types to their hashes.
 	std::unordered_map<const Type*, hash_type> type_hashes;
 
+	// An inverse mapping, to a representative for each distinct hash.
+	std::unordered_map<hash_type, const Type*> type_hash_reps;
+
 	// For types with names, tracks the ones we've already hashed,
 	// so we can avoid work for distinct pointers that refer to the
 	// same underlying type.
-	std::unordered_map<std::string, hash_type> seen_type_names;
+	std::unordered_map<std::string, const Type*> seen_type_names;
 
 	// Expressions that we've discovered that we need to further
 	// profile.  These can arise for example due to lambdas or

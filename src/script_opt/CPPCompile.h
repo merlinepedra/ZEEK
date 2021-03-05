@@ -28,8 +28,8 @@ public:
 	std::string KeyName(T1 key);
 	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
 
-	int KeyIndex(T1 key)	{ return map2[map[key]]; }
-	int KeyIndex(T2 key)	{ return map2[map[key.get()]]; }
+	int KeyIndex(T1 key)	{ ASSERT(HasKey(key)); return map2[map[key]]; }
+	int KeyIndex(T2 key)	{ ASSERT(HasKey(key)); return map2[map[key.get()]]; }
 
 	const std::vector<T2>& Keys() const		{ return keys; }
 
@@ -40,10 +40,11 @@ public:
 	int Size() const		{ return keys.size(); }
 	int DistinctSize() const	{ return num_non_inherited; }
 
-	const T1& GetRep(T2 key) 	{ return reps[map[key.get()]]; }
+	const T1& GetRep(T1 key) 	{ ASSERT(HasKey(key)); return reps[map[key]]; }
+	const T1& GetRep(T2 key) 	{ return GetRep(key.get()); }
 
-	bool IsInherited(T1 key)	{ return IsInherited(map[key]); }
-	bool IsInherited(const T2& key)	{ return IsInherited(map[key.get()]); }
+	bool IsInherited(T1 key)	{ ASSERT(HasKey(key)); return IsInherited(map[key]); }
+	bool IsInherited(const T2& key)	{ ASSERT(HasKey(key)); return IsInherited(map[key.get()]); }
 	bool IsInherited(hash_type h)	{ return inherited.count(h) > 0; }
 
 	void LogIfNew(T2 key, int scope, FILE* log_file);
@@ -161,7 +162,12 @@ private:
 
 	void ExpandTypeVar(const TypePtr& t);
 
-	std::string GenTypeName(const TypePtr& t);
+	std::string GenTypeName(const Type* t);
+	std::string GenTypeName(const TypePtr& t)
+		{ return GenTypeName(t.get()); }
+
+	const Type* TypeRep(const Type* t)	{ return pfs.TypeRep(t); }
+	const Type* TypeRep(const TypePtr& t)	{ return TypeRep(t.get()); }
 
 	const char* TypeTagName(TypeTag tag) const;
 
@@ -179,7 +185,7 @@ private:
 	const char* TypeType(const TypePtr& t);
 
 	void RegisterType(const TypePtr& t);
-	void GenPreInit(const TypePtr& t);
+	void GenPreInit(const Type* t);
 
 	void RegisterAttributes(const AttributesPtr& attrs);
 
@@ -208,11 +214,10 @@ private:
 	void NoteInitDependency(const Obj* o1, const IntrusivePtr<Obj>& o2)
 		{ NoteInitDependency(o1, o2.get()); }
 	void NoteInitDependency(const Obj* o1, const Obj* o2);
-	void NoteNonRecordInitDependency(const IntrusivePtr<Obj>& o,
-						const TypePtr& t)
+	void NoteNonRecordInitDependency(const Obj* o, const TypePtr& t)
 		{
 		if ( t && t->Tag() != TYPE_RECORD )
-			NoteInitDependency(o, t);
+			NoteInitDependency(o, TypeRep(t));
 		}
 
 	void StartBlock();
