@@ -48,8 +48,6 @@ public:
 		{ return script_calls; }
 	const std::unordered_set<const ID*>& BiFGlobals() const
 		{ return BiF_globals; }
-	const std::unordered_set<Func*>& BiFCalls() const
-		{ return BiF_calls; }
 	const std::unordered_set<ScriptFunc*>& WhenCalls() const
 		{ return when_calls; }
 	const std::unordered_set<const char*>& Events() const
@@ -132,9 +130,7 @@ protected:
 	// Script functions that this script calls.
 	std::unordered_set<ScriptFunc*> script_calls;
 
-	// Same for BiF's, though for them we record both the Func object
-	// and the corresponding global.
-	std::unordered_set<Func*> BiF_calls;
+	// Same for BiF's, though for them we record the corresponding global.
 	std::unordered_set<const ID*> BiF_globals;
 
 	// Script functions appearing in "when" clauses.
@@ -185,8 +181,6 @@ public:
 		{ return script_calls; }
 	const std::unordered_set<const ID*>& BiFGlobals() const
 		{ return BiF_globals; }
-	const std::unordered_set<Func*>& BiFCalls() const
-		{ return BiF_calls; }
 	const std::unordered_set<const LambdaExpr*>& Lambdas() const
 		{ return lambdas; }
 
@@ -240,7 +234,6 @@ protected:
 	std::unordered_set<ScriptFunc*> script_calls;
 
 	// Same for BiF's.
-	std::unordered_set<Func*> BiF_calls;
 	std::unordered_set<const ID*> BiF_globals;
 
 	// And for lambda's.

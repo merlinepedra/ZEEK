@@ -200,7 +200,7 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 					when_calls.insert(bf);
 				}
 			else
-				BiF_calls.insert(func_vf);
+				BiF_globals.insert(func);
 			}
 		else
 			{
@@ -306,9 +306,6 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 
 	for ( auto& i : pf->BiFGlobals() )
 		BiF_globals.insert(i);
-
-	for ( auto& i : pf->BiFCalls() )
-		BiF_calls.insert(i);
 
 	for ( auto& i : pf->Lambdas() )
 		{
