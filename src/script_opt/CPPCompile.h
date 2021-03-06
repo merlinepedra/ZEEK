@@ -87,6 +87,9 @@ public:
 
 	bool Append() const		{ return append; }
 
+	bool HaveHash(hash_type h) const
+		{ return previously_compiled.count(h) > 0; }
+
 	FILE* FuncWriteFile() const	{ return f_hf_w; }
 	FILE* ObjWriteFile() const	{ return o_hf_w; }
 

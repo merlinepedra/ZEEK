@@ -181,12 +181,6 @@ void analyze_scripts()
 	// const auto gen_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-gen-addl.h";
 	// const auto hash_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-hashes";
 
-	std::unique_ptr<CPPHashManager> hm;
-
-	if ( analysis_options.gen_CPP || analysis_options.add_CPP )
-		hm = std::make_unique<CPPHashManager>(hash_name,
-						analysis_options.add_CPP);
-
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
 	auto pfs = std::make_unique<ProfileFuncs>(funcs);
@@ -251,12 +245,16 @@ void analyze_scripts()
 
 	if ( analysis_options.gen_CPP || analysis_options.add_CPP )
 		{
+		auto hm = std::make_unique<CPPHashManager>(hash_name,
+						analysis_options.add_CPP);
+
 		if ( analysis_options.add_CPP )
 			{
 			for ( auto& func : funcs )
 				{
 				auto hash = func.Profile()->HashVal();
-				if ( compiled_bodies.count(hash) > 0 )
+				if ( compiled_bodies.count(hash) > 0 ||
+				     hm->HaveHash(hash) )
 					func.SetSkip();
 				}
 
