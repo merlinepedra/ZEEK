@@ -1303,6 +1303,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		if ( f->Tag() == EXPR_NAME )
 			{
 			auto f_id = f->AsNameExpr()->Id();
+			const auto& params =
+				f_id->GetType()->AsFuncType()->Params();
 			auto id_name = f_id->Name();
 			auto fname = Canonicalize(id_name) + "_zf";
 
@@ -1316,7 +1318,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 
 				if ( args_l->Exprs().length() > 0 )
 					gen = fname + "(" +
-						GenArgs(args_l) + ", f__CPP)";
+						GenArgs(params, args_l) +
+						", f__CPP)";
 				else
 					gen = fname + "(f__CPP)";
 
@@ -1740,26 +1743,30 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	}
 	}
 
-std::string CPPCompile::GenArgs(const Expr* e)
+std::string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)
 	{
-	if ( e->Tag() == EXPR_LIST )
+	ASSERT(e->Tag() == EXPR_LIST);
+
+	const auto& exprs = e->AsListExpr()->Exprs();
+	std::string gen;
+
+	int n = exprs.size();
+
+	for ( auto i = 0; i < n; ++i )
 		{
-		const auto& exprs = e->AsListExpr()->Exprs();
-		std::string gen;
+		auto e_i = exprs[i];
+		auto gt = GEN_NATIVE;
 
-		int n = exprs.size();
+		if ( params->GetFieldType(i)->Tag() == TYPE_ANY &&
+		     e_i->GetType()->Tag() != TYPE_ANY )
+			gt = GEN_VAL_PTR;
 
-		for ( auto i = 0; i < n; ++i )
-			{
-			gen = gen + GenArgs(exprs[i]);
-			if ( i < n - 1 )
-				gen += ", ";
-			}
-
-		return gen;
+		gen = gen + GenExpr(e_i, gt);
+		if ( i < n - 1 )
+			gen += ", ";
 		}
 
-	return GenExpr(e, GEN_NATIVE);
+	return gen;
 	}
 
 std::string CPPCompile::GenUnary(const Expr* e, GenType gt, const char* op)

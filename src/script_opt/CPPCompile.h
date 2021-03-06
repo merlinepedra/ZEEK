@@ -163,7 +163,7 @@ private:
 		{ return GenExpr(e.get(), gt, top_level); }
 	std::string GenExpr(const Expr* e, GenType gt, bool top_level = false);
 
-	std::string GenArgs(const Expr* e);
+	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
 	std::string GenUnary(const Expr* e, GenType gt, const char* op);
 	std::string GenBinary(const Expr* e, GenType gt, const char* op);
