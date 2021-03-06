@@ -1757,11 +1757,20 @@ std::string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)
 		auto e_i = exprs[i];
 		auto gt = GEN_NATIVE;
 
-		if ( params->GetFieldType(i)->Tag() == TYPE_ANY &&
-		     e_i->GetType()->Tag() != TYPE_ANY )
+		const auto& param_t = params->GetFieldType(i);
+		bool param_any = param_t->Tag() == TYPE_ANY;
+		bool arg_any = e_i->GetType()->Tag() == TYPE_ANY;
+
+		if ( param_any && ! arg_any )
 			gt = GEN_VAL_PTR;
 
-		gen = gen + GenExpr(e_i, gt);
+		auto expr_gen = GenExpr(e_i, gt);
+
+		if ( ! param_any && arg_any )
+			expr_gen = GenericValPtrToGT(expr_gen, param_t,
+							GEN_NATIVE);
+
+		gen = gen + expr_gen;
 		if ( i < n - 1 )
 			gen += ", ";
 		}
