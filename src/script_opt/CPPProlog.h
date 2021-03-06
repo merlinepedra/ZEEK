@@ -289,3 +289,18 @@ EnumValPtr make_enum__CPP(TypePtr t, int i)
 	auto et = cast_intrusive<EnumType>(t);
 	return make_intrusive<EnumVal>(et, i);
 	}
+
+bro_uint_t abs__CPP(bro_int_t v)
+	{
+	return v < 0 ? -v : v;
+	}
+
+bro_uint_t abs__CPP(bro_uint_t v)
+	{
+	return v;
+	}
+
+bro_uint_t abs__CPP(double v)
+	{
+	return v < 0.0 ? -v : v;
+	}

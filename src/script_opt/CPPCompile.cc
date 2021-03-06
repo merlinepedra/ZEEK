@@ -1510,8 +1510,18 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		return GenExpr(e->GetOp1(), gt);
 
 	case EXPR_SIZE:
-		return GenericValPtrToGT(GenExpr(e->GetOp1(), GEN_DONT_CARE) +
-						"->SizeVal()", t, gt);
+		switch ( e->GetOp1()->GetType()->InternalType() ) {
+		case TYPE_INTERNAL_INT:
+		case TYPE_INTERNAL_UNSIGNED:
+		case TYPE_INTERNAL_DOUBLE:
+			return std::string("abs__CPP(") +
+				GenExpr(e->GetOp1(), GEN_NATIVE) + ")";
+
+		default:
+			return GenericValPtrToGT(GenExpr(e->GetOp1(),
+								GEN_DONT_CARE) +
+							"->SizeVal()", t, gt);
+		}
 
 	case EXPR_ARITH_COERCE:
 		{
