@@ -1502,8 +1502,11 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			return GenAssign(lhs, nullptr, rhs_native, rhs_val_ptr);
 			}
 
-		if ( lhs->Tag() != EXPR_NAME )
-			{ // LHS is a compound, expand x += y to x = x + y
+		if ( lhs->Tag() != EXPR_NAME ||
+		     lhs->AsNameExpr()->Id()->IsGlobal() )
+			{
+			// LHS is a compound, or a global (and thus doesn't
+			// equate to a C++ variable); expand x += y to x = x + y
 			auto rhs = make_intrusive<AddExpr>(lhs, e->GetOp2());
 			auto assign = make_intrusive<AssignExpr>(lhs, rhs, false, nullptr, nullptr, false);
 			return GenExpr(assign, gt);
