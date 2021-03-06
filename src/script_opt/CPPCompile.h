@@ -165,18 +165,25 @@ private:
 
 	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
-	std::string GenUnary(const Expr* e, GenType gt, const char* op);
-	std::string GenBinary(const Expr* e, GenType gt, const char* op);
+	std::string GenUnary(const Expr* e, GenType gt,
+				const char* op, const char* vec_op = nullptr);
+	std::string GenBinary(const Expr* e, GenType gt,
+				const char* op, const char* vec_op = nullptr);
 	std::string GenBinarySet(const Expr* e, GenType gt, const char* op);
 	std::string GenBinaryString(const Expr* e, GenType gt, const char* op);
 	std::string GenBinaryPattern(const Expr* e, GenType gt, const char* op);
 	std::string GenBinaryAddr(const Expr* e, GenType gt, const char* op);
 	std::string GenBinarySubNet(const Expr* e, GenType gt, const char* op);
-	std::string GenEQ(const Expr* e, GenType gt, const char* op);
+	std::string GenEQ(const Expr* e, GenType gt,
+				const char* op, const char* vec_op);
 
 	std::string GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 				const std::string& rhs_native,
 				const std::string& rhs_val_ptr);
+
+	std::string GenVectorOp(std::string op, const char* vec_op);
+	std::string GenVectorOp(std::string op1, std::string op2,
+					const char* vec_op);
 
 	std::string GenIntVector(const std::vector<int>& vec);
 

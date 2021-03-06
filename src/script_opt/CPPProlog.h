@@ -299,3 +299,151 @@ bro_uint_t abs__CPP(double v)
 	{
 	return v < 0.0 ? -v : v;
 	}
+
+bool check_vec_sizes(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	if ( v1->Size() == v2->Size() )
+		return true;
+
+	reporter->RuntimeError(&no_location, "vector operands are of different sizes");
+	return false;
+	}
+
+#define VEC_OP1_KERNEL(accessor, type, op) \
+	for ( unsigned int i = 0; i < v->Size(); ++i ) \
+		{ \
+		auto v_i = v->At(i)->accessor(); \
+		v_result->Assign(i, make_intrusive<type>(op v_i)); \
+		}
+
+#define VEC_OP1(name, op, double_kernel) \
+VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v) \
+	{ \
+	auto vt = v->GetType<VectorType>(); \
+	auto v_result = make_intrusive<VectorVal>(vt); \
+ \
+	switch ( vt->InternalType() ) { \
+	case TYPE_INTERNAL_INT: \
+		{ \
+		VEC_OP1_KERNEL(AsInt, IntVal, op) \
+		break; \
+		} \
+ \
+	case TYPE_INTERNAL_UNSIGNED: \
+		{ \
+		VEC_OP1_KERNEL(AsCount, CountVal, op) \
+		break; \
+		} \
+ \
+	double_kernel \
+ \
+	default: \
+		break; \
+	} \
+ \
+	return v_result; \
+	}
+
+#define VEC_OP1_WITH_DOUBLE(name, op) \
+	VEC_OP1(name, op, case TYPE_INTERNAL_DOUBLE: { VEC_OP1_KERNEL(AsDouble, DoubleVal, op) break; })
+
+VEC_OP1_WITH_DOUBLE(pos, +)
+VEC_OP1_WITH_DOUBLE(neg, -)
+VEC_OP1(not, !,)
+VEC_OP1(comp, ~,)
+
+#define VEC_OP2_KERNEL(accessor, type, op) \
+	for ( unsigned int i = 0; i < v1->Size(); ++i ) \
+		{ \
+		auto v1_i = v1->At(i)->accessor(); \
+		auto v2_i = v2->At(i)->accessor(); \
+		v_result->Assign(i, make_intrusive<type>(v1_i op v2_i)); \
+		}
+
+#define VEC_OP2(name, op, double_kernel) \
+VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v1, const VectorValPtr& v2) \
+	{ \
+	if ( ! check_vec_sizes(v1, v2) ) \
+		return nullptr; \
+ \
+	auto vt = v1->GetType<VectorType>(); \
+	auto v_result = make_intrusive<VectorVal>(vt); \
+ \
+	switch ( vt->InternalType() ) { \
+	case TYPE_INTERNAL_INT: \
+		{ \
+		VEC_OP2_KERNEL(AsInt, IntVal, op) \
+		break; \
+		} \
+ \
+	case TYPE_INTERNAL_UNSIGNED: \
+		{ \
+		VEC_OP2_KERNEL(AsCount, CountVal, op) \
+		break; \
+		} \
+ \
+	double_kernel \
+ \
+	default: \
+		break; \
+	} \
+ \
+	return v_result; \
+	}
+
+#define VEC_OP2_WITH_DOUBLE(name, op) \
+	VEC_OP2(name, op, case TYPE_INTERNAL_DOUBLE: { VEC_OP2_KERNEL(AsDouble, DoubleVal, op) break; })
+
+VEC_OP2_WITH_DOUBLE(add, +)
+VEC_OP2_WITH_DOUBLE(sub, -)
+VEC_OP2_WITH_DOUBLE(mul, *)
+VEC_OP2_WITH_DOUBLE(div, /)
+VEC_OP2(mod, %,)
+VEC_OP2(and, &,)
+VEC_OP2(or, |,)
+VEC_OP2(xor, ^,)
+VEC_OP2(andand, &&,)
+VEC_OP2(oror, ||,)
+
+#define VEC_REL_OP(name, op) \
+VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v1, const VectorValPtr& v2) \
+	{ \
+	if ( ! check_vec_sizes(v1, v2) ) \
+		return nullptr; \
+ \
+	auto vt = v1->GetType<VectorType>(); \
+	auto res_type = make_intrusive<VectorType>(base_type(TYPE_BOOL)); \
+	auto v_result = make_intrusive<VectorVal>(res_type); \
+ \
+	switch ( vt->InternalType() ) { \
+	case TYPE_INTERNAL_INT: \
+		{ \
+		VEC_OP2_KERNEL(AsInt, BoolVal, op) \
+		break; \
+		} \
+ \
+	case TYPE_INTERNAL_UNSIGNED: \
+		{ \
+		VEC_OP2_KERNEL(AsCount, BoolVal, op) \
+		break; \
+		} \
+ \
+	case TYPE_INTERNAL_DOUBLE: \
+		{ \
+		VEC_OP2_KERNEL(AsDouble, BoolVal, op) \
+		break; \
+		} \
+ \
+	default: \
+		break; \
+	} \
+ \
+	return v_result; \
+	}
+
+VEC_REL_OP(lt, <)
+VEC_REL_OP(gt, >)
+VEC_REL_OP(eq, ==)
+VEC_REL_OP(ne, !=)
+VEC_REL_OP(le, <=)
+VEC_REL_OP(ge, >=)

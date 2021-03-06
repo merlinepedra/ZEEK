@@ -1254,29 +1254,29 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		return gen;
 		}
 
-	case EXPR_NOT:		return GenUnary(e, gt, "!");
-	case EXPR_COMPLEMENT:	return GenUnary(e, gt, "~");
-	case EXPR_POSITIVE:	return GenUnary(e, gt, "+");
-	case EXPR_NEGATE:	return GenUnary(e, gt, "-");
+	case EXPR_NOT:		return GenUnary(e, gt, "!", "not");
+	case EXPR_COMPLEMENT:	return GenUnary(e, gt, "~", "comp");
+	case EXPR_POSITIVE:	return GenUnary(e, gt, "+", "pos");
+	case EXPR_NEGATE:	return GenUnary(e, gt, "-", "neg");
 
-	case EXPR_ADD:		return GenBinary(e, gt, "+");
-	case EXPR_SUB:		return GenBinary(e, gt, "-");
+	case EXPR_ADD:		return GenBinary(e, gt, "+", "add");
+	case EXPR_SUB:		return GenBinary(e, gt, "-", "sub");
 	case EXPR_REMOVE_FROM:	return GenBinary(e, gt, "-=");
-	case EXPR_TIMES:	return GenBinary(e, gt, "*");
-	case EXPR_DIVIDE:	return GenBinary(e, gt, "/");
-	case EXPR_MOD:		return GenBinary(e, gt, "%");
-	case EXPR_AND:		return GenBinary(e, gt, "&");
-	case EXPR_OR:		return GenBinary(e, gt, "|");
-	case EXPR_XOR:		return GenBinary(e, gt, "^");
-	case EXPR_AND_AND:	return GenBinary(e, gt, "&&");
-	case EXPR_OR_OR:	return GenBinary(e, gt, "||");
-	case EXPR_LT:		return GenBinary(e, gt, "<");
-	case EXPR_LE:		return GenBinary(e, gt, "<=");
-	case EXPR_GE:		return GenBinary(e, gt, ">=");
-	case EXPR_GT:		return GenBinary(e, gt, ">");
+	case EXPR_TIMES:	return GenBinary(e, gt, "*", "mul");
+	case EXPR_DIVIDE:	return GenBinary(e, gt, "/", "div");
+	case EXPR_MOD:		return GenBinary(e, gt, "%", "mod");
+	case EXPR_AND:		return GenBinary(e, gt, "&", "and");
+	case EXPR_OR:		return GenBinary(e, gt, "|", "or");
+	case EXPR_XOR:		return GenBinary(e, gt, "^", "xor");
+	case EXPR_AND_AND:	return GenBinary(e, gt, "&&", "andand");
+	case EXPR_OR_OR:	return GenBinary(e, gt, "||", "oror");
+	case EXPR_LT:		return GenBinary(e, gt, "<", "lt");
+	case EXPR_LE:		return GenBinary(e, gt, "<=", "le");
+	case EXPR_GE:		return GenBinary(e, gt, ">=","ge");
+	case EXPR_GT:		return GenBinary(e, gt, ">", "gt");
 
-	case EXPR_EQ:		return GenEQ(e, gt, "==");
-	case EXPR_NE:		return GenEQ(e, gt, "!=");
+	case EXPR_EQ:		return GenEQ(e, gt, "==", "eq");
+	case EXPR_NE:		return GenEQ(e, gt, "!=", "ne");
 
 	case EXPR_COND:
 		{
@@ -1790,17 +1790,29 @@ std::string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)
 	return gen;
 	}
 
-std::string CPPCompile::GenUnary(const Expr* e, GenType gt, const char* op)
+std::string CPPCompile::GenUnary(const Expr* e, GenType gt,
+					const char* op, const char* vec_op)
 	{
+	if ( e->GetType()->Tag() == TYPE_VECTOR )
+		return GenVectorOp(GenExpr(e->GetOp1(), GEN_NATIVE), vec_op);
+
 	return NativeToGT(std::string(op) + "(" +
 				GenExpr(e->GetOp1(), GEN_NATIVE) + ")",
 				e->GetType(), gt);
 	}
 
-std::string CPPCompile::GenBinary(const Expr* e, GenType gt, const char* op)
+std::string CPPCompile::GenBinary(const Expr* e, GenType gt,
+					const char* op, const char* vec_op)
 	{
 	const auto& op1 = e->GetOp1();
 	const auto& op2 = e->GetOp2();
+
+	if ( e->GetType()->Tag() == TYPE_VECTOR )
+		{
+		auto gen1 = GenExpr(op1, GEN_NATIVE);
+		auto gen2 = GenExpr(op2, GEN_NATIVE);
+		return GenVectorOp(gen1, gen2, vec_op);
+		}
 
 	auto t = op1->GetType();
 
@@ -1925,10 +1937,19 @@ std::string CPPCompile::GenBinarySubNet(const Expr* e, GenType gt,
 	return NativeToGT(v1 + op + v2, e->GetType(), gt);
 	}
 
-std::string CPPCompile::GenEQ(const Expr* e, GenType gt, const char* op)
+std::string CPPCompile::GenEQ(const Expr* e, GenType gt,
+					const char* op, const char* vec_op)
 	{
 	auto op1 = e->GetOp1();
 	auto op2 = e->GetOp2();
+
+	if ( e->GetType()->Tag() == TYPE_VECTOR )
+		{
+		auto gen1 = GenExpr(op1, GEN_NATIVE);
+		auto gen2 = GenExpr(op2, GEN_NATIVE);
+		return GenVectorOp(gen1, gen2, vec_op);
+		}
+
 	auto tag = op1->GetType()->Tag();
 	std::string negated(e->Tag() == EXPR_EQ ? "" : "! ");
 
@@ -1966,7 +1987,7 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt, const char* op)
 		return NativeToGT(negated + gen, e->GetType(), gt);
 		}
 
-	return GenBinary(e, gt, op);
+	return GenBinary(e, gt, op, vec_op);
 	}
 
 std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
@@ -2042,6 +2063,18 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 	}
 
 	return gen;
+	}
+
+std::string CPPCompile::GenVectorOp(std::string op, const char* vec_op)
+	{
+	return std::string("vec_op_") + vec_op + "__CPP(" + op + ")";
+	}
+
+std::string CPPCompile::GenVectorOp(std::string op1, std::string op2,
+					const char* vec_op)
+	{
+	return std::string("vec_op_") + vec_op + "__CPP(" + op1 +
+		", " + op2 + ")";
 	}
 
 std::string CPPCompile::GenIntVector(const std::vector<int>& vec)
