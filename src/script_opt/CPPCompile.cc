@@ -1944,7 +1944,10 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt, const char* op)
 				op2->AsNameExpr()->Id()->Name() : nullptr;
 
 		if ( f1 && f2 )
-			return util::streq(f1, f2) ? "true" : "false";
+			{
+			auto gen = util::streq(f1, f2) ? "true" : "false";
+			return NativeToGT(negated + gen, e->GetType(), gt);
+			}
 
 		auto gen_f1 = GenExpr(op1, GEN_DONT_CARE);
 		auto gen_f2 = GenExpr(op2, GEN_DONT_CARE);
