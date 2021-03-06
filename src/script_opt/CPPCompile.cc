@@ -1516,17 +1516,26 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		return GenExpr(e->GetOp1(), gt);
 
 	case EXPR_SIZE:
-		switch ( e->GetOp1()->GetType()->InternalType() ) {
-		case TYPE_INTERNAL_INT:
-		case TYPE_INTERNAL_UNSIGNED:
-		case TYPE_INTERNAL_DOUBLE:
-			return std::string("abs__CPP(") +
-				GenExpr(e->GetOp1(), GEN_NATIVE) + ")";
+		{
+		const auto& t1 = e->GetOp1()->GetType();
+		auto it = t1->InternalType();
 
-		default:
-			return GenericValPtrToGT(GenExpr(e->GetOp1(),
-								GEN_DONT_CARE) +
-							"->SizeVal()", t, gt);
+		gen = GenExpr(e->GetOp1(), GEN_NATIVE);
+
+		if ( t1->Tag() == TYPE_BOOL )
+			gen = std::string("((") + gen + ") ? 1 : 0)";
+
+		else if ( it == TYPE_INTERNAL_UNSIGNED )
+			// no-op
+			;
+
+		else if ( it == TYPE_INTERNAL_INT || it == TYPE_INTERNAL_DOUBLE )
+			gen = std::string("abs__CPP(") + gen + ")";
+
+		else
+			return GenericValPtrToGT(gen + "->SizeVal()", t, gt);
+
+		return NativeToGT(gen, t, gt);
 		}
 
 	case EXPR_ARITH_COERCE:

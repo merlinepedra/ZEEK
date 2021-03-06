@@ -295,11 +295,6 @@ bro_uint_t abs__CPP(bro_int_t v)
 	return v < 0 ? -v : v;
 	}
 
-bro_uint_t abs__CPP(bro_uint_t v)
-	{
-	return v;
-	}
-
 bro_uint_t abs__CPP(double v)
 	{
 	return v < 0.0 ? -v : v;
