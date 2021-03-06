@@ -254,7 +254,7 @@ void analyze_scripts()
 				{
 				auto hash = func.Profile()->HashVal();
 				if ( compiled_bodies.count(hash) > 0 ||
-				     hm->HaveHash(hash) )
+				     hm->HasHash(hash) )
 					func.SetSkip();
 				}
 

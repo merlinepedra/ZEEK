@@ -246,9 +246,18 @@ void CPPCompile::Compile()
 	GenProlog();
 
 	for ( const auto& func : funcs )
-		if ( IsCompilable(func) &&
-		     func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION )
-			compilable_funcs.insert(BodyName(func));
+		{
+		if ( func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION )
+			{
+			if ( IsCompilable(func) )
+				compilable_funcs.insert(BodyName(func));
+
+			auto h = func.Profile()->HashVal();
+			if ( hm.HasHash(h) )
+				hashed_funcs[func.Func()->Name()] =
+					hm.FuncBodyName(h);
+			}
+		}
 
 	for ( const auto& t : pfs.RepTypes() )
 		{
@@ -447,8 +456,16 @@ void CPPCompile::GenEpilog()
 	// ... and then instantiate the bodies themselves.
 	NL();
 	for ( const auto& f : compiled_funcs )
+		{
+		auto h = body_hashes[f];
+
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
-			f, f, Fmt(body_hashes[f]));
+			f, f, Fmt(h));
+
+		fprintf(hm.FuncWriteFile(), "%llu\n", h);
+		fprintf(hm.FuncWriteFile(), "zeek::detail::CPP_%d::%s\n",
+			addl_tag, f.c_str());
+		}
 
 	EndBlock(true);
 
@@ -1283,8 +1300,14 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			auto id_name = f_id->Name();
 			auto fname = Canonicalize(id_name) + "_zf";
 
-			if ( compiled_funcs.count(fname) > 0 )
+			bool is_compiled = compiled_funcs.count(fname) > 0;
+			bool was_compiled = hashed_funcs.count(id_name) > 0;
+
+			if ( is_compiled || was_compiled )
 				{
+				if ( was_compiled )
+					fname = hashed_funcs[id_name];
+
 				if ( args_l->Exprs().length() > 0 )
 					gen = fname + "(" +
 						GenArgs(args_l) + ", f__CPP)";

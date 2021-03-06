@@ -87,8 +87,11 @@ public:
 
 	bool Append() const		{ return append; }
 
-	bool HaveHash(hash_type h) const
+	bool HasHash(hash_type h) const
 		{ return previously_compiled.count(h) > 0; }
+
+	const std::string& FuncBodyName(hash_type h)
+		{ return previously_compiled[h]; }
 
 	FILE* FuncWriteFile() const	{ return f_hf_w; }
 	FILE* ObjWriteFile() const	{ return o_hf_w; }
@@ -331,6 +334,9 @@ private:
 
 	// Globals that correspond to variables, not functions.
 	std::unordered_set<const ID*> global_vars;
+
+	// Maps functions (not hooks or events) to upstream compiled names.
+	std::unordered_map<std::string, std::string> hashed_funcs;
 
 	// Functions that we've declared/compiled.
 	std::unordered_set<std::string> compiled_funcs;
