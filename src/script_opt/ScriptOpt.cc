@@ -176,6 +176,17 @@ void analyze_scripts()
 		// Avoid profiling overhead.
 		return;
 
+	const auto hash_name = "CPP-hashes";
+	const auto gen_name = "CPP-gen-addl.h";
+	// const auto gen_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-gen-addl.h";
+	// const auto hash_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-hashes";
+
+	std::unique_ptr<CPPHashManager> hm;
+
+	if ( analysis_options.gen_CPP || analysis_options.add_CPP )
+		hm = std::make_unique<CPPHashManager>(hash_name,
+						analysis_options.add_CPP);
+
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
 	auto pfs = std::make_unique<ProfileFuncs>(funcs);
@@ -254,13 +265,7 @@ void analyze_scripts()
 			pfs = std::make_unique<ProfileFuncs>(funcs);
 			}
 
-		const auto gen_name = "CPP-gen-addl.h";
-		const auto hash_name = "CPP-hashes";
-		// const auto gen_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-gen-addl.h";
-		// const auto hash_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-hashes";
-
-		CPPCompile cpp(funcs, *pfs, gen_name, hash_name,
-				analysis_options.add_CPP);
+		CPPCompile cpp(funcs, *pfs, gen_name, *hm);
 
 		exit(0);
 		}

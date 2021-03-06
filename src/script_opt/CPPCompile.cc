@@ -109,10 +109,10 @@ hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 	}
 
 
-CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
-		const char* _gen_name, const char* hash_name_base, bool append)
-: funcs(_funcs), pfs(_pfs), gen_name(_gen_name)
+CPPHashManager::CPPHashManager(const char* hash_name_base, bool _append)
 	{
+	append = _append;
+
 	func_hash_name = std::string(hash_name_base) + ".func.dat";
 	obj_hash_name = std::string(hash_name_base) + ".obj.dat";
 
@@ -123,7 +123,7 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 		if ( ! f_hf_r || ! o_hf_r )
 			{
 			reporter->Error("can't open auxiliary C++ hash files %s/%s for reading",
-					func_hash_name.c_str(), obj_hash_name.c_str());
+				func_hash_name.c_str(), obj_hash_name.c_str());
 			exit(1);
 			}
 
@@ -142,49 +142,22 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 				func_hash_name.c_str(), obj_hash_name.c_str());
 		exit(1);
 		}
-
-	write_file = fopen(gen_name.c_str(), mode);
-	if ( ! write_file )
-		{
-		reporter->Error("can't open C++ target file %s", gen_name.c_str());
-		exit(1);
-		}
-
-	if ( append )
-		{
-		struct stat st;
-		if ( fstat(fileno(write_file), &st) != 0 )
-			{
-			char buf[256];
-			util::zeek_strerror_r(errno, buf, sizeof(buf));
-			reporter->Error("fstat failed on %s: %s", gen_name.c_str(), buf);
-			exit(1);
-			}
-
-		addl_tag = st.st_size + 1;
-		Compile();
-		}
-
-	else
-		Compile();
 	}
 
-CPPCompile::~CPPCompile()
+CPPHashManager::~CPPHashManager()
 	{
-	fclose(write_file);
-	fclose(f_hf_w);
 	fclose(o_hf_w);
+	fclose(f_hf_w);
 
 	if ( f_hf_r )
 		{
-		fflush(f_hf_r);
 		unlock_file(func_hash_name, f_hf_r);
 		fclose(f_hf_r);
 		fclose(o_hf_r);
 		}
 	}
 
-void CPPCompile::LoadFuncHashes(FILE* f)
+void CPPHashManager::LoadFuncHashes(FILE* f)
 	{
 	char buf[8192];
 	while ( fgets(buf, sizeof buf, f) )
@@ -212,7 +185,7 @@ void CPPCompile::LoadFuncHashes(FILE* f)
 		}
 	}
 
-void CPPCompile::LoadObjHashes(FILE* f)
+void CPPHashManager::LoadObjHashes(FILE* f)
 	{
 	char buf[8192];
 	while ( fgets(buf, sizeof buf, f) )
@@ -230,6 +203,42 @@ void CPPCompile::LoadObjHashes(FILE* f)
 
 		compiled_items[hash] = CompiledItemPair{index, scope};
 		}
+	}
+
+
+CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
+		const char* gen_name, CPPHashManager& _hm)
+: funcs(_funcs), pfs(_pfs), hm(_hm)
+	{
+	auto mode = hm.Append() ? "a" : "w";
+
+	write_file = fopen(gen_name, mode);
+	if ( ! write_file )
+		{
+		reporter->Error("can't open C++ target file %s", gen_name);
+		exit(1);
+		}
+
+	if ( hm.Append() )
+		{
+		struct stat st;
+		if ( fstat(fileno(write_file), &st) != 0 )
+			{
+			char buf[256];
+			util::zeek_strerror_r(errno, buf, sizeof(buf));
+			reporter->Error("fstat failed on %s: %s", gen_name, buf);
+			exit(1);
+			}
+
+		addl_tag = st.st_size + 1;
+		}
+
+	Compile();
+	}
+
+CPPCompile::~CPPCompile()
+	{
+	fclose(write_file);
 	}
 
 void CPPCompile::Compile()
@@ -342,20 +351,20 @@ void CPPCompile::GenEpilog()
 	for ( const auto& e : init_exprs.DistinctKeys() )
 		{
 		GenInitExpr(e);
-		init_exprs.LogIfNew(e, addl_tag, o_hf_w);
+		init_exprs.LogIfNew(e, addl_tag, hm.ObjWriteFile());
 		}
 
 	for ( const auto& a : attributes.DistinctKeys() )
 		{
 		GenAttrs(a);
-		attributes.LogIfNew(a, addl_tag, o_hf_w);
+		attributes.LogIfNew(a, addl_tag, hm.ObjWriteFile());
 		}
 
 	// Generate the guts of compound types.
 	for ( const auto& t : types.DistinctKeys() )
 		{
 		ExpandTypeVar(t);
-		types.LogIfNew(t, addl_tag, o_hf_w);
+		types.LogIfNew(t, addl_tag, hm.ObjWriteFile());
 		}
 
 	NL();
@@ -2945,6 +2954,24 @@ void CPPCompile::Indent() const
 	}
 
 
+bool is_CPP_compilable(const ProfileFunc* pf)
+	{
+	if ( pf->NumWhenStmts() > 0 )
+		return false;
+
+	if ( pf->TypeSwitches().size() > 0 )
+		return false;
+
+	for ( const auto& sw : pf->ExprSwitches() )
+		{
+		auto it = sw->StmtExpr()->GetType()->InternalType();
+		if ( it != TYPE_INTERNAL_INT && it != TYPE_INTERNAL_UNSIGNED )
+			return false;
+		}
+
+	return true;
+	}
+
 void lock_file(const std::string& fname, FILE* f)
 	{
 	if ( flock(fileno(f), LOCK_EX) < 0 )
@@ -2965,24 +2992,6 @@ void unlock_file(const std::string& fname, FILE* f)
 		reporter->Error("un-flock failed on %s: %s", fname.c_str(), buf);
 		exit(1);
 		}
-	}
-
-bool is_CPP_compilable(const ProfileFunc* pf)
-	{
-	if ( pf->NumWhenStmts() > 0 )
-		return false;
-
-	if ( pf->TypeSwitches().size() > 0 )
-		return false;
-
-	for ( const auto& sw : pf->ExprSwitches() )
-		{
-		auto it = sw->StmtExpr()->GetType()->InternalType();
-		if ( it != TYPE_INTERNAL_INT && it != TYPE_INTERNAL_UNSIGNED )
-			return false;
-		}
-
-	return true;
 	}
 
 } // zeek::detail
