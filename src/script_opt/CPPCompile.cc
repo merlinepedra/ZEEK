@@ -1,6 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include <errno.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -350,7 +351,9 @@ void CPPCompile::GenProlog()
 	if ( addl_tag == 0 )
 		Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
 
-	Emit("namespace CPP_%s {\n", Fmt(addl_tag));
+	char buf[8192];
+	Emit("namespace CPP_%s { // %s\n",
+		Fmt(addl_tag), getcwd(buf, sizeof buf));
 	}
 
 void CPPCompile::GenEpilog()
