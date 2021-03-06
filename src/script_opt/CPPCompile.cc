@@ -493,6 +493,9 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 	if ( func.Skip() )
 		return false;
 
+	if ( hm.HasHash(func.Profile()->HashVal()) )
+		return false;
+
 	return is_CPP_compilable(func.Profile());
 	}
 
