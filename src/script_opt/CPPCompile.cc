@@ -1739,18 +1739,14 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto t = sc->GetType<TableType>();
 		auto attrs = sc->GetAttrs();
 
-		std::string attrs_name = "nullptr";
-		if ( attrs )
-			{
-			NoteInitDependency(e, attrs);
-			RegisterAttributes(attrs);
-			attrs_name = AttrsName(attrs);
-			}
+		std::string attr_tags;
+		std::string attr_vals;
+		BuildAttrs(attrs, attr_tags, attr_vals);
 
 		return std::string("set_constructor__CPP({") +
 			GenExpr(sc->GetOp1(), GEN_VAL_PTR) + "}, " +
 			"cast_intrusive<TableType>(" + GenTypeName(t) + "), " +
-			attrs_name + ")";
+			attr_tags + ", " + attr_vals + ")";
 		}
 
 	case EXPR_TABLE_CONSTRUCTOR:
@@ -1759,14 +1755,9 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto t = tc->GetType<TableType>();
 		auto attrs = tc->GetAttrs();
 
-		std::string attrs_name = "nullptr";
-		if ( attrs )
-			{
-			AddInit(e);
-			NoteInitDependency(e, attrs);
-			RegisterAttributes(attrs);
-			attrs_name = AttrsName(attrs);
-			}
+		std::string attr_tags;
+		std::string attr_vals;
+		BuildAttrs(attrs, attr_tags, attr_vals);
 
 		std::string indices;
 		std::string vals;
@@ -1802,7 +1793,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		return std::string("table_constructor__CPP({") +
 			indices + "}, {" + vals + "}, " +
 			"cast_intrusive<TableType>(" + GenTypeName(t) + "), " +
-			attrs_name + ")";
+			attr_tags + ", " + attr_vals + ")";
 		}
 
 	case EXPR_VECTOR_CONSTRUCTOR:
@@ -1879,6 +1870,34 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	default:
 		return std::string("EXPR");
 	}
+	}
+
+void CPPCompile::BuildAttrs(const AttributesPtr& attrs,
+				std::string& attr_tags, std::string& attr_vals)
+	{
+	if ( attrs )
+		{
+		for ( const auto& a : attrs->GetAttrs() )
+			{
+			if ( attr_tags.size() > 0 )
+				{
+				attr_tags += ", ";
+				attr_vals += ", ";
+				}
+
+			attr_tags += Fmt(int(a->Tag()));
+
+			const auto& e = a->GetExpr();
+
+			if ( e )
+				attr_vals += GenExpr(e, GEN_VAL_PTR, false);
+			else
+				attr_vals += "nullptr";
+			}
+		}
+
+	attr_tags = std::string("{") + attr_tags + "}";
+	attr_vals = std::string("{") + attr_vals + "}";
 	}
 
 std::string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)

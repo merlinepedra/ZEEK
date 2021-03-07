@@ -200,10 +200,32 @@ VectorValPtr vector_coerce__CPP(const ValPtr& v, const TypePtr& t)
 	return make_intrusive<VectorVal>(cast_intrusive<VectorType>(t));
 	}
 
-TableValPtr set_constructor__CPP(std::vector<ValPtr> elements, TableTypePtr t,
-					AttributesPtr attrs)
+AttributesPtr build_attrs__CPP(std::vector<int> attr_tags,
+				std::vector<ValPtr> attr_vals)
 	{
-	auto aggr = make_intrusive<TableVal>(t, attrs);
+	std::vector<AttrPtr> attrs;
+	int nattrs = attr_tags.size();
+	for ( auto i = 0; i < nattrs; ++i )
+		{
+		auto t_i = AttrTag(attr_tags[i]);
+		const auto& v_i = attr_vals[i];
+		ExprPtr e;
+
+		if ( v_i )
+			e = make_intrusive<ConstExpr>(v_i);
+
+		attrs.emplace_back(make_intrusive<Attr>(t_i, e));
+		}
+
+	return make_intrusive<Attributes>(std::move(attrs), nullptr, false, false);
+	}
+
+TableValPtr set_constructor__CPP(std::vector<ValPtr> elements, TableTypePtr t,
+					std::vector<int> attr_tags,
+					std::vector<ValPtr> attr_vals)
+	{
+	auto attrs = build_attrs__CPP(std::move(attr_tags), std::move(attr_vals));
+	auto aggr = make_intrusive<TableVal>(t, std::move(attrs));
 
 	for ( const auto& elem : elements )
 		aggr->Assign(std::move(elem), nullptr);
@@ -213,12 +235,15 @@ TableValPtr set_constructor__CPP(std::vector<ValPtr> elements, TableTypePtr t,
 
 TableValPtr table_constructor__CPP(std::vector<ValPtr> indices,
 					std::vector<ValPtr> vals,
-					TableTypePtr t, AttributesPtr attrs)
+					TableTypePtr t,
+					std::vector<int> attr_tags,
+					std::vector<ValPtr> attr_vals)
 	{
 	const auto& yt = t->Yield().get();
 	auto n = indices.size();
 
-	auto aggr = make_intrusive<TableVal>(t, attrs);
+	auto attrs = build_attrs__CPP(std::move(attr_tags), std::move(attr_vals));
+	auto aggr = make_intrusive<TableVal>(t, std::move(attrs));
 
 	for ( auto i = 0; i < n; ++i )
 		{

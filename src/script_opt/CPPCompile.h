@@ -171,6 +171,9 @@ private:
 		{ return GenExpr(e.get(), gt, top_level); }
 	std::string GenExpr(const Expr* e, GenType gt, bool top_level = false);
 
+	void BuildAttrs(const AttributesPtr& attrs,
+				std::string& attr_tags, std::string& attr_vals);
+
 	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
 	std::string GenUnary(const Expr* e, GenType gt,
