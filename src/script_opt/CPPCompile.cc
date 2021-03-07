@@ -1206,9 +1206,19 @@ void CPPCompile::GenSwitchStmt(const SwitchStmt* sw)
 	auto e = sw->StmtExpr();
 	auto cases = sw->Cases();
 
-	Emit("switch ( %s ) {", GenExpr(e, GEN_NATIVE));
+	auto e_it = e->GetType()->InternalType();
+	bool is_int = e_it == TYPE_INTERNAL_INT;
+	bool is_uint = e_it == TYPE_INTERNAL_UNSIGNED;
+	bool organic = is_int || is_uint;
 
-	bool is_int = e->GetType()->InternalType() == TYPE_INTERNAL_INT;
+	std::string sw_val;
+
+	if ( organic )
+		sw_val = GenExpr(e, GEN_NATIVE);
+	else
+		sw_val = std::string("hash_obj(") + GenExpr(e, GEN_VAL_PTR) + ")";
+
+	Emit("switch ( %s ) {", sw_val.c_str());
 
 	++break_level;
 
@@ -1223,9 +1233,16 @@ void CPPCompile::GenSwitchStmt(const SwitchStmt* sw)
 				{
 				auto c_v = c_e->Eval(nullptr);
 				ASSERT(c_v);
-				auto c_v_rep = Fmt(is_int ?
-							c_v->AsInt() :
-							c_v->AsCount());
+
+				std::string c_v_rep;
+
+				if ( is_int )
+					c_v_rep = Fmt(int(c_v->AsInt()));
+				else if ( is_uint )
+					c_v_rep = Fmt(c_v->AsCount());
+				else
+					c_v_rep = Fmt(hash_obj(c_v));
+
 				Emit("case %s:", c_v_rep);
 				}
 			}
@@ -3212,13 +3229,6 @@ bool is_CPP_compilable(const ProfileFunc* pf)
 
 	if ( pf->TypeSwitches().size() > 0 )
 		return false;
-
-	for ( const auto& sw : pf->ExprSwitches() )
-		{
-		auto it = sw->StmtExpr()->GetType()->InternalType();
-		if ( it != TYPE_INTERNAL_INT && it != TYPE_INTERNAL_UNSIGNED )
-			return false;
-		}
 
 	return true;
 	}
