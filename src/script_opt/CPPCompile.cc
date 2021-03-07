@@ -338,6 +338,9 @@ void CPPCompile::Compile()
 	for ( const auto& func : funcs )
 		DeclareFunc(func);
 
+	for ( const auto& l : pfs.Lambdas() )
+		DeclareLambda(l, pfs.ExprProf(l));
+
 	NL();
 
 	for ( const auto& func : funcs )
@@ -604,12 +607,26 @@ void CPPCompile::DeclareFunc(const FuncInfo& func)
 	if ( ! IsCompilable(func) )
 		return;
 
-	NL();
-
 	auto fname = Canonicalize(BodyName(func).c_str()) + "_zf";
-	DeclareSubclass(func, fname);
+	auto pf = func.Profile();
+	auto f = func.Func();
+	auto body = func.Body();
 
-	body_names.emplace(func.Body().get(), fname);
+	DeclareSubclass(f->GetType(), pf, fname, body, nullptr, f->Flavor());
+	}
+
+void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
+	{
+	ASSERT(is_CPP_compilable(pf));
+
+	auto& ids = l->OuterIDs();
+	auto& ingr = l->Ingredients();
+	auto l_id = ingr.id;
+	auto body = ingr.body;
+	auto lname = Canonicalize(l_id->Name()) + "_lb";
+
+	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, &ids,
+				FUNC_FLAVOR_FUNCTION);
 	}
 
 void CPPCompile::CompileFunc(const FuncInfo& func)
@@ -621,31 +638,53 @@ void CPPCompile::CompileFunc(const FuncInfo& func)
 	DefineBody(func, body_names[func.Body().get()]);
 	}
 
-void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
+void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
+			const std::string& fname, const StmtPtr& body,
+			const IDPList* lambda_ids, FunctionFlavor flavor)
 	{
-	const auto& ft = func.Func()->GetType();
 	const auto& yt = ft->Yield();
-	in_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
+	in_hook = flavor == FUNC_FLAVOR_HOOK;
 
 	auto yt_decl = in_hook ? "bool" : FullTypeName(yt);
 
-	Emit("static %s %s(%s);", yt_decl, fname,
-		ParamDecl(ft, func.Profile()));
+	NL();
+	Emit("static %s %s(%s);", yt_decl, fname, ParamDecl(ft, lambda_ids, pf));
 
 	Emit("class %s_cl : public CPPStmt", fname);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s_cl(const char* name) : CPPStmt(name) { }", fname);
 
-	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) const override");
+	std::string addl_args;
+	std::string inits;
+
+	if ( lambda_ids )
+		{
+		inits = " :";
+
+		for ( auto& id : *lambda_ids )
+			{
+			auto name = LocalName(id);
+			addl_args = addl_args + ", _" + name;
+
+			if ( id != (*lambda_ids)[0] )
+				inits += ", ";
+
+			inits = inits + name + "(_" + name + ")";
+			}
+		}
+
+	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }",
+		fname, addl_args.c_str(), inits.c_str());
+
+	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) const override final");
 	StartBlock();
 
 	Emit("flow = FLOW_RETURN;");
 
 	if ( IsNativeType(yt) )
 		{
-		auto args = BindArgs(func.Func()->GetType());
+		auto args = BindArgs(ft, lambda_ids);
 		GenInvokeBody(fname, yt, args);
 		}
 
@@ -653,13 +692,13 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 		{
 		if ( in_hook )
 			{
-			Emit("if ( ! %s(%s) )", fname, BindArgs(func.Func()->GetType()));
+			Emit("if ( ! %s(%s) )", fname, BindArgs(ft, lambda_ids));
 			StartBlock();
 			Emit("flow = FLOW_BREAK;");
 			EndBlock();
 			}
 
-		Emit("return %s(%s);", fname, BindArgs(func.Func()->GetType()));
+		Emit("return %s(%s);", fname, BindArgs(ft, lambda_ids));
 		}
 
 	EndBlock();
@@ -667,7 +706,8 @@ void CPPCompile::DeclareSubclass(const FuncInfo& func, const std::string& fname)
 	EndBlock(true);
 
 	compiled_funcs.emplace(fname);
-	body_hashes[fname] = func.Profile()->HashVal();
+	body_hashes[fname] = pf->HashVal();
+	body_names.emplace(body.get(), std::move(fname));
 	}
 
 void CPPCompile::GenSubclassTypeAssignment(Func* f)
@@ -704,7 +744,8 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	for ( const auto& p : func.Profile()->Params() )
 		params.emplace(p);
 
-	Emit("%s %s(%s)", ret_type_str, fname, ParamDecl(ft, func.Profile()));
+	Emit("%s %s(%s)", ret_type_str, fname,
+		ParamDecl(ft, nullptr, func.Profile()));
 
 	StartBlock();
 
@@ -795,7 +836,8 @@ std::string CPPCompile::BodyName(const FuncInfo& func)
 	return fname;
 	}
 
-std::string CPPCompile::BindArgs(const FuncTypePtr& ft)
+std::string CPPCompile::BindArgs(const FuncTypePtr& ft,
+					const IDPList* lambda_ids)
 	{
 	const auto& params = ft->Params();
 
@@ -813,6 +855,12 @@ std::string CPPCompile::BindArgs(const FuncTypePtr& ft)
 			res += GenericValPtrToGT(arg_i, ft, GEN_VAL_PTR);
 
 		res += ", ";
+		}
+
+	if ( lambda_ids )
+		{
+		for ( auto& id : *lambda_ids )
+			res += LocalName(id) + ", ";
 		}
 
 	return res + "f";
@@ -2165,7 +2213,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	NoteInitDependency(e, TypeRep(t));
 	EndBlock();
 
-	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override");
+	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override final");
 	StartBlock();
 
 	if ( IsNativeType(t) )
@@ -2507,7 +2555,8 @@ const std::string& CPPCompile::IDNameStr(const ID* id) const
 	return ((CPPCompile*)(this))->locals[id];
 	}
 
-std::string CPPCompile::ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf)
+std::string CPPCompile::ParamDecl(const FuncTypePtr& ft,
+			const IDPList* lambda_ids, const ProfileFunc* pf)
 	{
 	const auto& params = ft->Params();
 	int n = params->NumFields();
@@ -2543,6 +2592,23 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf)
 			}
 
 		decl += ", ";
+		}
+
+	if ( lambda_ids )
+		{
+		for ( auto& id : *lambda_ids )
+			{
+			auto name = LocalName(id);
+			const auto& t = id->GetType();
+			auto tn = FullTypeName(t);
+
+			if ( IsNativeType(t) )
+				decl = decl + tn + " " + name;
+			else
+				decl = decl + "const " + tn + "& " + name;
+
+			decl += ", ";
+			}
 		}
 
 	return decl + "Frame* f__CPP";

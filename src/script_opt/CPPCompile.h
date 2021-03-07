@@ -135,16 +135,20 @@ private:
 	void AddConstant(const ConstExpr* c);
 
 	void DeclareFunc(const FuncInfo& func);
+	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
 	void CompileFunc(const FuncInfo& func);
 
-	void DeclareSubclass(const FuncInfo& func, const std::string& fname);
+	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
+			const std::string& fname, const StmtPtr& body,
+			const IDPList* lambda_ids, FunctionFlavor flavor);
+
 	void GenSubclassTypeAssignment(Func* f);
 	void GenInvokeBody(const std::string& fname, const TypePtr& t,
 				const std::string& args);
 
 	void DefineBody(const FuncInfo& func, const std::string& fname);
 
-	std::string BindArgs(const FuncTypePtr& ft);
+	std::string BindArgs(const FuncTypePtr& ft, const IDPList* lambda_ids);
 
 	void DeclareLocals(const FuncInfo& func);
 
@@ -216,7 +220,8 @@ private:
 	const char* IDName(const ID* id)	{ return IDNameStr(id).c_str(); }
 	const std::string& IDNameStr(const ID* id) const;
 
-	std::string ParamDecl(const FuncTypePtr& ft, const ProfileFunc* pf);
+	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
+				const ProfileFunc* pf);
 	const ID* FindParam(int i, const ProfileFunc* pf);
 
 	bool IsNativeType(const TypePtr& t) const;
