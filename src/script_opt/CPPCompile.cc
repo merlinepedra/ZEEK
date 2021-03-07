@@ -1822,7 +1822,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		std::string cl_args = "\"" + name + "\"";
 
 		for ( const auto& id : ids )
-			cl_args = cl_args + ", " + LocalName(id);
+			cl_args = cl_args + ", " + IDNameStr(id);
 
 		auto body = std::string("make_intrusive<") + name + ">(" +
 				cl_args + ")";
