@@ -1186,47 +1186,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		break;
 
 	case STMT_SWITCH:
-		{
-		auto sw = static_cast<const SwitchStmt*>(s);
-		auto e = sw->StmtExpr();
-		auto cases = sw->Cases();
-
-		Emit("switch ( %s ) {", GenExpr(e, GEN_NATIVE));
-
-		bool is_int = e->GetType()->InternalType() == TYPE_INTERNAL_INT;
-
-		++break_level;
-
-		for ( const auto& c : *cases )
-			{
-			if ( c->ExprCases() )
-				{
-				const auto& c_e_s =
-					c->ExprCases()->AsListExpr()->Exprs();
-
-				for ( const auto& c_e : c_e_s )
-					{
-					auto c_v = c_e->Eval(nullptr);
-					ASSERT(c_v);
-					auto c_v_rep = Fmt(is_int ?
-								c_v->AsInt() :
-								c_v->AsCount());
-					Emit("case %s:", c_v_rep);
-					}
-				}
-
-			else
-				Emit("default:");
-
-			StartBlock();
-			GenStmt(c->Body());
-			EndBlock();
-			}
-
-		--break_level;
-
-		Emit("}");
-		}
+		GenSwitchStmt(static_cast<const SwitchStmt*>(s));
 		break;
 
 	case STMT_FALLTHROUGH:
@@ -1239,6 +1199,48 @@ void CPPCompile::GenStmt(const Stmt* s)
 	default:
 		reporter->InternalError("bad statement type in CPPCompile::GenStmt");
 	}
+	}
+
+void CPPCompile::GenSwitchStmt(const SwitchStmt* sw)
+	{
+	auto e = sw->StmtExpr();
+	auto cases = sw->Cases();
+
+	Emit("switch ( %s ) {", GenExpr(e, GEN_NATIVE));
+
+	bool is_int = e->GetType()->InternalType() == TYPE_INTERNAL_INT;
+
+	++break_level;
+
+	for ( const auto& c : *cases )
+		{
+		if ( c->ExprCases() )
+			{
+			const auto& c_e_s =
+				c->ExprCases()->AsListExpr()->Exprs();
+
+			for ( const auto& c_e : c_e_s )
+				{
+				auto c_v = c_e->Eval(nullptr);
+				ASSERT(c_v);
+				auto c_v_rep = Fmt(is_int ?
+							c_v->AsInt() :
+							c_v->AsCount());
+				Emit("case %s:", c_v_rep);
+				}
+			}
+
+		else
+			Emit("default:");
+
+		StartBlock();
+		GenStmt(c->Body());
+		EndBlock();
+		}
+
+	--break_level;
+
+	Emit("}");
 	}
 
 std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)

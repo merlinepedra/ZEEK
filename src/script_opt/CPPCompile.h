@@ -159,6 +159,7 @@ private:
 
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
 	void GenStmt(const Stmt* s);
+	void GenSwitchStmt(const SwitchStmt* sw);
 
 	enum GenType {
 		GEN_DONT_CARE,
