@@ -137,6 +137,7 @@ private:
 	void DeclareFunc(const FuncInfo& func);
 	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
 	void CompileFunc(const FuncInfo& func);
+	void CompileLambda(const LambdaExpr* l, const ProfileFunc* pf);
 
 	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			const std::string& fname, const StmtPtr& body,
@@ -146,11 +147,13 @@ private:
 	void GenInvokeBody(const std::string& fname, const TypePtr& t,
 				const std::string& args);
 
-	void DefineBody(const FuncInfo& func, const std::string& fname);
+	void DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
+			const std::string& fname, const StmtPtr& body,
+			const IDPList* lambda_ids, FunctionFlavor flavor);
 
 	std::string BindArgs(const FuncTypePtr& ft, const IDPList* lambda_ids);
 
-	void DeclareLocals(const FuncInfo& func);
+	void DeclareLocals(const ProfileFunc* func);
 
 	std::string BodyName(const FuncInfo& func);
 

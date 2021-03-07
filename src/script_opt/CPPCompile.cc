@@ -346,6 +346,9 @@ void CPPCompile::Compile()
 	for ( const auto& func : funcs )
 		CompileFunc(func);
 
+	for ( const auto& l : pfs.Lambdas() )
+		CompileLambda(l, pfs.ExprProf(l));
+
 	GenEpilog();
 	}
 
@@ -634,8 +637,24 @@ void CPPCompile::CompileFunc(const FuncInfo& func)
 	if ( ! IsCompilable(func) )
 		return;
 
-	NL();
-	DefineBody(func, body_names[func.Body().get()]);
+	auto fname = Canonicalize(BodyName(func).c_str()) + "_zf";
+	auto pf = func.Profile();
+	auto f = func.Func();
+	auto body = func.Body();
+
+	DefineBody(f->GetType(), pf, fname, body, nullptr, f->Flavor());
+	}
+
+void CPPCompile::CompileLambda(const LambdaExpr* l, const ProfileFunc* pf)
+	{
+	auto& ids = l->OuterIDs();
+	auto& ingr = l->Ingredients();
+	auto l_id = ingr.id;
+	auto body = ingr.body;
+	auto lname = Canonicalize(l_id->Name()) + "_lb";
+
+	DefineBody(l_id->GetType<FuncType>(), pf, lname, body, &ids,
+			FUNC_FLAVOR_FUNCTION);
 	}
 
 void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
@@ -730,26 +749,25 @@ void CPPCompile::GenInvokeBody(const std::string& fname, const TypePtr& t,
 		Emit("return %s;", NativeToGT(call, t, GEN_VAL_PTR));
 	}
 
-void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
+void CPPCompile::DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
+			const std::string& fname, const StmtPtr& body,
+			const IDPList* lambda_ids, FunctionFlavor flavor)
 	{
 	locals.clear();
 	params.clear();
 
-	const auto& ft = func.Func()->GetType();
-
 	ret_type = ft->Yield();
-	in_hook = func.Func()->Flavor() == FUNC_FLAVOR_HOOK;
+	in_hook = flavor == FUNC_FLAVOR_HOOK;
 	auto ret_type_str = in_hook ? "bool" : FullTypeName(ret_type);
 
-	for ( const auto& p : func.Profile()->Params() )
+	for ( const auto& p : pf->Params() )
 		params.emplace(p);
 
-	Emit("%s %s(%s)", ret_type_str, fname,
-		ParamDecl(ft, nullptr, func.Profile()));
+	NL();
+
+	Emit("%s %s(%s)", ret_type_str, fname, ParamDecl(ft, lambda_ids, pf));
 
 	StartBlock();
-
-	// Emit("fprintf(stderr, \"executing %s\\n\");", BodyName(func));
 
 	// Declare any parameters that originate from a type signature of
 	// "any" but were concretized in this declaration.
@@ -762,7 +780,7 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 		if ( t->Tag() != TYPE_ANY )
 			continue;
 
-		auto param_id = FindParam(i, func.Profile());
+		auto param_id = FindParam(i, pf);
 		if ( ! param_id )
 			continue;
 
@@ -776,8 +794,8 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 			GenericValPtrToGT(any_i, pt, GEN_NATIVE));
 		}
 
-	DeclareLocals(func);
-	GenStmt(func.Body());
+	DeclareLocals(pf);
+	GenStmt(body);
 
 	if ( in_hook )
 		{
@@ -788,9 +806,9 @@ void CPPCompile::DefineBody(const FuncInfo& func, const std::string& fname)
 	EndBlock();
 	}
 
-void CPPCompile::DeclareLocals(const FuncInfo& func)
+void CPPCompile::DeclareLocals(const ProfileFunc* pf)
 	{
-	const auto& ls = func.Profile()->Locals();
+	const auto& ls = pf->Locals();
 
 	bool did_decl = false;
 
