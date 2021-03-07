@@ -124,6 +124,9 @@ protected:
 	// appropriate.
 	std::vector<const LambdaExpr*> lambdas;
 
+	// If we're profiling a lambda function, this holds the captures.
+	std::unordered_set<const ID*> captures;
+
 	// Constants seen in the function.
 	std::vector<const ConstExpr*> constants;
 

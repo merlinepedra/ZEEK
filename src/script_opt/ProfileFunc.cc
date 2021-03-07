@@ -20,6 +20,10 @@ ProfileFunc::ProfileFunc(const Expr* e)
 	if ( e->Tag() == EXPR_LAMBDA )
 		{
 		auto func = e->AsLambdaExpr();
+
+		for ( auto oid : func->OuterIDs() )
+			captures.insert(oid);
+
 		Profile(func->GetType()->AsFuncType(), func->Ingredients().body);
 		}
 
@@ -142,7 +146,8 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 
 		else
 			{
-			if ( id->Offset() < num_params )
+			if ( captures.count(id) == 0 &&
+			     id->Offset() < num_params )
 				params.insert(id);
 
 			locals.insert(id);
