@@ -260,6 +260,26 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		return TC_ABORTSTMT;
 		}
 
+        case EXPR_SET_CONSTRUCTOR:
+                {
+                auto sc = static_cast<const SetConstructorExpr*>(e);
+                auto attrs = sc->GetAttrs();
+
+                if ( attrs )
+			constructor_attrs.insert(attrs.get());
+                }
+		break;
+
+        case EXPR_TABLE_CONSTRUCTOR:
+                {
+                auto tc = static_cast<const TableConstructorExpr*>(e);
+                auto attrs = tc->GetAttrs();
+
+                if ( attrs )
+			constructor_attrs.insert(attrs.get());
+                }
+		break;
+
 	default:
 		break;
 	}
@@ -338,6 +358,9 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 		lambdas.insert(i);
 		pending_exprs.push_back(i);
 		}
+
+	for ( auto& a : pf->ConstructorAttrs() )
+		TrackAttrs(a);
 	}
 
 void ProfileFuncs::DrainPendingExprs()
@@ -473,20 +496,7 @@ hash_type ProfileFuncs::HashType(const Type* t)
 			if ( f->attrs )
 				{
 				h = MergeHashes(h, hash_obj(f->attrs));
-
-				auto attrs = f->attrs->GetAttrs();
-
-				for ( const auto& a : attrs )
-					{
-					const Expr* e = a->GetExpr().get();
-
-					if ( e )
-						{
-						pending_exprs.push_back(e);
-						if ( e->Tag() == EXPR_LAMBDA )
-							lambdas.insert(e->AsLambdaExpr());
-						}
-					}
+				TrackAttrs(f->attrs.get());
 				}
 			}
 		}
@@ -547,6 +557,23 @@ hash_type ProfileFuncs::HashType(const Type* t)
 		seen_type_names[tn] = t;
 
 	return h;
+	}
+
+void ProfileFuncs::TrackAttrs(const Attributes* Attrs)
+	{
+	auto attrs = Attrs->GetAttrs();
+
+	for ( const auto& a : attrs )
+		{
+		const Expr* e = a->GetExpr().get();
+
+		if ( e )
+			{
+			pending_exprs.push_back(e);
+			if ( e->Tag() == EXPR_LAMBDA )
+				lambdas.insert(e->AsLambdaExpr());
+			}
+		}
 	}
 
 

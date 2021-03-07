@@ -56,6 +56,8 @@ public:
 		{ return when_calls; }
 	const std::unordered_set<std::string>& Events() const
 		{ return events; }
+	const std::unordered_set<const Attributes*>& ConstructorAttrs() const
+		{ return constructor_attrs; }
 	const std::unordered_set<const SwitchStmt*>& ExprSwitches() const
 		{ return expr_switches; }
 	const std::unordered_set<const SwitchStmt*>& TypeSwitches() const
@@ -155,6 +157,9 @@ protected:
 	// Names of generated events.
 	std::unordered_set<std::string> events;
 
+	// Attributes seen in set or table constructors.
+	std::unordered_set<const Attributes*> constructor_attrs;
+
 	std::unordered_set<const SwitchStmt*> expr_switches;
 	std::unordered_set<const SwitchStmt*> type_switches;
 
@@ -227,6 +232,8 @@ protected:
 
 	void ComputeBodyHashes(std::vector<FuncInfo>& funcs);
 	void ComputeProfileHash(ProfileFunc* pf);
+
+	void TrackAttrs(const Attributes* Attrs);
 
 	hash_type Hash(int val)		{ return std::hash<int>{}(val); }
 
