@@ -124,6 +124,18 @@ inline ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args, Frame* frame)
 template <typename T>
 IntrusivePtr<T> val_to_valptr__CPP(T* v) { return {NewRef{}, v}; }
 
+ValPtr set_global__CPP(IDPtr g, ValPtr v)
+	{
+	g->SetVal(v);
+	return v;
+	}
+
+ValPtr assign_field__CPP(RecordValPtr rec, int field, ValPtr v)
+	{
+	rec->Assign(field, v);
+	return v;
+	}
+
 // Execute an assignment "v1[v2] = v3".
 TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	{

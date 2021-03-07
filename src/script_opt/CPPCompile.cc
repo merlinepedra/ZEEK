@@ -1329,7 +1329,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto assign = make_intrusive<AssignExpr>(op, rhs, false,
 						nullptr, nullptr, false);
 
-		gen = GenExpr(assign, GEN_DONT_CARE);
+		gen = GenExpr(assign, GEN_DONT_CARE, top_level);
 
 		if ( ! top_level )
 			gen = "(" + gen + ", " + GenExpr(op, gt) + ")";
@@ -1560,7 +1560,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			rhs_native = rhs_val_ptr =
 				GenericValPtrToGT(rhs_val_ptr, t1, GEN_NATIVE);
 
-		return GenAssign(op1, op2, rhs_native, rhs_val_ptr);
+		return GenAssign(op1, op2, rhs_native, rhs_val_ptr,
+					gt, top_level);
 		}
 
 	case EXPR_ADD_TO:
@@ -1582,7 +1583,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			auto rhs_native = GenBinaryString(e, GEN_NATIVE, "+=");
 			auto rhs_val_ptr = GenBinaryString(e, GEN_VAL_PTR, "+=");
 
-			return GenAssign(lhs, nullptr, rhs_native, rhs_val_ptr);
+			return GenAssign(lhs, nullptr, rhs_native, rhs_val_ptr,
+						gt, top_level);
 			}
 
 		if ( lhs->Tag() != EXPR_NAME ||
@@ -1592,7 +1594,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			// equate to a C++ variable); expand x += y to x = x + y
 			auto rhs = make_intrusive<AddExpr>(lhs, e->GetOp2());
 			auto assign = make_intrusive<AssignExpr>(lhs, rhs, false, nullptr, nullptr, false);
-			return GenExpr(assign, gt);
+			return GenExpr(assign, gt, top_level);
 			}
 
 		return GenBinary(e, gt, "+=");
@@ -2088,7 +2090,8 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt,
 
 std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 					const std::string& rhs_native,
-					const std::string& rhs_val_ptr)
+					const std::string& rhs_val_ptr,
+					GenType gt, bool top_level)
 	{
 	std::string gen;
 
@@ -2099,8 +2102,18 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 		auto name = IDNameStr(n);
 
 		if ( n->IsGlobal() )
-			gen = globals[n->Name()] + "->SetVal(" +
-				rhs_val_ptr + ")";
+			{
+			auto gn = globals[n->Name()];
+
+			if ( top_level )
+				gen = gn + "->SetVal(" + rhs_val_ptr + ")";
+			else
+				{
+				gen = std::string("set_global__CPP(") +
+					gn + ", " + rhs_val_ptr + ")";
+				gen = GenericValPtrToGT(gen, n->GetType(), gt);
+				}
+			}
 		else
 			gen = name + " = " + rhs_native;
 		}
@@ -2115,10 +2128,20 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 		break;
 
 	case EXPR_FIELD:
-		gen = GenExpr(lhs->GetOp1(), GEN_DONT_CARE) +
-			"->Assign(" +
-			Fmt(lhs->AsFieldExpr()->Field()) + ", " +
-			rhs_val_ptr + ")";
+		{
+		auto rec = GenExpr(lhs->GetOp1(), GEN_VAL_PTR);
+		auto field = Fmt(lhs->AsFieldExpr()->Field());
+
+		if ( top_level )
+			gen = rec + "->Assign(" + field + ", " +
+						rhs_val_ptr + ")";
+		else
+			{
+			gen = std::string("assign_field__CPP(") +
+				rec + ", " + field + ", " + rhs_val_ptr + ")";
+			gen = GenericValPtrToGT(gen, rhs->GetType(), gt);
+			}
+		}
 		break;
 
 	case EXPR_LIST:

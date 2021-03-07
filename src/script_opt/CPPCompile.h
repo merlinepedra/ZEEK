@@ -186,7 +186,8 @@ private:
 
 	std::string GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 				const std::string& rhs_native,
-				const std::string& rhs_val_ptr);
+				const std::string& rhs_val_ptr,
+				GenType gt, bool top_level);
 
 	std::string GenVectorOp(std::string op, const char* vec_op);
 	std::string GenVectorOp(std::string op1, std::string op2,
