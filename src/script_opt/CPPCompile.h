@@ -320,6 +320,8 @@ private:
 		}
 
 	std::string LocalName(const ID* l) const;
+	std::string LocalName(const IDPtr& l) const
+		{ return LocalName(l.get()); }
 
 	std::string Canonicalize(const char* name) const;
 

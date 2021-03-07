@@ -145,11 +145,14 @@ protected:
 
 namespace detail {
 
-class ScriptFunc final : public Func {
+class ScriptFunc : public Func {
 public:
 	ScriptFunc(const IDPtr& id, StmtPtr body,
 	        const std::vector<IDPtr>& inits,
 	        size_t frame_size, int priority);
+
+	// For compiled lambdas.
+	ScriptFunc(FuncTypePtr ft, StmtPtr body);
 
 	~ScriptFunc() override;
 
@@ -257,6 +260,7 @@ public:
 
 protected:
 	ScriptFunc() : Func(SCRIPT_FUNC)	{}
+
 	StmtPtr AddInits(
 		StmtPtr body,
 		const std::vector<IDPtr>& inits);

@@ -623,10 +623,9 @@ void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	ASSERT(is_CPP_compilable(pf));
 
 	auto& ids = l->OuterIDs();
-	auto& ingr = l->Ingredients();
-	auto l_id = ingr.id;
-	auto body = ingr.body;
-	auto lname = Canonicalize(l_id->Name()) + "_lb";
+	auto lname = Canonicalize(l->Name().c_str()) + "_lb";
+	auto body = l->Ingredients().body;
+	auto l_id = l->Ingredients().id;
 
 	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, &ids,
 				FUNC_FLAVOR_FUNCTION);
@@ -648,10 +647,9 @@ void CPPCompile::CompileFunc(const FuncInfo& func)
 void CPPCompile::CompileLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	{
 	auto& ids = l->OuterIDs();
-	auto& ingr = l->Ingredients();
-	auto l_id = ingr.id;
-	auto body = ingr.body;
-	auto lname = Canonicalize(l_id->Name()) + "_lb";
+	auto lname = Canonicalize(l->Name().c_str()) + "_lb";
+	auto body = l->Ingredients().body;
+	auto l_id = l->Ingredients().id;
 
 	DefineBody(l_id->GetType<FuncType>(), pf, lname, body, &ids,
 			FUNC_FLAVOR_FUNCTION);
@@ -679,17 +677,13 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 
 	if ( lambda_ids )
 		{
-		inits = " :";
-
 		for ( auto& id : *lambda_ids )
 			{
 			auto name = LocalName(id);
-			addl_args = addl_args + ", _" + name;
+			auto tn = FullTypeName(id->GetType());
+			addl_args = addl_args + ", " + tn + " _" + name;
 
-			if ( id != (*lambda_ids)[0] )
-				inits += ", ";
-
-			inits = inits + name + "(_" + name + ")";
+			inits = inits + ", " + name + "(_" + name + ")";
 			}
 		}
 
@@ -722,9 +716,26 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 
 	EndBlock();
 
+	if ( lambda_ids )
+		{
+		for ( auto& id : *lambda_ids )
+			{
+			auto name = LocalName(id);
+			auto tn = FullTypeName(id->GetType());
+			Emit("%s %s;", tn, name.c_str());
+			}
+		}
+
+	else
+		// We don't track lambda bodies as compiled because they
+		// can't be instantiated directly without also supplying
+		// the captures.  In principle we could make an exception
+		// for lambdas that don't take any arguments, but that
+		// seems potentially more confusing than beneficial.
+		compiled_funcs.emplace(fname);
+
 	EndBlock(true);
 
-	compiled_funcs.emplace(fname);
 	body_hashes[fname] = pf->HashVal();
 	body_names.emplace(body.get(), std::move(fname));
 	}
@@ -1786,9 +1797,22 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 
 	case EXPR_LAMBDA:
 		{
-		auto lb = static_cast<const LambdaExpr*>(e);
-		const auto& in = lb->Ingredients();
-		return std::string("nullptr /* ### */");
+		auto l = static_cast<const LambdaExpr*>(e);
+		auto name = Canonicalize(l->Name().c_str()) + "_lb_cl";
+		auto& ids = l->OuterIDs();
+		const auto& in = l->Ingredients();
+
+		std::string cl_args = "\"" + name + "\"";
+
+		for ( const auto& id : ids )
+			cl_args = cl_args + ", " + LocalName(id);
+
+		auto body = std::string("make_intrusive<") + name + ">(" +
+				cl_args + ")";
+		auto func = std::string("make_intrusive<ScriptFunc>(") +
+				"cast_intrusive<FuncType>(" +
+				GenTypeName(t) + "), " + body + ")";
+		return std::string("make_intrusive<FuncVal>(") + func + ")";
 		}
 
 	case EXPR_EVENT:
@@ -2620,12 +2644,7 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft,
 			const auto& t = id->GetType();
 			auto tn = FullTypeName(t);
 
-			if ( IsNativeType(t) )
-				decl = decl + tn + " " + name;
-			else
-				decl = decl + "const " + tn + "& " + name;
-
-			decl += ", ";
+			decl = decl + tn + " " + name + ", ";
 			}
 		}
 
@@ -3012,6 +3031,11 @@ std::string CPPCompile::Canonicalize(const char* name) const
 	for ( int i = 0; name[i]; ++i )
 		{
 		auto c = name[i];
+
+		// Strip <>'s - these get introduced for lambdas.
+		if ( c == '<' || c == '>' )
+			continue;
+
 		if ( c == ':' )
 			c = '_';
 

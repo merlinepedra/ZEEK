@@ -310,6 +310,20 @@ ScriptFunc::ScriptFunc(const IDPtr& arg_id, StmtPtr arg_body,
 		}
 	}
 
+ScriptFunc::ScriptFunc(FuncTypePtr ft, StmtPtr body)
+	{
+	name = "compiled-lambda";
+	frame_size = ft->ParamList()->GetTypes().size();
+	type = std::move(ft);
+
+	Body b;
+	b.stmts = std::move(body);
+	current_body = b.stmts;
+	b.priority = 0;
+
+	bodies.push_back(b);
+	}
+
 ScriptFunc::~ScriptFunc()
 	{
 	if ( ! weak_closure_ref )

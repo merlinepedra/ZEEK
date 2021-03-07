@@ -472,8 +472,16 @@ hash_type ProfileFuncs::HashType(const Type* t)
 				auto attrs = f->attrs->GetAttrs();
 
 				for ( const auto& a : attrs )
-					if ( a->GetExpr() )
-						pending_exprs.push_back(a->GetExpr().get());
+					{
+					const Expr* e = a->GetExpr().get();
+
+					if ( e )
+						{
+						pending_exprs.push_back(e);
+						if ( e->Tag() == EXPR_LAMBDA )
+							lambdas.insert(e->AsLambdaExpr());
+						}
+					}
 				}
 			}
 		}

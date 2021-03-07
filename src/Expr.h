@@ -1310,6 +1310,7 @@ public:
 	LambdaExpr(std::unique_ptr<function_ingredients> ingredients,
 	           IDPList outer_ids);
 
+	const std::string& Name() const	{ return my_name; }
 	const IDPList& OuterIDs() const	{ return outer_ids; }
 	const function_ingredients& Ingredients() const	{ return *ingredients; }
 
