@@ -622,10 +622,16 @@ void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	{
 	ASSERT(is_CPP_compilable(pf));
 
-	auto& ids = l->OuterIDs();
 	auto lname = Canonicalize(l->Name().c_str()) + "_lb";
 	auto body = l->Ingredients().body;
 	auto l_id = l->Ingredients().id;
+	auto& ids = l->OuterIDs();
+
+	for ( auto id : ids )
+		{
+		auto l_id_name = LocalName(id) + "_" + lname;
+		lambda_names[id] = l_id_name;
+		}
 
 	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, &ids,
 				FUNC_FLAVOR_FUNCTION);
@@ -646,10 +652,10 @@ void CPPCompile::CompileFunc(const FuncInfo& func)
 
 void CPPCompile::CompileLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	{
-	auto& ids = l->OuterIDs();
 	auto lname = Canonicalize(l->Name().c_str()) + "_lb";
 	auto body = l->Ingredients().body;
 	auto l_id = l->Ingredients().id;
+	auto& ids = l->OuterIDs();
 
 	DefineBody(l_id->GetType<FuncType>(), pf, lname, body, &ids,
 			FUNC_FLAVOR_FUNCTION);
@@ -679,7 +685,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		{
 		for ( auto& id : *lambda_ids )
 			{
-			auto name = LocalName(id);
+			auto name = lambda_names[id];
 			auto tn = FullTypeName(id->GetType());
 			addl_args = addl_args + ", " + tn + " _" + name;
 
@@ -720,7 +726,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		{
 		for ( auto& id : *lambda_ids )
 			{
-			auto name = LocalName(id);
+			auto name = lambda_names[id];
 			auto tn = FullTypeName(id->GetType());
 			Emit("%s %s;", tn, name.c_str());
 			}
@@ -819,11 +825,11 @@ void CPPCompile::DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
 
 void CPPCompile::DeclareLocals(const ProfileFunc* pf, const IDPList* lambda_ids)
 	{
-	std::unordered_set<const ID*> skip_ids;
+	std::unordered_set<const ID*> lambda_set;
 
 	if ( lambda_ids )
 		for ( auto li : *lambda_ids )
-			skip_ids.insert(li);
+			lambda_set.insert(li);
 
 	const auto& ls = pf->Locals();
 
@@ -833,7 +839,10 @@ void CPPCompile::DeclareLocals(const ProfileFunc* pf, const IDPList* lambda_ids)
 		{
 		auto ln = LocalName(l);
 
-		if ( params.count(l) == 0 && skip_ids.count(l) == 0 )
+		if ( lambda_set.count(l) > 0 )
+			ln = lambda_names[l];
+
+		else if ( params.count(l) == 0 )
 			{
 			Emit("%s %s;", FullTypeName(l->GetType()), ln);
 			did_decl = true;
@@ -895,7 +904,7 @@ std::string CPPCompile::BindArgs(const FuncTypePtr& ft,
 	if ( lambda_ids )
 		{
 		for ( auto& id : *lambda_ids )
-			res += LocalName(id) + ", ";
+			res += lambda_names[id] + ", ";
 		}
 
 	return res + "f";
@@ -2669,7 +2678,7 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft,
 		{
 		for ( auto& id : *lambda_ids )
 			{
-			auto name = LocalName(id);
+			auto name = lambda_names[id];
 			const auto& t = id->GetType();
 			auto tn = FullTypeName(t);
 

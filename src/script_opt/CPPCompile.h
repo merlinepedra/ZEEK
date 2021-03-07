@@ -375,6 +375,11 @@ private:
 	// Same for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;
 
+	// Names for lambda capture ID's.  These require a separate space
+	// that incorporates the lambda's name, to deal with nested lambda's
+	// that refer to the identifiers with the same name.
+	std::unordered_map<const ID*, std::string> lambda_names;
+
 	// The function's parameters.  Tracked so we don't re-declare them.
 	std::unordered_set<const ID*> params;
 
