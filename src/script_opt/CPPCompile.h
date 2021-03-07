@@ -153,7 +153,7 @@ private:
 
 	std::string BindArgs(const FuncTypePtr& ft, const IDPList* lambda_ids);
 
-	void DeclareLocals(const ProfileFunc* func);
+	void DeclareLocals(const ProfileFunc* func, const IDPList* lambda_ids);
 
 	std::string BodyName(const FuncInfo& func);
 

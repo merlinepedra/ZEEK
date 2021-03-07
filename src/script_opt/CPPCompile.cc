@@ -805,7 +805,7 @@ void CPPCompile::DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
 			GenericValPtrToGT(any_i, pt, GEN_NATIVE));
 		}
 
-	DeclareLocals(pf);
+	DeclareLocals(pf, lambda_ids);
 	GenStmt(body);
 
 	if ( in_hook )
@@ -817,8 +817,14 @@ void CPPCompile::DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
 	EndBlock();
 	}
 
-void CPPCompile::DeclareLocals(const ProfileFunc* pf)
+void CPPCompile::DeclareLocals(const ProfileFunc* pf, const IDPList* lambda_ids)
 	{
+	std::unordered_set<const ID*> skip_ids;
+
+	if ( lambda_ids )
+		for ( auto li : *lambda_ids )
+			skip_ids.insert(li);
+
 	const auto& ls = pf->Locals();
 
 	bool did_decl = false;
@@ -827,7 +833,7 @@ void CPPCompile::DeclareLocals(const ProfileFunc* pf)
 		{
 		auto ln = LocalName(l);
 
-		if ( params.count(l) == 0 )
+		if ( params.count(l) == 0 && skip_ids.count(l) == 0 )
 			{
 			Emit("%s %s;", FullTypeName(l->GetType()), ln);
 			did_decl = true;
