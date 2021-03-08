@@ -2000,15 +2000,11 @@ std::string CPPCompile::GenBinarySet(const Expr* e, GenType gt, const char* op)
 		break;
 
 	case EXPR_OR:
-                // auto rval = v1->Clone();
-                // if ( ! tv2->AddTo(rval.get(), false, false) )
-                //        reporter->InternalError("set union failed to type check)"
-		res = v1 + "->Union(*" + v2 + ")";
+		res = v1 + "->Union(" + v2 + ")";
 		break;
 
 	case EXPR_SUB:
-		//                 if ( ! tv2->RemoveFrom(rval.get()) )
-		res = v1 + "->TakeOut(*" + v2 + ")";
+		res = v1 + "->TakeOut(" + v2 + ")";
 		break;
 
 	case EXPR_EQ:
