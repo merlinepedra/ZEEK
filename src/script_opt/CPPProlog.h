@@ -500,3 +500,31 @@ VEC_REL_OP(eq, ==)
 VEC_REL_OP(ne, !=)
 VEC_REL_OP(le, <=)
 VEC_REL_OP(ge, >=)
+
+// The following are to support ++/-- operations on vectors.
+VectorValPtr vec_op_add__CPP(VectorValPtr v, int incr)
+	{
+	const auto& yt = v->GetType()->Yield();
+	auto is_signed = yt->InternalType() == TYPE_INTERNAL_INT;
+	auto n = v->Size();
+
+	for ( unsigned int i = 0; i < n; ++i )
+		{
+		auto v_i = v->At(i);
+		ValPtr new_v_i;
+
+		if ( is_signed )
+			new_v_i = val_mgr->Int(v_i->AsInt() + incr);
+		else
+			new_v_i = val_mgr->Count(v_i->AsCount() + incr);
+
+		v->Assign(i, new_v_i);
+		}
+
+	return v;
+	}
+
+VectorValPtr vec_op_sub__CPP(VectorValPtr v, int i)
+	{
+	return vec_op_add__CPP(std::move(v), -i);
+	}
