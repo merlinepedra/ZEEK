@@ -2948,24 +2948,7 @@ ValPtr IndexExpr::Fold(Val* v1, Val* v2) const
 		if ( lv->Length() == 1 )
 			v = vect->At(lv->Idx(0)->CoerceToUnsigned());
 		else
-			{
-			size_t len = vect->Size();
-			auto result = make_intrusive<VectorVal>(vect->GetType<VectorType>());
-
-			bro_int_t first = get_slice_index(lv->Idx(0)->CoerceToInt(), len);
-			bro_int_t last = get_slice_index(lv->Idx(1)->CoerceToInt(), len);
-			bro_int_t sub_length = last - first;
-
-			if ( sub_length >= 0 )
-				{
-				result->Resize(sub_length);
-
-				for ( bro_int_t idx = first; idx < last; idx++ )
-					result->Assign(idx - first, vect->At(idx));
-				}
-
-			return result;
-			}
+			return index_slice(vect, lv);
 		}
 		break;
 
@@ -3016,6 +2999,26 @@ StringValPtr index_string(const String* s, const ListVal* lv)
 		}
 
 	return make_intrusive<StringVal>(substring ? substring : new String(""));
+	}
+
+VectorValPtr index_slice(VectorVal* vect, const ListVal* lv)
+	{
+	size_t len = vect->Size();
+	auto result = make_intrusive<VectorVal>(vect->GetType<VectorType>());
+
+	bro_int_t first = get_slice_index(lv->Idx(0)->CoerceToInt(), len);
+	bro_int_t last = get_slice_index(lv->Idx(1)->CoerceToInt(), len);
+	bro_int_t sub_length = last - first;
+
+	if ( sub_length >= 0 )
+		{
+		result->Resize(sub_length);
+
+		for ( bro_int_t idx = first; idx < last; idx++ )
+			result->Assign(idx - first, vect->At(idx));
+		}
+
+	return result;
 	}
 
 void IndexExpr::Assign(Frame* f, ValPtr v)
