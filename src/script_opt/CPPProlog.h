@@ -60,7 +60,12 @@ IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 	{
 	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);
 
-	if ( ! gl )
+	if ( gl )
+		{
+		ASSERT(same_type(t, gl->GetType()));
+		}
+
+	else
 		{
 		gl = install_ID(g, GLOBAL_MODULE_NAME, true, false);
 		gl->SetType(t);
@@ -322,7 +327,10 @@ RecordTypePtr get_record_type__CPP(const char* record_type_name)
 
 	if ( record_type_name &&
 	     (existing_type = global_scope()->Find(record_type_name)) )
+		{
+		ASSERT(existing_type->GetType()->Tag() == TYPE_RECORD);
 		return cast_intrusive<RecordType>(existing_type->GetType());
+		}
 
 	return make_intrusive<RecordType>(new type_decl_list());
 	}
