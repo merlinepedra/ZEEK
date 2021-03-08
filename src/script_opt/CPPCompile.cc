@@ -542,6 +542,11 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 	auto v = c->Value();
 	ODesc d;
 	v->Describe(&d);
+	std::string val_desc(d.Description());
+
+	// Don't confuse constants of different types that happen to
+	// render the same.
+	v->GetType()->Describe(&d);
 
 	std::string c_desc(d.Description());
 
@@ -559,7 +564,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			{
 			Emit("StringValPtr %s;", const_name);
 			auto def = std::string("make_intrusive<StringVal>(\"") +
-					CPPEscape(c_desc) + "\")";
+					CPPEscape(val_desc) + "\")";
 			AddInit(c, const_name, def);
 			}
 			break;

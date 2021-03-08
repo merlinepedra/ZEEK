@@ -404,24 +404,31 @@ void ProfileFuncs::ComputeProfileHash(ProfileFunc* pf)
 	{
 	hash_type h = 0;
 
+	h = MergeHashes(h, hash_string("stmts"));
 	for ( auto i : pf->Stmts() )
 		h = MergeHashes(h, Hash(i->Tag()));
 
+	h = MergeHashes(h, hash_string("exprs"));
 	for ( auto i : pf->Exprs() )
 		h = MergeHashes(h, Hash(i->Tag()));
 
+	h = MergeHashes(h, hash_string("ids"));
 	for ( auto i : pf->OrderedIdentifiers() )
 		h = MergeHashes(h, hash_string(i->Name()));
 
+	h = MergeHashes(h, hash_string("constants"));
 	for ( auto i : pf->Constants() )
 		h = MergeHashes(h, hash_obj(i->Value()));
 
+	h = MergeHashes(h, hash_string("types"));
 	for ( auto i : pf->OrderedTypes() )
 		h = MergeHashes(h, HashType(i));
 
+	h = MergeHashes(h, hash_string("lambdas"));
 	for ( auto i : pf->Lambdas() )
 		h = MergeHashes(h, hash_obj(i));
 
+	h = MergeHashes(h, hash_string("addl"));
 	for ( auto i : pf->AdditionalInts() )
 		h = MergeHashes(h, Hash(i));
 
