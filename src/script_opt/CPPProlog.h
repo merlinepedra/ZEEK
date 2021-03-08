@@ -64,7 +64,7 @@ IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 
 	if ( gl )
 		{
-		ASSERT(same_type(t, gl->GetType()));
+		ASSERT(same_type(t, gl->GetType(), false, false));
 		}
 
 	else

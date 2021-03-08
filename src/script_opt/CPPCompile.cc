@@ -195,6 +195,9 @@ void CPPHashManager::LoadHashes(FILE* f)
 			compiled_items[hash] = CompiledItemPair{index, scope};
 			}
 
+		else if ( key == "bif" )
+			base_bifs.insert(line);
+
 		else
 			{
 			reporter->Error("bad %s hash file entry: %s", hash_name.c_str(), line.c_str());
@@ -375,8 +378,10 @@ void CPPCompile::GenProlog()
 		Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
 
 	char buf[8192];
-	Emit("namespace CPP_%s { // %s\n",
-		Fmt(addl_tag), getcwd(buf, sizeof buf));
+	getcwd(buf, sizeof buf);
+	working_dir = buf;
+
+	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir.c_str());
 	}
 
 void CPPCompile::GenEpilog()
@@ -386,20 +391,20 @@ void CPPCompile::GenEpilog()
 	for ( const auto& e : init_exprs.DistinctKeys() )
 		{
 		GenInitExpr(e);
-		init_exprs.LogIfNew(e, addl_tag, hm.ObjWriteFile());
+		init_exprs.LogIfNew(e, addl_tag, hm.HashFile());
 		}
 
 	for ( const auto& a : attributes.DistinctKeys() )
 		{
 		GenAttrs(a);
-		attributes.LogIfNew(a, addl_tag, hm.ObjWriteFile());
+		attributes.LogIfNew(a, addl_tag, hm.HashFile());
 		}
 
 	// Generate the guts of compound types.
 	for ( const auto& t : types.DistinctKeys() )
 		{
 		ExpandTypeVar(t);
-		types.LogIfNew(t, addl_tag, hm.ObjWriteFile());
+		types.LogIfNew(t, addl_tag, hm.HashFile());
 		}
 
 	NL();
@@ -499,9 +504,9 @@ void CPPCompile::GenEpilog()
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s, %s);",
 			f, f, Fmt(h), events);
 
-		fprintf(hm.FuncWriteFile(), "func\nzeek::detail::CPP_%d::%s\n",
+		fprintf(hm.HashFile(), "func\nzeek::detail::CPP_%d::%s\n",
 			addl_tag, f.c_str());
-		fprintf(hm.FuncWriteFile(), "%llu\n", h);
+		fprintf(hm.HashFile(), "%llu\n", h);
 		}
 
 	EndBlock(true);
@@ -522,6 +527,9 @@ void CPPCompile::GenEpilog()
 		Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
 		Emit("} // zeek::detail");
 		Emit("} // zeek");
+
+		for ( auto& bif : pfs.BiFGlobals() )
+			fprintf(hm.HashFile(), "bif\n%s\n", bif->Name());
 		}
 	}
 
@@ -538,7 +546,16 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 
 void CPPCompile::AddBiF(const ID* b, bool is_var)
 	{
-	auto n = std::string(b->Name());
+	auto bn = b->Name();
+
+	if ( addl_tag > 0 && ! hm.HasBiF(bn) )
+		{
+		fprintf(stderr, "%s: code relies on non-base BiF %s\n",
+			working_dir.c_str(), bn);
+		exit(1);
+		}
+
+	auto n = std::string(bn);
 
 	if ( is_var )
 		n = n + "_";	// make the name distinct
@@ -547,8 +564,7 @@ void CPPCompile::AddBiF(const ID* b, bool is_var)
 
 	Emit("Func* %s;", globals[n]);
 
-	AddInit(b, globals[n],
-		std::string("lookup_bif__CPP(\"") + b->Name() + "\")");
+	AddInit(b, globals[n], std::string("lookup_bif__CPP(\"") + bn + "\")");
 	}
 
 void CPPCompile::AddGlobal(const std::string& g, const char* suffix)

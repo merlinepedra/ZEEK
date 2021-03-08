@@ -93,8 +93,10 @@ public:
 	const std::string& FuncBodyName(hash_type h)
 		{ return previously_compiled[h]; }
 
-	FILE* FuncWriteFile() const	{ return hf_w; }
-	FILE* ObjWriteFile() const	{ return hf_w; }
+	bool HasBiF(const std::string& BiF) const
+		{ return base_bifs.count(BiF) > 0; }
+
+	FILE* HashFile() const	{ return hf_w; }
 
 protected:
 	void LoadHashes(FILE* f);
@@ -105,6 +107,11 @@ protected:
 	// Tracks previously compiled bodies based on hashes, mapping them
 	// to a fully qualified name.
 	std::unordered_map<hash_type, std::string> previously_compiled;
+
+	// Tracks BiFs included in the base build (-O gen-C++).  This allows
+	// use to understand whether a "-O add-C++" follow-on relies on
+	// additional BiFs.
+	std::unordered_set<std::string> base_bifs;
 
 	bool append;
 
@@ -435,6 +442,10 @@ private:
 
 	// Return type of the function we're currently compiling.
 	TypePtr ret_type = nullptr;
+
+	// Working directory in which we're compiling.  Used to quasi-locate
+	// error messages when doing test-suite "add-C++" crunches.
+	std::string working_dir;
 
 	// Whether we're parsing a hook.
 	bool in_hook = false;
