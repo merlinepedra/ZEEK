@@ -3003,11 +3003,18 @@ StringValPtr index_string(const String* s, const ListVal* lv)
 
 VectorValPtr index_slice(VectorVal* vect, const ListVal* lv)
 	{
+	auto first = lv->Idx(0)->CoerceToInt();
+	auto last = lv->Idx(1)->CoerceToInt();
+	return index_slice(vect, first, last);
+	}
+
+VectorValPtr index_slice(VectorVal* vect, int _first, int _last)
+	{
 	size_t len = vect->Size();
 	auto result = make_intrusive<VectorVal>(vect->GetType<VectorType>());
 
-	bro_int_t first = get_slice_index(lv->Idx(0)->CoerceToInt(), len);
-	bro_int_t last = get_slice_index(lv->Idx(1)->CoerceToInt(), len);
+	bro_int_t first = get_slice_index(_first, len);
+	bro_int_t last = get_slice_index(_last, len);
 	bro_int_t sub_length = last - first;
 
 	if ( sub_length >= 0 )

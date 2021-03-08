@@ -1560,8 +1560,28 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 				GenExpr(e->GetOp2(), GEN_VAL_PTR) + "})";
 
 		else if ( aggr_t->Tag() == TYPE_VECTOR )
-			gen =  GenExpr(aggr, GEN_DONT_CARE) + "->At(" +
-				GenExpr(e->GetOp2(), GEN_NATIVE) + ")";
+			{
+			const auto& op2 = e->GetOp2();
+			const auto& t2 = op2->GetType();
+			ASSERT(t2->Tag() == TYPE_LIST);
+
+			if ( t2->Tag() == TYPE_LIST &&
+			     t2->AsTypeList()->GetTypes().size() == 2 )
+				{
+				auto& inds = op2->AsListExpr()->Exprs();
+				auto first = inds[0];
+				auto last = inds[1];
+				gen = std::string("index_slice(") +
+					GenExpr(aggr, GEN_VAL_PTR) +
+					".get(), " +
+					GenExpr(first, GEN_NATIVE) +
+					", " +
+					GenExpr(last, GEN_NATIVE) + ")";
+				}
+			else
+				gen = GenExpr(aggr, GEN_DONT_CARE) + "->At(" +
+					GenExpr(e->GetOp2(), GEN_NATIVE) + ")";
+			}
 
 		else if ( aggr_t->Tag() == TYPE_STRING )
 			gen = std::string("index_string__CPP(") +
