@@ -93,12 +93,14 @@ public:
 	const std::string& FuncBodyName(hash_type h)
 		{ return previously_compiled[h]; }
 
-	FILE* FuncWriteFile() const	{ return f_hf_w; }
-	FILE* ObjWriteFile() const	{ return o_hf_w; }
+	FILE* FuncWriteFile() const	{ return hf_w; }
+	FILE* ObjWriteFile() const	{ return hf_w; }
 
 protected:
-	void LoadFuncHashes(FILE* f);
-	void LoadObjHashes(FILE* f);
+	void LoadHashes(FILE* f);
+
+	void RequireLine(FILE* f, std::string& line);
+	bool GetLine(FILE* f, std::string& line);
 
 	// Tracks previously compiled bodies based on hashes, mapping them
 	// to a fully qualified name.
@@ -106,13 +108,9 @@ protected:
 
 	bool append;
 
-	std::string func_hash_name;
-	FILE* f_hf_r = nullptr;
-	FILE* f_hf_w = nullptr;
-
-	std::string obj_hash_name;
-	FILE* o_hf_r = nullptr;
-	FILE* o_hf_w = nullptr;
+	std::string hash_name;
+	FILE* hf_r = nullptr;
+	FILE* hf_w = nullptr;
 };
 
 class CPPCompile {

@@ -96,7 +96,7 @@ void CPPTracker<T1, T2>::LogIfNew(T2 key, int scope, FILE* log_file)
 
 	auto hash = map[key.get()];
 	auto index = map2[hash];
-	fprintf(log_file, "%llu %d %d\n", hash, index, scope);
+	fprintf(log_file, "hash\n%llu %d %d\n", hash, index, scope);
 	}
 
 template<class T1, class T2>
@@ -114,96 +114,116 @@ CPPHashManager::CPPHashManager(const char* hash_name_base, bool _append)
 	{
 	append = _append;
 
-	func_hash_name = std::string(hash_name_base) + ".func.dat";
-	obj_hash_name = std::string(hash_name_base) + ".obj.dat";
+	hash_name = std::string(hash_name_base) + ".dat";
 
 	if ( append )
 		{
-		f_hf_r = fopen(func_hash_name.c_str(), "r");
-		o_hf_r = fopen(obj_hash_name.c_str(), "r");
-		if ( ! f_hf_r || ! o_hf_r )
+		hf_r = fopen(hash_name.c_str(), "r");
+		if ( ! hf_r )
 			{
-			reporter->Error("can't open auxiliary C++ hash files %s/%s for reading",
-				func_hash_name.c_str(), obj_hash_name.c_str());
+			reporter->Error("can't open auxiliary C++ hash file %s for reading",
+				hash_name.c_str());
 			exit(1);
 			}
 
-		lock_file(func_hash_name, f_hf_r);
-		LoadFuncHashes(f_hf_r);
-		LoadObjHashes(o_hf_r);
+		lock_file(hash_name, hf_r);
+		LoadHashes(hf_r);
 		}
 
 	auto mode = append ? "a" : "w";
 
-	f_hf_w = fopen(func_hash_name.c_str(), mode);
-	o_hf_w = fopen(obj_hash_name.c_str(), mode);
-	if ( ! f_hf_w || ! o_hf_w )
+	hf_w = fopen(hash_name.c_str(), mode);
+	if ( ! hf_w )
 		{
-		reporter->Error("can't open auxiliary C++ hash files %s/%s for writing",
-				func_hash_name.c_str(), obj_hash_name.c_str());
+		reporter->Error("can't open auxiliary C++ hash file %s for writing",
+				hash_name.c_str());
 		exit(1);
 		}
 	}
 
 CPPHashManager::~CPPHashManager()
 	{
-	fclose(o_hf_w);
-	fclose(f_hf_w);
+	fclose(hf_w);
 
-	if ( f_hf_r )
+	if ( hf_r )
 		{
-		unlock_file(func_hash_name, f_hf_r);
-		fclose(f_hf_r);
-		fclose(o_hf_r);
+		unlock_file(hash_name, hf_r);
+		fclose(hf_r);
 		}
 	}
 
-void CPPHashManager::LoadFuncHashes(FILE* f)
+void CPPHashManager::LoadHashes(FILE* f)
 	{
-	char buf[8192];
-	while ( fgets(buf, sizeof buf, f) )
+	std::string key;
+
+	while ( GetLine(f, key) )
 		{
+		std::string line;
+
+		RequireLine(f, line);
+
 		hash_type hash;
 
-		if ( sscanf(buf, "%llu", &hash) != 1 || hash == 0 )
+		if ( key == "func" )
 			{
-			reporter->Error("bad %s hash file entry: %s", func_hash_name.c_str(), buf);
-			exit(1);
+			auto func = line;
+
+			RequireLine(f, line);
+
+			if ( sscanf(line.c_str(), "%llu", &hash) != 1 ||
+			     hash == 0 )
+				{
+				reporter->Error("bad %s hash file entry: %s", hash_name.c_str(), line.c_str());
+				exit(1);
+				}
+
+			previously_compiled[hash] = func;
 			}
 
-		if ( ! fgets(buf, sizeof buf, f) )
+		else if ( key == "hash" )
 			{
-			reporter->Error("missing final %s hash file entry", func_hash_name.c_str());
-			exit(1);
+			int index;
+			int scope;
+
+			if ( sscanf(line.c_str(), "%llu %d %d", &hash, &index,
+				    &scope) != 3 || hash == 0 )
+				{
+				reporter->Error("bad %s hash file entry: %s", hash_name.c_str(), line.c_str());
+				exit(1);
+				}
+
+			compiled_items[hash] = CompiledItemPair{index, scope};
 			}
 
-		// Remove trailing newline.
-		int n = strlen(buf);
-		if ( n > 0 && buf[n-1] == '\n' )
-			buf[n-1] = '\0';
-
-		previously_compiled[hash] = std::string(buf);
+		else
+			{
+			reporter->Error("bad %s hash file entry: %s", hash_name.c_str(), line.c_str());
+			exit(1);
+			}
 		}
 	}
 
-void CPPHashManager::LoadObjHashes(FILE* f)
+void CPPHashManager::RequireLine(FILE* f, std::string& line)
+	{
+	if ( ! GetLine(f, line) )
+		{
+		reporter->Error("missing final %s hash file entry", hash_name.c_str());
+		exit(1);
+		}
+	}
+
+bool CPPHashManager::GetLine(FILE* f, std::string& line)
 	{
 	char buf[8192];
-	while ( fgets(buf, sizeof buf, f) )
-		{
-		hash_type hash;
-		int index;
-		int scope;
+	if ( ! fgets(buf, sizeof buf, f) )
+		return false;
 
-		if ( sscanf(buf, "%llu %d %d", &hash, &index, &scope) != 3 ||
-		     hash == 0 )
-			{
-			reporter->Error("bad %s hash file entry: %s", obj_hash_name.c_str(), buf);
-			exit(1);
-			}
+	int n = strlen(buf);
+	if ( n > 0 && buf[n-1] == '\n' )
+		buf[n-1] = '\0';
 
-		compiled_items[hash] = CompiledItemPair{index, scope};
-		}
+	line = buf;
+	return true;
 	}
 
 
@@ -471,9 +491,9 @@ void CPPCompile::GenEpilog()
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
 			f, f, Fmt(h));
 
-		fprintf(hm.FuncWriteFile(), "%llu\n", h);
-		fprintf(hm.FuncWriteFile(), "zeek::detail::CPP_%d::%s\n",
+		fprintf(hm.FuncWriteFile(), "func\nzeek::detail::CPP_%d::%s\n",
 			addl_tag, f.c_str());
+		fprintf(hm.FuncWriteFile(), "%llu\n", h);
 		}
 
 	EndBlock(true);
