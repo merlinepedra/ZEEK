@@ -47,6 +47,7 @@ struct CompiledItemPair { int index; int scope; };
 using VarMapper = std::unordered_map<hash_type, CompiledItemPair>;
 
 extern std::unordered_map<hash_type, IntrusivePtr<CPPStmt>> compiled_bodies;
+extern std::unordered_map<hash_type, std::vector<std::string>> compiled_bodies_events;
 extern VarMapper compiled_items;
 
 } // namespace detail

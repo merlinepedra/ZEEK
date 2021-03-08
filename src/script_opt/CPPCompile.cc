@@ -349,10 +349,7 @@ void CPPCompile::Compile()
 		{
 		AddGlobal(e, "gl");
 		auto ev = globals[std::string(e)] + "_ev";
-
 		Emit("EventHandlerPtr %s;", ev);
-		AddInit(nullptr, ev,
-			std::string("register_event__CPP(\"") + e + "\")");
 		}
 
 	for ( const auto& func : funcs )
@@ -488,8 +485,19 @@ void CPPCompile::GenEpilog()
 		{
 		auto h = body_hashes[f];
 
-		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s);",
-			f, f, Fmt(h));
+		std::string events;
+		if ( body_events.count(f) > 0 )
+			for ( auto e : body_events[f] )
+				{
+				if ( events.size() > 0 )
+					events += ", ";
+				events = events + "\"" + e + "\"";
+				}
+
+		events = std::string("{") + events + "}";
+
+		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s, %s);",
+			f, f, Fmt(h), events);
 
 		fprintf(hm.FuncWriteFile(), "func\nzeek::detail::CPP_%d::%s\n",
 			addl_tag, f.c_str());
@@ -797,6 +805,8 @@ void CPPCompile::DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
 	{
 	locals.clear();
 	params.clear();
+
+	body_name = fname;
 
 	ret_type = ft->Yield();
 	in_hook = flavor == FUNC_FLAVOR_HOOK;
@@ -1200,13 +1210,16 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto ev_s = static_cast<const EventStmt*>(s)->StmtExprPtr();
 		auto ev_e = cast_intrusive<EventExpr>(ev_s);
 
+		auto ev_n = ev_e->Name();
+		RegisterEvent(ev_n);
+
 		if ( ev_e->Args()->Exprs().length() > 0 )
 			Emit("event_mgr.Enqueue(%s_ev, %s);",
-				globals[std::string(ev_e->Name())],
+				globals[std::string(ev_n)],
 				GenExpr(ev_e->Args(), GEN_VAL_PTR));
 		else
 			Emit("event_mgr.Enqueue(%s_ev, Args{});",
-				globals[std::string(ev_e->Name())]);
+				globals[std::string(ev_n)]);
 		}
 		break;
 
@@ -1857,6 +1870,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto when = s->When();
 		auto event = s->Event();
 		std::string event_name(event->Handler()->Name());
+
+		RegisterEvent(event_name);
 
 		std::string when_s = GenExpr(when, GEN_NATIVE);
 		if ( when->GetType()->Tag() == TYPE_INTERVAL )
@@ -3138,6 +3153,11 @@ void CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
 				}
 			}
 		}
+	}
+
+void CPPCompile::RegisterEvent(std::string ev_name)
+	{
+	body_events[body_name].emplace_back(std::move(ev_name));
 	}
 
 std::string CPPCompile::LocalName(const ID* l) const

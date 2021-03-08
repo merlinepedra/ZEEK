@@ -4,6 +4,8 @@
 #include "zeek/Reporter.h"
 #include "zeek/module_util.h"
 #include "zeek/Desc.h"
+#include "zeek/EventHandler.h"
+#include "zeek/EventRegistry.h"
 #include "zeek/script_opt/ScriptOpt.h"
 #include "zeek/script_opt/ProfileFunc.h"
 #include "zeek/script_opt/Inline.h"
@@ -237,7 +239,22 @@ void analyze_scripts()
 			auto body = compiled_bodies.find(hash);
 
 			if ( body != compiled_bodies.end() )
+				{
 				f.Func()->ReplaceBody(f.Body(), body->second);
+				for ( auto& e : compiled_bodies_events[hash] )
+					{
+					EventHandler* h =
+						event_registry->Lookup(e);
+
+					if ( ! h )
+						{
+						h = new EventHandler(e);
+						event_registry->Register(h);
+						}
+
+					h->SetUsed();
+					}
+				}
 			}
 
 		return;

@@ -240,6 +240,8 @@ private:
 
 	void RegisterAttributes(const AttributesPtr& attrs);
 
+	void RegisterEvent(std::string ev_name);
+
 	const char* NativeAccessor(const TypePtr& t);
 	const char* IntrusiveVal(const TypePtr& t);
 
@@ -364,6 +366,9 @@ private:
 	// Maps function names to hashes of bodies.
 	std::unordered_map<std::string, hash_type> body_hashes;
 
+	// Maps function names to events relevant to them.
+	std::unordered_map<std::string, std::vector<std::string>> body_events;
+
 	// Script functions that we are able to compile.  We compute
 	// these ahead of time so that when compiling script function A
 	// which makes a call to script function B, we know whether
@@ -424,6 +429,9 @@ private:
 	// If non-zero, provides a tag used for auxiliary/additional
 	// compilation units.
 	int addl_tag = 0;
+
+	// Internal name of the function we're currently compiling.
+	std::string body_name;
 
 	// Return type of the function we're currently compiling.
 	TypePtr ret_type = nullptr;

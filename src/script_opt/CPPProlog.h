@@ -51,9 +51,11 @@ int flag_init_CPP()
 
 static int dummy = flag_init_CPP();
 
-void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash)
+void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash,
+			std::vector<std::string> events)
 	{
 	compiled_bodies[hash] = body;
+	compiled_bodies_events[hash] = std::move(events);
 	}
 
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
@@ -298,21 +300,6 @@ VectorValPtr vector_constructor__CPP(std::vector<ValPtr> vals, VectorTypePtr t)
 		vv->Assign(i, vals[i]);
 
 	return vv;
-	}
-
-EventHandlerPtr register_event__CPP(const char* event)
-	{
-	EventHandler* h = event_registry->Lookup(std::string(event));
-
-	if ( ! h )
-		{
-		h = new EventHandler(event);
-		event_registry->Register(h);
-		}
-
-	h->SetUsed();
-
-	return h;
 	}
 
 ValPtr schedule__CPP(double dt, EventHandlerPtr event, std::vector<ValPtr> args)
