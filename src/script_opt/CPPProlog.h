@@ -130,6 +130,31 @@ ValPtr set_global__CPP(IDPtr g, ValPtr v)
 	return v;
 	}
 
+SubNetValPtr addr_mask__CPP(const IPAddr& a, uint32_t mask)
+	{
+        if ( a.GetFamily() == IPv4 )
+                {
+                if ( mask > 32 )
+                        RuntimeError(util::fmt("bad IPv4 subnet prefix length: %d", int(mask)));
+                }
+        else
+                {
+                if ( mask > 128 )
+                        reporter->RuntimeError(&no_location, util::fmt("bad IPv6 subnet prefix length: %d", int(mask)));
+                }
+
+        return make_intrusive<SubNetVal>(a, mask);
+	}
+
+bool check_vec_sizes(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	if ( v1->Size() == v2->Size() )
+		return true;
+
+	reporter->RuntimeError(&no_location, "vector operands are of different sizes");
+	return false;
+	}
+
 ValPtr assign_field__CPP(RecordValPtr rec, int field, ValPtr v)
 	{
 	rec->Assign(field, v);

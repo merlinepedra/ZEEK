@@ -2064,6 +2064,16 @@ std::string CPPCompile::GenBinaryPattern(const Expr* e, GenType gt,
 std::string CPPCompile::GenBinaryAddr(const Expr* e, GenType gt, const char* op)
 	{
 	auto v1 = GenExpr(e->GetOp1(), GEN_DONT_CARE) + "->AsAddr()";
+
+	if ( e->Tag() == EXPR_DIVIDE )
+		{
+		auto gen = std::string("addr_mask__CPP(") +
+				v1 + ", " +
+				GenExpr(e->GetOp2(), GEN_NATIVE) + ")";
+
+		return NativeToGT(gen, e->GetType(), gt);
+		}
+
 	auto v2 = GenExpr(e->GetOp2(), GEN_DONT_CARE) + "->AsAddr()";
 
 	return NativeToGT(v1 + op + v2, e->GetType(), gt);
