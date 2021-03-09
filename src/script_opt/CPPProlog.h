@@ -137,6 +137,13 @@ ValPtr set_global__CPP(IDPtr g, ValPtr v)
 	return v;
 	}
 
+ValPtr set_event__CPP(IDPtr g, ValPtr v, EventHandlerPtr& gh)
+	{
+	g->SetVal(v);
+	gh = event_registry->Register(g->Name());
+	return v;
+	}
+
 SubNetValPtr addr_mask__CPP(const IPAddr& a, uint32_t mask)
 	{
         if ( a.GetFamily() == IPv4 )

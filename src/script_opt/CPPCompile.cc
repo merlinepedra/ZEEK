@@ -372,7 +372,7 @@ void CPPCompile::Compile()
 			// compilable, the we'll call it directly.
 			if ( compilable_funcs.count(gn) > 0 )
 				{
-				AddGlobal(g->Name(), "zf");
+				AddGlobal(gn, "zf");
 				continue;
 				}
 
@@ -387,8 +387,15 @@ void CPPCompile::Compile()
 
 		NoteInitDependency(g, TypeRep(t));
 
-		if ( AddGlobal(g->Name(), "gl") )
+		if ( AddGlobal(gn, "gl") )
+			{
 			Emit("IDPtr %s;", globals[gn]);
+
+			if ( pfs.Events().count(gn) > 0 )
+				// This is an event that's also used as
+				// a variable.
+				Emit("EventHandlerPtr %s_ev;", globals[gn]);
+			}
 
 		global_vars.emplace(g);
 
@@ -400,6 +407,10 @@ void CPPCompile::Compile()
 			AddBiF(g, true);
 		}
 
+	for ( const auto& e : pfs.Events() )
+		if ( AddGlobal(e, "gl") )
+			Emit("EventHandlerPtr %s_ev;", globals[std::string(e)]);
+
 	for ( const auto& c : pfs.Constants() )
 		AddConstant(c);
 
@@ -408,15 +419,6 @@ void CPPCompile::Compile()
 		ASSERT(types.HasKey(t));
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		RegisterType(tp);
-		}
-
-	for ( const auto& e : pfs.Events() )
-		{
-		if ( AddGlobal(e, "gl") )
-			{
-			auto ev = globals[std::string(e)] + "_ev";
-			Emit("EventHandlerPtr %s;", ev);
-			}
 		}
 
 	for ( const auto& func : funcs )
@@ -2356,10 +2358,23 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 
 		if ( n->IsGlobal() )
 			{
+			const auto& t = n->GetType();
 			auto gn = globals[n->Name()];
 
-			if ( top_level )
+			if ( t->Tag() == TYPE_FUNC &&
+			     t->AsFuncType()->Flavor() == FUNC_FLAVOR_EVENT )
+				{
+				gen = std::string("set_event__CPP(") +
+					gn + ", " + rhs_val_ptr + ", " +
+					gn + "_ev)";
+
+				if ( ! top_level )
+					gen = GenericValPtrToGT(gen, n->GetType(), gt);
+				}
+
+			else if ( top_level )
 				gen = gn + "->SetVal(" + rhs_val_ptr + ")";
+
 			else
 				{
 				gen = std::string("set_global__CPP(") +
