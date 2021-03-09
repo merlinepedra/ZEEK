@@ -282,6 +282,43 @@ CPPCompile::~CPPCompile()
 
 void CPPCompile::Compile()
 	{
+	if ( addl_tag > 0 )
+		{
+		auto& bifs = pfs.BiFGlobals();
+
+		for ( auto& g : pfs.AllGlobals() )
+			{
+			auto gn = std::string(g->Name());
+
+			if ( bifs.count(g) && ! hm.HasBiF(gn) )
+				{
+				fprintf(stderr, "%s: code relies on non-base BiF %s\n",
+					working_dir.c_str(), gn.c_str());
+				exit(1);
+				}
+
+			if ( hm.HasGlobal(gn) )
+				{
+				auto ht_orig = hm.GlobalTypeHash(gn);
+				auto hv_orig = hm.GlobalValHash(gn);
+
+				auto ht = pfs.HashType(g->GetType());
+				hash_type hv = 0;
+				if ( g->GetVal() )
+					hv = hash_obj(g->GetVal());
+
+				if ( ht != ht_orig || hv != hv_orig )
+					{
+					fprintf(stderr, "%s: hash clash for global %s (%llu/%llu vs. %llu/%llu)\n",
+						working_dir.c_str(), gn.c_str(),
+						ht, hv, ht_orig, hv_orig);
+					fprintf(stderr, "val: %s\n", g->GetVal() ? obj_desc(g->GetVal().get()).c_str() : "<none>");
+					exit(1);
+					}
+				}
+			}
+		}
+
 	GenProlog();
 
 	for ( const auto& func : funcs )
@@ -317,27 +354,6 @@ void CPPCompile::Compile()
 	for ( auto& g : pfs.AllGlobals() )
 		{
 		auto gn = std::string(g->Name());
-
-		if ( hm.HasGlobal(gn) )
-			{
-			auto ht_orig = hm.GlobalTypeHash(gn);
-			auto hv_orig = hm.GlobalValHash(gn);
-
-			auto ht = pfs.HashType(g->GetType());
-			hash_type hv = 0;
-			if ( g->GetVal() )
-				hv = hash_obj(g->GetVal());
-
-			if ( ht != ht_orig || hv != hv_orig )
-				{
-				fprintf(stderr, "%s: hash clash for global %s (%llu/%llu vs. %llu/%llu)\n",
-					working_dir.c_str(), gn.c_str(),
-					ht, hv, ht_orig, hv_orig);
-				fprintf(stderr, "val: %s\n", g->GetVal() ? obj_desc(g->GetVal().get()).c_str() : "<none>");
-				exit(1);
-				}
-			}
-
 		bool is_bif = bifs.count(g) > 0;
 
 		if ( gl.count(g) == 0 )
@@ -615,16 +631,7 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 void CPPCompile::AddBiF(const ID* b, bool is_var)
 	{
 	auto bn = b->Name();
-
-	if ( addl_tag > 0 && ! hm.HasBiF(bn) )
-		{
-		fprintf(stderr, "%s: code relies on non-base BiF %s\n",
-			working_dir.c_str(), bn);
-		exit(1);
-		}
-
 	auto n = std::string(bn);
-
 	if ( is_var )
 		n = n + "_";	// make the name distinct
 
