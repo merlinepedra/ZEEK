@@ -387,8 +387,8 @@ void CPPCompile::Compile()
 
 		NoteInitDependency(g, TypeRep(t));
 
-		AddGlobal(g->Name(), "gl");
-		Emit("IDPtr %s;", globals[gn]);
+		if ( AddGlobal(g->Name(), "gl") )
+			Emit("IDPtr %s;", globals[gn]);
 
 		global_vars.emplace(g);
 
@@ -412,9 +412,11 @@ void CPPCompile::Compile()
 
 	for ( const auto& e : pfs.Events() )
 		{
-		AddGlobal(e, "gl");
-		auto ev = globals[std::string(e)] + "_ev";
-		Emit("EventHandlerPtr %s;", ev);
+		if ( AddGlobal(e, "gl") )
+			{
+			auto ev = globals[std::string(e)] + "_ev";
+			Emit("EventHandlerPtr %s;", ev);
+			}
 		}
 
 	for ( const auto& func : funcs )
@@ -641,15 +643,16 @@ void CPPCompile::AddBiF(const ID* b, bool is_var)
 	if ( is_var )
 		n = n + "_";	// make the name distinct
 
-	AddGlobal(n, "bif");
-
-	Emit("Func* %s;", globals[n]);
+	if ( AddGlobal(n, "bif") )
+		Emit("Func* %s;", globals[n]);
 
 	AddInit(b, globals[n], std::string("lookup_bif__CPP(\"") + bn + "\")");
 	}
 
-void CPPCompile::AddGlobal(const std::string& g, const char* suffix)
+bool CPPCompile::AddGlobal(const std::string& g, const char* suffix)
 	{
+	bool new_var = false;
+
 	if ( globals.count(g) == 0 )
 		{
 		auto gn = GlobalName(g, suffix);
@@ -657,11 +660,16 @@ void CPPCompile::AddGlobal(const std::string& g, const char* suffix)
 		if ( hm.HasGlobalVar(gn) )
 			gn = ScopePrefix(hm.GlobalVarScope(gn)) + gn;
 		else
+			{
+			new_var = true;
 			fprintf(hm.HashFile(), "global-var\n%s\n%d\n",
 				gn.c_str(), addl_tag);
+			}
 
 		globals.emplace(g, gn);
 		}
+
+	return new_var;
 	}
 
 void CPPCompile::AddConstant(const ConstExpr* c)

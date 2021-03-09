@@ -159,7 +159,7 @@ private:
 
 	void DeclareGlobals(const FuncInfo& func);
 	void AddBiF(const ID* b, bool is_var);
-	void AddGlobal(const std::string& g, const char* suffix);
+	bool AddGlobal(const std::string& g, const char* suffix);
 	void AddConstant(const ConstExpr* c);
 
 	void DeclareFunc(const FuncInfo& func);
