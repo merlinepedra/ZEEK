@@ -2154,15 +2154,21 @@ std::string CPPCompile::GenBinary(const Expr* e, GenType gt,
 	{
 	const auto& op1 = e->GetOp1();
 	const auto& op2 = e->GetOp2();
+	auto t = op1->GetType();
 
 	if ( e->GetType()->Tag() == TYPE_VECTOR )
 		{
 		auto gen1 = GenExpr(op1, GEN_NATIVE);
 		auto gen2 = GenExpr(op2, GEN_NATIVE);
+
+		if ( t->Tag() == TYPE_VECTOR &&
+		     t->Yield()->Tag() == TYPE_STRING &&
+		     op2->GetType()->Tag() == TYPE_VECTOR )
+			return std::string("vec_str_op_") + vec_op + "__CPP(" +
+				gen1 + ", " + gen2 + ")";
+		     
 		return GenVectorOp(gen1, gen2, vec_op);
 		}
-
-	auto t = op1->GetType();
 
 	if ( t->IsSet() )
 		return GenBinarySet(e, gt, op);

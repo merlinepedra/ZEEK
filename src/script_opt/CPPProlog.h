@@ -533,21 +533,19 @@ VectorValPtr vec_op_sub__CPP(VectorValPtr v, int i)
 
 // And these for vector-plus-scalar string operations.
 
-VectorValPtr vec_op_str_vec_add__CPP(StringValPtr v1, VectorValPtr v2,
-					StringValPtr v3)
+VectorValPtr vec_op_str_vec_add__CPP(StringValPtr s1, VectorValPtr v2,
+					VectorValPtr v3, StringValPtr s4)
 	{
 	auto vt = v2->GetType<VectorType>();
 	auto v_result = make_intrusive<VectorVal>(vt);
 
-	auto s1 = v1 ? v1->AsString() : nullptr;
-	auto s3 = v3 ? v3->AsString() : nullptr;
-
 	for ( unsigned int i = 0; i < v2->Size(); ++i )
 		{
 		std::vector<const String*> strings;
-		if ( s1 ) strings.push_back(s1);
-		strings.push_back(v2->At(i)->AsString());
-		if ( s3 ) strings.push_back(s3);
+		if ( s1 ) strings.push_back(s1->AsString());
+		if ( v2 ) strings.push_back(v2->At(i)->AsString());
+		if ( v3 ) strings.push_back(v3->At(i)->AsString());
+		if ( s4 ) strings.push_back(s4->AsString());
 
 		auto res = make_intrusive<StringVal>(concatenate(strings));
 		v_result->Assign(i, res);
@@ -556,12 +554,17 @@ VectorValPtr vec_op_str_vec_add__CPP(StringValPtr v1, VectorValPtr v2,
 	return v_result;
 	}
 
+VectorValPtr vec_str_op_add__CPP(VectorValPtr v1, VectorValPtr v2)
+	{
+	return vec_op_str_vec_add__CPP(nullptr, v1, v2, nullptr);
+	}
+
 VectorValPtr vec_op_add__CPP(VectorValPtr v1, StringValPtr s2)
 	{
-	return vec_op_str_vec_add__CPP(nullptr, v1, s2);
+	return vec_op_str_vec_add__CPP(nullptr, v1, nullptr, s2);
 	}
 
 VectorValPtr vec_op_add__CPP(StringValPtr s1, VectorValPtr v2)
 	{
-	return vec_op_str_vec_add__CPP(s1, v2, nullptr);
+	return vec_op_str_vec_add__CPP(s1, v2, nullptr, nullptr);
 	}
