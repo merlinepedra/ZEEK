@@ -136,8 +136,8 @@ void analyze_scripts()
 
 		if ( analysis_options.gen_CPP && analysis_options.add_CPP )
 			{
-			reporter->Error("gen-C++ incompatible with add-C++");
-			exit(1);
+			reporter->Warning("gen-C++ incompatible with add-C++");
+			analysis_options.add_CPP = false;
 			}
 
 		if ( (analysis_options.gen_CPP || analysis_options.add_CPP) &&
@@ -243,15 +243,7 @@ void analyze_scripts()
 				f.Func()->ReplaceBody(f.Body(), body->second);
 				for ( auto& e : compiled_bodies_events[hash] )
 					{
-					EventHandler* h =
-						event_registry->Lookup(e);
-
-					if ( ! h )
-						{
-						h = new EventHandler(e);
-						event_registry->Register(h);
-						}
-
+					auto h = event_registry->Register(e);
 					h->SetUsed();
 					}
 				}

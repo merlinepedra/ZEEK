@@ -1691,7 +1691,6 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 				GenExpr(op1, GEN_VAL_PTR) + "->Get())";
 
 		else if ( t2->Tag() == TYPE_VECTOR )
-			// v1->AsListVal()->Idx(0)->CoerceToUnsigned()
 			gen = GenExpr(op2, GEN_DONT_CARE) + "->At(" +
 				GenExpr(op1, GEN_NATIVE) + ")";
 
