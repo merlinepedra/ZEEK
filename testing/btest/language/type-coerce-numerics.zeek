@@ -14,6 +14,9 @@
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff vectors.out
 
 @TEST-START-FILE first_set.zeek
+
+module type_coerce_test1;
+
 type myrecord : record {
 	ii: int &optional;
 	cc: count &optional;
@@ -64,6 +67,9 @@ event zeek_init()
 @TEST-END-FILE
 
 @TEST-START-FILE double_convert_failure1.zeek
+
+module type_coerce_test2;
+
 type myrecord : record {
 	cc: count &optional;
 };
@@ -75,6 +81,9 @@ event zeek_init()
 @TEST-END-FILE
 
 @TEST-START-FILE double_convert_failure2.zeek
+
+module type_coerce_test3;
+
 type myrecord : record {
 	cc: count &optional;
 };
@@ -86,6 +95,9 @@ event zeek_init()
 @TEST-END-FILE
 
 @TEST-START-FILE int_convert_failure.zeek
+
+module type_coerce_test4;
+
 type myrecord : record {
 	cc: count &optional;
 };
@@ -97,6 +109,9 @@ event zeek_init()
 @TEST-END-FILE
 
 @TEST-START-FILE vectors.zeek
+
+module type_coerce_test5;
+
 event zeek_init()
 	{
 	local c1 : vector of count = { 1 , 2 };

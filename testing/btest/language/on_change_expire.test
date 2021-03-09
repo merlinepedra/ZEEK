@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b -C -r $TRACES/var-services-std-ports.trace %INPUT >output
 # @TEST-EXEC: btest-diff output
 
+module change_expire_test;
+
 function inform_me(s: table[string] of count, idx: string): interval
     {
     print fmt("expired %s", idx);

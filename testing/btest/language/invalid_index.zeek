@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >out 2>&1
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff out
 
+module invalid_index_test;
+
 global foo: vector of count = { 42 };
 global foo2: table[count] of count = { [0] = 13 };
 

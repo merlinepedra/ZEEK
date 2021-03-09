@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >output 2>&1
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff output
 
+module dyn_cast_error_test;
+
 type X: record  {
     a: addr;
     b: port;

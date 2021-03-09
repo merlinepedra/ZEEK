@@ -15,6 +15,8 @@
 
 redef exit_only_after_terminate = T;
 
+module when_order_test;
+
 type r: record {
 	a: count;
 };

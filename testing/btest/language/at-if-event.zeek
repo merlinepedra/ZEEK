@@ -2,6 +2,8 @@
 # @TEST-EXEC: btest-diff out
 # Check if @if can be used to alternative function/event definitions
 
+module at_if_test;
+
 @if ( 1==1 )
 function test_case(msg: string)
 @else

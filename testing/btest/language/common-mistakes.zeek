@@ -12,6 +12,9 @@
 # @TEST-EXEC: btest-diff 3.out
 
 @TEST-START-FILE 1.zeek
+
+module common_mistakes_test1;
+
 type myrec: record {
 	f: string &optional;
 };
@@ -48,6 +51,9 @@ event zeek_init() &priority=-10
 @TEST-END-FILE
 
 @TEST-START-FILE 2.zeek
+
+module common_mistakes_test2;
+
 function foo()
 	{
 	print "in foo";
@@ -75,6 +81,21 @@ event zeek_init()
 @TEST-END-FILE
 
 @TEST-START-FILE 3.zeek
+
+module common_mistakes_test3;
+
+function foo()
+	{
+	print "in foo";
+	local t: table[string] of string = table();
+
+	# Non-existing index access: (sub)expressions should not be evaluated
+	if ( t["nope"] == "nope" )
+		# Unreachable
+		print "yes";
+	else
+		# Unreachable
+		print "no";
 function foo(v: vector of any)
 	{
 	print "in foo";

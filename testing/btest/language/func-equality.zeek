@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
+module func_equal_test;
+
 function foo()
 	{ print "foo"; }
 

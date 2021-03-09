@@ -9,6 +9,8 @@
 
 @TEST-START-FILE send.zeek
 
+module func_send_test;
+
 redef exit_only_after_terminate = T;
 global event_count = 0;
 type myfunctype: function(c: count);
@@ -48,6 +50,8 @@ event pong(msg: string, f: myfunctype)
 @TEST-END-FILE
 
 @TEST-START-FILE recv.zeek
+
+module func_send_test;
 
 redef exit_only_after_terminate = T;
 const events_to_recv = 5;

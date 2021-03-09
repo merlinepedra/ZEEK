@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
+module type_vars_switch_test;
+
 function switch_one(v: any)
 	{
 	switch (v) {

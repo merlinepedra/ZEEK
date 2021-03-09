@@ -6,6 +6,9 @@
 # hook functions must be called using the "hook" keyword as an operator...
 
 @TEST-START-FILE valid.zeek
+
+module hook_test_valid;
+
 hook myhook(i: count)
     {
     print "myhook()", i;
@@ -60,6 +63,9 @@ event zeek_init()
 @TEST-END-FILE
 
 @TEST-START-FILE invalid.zeek
+
+module hook_test_invalid;
+
 hook myhook(i: count)
 	{
 	print "myhook()", i;
