@@ -558,16 +558,6 @@ void CPPCompile::GenEpilog()
 
 	Emit("} // zeek::detail::CPP_%s\n", Fmt(addl_tag));
 
-	if ( addl_tag == 0 )
-		{
-		Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
-		Emit("} // zeek::detail");
-		Emit("} // zeek");
-
-		for ( auto& bif : pfs.BiFGlobals() )
-			fprintf(hm.HashFile(), "bif\n%s\n", bif->Name());
-		}
-
 	for ( auto& g : pfs.AllGlobals() )
 		if ( ! hm.HasGlobal(g->Name()) )
 			{
@@ -586,6 +576,29 @@ void CPPCompile::GenEpilog()
 			fprintf(hm.HashFile(), "%s %d\n",
 				loc->filename, loc->first_line);
 			}
+
+	if ( addl_tag > 0 )
+		return;
+
+	Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
+	Emit("} // zeek::detail");
+	Emit("} // zeek");
+
+	// For BiFs, what matters is the ones available, even if the
+	// loaded scripts didn't happen to make reference to them.
+	// Thus, we search the entire set of globals for them, rather
+	// than relying on pfs.BiFGlobals().
+	const auto& globals = zeek::detail::global_scope()->Vars();
+	for ( const auto& g : globals )
+		{
+		const auto& gv = g.second->GetVal();
+		if ( ! gv || gv->GetType()->Tag() != TYPE_FUNC )
+			continue;
+
+		auto f = gv->AsFunc();
+		if ( f->GetKind() == BuiltinFunc::BUILTIN_FUNC )
+			fprintf(hm.HashFile(), "bif\n%s\n", f->Name());
+		}
 	}
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
