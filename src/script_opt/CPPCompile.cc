@@ -170,14 +170,28 @@ void CPPHashManager::LoadHashes(FILE* f)
 
 			RequireLine(f, line);
 
-			if ( sscanf(line.c_str(), "%llu", &hash) != 1 ||
-			     hash == 0 )
-				{
-				reporter->Error("bad %s hash file entry: %s", hash_name.c_str(), line.c_str());
-				exit(1);
-				}
+			if ( sscanf(line.c_str(), "%llu", &hash) != 1 || hash == 0 )
+				BadLine(line);
 
 			previously_compiled[hash] = func;
+			}
+
+		else if ( key == "global" )
+			{
+			auto gl = line;
+
+			RequireLine(f, line);
+
+			hash_type gl_t_h, gl_v_h;
+
+			if ( sscanf(line.c_str(), "%llu %llu", &gl_t_h, &gl_v_h) != 2 )
+				BadLine(line);
+
+			gl_type_hashes[gl] = gl_t_h;
+			gl_val_hashes[gl] = gl_v_h;
+
+			// Eat the location info
+			(void) RequireLine(f, line);
 			}
 
 		else if ( key == "hash" )
@@ -187,10 +201,7 @@ void CPPHashManager::LoadHashes(FILE* f)
 
 			if ( sscanf(line.c_str(), "%llu %d %d", &hash, &index,
 				    &scope) != 3 || hash == 0 )
-				{
-				reporter->Error("bad %s hash file entry: %s", hash_name.c_str(), line.c_str());
-				exit(1);
-				}
+				BadLine(line);
 
 			compiled_items[hash] = CompiledItemPair{index, scope};
 			}
@@ -199,10 +210,7 @@ void CPPHashManager::LoadHashes(FILE* f)
 			base_bifs.insert(line);
 
 		else
-			{
-			reporter->Error("bad %s hash file entry: %s", hash_name.c_str(), line.c_str());
-			exit(1);
-			}
+			BadLine(line);
 		}
 	}
 
@@ -227,6 +235,13 @@ bool CPPHashManager::GetLine(FILE* f, std::string& line)
 
 	line = buf;
 	return true;
+	}
+
+void CPPHashManager::BadLine(std::string& line)
+	{
+	reporter->Error("bad %s hash file entry: %s",
+			hash_name.c_str(), line.c_str());
+	exit(1);
 	}
 
 
@@ -302,6 +317,27 @@ void CPPCompile::Compile()
 	for ( auto& g : pfs.AllGlobals() )
 		{
 		auto gn = std::string(g->Name());
+
+		if ( hm.HasGlobal(gn) )
+			{
+			auto ht_orig = hm.GlobalTypeHash(gn);
+			auto hv_orig = hm.GlobalValHash(gn);
+
+			auto ht = pfs.HashType(g->GetType());
+			hash_type hv = 0;
+			if ( g->GetVal() )
+				hv = hash_obj(g->GetVal());
+
+			if ( ht != ht_orig || hv != hv_orig )
+				{
+				fprintf(stderr, "%s: hash clash for global %s (%llu/%llu vs. %llu/%llu)\n",
+					working_dir.c_str(), gn.c_str(),
+					ht, hv, ht_orig, hv_orig);
+				fprintf(stderr, "val: %s\n", g->GetVal() ? obj_desc(g->GetVal().get()).c_str() : "<none>");
+				exit(1);
+				}
+			}
+
 		bool is_bif = bifs.count(g) > 0;
 
 		if ( gl.count(g) == 0 )
@@ -531,6 +567,25 @@ void CPPCompile::GenEpilog()
 		for ( auto& bif : pfs.BiFGlobals() )
 			fprintf(hm.HashFile(), "bif\n%s\n", bif->Name());
 		}
+
+	for ( auto& g : pfs.AllGlobals() )
+		if ( ! hm.HasGlobal(g->Name()) )
+			{
+			auto ht = pfs.HashType(g->GetType());
+
+			hash_type hv = 0;
+			if ( g->GetVal() )
+				{
+				hv = hash_obj(g->GetVal());
+				}
+
+			fprintf(hm.HashFile(), "global\n%s\n", g->Name());
+			fprintf(hm.HashFile(), "%llu %llu\n", ht, hv);
+
+			auto loc = g->GetLocationInfo();
+			fprintf(hm.HashFile(), "%s %d\n",
+				loc->filename, loc->first_line);
+			}
 	}
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)

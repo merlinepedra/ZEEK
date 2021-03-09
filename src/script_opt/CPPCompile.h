@@ -93,6 +93,13 @@ public:
 	const std::string& FuncBodyName(hash_type h)
 		{ return previously_compiled[h]; }
 
+	bool HasGlobal(const std::string& gl) const
+		{ return gl_type_hashes.count(gl) > 0; }
+	hash_type GlobalTypeHash(const std::string& gl)
+		{ return gl_type_hashes[gl]; }
+	hash_type GlobalValHash(const std::string& gl)
+		{ return gl_val_hashes[gl]; }
+
 	bool HasBiF(const std::string& BiF) const
 		{ return base_bifs.count(BiF) > 0; }
 
@@ -104,6 +111,8 @@ protected:
 	void RequireLine(FILE* f, std::string& line);
 	bool GetLine(FILE* f, std::string& line);
 
+	void BadLine(std::string& line);
+
 	// Tracks previously compiled bodies based on hashes, mapping them
 	// to a fully qualified name.
 	std::unordered_map<hash_type, std::string> previously_compiled;
@@ -112,6 +121,11 @@ protected:
 	// use to understand whether a "-O add-C++" follow-on relies on
 	// additional BiFs.
 	std::unordered_set<std::string> base_bifs;
+
+	// Tracks globals seen in previously compiled bodies, mapping
+	// names to hashes of their types and their values.
+	std::unordered_map<std::string, hash_type> gl_type_hashes;
+	std::unordered_map<std::string, hash_type> gl_val_hashes;
 
 	bool append;
 
