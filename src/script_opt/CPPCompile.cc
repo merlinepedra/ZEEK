@@ -960,6 +960,32 @@ void CPPCompile::DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
 			GenericValPtrToGT(any_i, pt, GEN_NATIVE));
 		}
 
+	// Make sure that any events referred to in this function have
+	// been initialized.  We have to do this dynamically because it
+	// depends on whether the final script using the compiled code
+	// happens to load the associated event handler
+	for ( const auto& e : pf->Events() )
+		{
+		auto ev_name = globals[e] + "_ev";
+
+		// Create a scope so we don't have to individualize the
+		// variables.
+		Emit("{");
+		Emit("static bool did_init = false;");
+		Emit("if ( ! did_init )");
+		StartBlock();
+
+		// We do both a Lookup and a Register because only the latter
+		// returns an EventHandlerPtr, sigh.
+		Emit("if ( event_registry->Lookup(\"%s\") )", e);
+		StartBlock();
+		Emit("%s = event_registry->Register(\"%s\");", ev_name.c_str(), e);
+		EndBlock();
+		Emit("did_init = true;");
+		EndBlock();
+		Emit("}");
+		}
+
 	DeclareLocals(pf, lambda_ids);
 	GenStmt(body);
 
