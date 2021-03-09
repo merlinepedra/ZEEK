@@ -1690,8 +1690,9 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 				GenExpr(op1, GEN_VAL_PTR) + "->Get())";
 
 		else if ( t2->Tag() == TYPE_VECTOR )
-			gen = GenExpr(op2, GEN_DONT_CARE) + "->At(" +
-				GenExpr(op1, GEN_NATIVE) + ")";
+			gen = std::string("(") + GenExpr(op2, GEN_DONT_CARE) +
+				"->At(" + GenExpr(op1, GEN_NATIVE) +
+				") != nullptr)";
 
 		else
 			gen = std::string("(") + GenExpr(op2, GEN_DONT_CARE) +
