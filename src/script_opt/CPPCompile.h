@@ -100,6 +100,11 @@ public:
 	hash_type GlobalValHash(const std::string& gl)
 		{ return gl_val_hashes[gl]; }
 
+	bool HasGlobalVar(const std::string& gv) const
+		{ return gv_scopes.count(gv) > 0; }
+	int GlobalVarScope(const std::string& gv)
+		{ return gv_scopes[gv]; }
+
 	bool HasBiF(const std::string& BiF) const
 		{ return base_bifs.count(BiF) > 0; }
 
@@ -126,6 +131,10 @@ protected:
 	// names to hashes of their types and their values.
 	std::unordered_map<std::string, hash_type> gl_type_hashes;
 	std::unordered_map<std::string, hash_type> gl_val_hashes;
+
+	// Information about globals in terms of their internal variable
+	// names, rather than their script-level names.
+	std::unordered_map<std::string, int> gv_scopes;
 
 	bool append;
 

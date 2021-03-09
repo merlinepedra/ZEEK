@@ -14,25 +14,18 @@
 namespace zeek::detail {
 
 // Helper functions.
-std::string Fmt(int i)
+std::string Fmt(int i)		{ return std::to_string(i); }
+std::string Fmt(hash_type u)	{ return std::to_string(u) + "ULL"; }
+std::string Fmt(double d)	{ return std::to_string(d); }
+
+std::string ScopePrefix(const std::string& scope)
 	{
-	char d_s[64];
-	snprintf(d_s, sizeof d_s, "%d", i);
-	return std::string(d_s);
+	return std::string("zeek::detail::CPP_") + scope + "::";
 	}
 
-std::string Fmt(hash_type u)
+std::string ScopePrefix(int scope)
 	{
-	char d_s[64];
-	snprintf(d_s, sizeof d_s, "%lluULL", u);
-	return std::string(d_s);
-	}
-
-std::string Fmt(double d)
-	{
-	char d_s[64];
-	snprintf(d_s, sizeof d_s, "%lf", d);
-	return std::string(d_s);
+	return ScopePrefix(std::to_string(scope));
 	}
 
 
@@ -83,7 +76,7 @@ std::string CPPTracker<T1, T2>::KeyName(T1 key)
 
 	std::string scope;
 	if ( IsInherited(hash) )
-		scope = "zeek::detail::CPP_" + scope2[hash] + "::";
+		scope = ScopePrefix(scope2[hash]);
 
 	return scope + std::string(base_name) + "_" + Fmt(index) + "__CPP";
 	}
@@ -183,8 +176,8 @@ void CPPHashManager::LoadHashes(FILE* f)
 			RequireLine(f, line);
 
 			hash_type gl_t_h, gl_v_h;
-
-			if ( sscanf(line.c_str(), "%llu %llu", &gl_t_h, &gl_v_h) != 2 )
+			if ( sscanf(line.c_str(), "%llu %llu",
+					&gl_t_h, &gl_v_h) != 2 )
 				BadLine(line);
 
 			gl_type_hashes[gl] = gl_t_h;
@@ -192,6 +185,19 @@ void CPPHashManager::LoadHashes(FILE* f)
 
 			// Eat the location info
 			(void) RequireLine(f, line);
+			}
+
+		else if ( key == "global-var" )
+			{
+			auto gl = line;
+
+			RequireLine(f, line);
+
+			int scope;
+			if ( sscanf(line.c_str(), "%d", &scope) != 1 )
+				BadLine(line);
+
+			gv_scopes[gl] = scope;
 			}
 
 		else if ( key == "hash" )
@@ -282,6 +288,10 @@ CPPCompile::~CPPCompile()
 
 void CPPCompile::Compile()
 	{
+	char buf[8192];
+	getcwd(buf, sizeof buf);
+	working_dir = buf;
+
 	if ( addl_tag > 0 )
 		{
 		auto& bifs = pfs.BiFGlobals();
@@ -377,7 +387,7 @@ void CPPCompile::Compile()
 
 		NoteInitDependency(g, TypeRep(t));
 
-		AddGlobal(gn.c_str(), "gl");
+		AddGlobal(g->Name(), "gl");
 		Emit("IDPtr %s;", globals[gn]);
 
 		global_vars.emplace(g);
@@ -428,10 +438,6 @@ void CPPCompile::GenProlog()
 	{
 	if ( addl_tag == 0 )
 		Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
-
-	char buf[8192];
-	getcwd(buf, sizeof buf);
-	working_dir = buf;
 
 	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir.c_str());
 	}
@@ -556,8 +562,8 @@ void CPPCompile::GenEpilog()
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s, %s);",
 			f, f, Fmt(h), events);
 
-		fprintf(hm.HashFile(), "func\nzeek::detail::CPP_%d::%s\n",
-			addl_tag, f.c_str());
+		fprintf(hm.HashFile(), "func\n%s%s\n",
+			ScopePrefix(addl_tag).c_str(), f.c_str());
 		fprintf(hm.HashFile(), "%llu\n", h);
 		}
 
@@ -572,7 +578,7 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("static int dummy = hook_in_init();\n");
 
-	Emit("} // zeek::detail::CPP_%s\n", Fmt(addl_tag));
+	Emit("} // %s\n", ScopePrefix(addl_tag).c_str());
 
 	for ( auto& g : pfs.AllGlobals() )
 		if ( ! hm.HasGlobal(g->Name()) )
@@ -604,7 +610,7 @@ void CPPCompile::GenEpilog()
 	// loaded scripts didn't happen to make reference to them.
 	// Thus, we search the entire set of globals for them, rather
 	// than relying on pfs.BiFGlobals().
-	const auto& globals = zeek::detail::global_scope()->Vars();
+	const auto& globals = global_scope()->Vars();
 	for ( const auto& g : globals )
 		{
 		const auto& gv = g.second->GetVal();
@@ -645,7 +651,17 @@ void CPPCompile::AddBiF(const ID* b, bool is_var)
 void CPPCompile::AddGlobal(const std::string& g, const char* suffix)
 	{
 	if ( globals.count(g) == 0 )
-		globals.emplace(g, GlobalName(g, suffix));
+		{
+		auto gn = GlobalName(g, suffix);
+
+		if ( hm.HasGlobalVar(gn) )
+			gn = ScopePrefix(hm.GlobalVarScope(gn)) + gn;
+		else
+			fprintf(hm.HashFile(), "global-var\n%s\n%d\n",
+				gn.c_str(), addl_tag);
+
+		globals.emplace(g, gn);
+		}
 	}
 
 void CPPCompile::AddConstant(const ConstExpr* c)
@@ -872,8 +888,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 
 void CPPCompile::GenSubclassTypeAssignment(Func* f)
 	{
-	Emit("type = cast_intrusive<FuncType>(%s);",
-		GenTypeName(f->GetType()));
+	Emit("type = cast_intrusive<FuncType>(%s);", GenTypeName(f->GetType()));
 	}
 
 void CPPCompile::GenInvokeBody(const std::string& fname, const TypePtr& t,
