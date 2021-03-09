@@ -372,7 +372,7 @@ void CPPCompile::Compile()
 			// compilable, the we'll call it directly.
 			if ( compilable_funcs.count(gn) > 0 )
 				{
-				AddGlobal(gn, "zf");
+				AddGlobal(gn, "zf", true);
 				continue;
 				}
 
@@ -387,9 +387,13 @@ void CPPCompile::Compile()
 
 		NoteInitDependency(g, TypeRep(t));
 
-		if ( AddGlobal(gn, "gl") )
+		if ( AddGlobal(gn, "gl", true) )
 			{
 			Emit("IDPtr %s;", globals[gn]);
+
+			AddInit(g, globals[gn],
+				std::string("lookup_global__CPP(\"") + gn +
+				"\", " + GenTypeName(t) + ")");
 
 			if ( pfs.Events().count(gn) > 0 )
 				// This is an event that's also used as
@@ -399,16 +403,12 @@ void CPPCompile::Compile()
 
 		global_vars.emplace(g);
 
-		AddInit(g, globals[gn],
-			std::string("lookup_global__CPP(\"") + gn +
-			"\", " + GenTypeName(t) + ")");
-
 		if ( is_bif )
 			AddBiF(g, true);
 		}
 
 	for ( const auto& e : pfs.Events() )
-		if ( AddGlobal(e, "gl") )
+		if ( AddGlobal(e, "gl", false) )
 			Emit("EventHandlerPtr %s_ev;", globals[std::string(e)]);
 
 	for ( const auto& c : pfs.Constants() )
@@ -645,13 +645,13 @@ void CPPCompile::AddBiF(const ID* b, bool is_var)
 	if ( is_var )
 		n = n + "_";	// make the name distinct
 
-	if ( AddGlobal(n, "bif") )
+	if ( AddGlobal(n, "bif", true) )
 		Emit("Func* %s;", globals[n]);
 
 	AddInit(b, globals[n], std::string("lookup_bif__CPP(\"") + bn + "\")");
 	}
 
-bool CPPCompile::AddGlobal(const std::string& g, const char* suffix)
+bool CPPCompile::AddGlobal(const std::string& g, const char* suffix, bool track)
 	{
 	bool new_var = false;
 
@@ -664,8 +664,10 @@ bool CPPCompile::AddGlobal(const std::string& g, const char* suffix)
 		else
 			{
 			new_var = true;
-			fprintf(hm.HashFile(), "global-var\n%s\n%d\n",
-				gn.c_str(), addl_tag);
+
+			if ( track )
+				fprintf(hm.HashFile(), "global-var\n%s\n%d\n",
+					gn.c_str(), addl_tag);
 			}
 
 		globals.emplace(g, gn);
