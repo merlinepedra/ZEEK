@@ -383,12 +383,11 @@ void CPPCompile::Compile()
 				}
 			}
 
-		const auto& t = g->GetType();
-
-		NoteInitDependency(g, TypeRep(t));
-
 		if ( AddGlobal(gn, "gl", true) )
 			{
+			const auto& t = g->GetType();
+			NoteInitDependency(g, TypeRep(t));
+
 			Emit("IDPtr %s;", globals[gn]);
 
 			AddInit(g, globals[gn],
