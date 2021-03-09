@@ -142,6 +142,11 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			{
 			globals.insert(id);
 			all_globals.insert(id);
+
+			const auto& t = id->GetType();
+			if ( t->Tag() == TYPE_FUNC &&
+			     t->AsFuncType()->Flavor() == FUNC_FLAVOR_EVENT )
+				events.insert(id->Name());
 			}
 
 		else
