@@ -377,7 +377,7 @@ VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v) \
 	auto vt = v->GetType<VectorType>(); \
 	auto v_result = make_intrusive<VectorVal>(vt); \
  \
-	switch ( vt->InternalType() ) { \
+	switch ( vt->Yield()->InternalType() ) { \
 	case TYPE_INTERNAL_INT: \
 		{ \
 		VEC_OP1_KERNEL(AsInt, IntVal, op) \
@@ -424,7 +424,7 @@ VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v1, const VectorValPtr
 	auto vt = v1->GetType<VectorType>(); \
 	auto v_result = make_intrusive<VectorVal>(vt); \
  \
-	switch ( vt->InternalType() ) { \
+	switch ( vt->Yield()->InternalType() ) { \
 	case TYPE_INTERNAL_INT: \
 		{ \
 		VEC_OP2_KERNEL(AsInt, IntVal, op) \
@@ -470,7 +470,7 @@ VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v1, const VectorValPtr
 	auto res_type = make_intrusive<VectorType>(base_type(TYPE_BOOL)); \
 	auto v_result = make_intrusive<VectorVal>(res_type); \
  \
-	switch ( vt->InternalType() ) { \
+	switch ( vt->Yield()->InternalType() ) { \
 	case TYPE_INTERNAL_INT: \
 		{ \
 		VEC_OP2_KERNEL(AsInt, BoolVal, op) \
