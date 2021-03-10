@@ -604,6 +604,7 @@ void ProfileFuncs::TrackAttrs(const Attributes* Attrs)
 hash_type hash_obj(const Obj* o)
 	{
 	ODesc d;
+	d.SetDeterminism(true);
 	o->Describe(&d);
 	std::string desc(d.Description());
 	auto h = std::hash<std::string>{}(desc);
