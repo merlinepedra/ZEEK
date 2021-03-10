@@ -529,7 +529,8 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	case TYPE_FUNC:
 		{
 		auto ft = t->AsFuncType();
-		h = MergeHashes(h, hash_string("func"));
+		auto flv = ft->FlavorString();
+		h = MergeHashes(h, std::hash<std::string>{}(flv));
 		h = MergeHashes(h, hash_string("params"));
 		h = MergeHashes(h, HashType(ft->Params()));
 		h = MergeHashes(h, hash_string("func-yield"));
