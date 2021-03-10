@@ -3510,7 +3510,6 @@ std::string CPPCompile::CPPEscape(const char* s) const
 	while ( *s )
 		{
 		switch ( *s ) {
-		case '\\':	res += "\\\\"; break;
 		case '"':	res += "\\\""; break;
 
 		default:	res += *s; break;
