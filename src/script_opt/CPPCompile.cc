@@ -1857,13 +1857,32 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 
 	case EXPR_ARITH_COERCE:
 		{
-		auto it = t->InternalType();
-		auto cast_name =
-			it == TYPE_INTERNAL_DOUBLE ? "double" :
-				(it == TYPE_INTERNAL_INT ?
-					"bro_int_t" : "bro_uint_t");
+		auto op = e->GetOp1();
 
-		return NativeToGT(std::string(cast_name) + "(" +
+		if ( same_type(t, e->GetOp1()->GetType()) )
+			return GenExpr(op, gt);
+
+		bool is_vec = t->Tag() == TYPE_VECTOR;
+
+		auto coerce_t = is_vec ? t->Yield() : t;
+
+		std::string cast_name;
+
+		switch ( coerce_t->InternalType() ) {
+		case TYPE_INTERNAL_INT:		cast_name = "bro_int_t"; break;
+		case TYPE_INTERNAL_UNSIGNED:	cast_name = "bro_uint_t"; break;
+		case TYPE_INTERNAL_DOUBLE:	cast_name = "double"; break;
+
+		default:
+			reporter->InternalError("bad type in arithmetic coercion");
+		}
+
+		if ( is_vec )
+			return std::string("vec_coerce_") + cast_name +
+				"__CPP(" + GenExpr(e->GetOp1(), GEN_NATIVE) +
+				", " + GenTypeName(t) + ")";
+
+		return NativeToGT(cast_name + "(" +
 					GenExpr(e->GetOp1(), GEN_NATIVE) + ")",
 					t, gt);
 		}
