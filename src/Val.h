@@ -789,16 +789,16 @@ public:
 		}
 
 	/**
-	 * Returns a copy of given table with this table removed.
-	 * @param v  The parent table.
-	 * @return  The subset of the parent table that doesn't include this
-	 *          table.
+	 * Returns a copy of this table with the given table removed.
+	 * @param v  The table to remove.
+	 * @return  The subset of this table that doesn't include v.
 	 */
-	TableValPtr TakeOut(TableVal* v) const
+	TableValPtr TakeOut(TableVal* v)
 		{
-		auto v_clone = cast_intrusive<TableVal>(v->Clone());
-		RemoveFrom(v_clone.get());
-		return v_clone;
+		auto clone = cast_intrusive<TableVal>(Clone());
+		cast_intrusive<TableVal>(v->Clone());
+		v->RemoveFrom(clone.get());
+		return clone;
 		}
 
 	// Returns true if this set contains the same members as the
