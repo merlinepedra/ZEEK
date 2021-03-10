@@ -96,6 +96,7 @@ template<class T1, class T2>
 hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 	{
 	ODesc d;
+	d.SetDeterminism(true);
 	key->Describe(&d);
 	std::string desc = d.Description();
 	auto h = std::hash<std::string>{}(base_name + desc);
@@ -328,17 +329,24 @@ void CPPCompile::Compile()
 				}
 			}
 
+		bool collision = false;
 		for ( auto& t : pfs.RepTypes() )
+			{
 			if ( t->Tag() == TYPE_RECORD )
 				{
 				const auto& tn = t->GetName();
 				if ( tn.size() > 0 && hm.HasGlobal(tn) )
 					{
-					fprintf(stderr, "%s: record \"%s\" collides with compiled global",
+					fprintf(stderr, "%s: record \"%s\" collides with compiled global\n",
 						working_dir.c_str(), tn.c_str());
-					exit(1);
+					collision = true;
+					// exit(1);
 					}
 				}
+			}
+
+		if ( collision )
+			exit(1);
 		}
 
 	GenProlog();
@@ -1882,7 +1890,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			;
 
 		else if ( it == TYPE_INTERNAL_INT || it == TYPE_INTERNAL_DOUBLE )
-			gen = std::string("abs__CPP(") + gen + ")";
+			gen = std::string("abs__CPP(") + TypeName(t1) +
+				"(" + gen + "))";
 
 		else
 			return GenericValPtrToGT(gen + "->SizeVal()", t, gt);
