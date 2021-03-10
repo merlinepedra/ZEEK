@@ -3509,10 +3509,31 @@ std::string CPPCompile::CPPEscape(const char* s) const
 
 	while ( *s )
 		{
-		switch ( *s ) {
+		auto c = *s;
+
+		switch ( c ) {
+		case '\a':	res += "\\a"; break;
+		case '\b':	res += "\\b"; break;
+		case '\f':	res += "\\f"; break;
+		case '\n':	res += "\\n"; break;
+		case '\r':	res += "\\r"; break;
+		case '\t':	res += "\\t"; break;
+		case '\v':	res += "\\v"; break;
+
+		case '\\':	res += "\\\\"; break;
 		case '"':	res += "\\\""; break;
 
-		default:	res += *s; break;
+		default:
+			if ( isprint(c) )
+				res += c;
+			else
+				{
+				char buf[8192];
+				snprintf(buf, sizeof buf, "%02x", c);
+				res += "\\x";
+				res += buf;
+				}
+			break;
 		}
 		++s;
 		}
