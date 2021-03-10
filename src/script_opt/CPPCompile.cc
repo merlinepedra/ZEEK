@@ -1453,6 +1453,41 @@ void CPPCompile::GenSwitchStmt(const SwitchStmt* sw)
 	Emit("}");
 	}
 
+std::string CPPCompile::GenExprs(const Expr* e)
+	{
+	std::string gen;
+	if ( e->Tag() == EXPR_LIST )
+		gen = GenExprList(e, GEN_VAL_PTR, true);
+	else
+		gen = GenExpr(e, GEN_VAL_PTR);
+
+	return std::string("{ ") + gen + " }";
+	}
+
+std::string CPPCompile::GenExprList(const Expr* e, GenType gt, bool nested)
+	{
+	const auto& exprs = e->AsListExpr()->Exprs();
+	std::string gen;
+
+	int n = exprs.size();
+
+	for ( auto i = 0; i < n; ++i )
+		{
+		auto e_i = exprs[i];
+		auto gen_i = GenExpr(e_i, gt);
+
+		if ( nested && e_i->Tag() == EXPR_LIST )
+			gen_i = std::string("index_val__CPP({") + gen_i + "})";
+
+		gen += gen_i;
+
+		if ( i < n - 1 )
+			gen += ", ";
+		}
+
+	return gen;
+	}
+
 std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	{
 	const auto& t = e->GetType();
@@ -1662,20 +1697,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		}
 
 	case EXPR_LIST:
-		{
-		const auto& exprs = e->AsListExpr()->Exprs();
-
-		int n = exprs.size();
-
-		for ( auto i = 0; i < n; ++i )
-			{
-			gen = gen + GenExpr(exprs[i], gt);
-			if ( i < n - 1 )
-				gen += ", ";
-			}
-
-		return gen;
-		}
+		return GenExprList(e, gt, false);
 
 	case EXPR_IN:
 		{
@@ -1975,8 +1997,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		std::string attr_vals;
 		BuildAttrs(attrs, attr_tags, attr_vals);
 
-		return std::string("set_constructor__CPP({") +
-			GenExpr(sc->GetOp1(), GEN_VAL_PTR) + "}, " +
+		return std::string("set_constructor__CPP(") +
+			GenExprs(sc->GetOp1().get()) + ", " +
 			"cast_intrusive<TableType>(" + GenTypeName(t) + "), " +
 			attr_tags + ", " + attr_vals + ")";
 		}
