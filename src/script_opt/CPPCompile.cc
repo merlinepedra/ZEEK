@@ -1533,6 +1533,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 
 		auto v = c->Value();
 		auto tag = t->Tag();
+		auto it = t->InternalType();
 
 		// Check for types that don't render into what
 		// C++ expects.
@@ -1546,7 +1547,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		else if ( tag == TYPE_PORT )
 			gen = Fmt(v->AsCount());
 
-		else if ( tag == TYPE_INTERVAL )
+		else if ( it == TYPE_INTERNAL_DOUBLE )
 			gen = Fmt(v->AsDouble());
 
 		else
