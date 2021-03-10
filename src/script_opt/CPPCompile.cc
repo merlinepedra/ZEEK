@@ -327,6 +327,18 @@ void CPPCompile::Compile()
 					}
 				}
 			}
+
+		for ( auto& t : pfs.RepTypes() )
+			if ( t->Tag() == TYPE_RECORD )
+				{
+				const auto& tn = t->GetName();
+				if ( tn.size() > 0 && hm.HasGlobal(tn) )
+					{
+					fprintf(stderr, "%s: record \"%s\" collides with compiled global",
+						working_dir.c_str(), tn.c_str());
+					exit(1);
+					}
+				}
 		}
 
 	GenProlog();
