@@ -496,6 +496,7 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	case TYPE_RECORD:
 		{
 		auto fields = t->AsRecordType()->Types();
+		h = MergeHashes(h, hash_string("record"));
 		h = MergeHashes(h, Hash(fields->size()));
 
 		for ( const auto& f : *fields )
@@ -517,7 +518,10 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	case TYPE_TABLE:
 		{
 		auto tbl = t->AsTableType();
+		h = MergeHashes(h, hash_string("table"));
+		h = MergeHashes(h, hash_string("indices"));
 		h = MergeHashes(h, HashType(tbl->GetIndices()));
+		h = MergeHashes(h, hash_string("tbl-yield"));
 		h = MergeHashes(h, HashType(tbl->Yield()));
 		}
 		break;
@@ -525,7 +529,10 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	case TYPE_FUNC:
 		{
 		auto ft = t->AsFuncType();
+		h = MergeHashes(h, hash_string("func"));
+		h = MergeHashes(h, hash_string("params"));
 		h = MergeHashes(h, HashType(ft->Params()));
+		h = MergeHashes(h, hash_string("func-yield"));
 		h = MergeHashes(h, HashType(ft->Yield()));
 		}
 		break;
@@ -533,6 +540,7 @@ hash_type ProfileFuncs::HashType(const Type* t)
 	case TYPE_LIST:
 		{
 		auto& tl = t->AsTypeList()->GetTypes();
+		h = MergeHashes(h, hash_string("list"));
 
 		h = MergeHashes(h, Hash(tl.size()));
 
@@ -542,14 +550,17 @@ hash_type ProfileFuncs::HashType(const Type* t)
 		break;
 
 	case TYPE_VECTOR:
+		h = MergeHashes(h, hash_string("vec"));
 		h = MergeHashes(h, HashType(t->AsVectorType()->Yield()));
 		break;
 
 	case TYPE_FILE:
+		h = MergeHashes(h, hash_string("file"));
 		h = MergeHashes(h, HashType(t->AsFileType()->Yield()));
 		break;
 
 	case TYPE_TYPE:
+		h = MergeHashes(h, hash_string("type"));
 		h = MergeHashes(h, HashType(t->AsTypeType()->GetType()));
 		break;
 	}
