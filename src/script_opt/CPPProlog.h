@@ -612,10 +612,10 @@ VectorValPtr vector_select__CPP(const VectorValPtr& v1, VectorValPtr v2,
 
 // Assumes v already has the correct internal type.  This can go away after
 // we finish migrating to ZVal's.
-VectorValPtr vector_coerce_to__CPP(const VectorValPtr& v,
-					const VectorTypePtr& targ)
+VectorValPtr vector_coerce_to__CPP(const VectorValPtr& v, TypePtr targ)
 	{
-	auto v_result = make_intrusive<VectorVal>(targ);
+	auto res_t = cast_intrusive<VectorType>(targ);
+	auto v_result = make_intrusive<VectorVal>(std::move(res_t));
 	auto n = v->Size();
 	auto yt = targ->Yield();
 	auto ytag = yt->Tag();
@@ -651,6 +651,43 @@ VectorValPtr vector_coerce_to__CPP(const VectorValPtr& v,
 
 		v_result->Assign(i, std::move(r_i));
 		}
+
+	return v_result;
+	}
+
+// Works for v with perhaps not the correct type.
+VectorValPtr vec_coerce_to_bro_int_t__CPP(const VectorValPtr& v, TypePtr targ)
+	{
+	auto res_t = cast_intrusive<VectorType>(targ);
+	auto v_result = make_intrusive<VectorVal>(std::move(res_t));
+	auto n = v->Size();
+
+	for ( unsigned int i = 0; i < n; ++i )
+		v_result->Assign(i, val_mgr->Int(v->At(i)->CoerceToInt()));
+
+	return v_result;
+	}
+
+VectorValPtr vec_coerce_to_bro_uint_t__CPP(const VectorValPtr& v, TypePtr targ)
+	{
+	auto res_t = cast_intrusive<VectorType>(targ);
+	auto v_result = make_intrusive<VectorVal>(std::move(res_t));
+	auto n = v->Size();
+
+	for ( unsigned int i = 0; i < n; ++i )
+		v_result->Assign(i, val_mgr->Count(v->At(i)->CoerceToUnsigned()));
+
+	return v_result;
+	}
+
+VectorValPtr vec_coerce_to_double__CPP(const VectorValPtr& v, TypePtr targ)
+	{
+	auto res_t = cast_intrusive<VectorType>(targ);
+	auto v_result = make_intrusive<VectorVal>(std::move(res_t));
+	auto n = v->Size();
+
+	for ( unsigned int i = 0; i < n; ++i )
+		v_result->Assign(i, make_intrusive<DoubleVal>(v->At(i)->CoerceToDouble()));
 
 	return v_result;
 	}
