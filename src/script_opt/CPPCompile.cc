@@ -2413,6 +2413,7 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt,
 					"->AsString())",
 					e->GetType(), gt);
 
+#if 0
 	if ( tag == TYPE_FUNC )
 		{
 		auto f1 = op1->Tag() == EXPR_NAME ?
@@ -2439,6 +2440,7 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt,
 
 		return NativeToGT(negated + gen, e->GetType(), gt);
 		}
+#endif
 
 	return GenBinary(e, gt, op, vec_op);
 	}
