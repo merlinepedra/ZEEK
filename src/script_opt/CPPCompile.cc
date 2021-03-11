@@ -295,10 +295,8 @@ void CPPCompile::Compile()
 	getcwd(buf, sizeof buf);
 	working_dir = buf;
 
-	if ( addl_tag > 0 )
+	if ( update && addl_tag > 0 )
 		{
-		auto& bifs = pfs.BiFGlobals();
-
 		for ( auto& g : pfs.AllGlobals() )
 			{
 			auto gn = std::string(g->Name());
@@ -1601,6 +1599,12 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto assign = make_intrusive<AssignExpr>(op, rhs, false,
 						nullptr, nullptr, false);
 
+		// Make sure any newly created types are known to
+		// the profiler.
+		(void) pfs.HashType(one_e->GetType());
+		(void) pfs.HashType(rhs->GetType());
+		(void) pfs.HashType(assign->GetType());
+
 		gen = GenExpr(assign, GEN_DONT_CARE, top_level);
 
 		if ( ! top_level )
@@ -1877,6 +1881,12 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			// equate to a C++ variable); expand x += y to x = x + y
 			auto rhs = make_intrusive<AddExpr>(lhs, e->GetOp2());
 			auto assign = make_intrusive<AssignExpr>(lhs, rhs, false, nullptr, nullptr, false);
+
+			// Make sure any newly created types are known to
+			// the profiler.
+			(void) pfs.HashType(rhs->GetType());
+			(void) pfs.HashType(assign->GetType());
+
 			return GenExpr(assign, gt, top_level);
 			}
 
