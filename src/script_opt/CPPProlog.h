@@ -62,12 +62,7 @@ IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 	{
 	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);
 
-	if ( gl )
-		{
-		ASSERT(same_type(t, gl->GetType(), false, false));
-		}
-
-	else
+	if ( ! gl )
 		{
 		gl = install_ID(g, GLOBAL_MODULE_NAME, true, false);
 		gl->SetType(t);
@@ -79,8 +74,7 @@ IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 Func* lookup_bif__CPP(const char* bif)
 	{
 	auto b = lookup_ID(bif, GLOBAL_MODULE_NAME, false, false, false);
-	ASSERT(b != nullptr && b->GetType()->Tag() == TYPE_FUNC);
-	return b->GetVal()->AsFunc();
+	return b ? b->GetVal()->AsFunc() : nullptr;
 	}
 
 StringValPtr str_concat__CPP(const String* s1, const String* s2)
@@ -335,11 +329,9 @@ RecordTypePtr get_record_type__CPP(const char* record_type_name)
 	IDPtr existing_type;
 
 	if ( record_type_name &&
-	     (existing_type = global_scope()->Find(record_type_name)) )
-		{
-		ASSERT(existing_type->GetType()->Tag() == TYPE_RECORD);
+	     (existing_type = global_scope()->Find(record_type_name)) &&
+	      existing_type->GetType()->Tag() == TYPE_RECORD )
 		return cast_intrusive<RecordType>(existing_type->GetType());
-		}
 
 	return make_intrusive<RecordType>(new type_decl_list());
 	}
@@ -348,11 +340,8 @@ EnumTypePtr get_enum_type__CPP(const std::string& enum_type_name)
 	{
 	auto existing_type = global_scope()->Find(enum_type_name);
 
-	if ( existing_type )
-		{
-		ASSERT(existing_type->GetType()->Tag() == TYPE_ENUM);
+	if ( existing_type && existing_type->GetType()->Tag() == TYPE_ENUM )
 		return cast_intrusive<EnumType>(existing_type->GetType());
-		}
 	else
 		return make_intrusive<EnumType>(enum_type_name);
 	}
