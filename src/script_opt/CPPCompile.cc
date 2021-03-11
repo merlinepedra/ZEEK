@@ -751,9 +751,13 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 		switch ( tag ) {
 		case TYPE_STRING:
 			{
+			auto s = v->AsString();
+			const char* b = (const char*)(s->Bytes());
+			auto len = s->Len();
+
 			Emit("StringValPtr %s;", const_name);
 			auto def = std::string("make_intrusive<StringVal>(\"") +
-					CPPEscape(val_desc) + "\")";
+					CPPEscape(b, len) + "\")";
 			AddInit(c, const_name, def);
 			}
 			break;
@@ -3540,13 +3544,13 @@ void CPPCompile::EndBlock(bool needs_semi)
 	--block_level;
 	}
 
-std::string CPPCompile::CPPEscape(const char* s) const
+std::string CPPCompile::CPPEscape(const char* b, int len) const
 	{
 	std::string res;
 
-	while ( *s )
+	for ( int i = 0; i < len; ++i )
 		{
-		auto c = *s;
+		auto c = b[i];
 
 		switch ( c ) {
 		case '\a':	res += "\\a"; break;
@@ -3572,7 +3576,6 @@ std::string CPPCompile::CPPEscape(const char* s) const
 				}
 			break;
 		}
-		++s;
 		}
 
 	return res;
