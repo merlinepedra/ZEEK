@@ -495,12 +495,16 @@ hash_type ProfileFuncs::HashType(const Type* t)
 
 	case TYPE_RECORD:
 		{
-		auto fields = t->AsRecordType()->Types();
-		h = MergeHashes(h, hash_string("record"));
-		h = MergeHashes(h, Hash(fields->size()));
+		const auto& ft = t->AsRecordType();
+		auto n = ft->NumFields();
 
-		for ( const auto& f : *fields )
+		h = MergeHashes(h, hash_string("record"));
+		h = MergeHashes(h, Hash(n));
+
+		for ( auto i = 0; i < n; ++i )
 			{
+			const auto& f = ft->FieldDecl(i);
+			h = MergeHashes(h, hash_string(f->id));
 			h = MergeHashes(h, HashType(f->type));
 
 			// We don't hash the field name, as in some contexts
