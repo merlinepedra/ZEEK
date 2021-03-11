@@ -108,6 +108,11 @@ public:
 	bool HasBiF(const std::string& BiF) const
 		{ return base_bifs.count(BiF) > 0; }
 
+	bool HasRecordTypeGlobal(const std::string& BiF) const
+		{ return record_type_globals.count(BiF) > 0; }
+	bool HasEnumTypeGlobal(const std::string& BiF) const
+		{ return enum_type_globals.count(BiF) > 0; }
+
 	FILE* HashFile() const	{ return hf_w; }
 
 protected:
@@ -126,6 +131,10 @@ protected:
 	// use to understand whether a "-O add-C++" follow-on relies on
 	// additional BiFs.
 	std::unordered_set<std::string> base_bifs;
+
+	// Tracks globals that are record or enum types.
+	std::unordered_set<std::string> record_type_globals;
+	std::unordered_set<std::string> enum_type_globals;
 
 	// Tracks globals seen in previously compiled bodies, mapping
 	// names to hashes of their types and their values.

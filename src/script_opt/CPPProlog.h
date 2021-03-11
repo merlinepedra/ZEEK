@@ -334,7 +334,10 @@ EnumTypePtr get_enum_type__CPP(const std::string& enum_type_name)
 	auto existing_type = global_scope()->Find(enum_type_name);
 
 	if ( existing_type )
+		{
+		ASSERT(existing_type->GetType()->Tag() == TYPE_ENUM);
 		return cast_intrusive<EnumType>(existing_type->GetType());
+		}
 	else
 		return make_intrusive<EnumType>(enum_type_name);
 	}

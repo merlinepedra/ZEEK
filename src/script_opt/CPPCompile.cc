@@ -215,6 +215,10 @@ void CPPHashManager::LoadHashes(FILE* f)
 
 		else if ( key == "bif" )
 			base_bifs.insert(line);
+		else if ( key == "record" )
+			record_type_globals.insert(line);
+		else if ( key == "enum" )
+			enum_type_globals.insert(line);
 
 		else
 			BadLine(line);
@@ -332,17 +336,25 @@ void CPPCompile::Compile()
 		bool collision = false;
 		for ( auto& t : pfs.RepTypes() )
 			{
-			if ( t->Tag() == TYPE_RECORD )
-				{
-				const auto& tn = t->GetName();
-				if ( tn.size() > 0 && hm.HasGlobal(tn) )
-					{
-					fprintf(stderr, "%s: record \"%s\" collides with compiled global\n",
-						working_dir.c_str(), tn.c_str());
-					collision = true;
-					// exit(1);
-					}
-				}
+			auto tag = t->Tag();
+
+			if ( tag != TYPE_ENUM && tag != TYPE_RECORD )
+				continue;
+
+			const auto& tn = t->GetName();
+			if ( tn.size() == 0 || ! hm.HasGlobal(tn) )
+				continue;
+
+			if ( tag == TYPE_ENUM && hm.HasEnumTypeGlobal(tn) )
+				continue;
+
+			if ( tag == TYPE_RECORD && hm.HasRecordTypeGlobal(tn) )
+				continue;
+
+			fprintf(stderr, "%s: type \"%s\" collides with compiled global\n",
+				working_dir.c_str(), tn.c_str());
+			collision = true;
+			// exit(1);
 			}
 
 		if ( collision )
@@ -604,23 +616,34 @@ void CPPCompile::GenEpilog()
 	Emit("} // %s\n", ScopePrefix(addl_tag).c_str());
 
 	for ( auto& g : pfs.AllGlobals() )
-		if ( ! hm.HasGlobal(g->Name()) )
+		{
+		auto gn = g->Name();
+
+		if ( ! hm.HasGlobal(gn) )
 			{
 			auto ht = pfs.HashType(g->GetType());
 
 			hash_type hv = 0;
 			if ( g->GetVal() )
-				{
 				hv = hash_obj(g->GetVal());
-				}
 
-			fprintf(hm.HashFile(), "global\n%s\n", g->Name());
+			fprintf(hm.HashFile(), "global\n%s\n", gn);
 			fprintf(hm.HashFile(), "%llu %llu\n", ht, hv);
 
 			auto loc = g->GetLocationInfo();
 			fprintf(hm.HashFile(), "%s %d\n",
 				loc->filename, loc->first_line);
+
+			if ( g->IsType() )
+				{
+				const auto& t = g->GetType();
+				if ( t->Tag() == TYPE_RECORD )
+					fprintf(hm.HashFile(), "record\n%s\n", gn);
+				else if ( t->Tag() == TYPE_ENUM )
+					fprintf(hm.HashFile(), "enum\n%s\n", gn);
+				}
 			}
+		}
 
 	if ( addl_tag > 0 )
 		return;
@@ -1890,8 +1913,11 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			;
 
 		else if ( it == TYPE_INTERNAL_INT || it == TYPE_INTERNAL_DOUBLE )
-			gen = std::string("abs__CPP(") + TypeName(t1) +
-				"(" + gen + "))";
+			{
+			auto cast = (it == TYPE_INTERNAL_INT) ?
+							"bro_int_t" : "double";
+			gen = std::string("abs__CPP(") + cast + "(" + gen + "))";
+			}
 
 		else
 			return GenericValPtrToGT(gen + "->SizeVal()", t, gt);
