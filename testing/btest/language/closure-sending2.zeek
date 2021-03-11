@@ -93,7 +93,7 @@ event pong(msg: string, f: myfunctype)
 
 @TEST-START-FILE recv.zeek
 
-module closure_recv2_test;
+module closure_send2_test;
 
 redef exit_only_after_terminate = T;
 const events_to_recv = 7;

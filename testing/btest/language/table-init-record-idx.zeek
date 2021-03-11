@@ -3,6 +3,8 @@
 
 # Record constructors should work in table initializers
 
+module tbl_init_rec_idx_1_test;
+
 type r: record  {
 	a: string;
 	b: count;
@@ -57,6 +59,8 @@ event zeek_init()
 	}
 
 # @TEST-START-NEXT
+
+module tbl_init_rec_idx_2_test;
 
 # They can be part of a compound index type, too...
 
@@ -115,6 +119,8 @@ event zeek_init()
 
 # @TEST-START-NEXT
 
+module tbl_init_rec_idx_3_test;
+
 # Now checking table() ctor versus { } initializer
 
 type r: record  {
@@ -171,6 +177,8 @@ event zeek_init()
 	}
 
 # @TEST-START-NEXT
+
+module tbl_init_rec_idx_4_test;
 
 # Now checking table() ctor versus { } initializer for compound index
 

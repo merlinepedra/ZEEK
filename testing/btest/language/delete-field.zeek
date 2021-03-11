@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >output 2>&1
 # @TEST-EXEC: btest-diff output
 
+module delete_field_test;
+
 type X: record {
      a: count &optional;
      b: count &default=5;

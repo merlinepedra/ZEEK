@@ -4,6 +4,8 @@
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff out
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff hidden-error
 
+module alt_proto_deprecated_test;
+
 global myev: event(a: string, b: string &deprecated="Don't use 'b'", c: string);
 global myev: event(a: string, c: string);
 global myev: event(a: string, b: string) &deprecated="Don't use this prototype";

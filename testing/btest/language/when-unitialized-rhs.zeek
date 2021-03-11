@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b -r $TRACES/wikipedia.trace %INPUT >out 2>&1
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff out
 
+module when_uninit_test;
+
 global crashMe: function(): string;
 global x: int;
 

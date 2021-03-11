@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
+module rec_def_coercion_test;
+
 type MyRecord: record {
 	a: count &default=13;
 	c: count;

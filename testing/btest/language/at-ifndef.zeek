@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
+module at_ifndef_test;
+
 function test_case(msg: string, expect: bool)
         {
         print fmt("%s (%s)", msg, expect ? "PASS" : "FAIL");

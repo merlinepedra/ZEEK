@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
+module tbl_def_rec_test;
+
 type Foo: record {
 	x: count &default=0;
 };

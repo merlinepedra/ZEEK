@@ -4,6 +4,8 @@
 # @TEST-EXEC-FAIL: zeek -b lacks-type-cast.zeek >error 2>&1
 # @TEST-EXEC: btest-diff error
 
+module sizeof_any_test;
+
 event zeek_init()
 	{
 	local a: any = double_to_time(13.0);

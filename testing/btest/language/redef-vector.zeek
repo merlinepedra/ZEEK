@@ -1,6 +1,8 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
+module redef_vec_test;
+
 const foo: vector of string &redef;
 redef foo += { "testing", "blah", "foo", "foo", "testing" };
 
