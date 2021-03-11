@@ -434,7 +434,10 @@ VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v1, const VectorValPtr
 	switch ( vt->Yield()->InternalType() ) { \
 	case TYPE_INTERNAL_INT: \
 		{ \
-		VEC_OP2_KERNEL(AsInt, IntVal, op) \
+		if ( vt->Yield()->Tag() == TYPE_BOOL ) \
+			VEC_OP2_KERNEL(AsBool, BoolVal, op) \
+		else \
+			VEC_OP2_KERNEL(AsInt, IntVal, op) \
 		break; \
 		} \
  \

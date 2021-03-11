@@ -2553,7 +2553,7 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op,
 	{
 	auto gen = std::string("vec_op_") + vec_op + "__CPP(" + op + ")";
 
-	if ( ! IsArithmetic(e->GetType()->Tag()) )
+	if ( ! IsArithmetic(e->GetType()->Yield()->Tag()) )
 		gen = std::string("vector_coerce_to__CPP(") + gen + ", " +
 			GenTypeName(e->GetType()) + ")";
 
@@ -2566,7 +2566,7 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
 	auto gen = std::string("vec_op_") + vec_op + "__CPP(" + op1 +
 			", " + op2 + ")";
 
-	if ( ! IsArithmetic(e->GetType()->Tag()) )
+	if ( ! IsArithmetic(e->GetType()->Yield()->Tag()) )
 		gen = std::string("vector_coerce_to__CPP(") + gen + ", " +
 			GenTypeName(e->GetType()) + ")";
 
