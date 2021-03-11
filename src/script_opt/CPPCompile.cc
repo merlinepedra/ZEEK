@@ -1659,6 +1659,10 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto gen2 = GenExpr(op2, gt);
 		auto gen3 = GenExpr(op3, gt);
 
+		if ( op1->GetType()->Tag() == TYPE_VECTOR )
+			return std::string("vector_select__CPP(") +
+				gen1 + ", " + gen2 + ", " + gen3 + ")";
+
 		return std::string("(") + gen1 + ") ? (" +
 			gen2 + ") : (" + gen3 + ")";
 		}

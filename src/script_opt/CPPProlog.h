@@ -541,12 +541,13 @@ VectorValPtr vec_op_str_vec_add__CPP(StringValPtr s1, VectorValPtr v2,
 	{
 	auto vt = v2->GetType<VectorType>();
 	auto v_result = make_intrusive<VectorVal>(vt);
+	auto n = v2->Size();
 
-	for ( unsigned int i = 0; i < v2->Size(); ++i )
+	for ( unsigned int i = 0; i < n; ++i )
 		{
 		std::vector<const String*> strings;
 		if ( s1 ) strings.push_back(s1->AsString());
-		if ( v2 ) strings.push_back(v2->At(i)->AsString());
+		strings.push_back(v2->At(i)->AsString());
 		if ( v3 ) strings.push_back(v3->At(i)->AsString());
 		if ( s4 ) strings.push_back(s4->AsString());
 
@@ -570,4 +571,23 @@ VectorValPtr vec_op_add__CPP(VectorValPtr v1, StringValPtr s2)
 VectorValPtr vec_op_add__CPP(StringValPtr s1, VectorValPtr v2)
 	{
 	return vec_op_str_vec_add__CPP(s1, v2, nullptr, nullptr);
+	}
+
+VectorValPtr vector_select__CPP(VectorValPtr v1, VectorValPtr v2, VectorValPtr v3)
+	{
+	auto vt = v2->GetType<VectorType>();
+	auto v_result = make_intrusive<VectorVal>(vt);
+
+	if ( ! check_vec_sizes(v1, v2) || ! check_vec_sizes(v1, v3) )
+		return nullptr;
+
+	auto n = v1->Size();
+
+	for ( unsigned int i = 0; i < n; ++i )
+		{
+		auto vr_i = v1->At(i)->AsBool() ? v2->At(i) : v3->At(i);
+		v_result->Assign(i, std::move(vr_i));
+		}
+
+	return v_result;
 	}
