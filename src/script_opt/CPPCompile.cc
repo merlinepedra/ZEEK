@@ -2554,7 +2554,7 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op,
 	auto gen = std::string("vec_op_") + vec_op + "__CPP(" + op + ")";
 
 	if ( ! IsArithmetic(e->GetType()->Tag()) )
-		gen = std::string("vec_coerce_to__CPP(") + gen + ", " +
+		gen = std::string("vector_coerce_to__CPP(") + gen + ", " +
 			GenTypeName(e->GetType()) + ")";
 
 	return gen;
@@ -2567,7 +2567,7 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
 			", " + op2 + ")";
 
 	if ( ! IsArithmetic(e->GetType()->Tag()) )
-		gen = std::string("vec_coerce_to__CPP(") + gen + ", " +
+		gen = std::string("vector_coerce_to__CPP(") + gen + ", " +
 			GenTypeName(e->GetType()) + ")";
 
 	return gen;
@@ -3557,7 +3557,7 @@ std::string CPPCompile::CPPEscape(const char* b, int len) const
 
 	for ( int i = 0; i < len; ++i )
 		{
-		auto c = b[i];
+		unsigned char c = b[i];
 
 		switch ( c ) {
 		case '\a':	res += "\\a"; break;
