@@ -105,9 +105,6 @@ public:
 	int GlobalVarScope(const std::string& gv)
 		{ return gv_scopes[gv]; }
 
-	bool HasBiF(const std::string& BiF) const
-		{ return base_bifs.count(BiF) > 0; }
-
 	bool HasRecordTypeGlobal(const std::string& BiF) const
 		{ return record_type_globals.count(BiF) > 0; }
 	bool HasEnumTypeGlobal(const std::string& BiF) const
@@ -126,11 +123,6 @@ protected:
 	// Tracks previously compiled bodies based on hashes, mapping them
 	// to a fully qualified name.
 	std::unordered_map<hash_type, std::string> previously_compiled;
-
-	// Tracks BiFs included in the base build (-O gen-C++).  This allows
-	// use to understand whether a "-O add-C++" follow-on relies on
-	// additional BiFs.
-	std::unordered_set<std::string> base_bifs;
 
 	// Tracks globals that are record or enum types.
 	std::unordered_set<std::string> record_type_globals;

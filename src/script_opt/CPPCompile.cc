@@ -213,8 +213,6 @@ void CPPHashManager::LoadHashes(FILE* f)
 			compiled_items[hash] = CompiledItemPair{index, scope};
 			}
 
-		else if ( key == "bif" )
-			base_bifs.insert(line);
 		else if ( key == "record" )
 			record_type_globals.insert(line);
 		else if ( key == "enum" )
@@ -304,13 +302,6 @@ void CPPCompile::Compile()
 		for ( auto& g : pfs.AllGlobals() )
 			{
 			auto gn = std::string(g->Name());
-
-			if ( bifs.count(g) && ! hm.HasBiF(gn) )
-				{
-				fprintf(stderr, "%s: code relies on non-base BiF %s\n",
-					working_dir.c_str(), gn.c_str());
-				exit(1);
-				}
 
 			if ( hm.HasGlobal(gn) )
 				{
@@ -660,22 +651,6 @@ void CPPCompile::GenEpilog()
 	Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
 	Emit("} // zeek::detail");
 	Emit("} // zeek");
-
-	// For BiFs, what matters is the ones available, even if the
-	// loaded scripts didn't happen to make reference to them.
-	// Thus, we search the entire set of globals for them, rather
-	// than relying on pfs.BiFGlobals().
-	const auto& globals = global_scope()->Vars();
-	for ( const auto& g : globals )
-		{
-		const auto& gv = g.second->GetVal();
-		if ( ! gv || gv->GetType()->Tag() != TYPE_FUNC )
-			continue;
-
-		auto f = gv->AsFunc();
-		if ( f->GetKind() == BuiltinFunc::BUILTIN_FUNC )
-			fprintf(hm.HashFile(), "bif\n%s\n", f->Name());
-		}
 	}
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
