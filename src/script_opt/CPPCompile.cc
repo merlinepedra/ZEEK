@@ -895,24 +895,19 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 
 	Emit("flow = FLOW_RETURN;");
 
-	if ( IsNativeType(yt) )
+	if ( in_hook )
 		{
-		auto args = BindArgs(ft, lambda_ids);
-		GenInvokeBody(fname, yt, args);
+		Emit("if ( ! %s(%s) )", fname, BindArgs(ft, lambda_ids));
+		StartBlock();
+		Emit("flow = FLOW_BREAK;");
+		EndBlock();
 		}
+
+	else if ( IsNativeType(yt) )
+		GenInvokeBody(fname, yt, BindArgs(ft, lambda_ids));
 
 	else
-		{
-		if ( in_hook )
-			{
-			Emit("if ( ! %s(%s) )", fname, BindArgs(ft, lambda_ids));
-			StartBlock();
-			Emit("flow = FLOW_BREAK;");
-			EndBlock();
-			}
-
 		Emit("return %s(%s);", fname, BindArgs(ft, lambda_ids));
-		}
 
 	EndBlock();
 
@@ -1227,7 +1222,8 @@ void CPPCompile::GenStmt(const Stmt* s)
 		{
 		auto e = s->AsReturnStmt()->StmtExpr();
 
-		if ( ! ret_type || ! e || e->GetType()->Tag() == TYPE_VOID )
+		if ( ! ret_type || ! e || e->GetType()->Tag() == TYPE_VOID ||
+		     in_hook )
 			{
 			if ( in_hook )
 				Emit("return true;");
