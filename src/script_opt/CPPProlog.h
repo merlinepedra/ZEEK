@@ -609,3 +609,48 @@ VectorValPtr vector_select__CPP(const VectorValPtr& v1, VectorValPtr v2,
 
 	return v_result;
 	}
+
+// Assumes v already has the correct internal type.  This can go away after
+// we finish migrating to ZVal's.
+VectorValPtr vector_coerce_to__CPP(const VectorValPtr& v,
+					const VectorTypePtr& targ)
+	{
+	auto v_result = make_intrusive<VectorVal>(targ);
+	auto n = v->Size();
+	auto yt = targ->Yield();
+	auto ytag = yt->Tag();
+
+	for ( unsigned int i = 0; i < n; ++i )
+		{
+		ValPtr v_i = v->At(i);
+		ValPtr r_i;
+		switch ( ytag ) {
+		case TYPE_BOOL:
+			r_i = val_mgr->Bool(v_i->AsBool());
+			break;
+
+		case TYPE_ENUM:
+			r_i = yt->AsEnumType()->GetEnumVal(v_i->AsInt());
+			break;
+
+		case TYPE_PORT:
+			r_i = make_intrusive<PortVal>(v_i->AsCount());
+			break;
+
+		case TYPE_INTERVAL:
+			r_i = make_intrusive<IntervalVal>(v_i->AsDouble());
+			break;
+
+		case TYPE_TIME:
+			r_i = make_intrusive<TimeVal>(v_i->AsDouble());
+			break;
+
+		default:
+			reporter->InternalError("bad vector type in vector_coerce_to__CPP");
+		}
+
+		v_result->Assign(i, std::move(r_i));
+		}
+
+	return v_result;
+	}

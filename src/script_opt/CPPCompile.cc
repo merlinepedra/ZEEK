@@ -2235,7 +2235,7 @@ std::string CPPCompile::GenUnary(const Expr* e, GenType gt,
 					const char* op, const char* vec_op)
 	{
 	if ( e->GetType()->Tag() == TYPE_VECTOR )
-		return GenVectorOp(GenExpr(e->GetOp1(), GEN_NATIVE), vec_op);
+		return GenVectorOp(e, GenExpr(e->GetOp1(), GEN_NATIVE), vec_op);
 
 	return NativeToGT(std::string(op) + "(" +
 				GenExpr(e->GetOp1(), GEN_NATIVE) + ")",
@@ -2260,7 +2260,7 @@ std::string CPPCompile::GenBinary(const Expr* e, GenType gt,
 			return std::string("vec_str_op_") + vec_op + "__CPP(" +
 				gen1 + ", " + gen2 + ")";
 		     
-		return GenVectorOp(gen1, gen2, vec_op);
+		return GenVectorOp(e, gen1, gen2, vec_op);
 		}
 
 	if ( t->IsSet() )
@@ -2400,7 +2400,7 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt,
 		{
 		auto gen1 = GenExpr(op1, GEN_NATIVE);
 		auto gen2 = GenExpr(op2, GEN_NATIVE);
-		return GenVectorOp(gen1, gen2, vec_op);
+		return GenVectorOp(e, gen1, gen2, vec_op);
 		}
 
 	auto tag = op1->GetType()->Tag();
@@ -2554,16 +2554,29 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 	return gen;
 	}
 
-std::string CPPCompile::GenVectorOp(std::string op, const char* vec_op)
-	{
-	return std::string("vec_op_") + vec_op + "__CPP(" + op + ")";
-	}
-
-std::string CPPCompile::GenVectorOp(std::string op1, std::string op2,
+std::string CPPCompile::GenVectorOp(const Expr* e, std::string op,
 					const char* vec_op)
 	{
-	return std::string("vec_op_") + vec_op + "__CPP(" + op1 +
-		", " + op2 + ")";
+	auto gen = std::string("vec_op_") + vec_op + "__CPP(" + op + ")";
+
+	if ( ! IsArithmetic(e->GetType()->Tag()) )
+		gen = std::string("vec_coerce_to__CPP(") + gen + ", " +
+			GenTypeName(e->GetType()) + ")";
+
+	return gen;
+	}
+
+std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
+					std::string op2, const char* vec_op)
+	{
+	auto gen = std::string("vec_op_") + vec_op + "__CPP(" + op1 +
+			", " + op2 + ")";
+
+	if ( ! IsArithmetic(e->GetType()->Tag()) )
+		gen = std::string("vec_coerce_to__CPP(") + gen + ", " +
+			GenTypeName(e->GetType()) + ")";
+
+	return gen;
 	}
 
 std::string CPPCompile::GenIntVector(const std::vector<int>& vec)

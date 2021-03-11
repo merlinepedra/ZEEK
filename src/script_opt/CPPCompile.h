@@ -233,9 +233,10 @@ private:
 				const std::string& rhs_val_ptr,
 				GenType gt, bool top_level);
 
-	std::string GenVectorOp(std::string op, const char* vec_op);
-	std::string GenVectorOp(std::string op1, std::string op2,
-					const char* vec_op);
+	std::string GenVectorOp(const Expr* e, std::string op,
+				const char* vec_op);
+	std::string GenVectorOp(const Expr* e, std::string op1,
+				std::string op2, const char* vec_op);
 
 	std::string GenIntVector(const std::vector<int>& vec);
 
