@@ -372,9 +372,6 @@ public:
 	BoolVal(bro_int_t v)
 		: detail::IntValImplementation(base_type(TYPE_BOOL), v)
 		{}
-	BoolVal(bool b)
-		: BoolVal(bro_int_t(b))
-		{}
 
 	bool Get() const	{ return static_cast<bool>(int_val); }
 };
