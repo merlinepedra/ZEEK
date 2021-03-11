@@ -3577,8 +3577,8 @@ std::string CPPCompile::CPPEscape(const char* b, int len) const
 			else
 				{
 				char buf[8192];
-				snprintf(buf, sizeof buf, "%02x", c);
-				res += "\\x";
+				snprintf(buf, sizeof buf, "%03o", c);
+				res += "\\";
 				res += buf;
 				}
 			break;
