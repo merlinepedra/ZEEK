@@ -54,7 +54,7 @@ static int dummy = flag_init_CPP();
 void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash,
 			std::vector<std::string> events)
 	{
-	compiled_bodies[hash] = body;
+	compiled_bodies[hash] = std::move(body);
 	compiled_bodies_events[hash] = std::move(events);
 	}
 
@@ -110,12 +110,12 @@ ListValPtr index_val__CPP(std::vector<ValPtr> indices)
 	return ind_v;
 	}
 
-ValPtr index_table__CPP(TableValPtr t, std::vector<ValPtr> indices)
+ValPtr index_table__CPP(const TableValPtr& t, std::vector<ValPtr> indices)
 	{
 	return t->FindOrDefault(index_val__CPP(std::move(indices)));
 	}
 
-ValPtr index_string__CPP(StringValPtr svp, std::vector<ValPtr> indices)
+ValPtr index_string__CPP(const StringValPtr& svp, std::vector<ValPtr> indices)
 	{
 	return index_string(svp->AsString(),
 				index_val__CPP(std::move(indices)).get());
@@ -133,13 +133,13 @@ IntrusivePtr<T> val_to_valptr__CPP(T* v) { return {NewRef{}, v}; }
 
 ValPtr set_global__CPP(IDPtr g, ValPtr v)
 	{
-	g->SetVal(v);
+	g->SetVal(std::move(v));
 	return v;
 	}
 
 ValPtr set_event__CPP(IDPtr g, ValPtr v, EventHandlerPtr& gh)
 	{
-	g->SetVal(v);
+	g->SetVal(std::move(v));
 	gh = event_registry->Register(g->Name());
 	return v;
 	}
@@ -255,7 +255,7 @@ TableValPtr set_constructor__CPP(std::vector<ValPtr> elements, TableTypePtr t,
 					std::vector<ValPtr> attr_vals)
 	{
 	auto attrs = build_attrs__CPP(std::move(attr_tags), std::move(attr_vals));
-	auto aggr = make_intrusive<TableVal>(t, std::move(attrs));
+	auto aggr = make_intrusive<TableVal>(std::move(t), std::move(attrs));
 
 	for ( const auto& elem : elements )
 		aggr->Assign(std::move(elem), nullptr);
@@ -273,7 +273,7 @@ TableValPtr table_constructor__CPP(std::vector<ValPtr> indices,
 	auto n = indices.size();
 
 	auto attrs = build_attrs__CPP(std::move(attr_tags), std::move(attr_vals));
-	auto aggr = make_intrusive<TableVal>(t, std::move(attrs));
+	auto aggr = make_intrusive<TableVal>(std::move(t), std::move(attrs));
 
 	for ( auto i = 0; i < n; ++i )
 		{
@@ -344,7 +344,7 @@ EnumTypePtr get_enum_type__CPP(const std::string& enum_type_name)
 
 EnumValPtr make_enum__CPP(TypePtr t, int i)
 	{
-	auto et = cast_intrusive<EnumType>(t);
+	auto et = cast_intrusive<EnumType>(std::move(t));
 	return make_intrusive<EnumVal>(et, i);
 	}
 
@@ -536,8 +536,10 @@ VectorValPtr vec_op_sub__CPP(VectorValPtr v, int i)
 
 // And these for vector-plus-scalar string operations.
 
-VectorValPtr vec_op_str_vec_add__CPP(StringValPtr s1, VectorValPtr v2,
-					VectorValPtr v3, StringValPtr s4)
+VectorValPtr vec_op_str_vec_add__CPP(const StringValPtr& s1,
+					const VectorValPtr& v2,
+					const VectorValPtr& v3,
+					const StringValPtr& s4)
 	{
 	auto vt = v2->GetType<VectorType>();
 	auto v_result = make_intrusive<VectorVal>(vt);
@@ -558,22 +560,23 @@ VectorValPtr vec_op_str_vec_add__CPP(StringValPtr s1, VectorValPtr v2,
 	return v_result;
 	}
 
-VectorValPtr vec_str_op_add__CPP(VectorValPtr v1, VectorValPtr v2)
+VectorValPtr vec_str_op_add__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
 	return vec_op_str_vec_add__CPP(nullptr, v1, v2, nullptr);
 	}
 
-VectorValPtr vec_op_add__CPP(VectorValPtr v1, StringValPtr s2)
+VectorValPtr vec_op_add__CPP(const VectorValPtr& v1, const StringValPtr& s2)
 	{
 	return vec_op_str_vec_add__CPP(nullptr, v1, nullptr, s2);
 	}
 
-VectorValPtr vec_op_add__CPP(StringValPtr s1, VectorValPtr v2)
+VectorValPtr vec_op_add__CPP(const StringValPtr& s1, const VectorValPtr& v2)
 	{
 	return vec_op_str_vec_add__CPP(s1, v2, nullptr, nullptr);
 	}
 
-VectorValPtr vector_select__CPP(VectorValPtr v1, VectorValPtr v2, VectorValPtr v3)
+VectorValPtr vector_select__CPP(const VectorValPtr& v1, VectorValPtr v2,
+				VectorValPtr v3)
 	{
 	auto vt = v2->GetType<VectorType>();
 	auto v_result = make_intrusive<VectorVal>(vt);
