@@ -484,20 +484,26 @@ void CPPCompile::GenEpilog()
 	for ( const auto& e : init_exprs.DistinctKeys() )
 		{
 		GenInitExpr(e);
-		init_exprs.LogIfNew(e, addl_tag, hm.HashFile());
+
+		if ( update )
+			init_exprs.LogIfNew(e, addl_tag, hm.HashFile());
 		}
 
 	for ( const auto& a : attributes.DistinctKeys() )
 		{
 		GenAttrs(a);
-		attributes.LogIfNew(a, addl_tag, hm.HashFile());
+
+		if ( update )
+			attributes.LogIfNew(a, addl_tag, hm.HashFile());
 		}
 
 	// Generate the guts of compound types.
 	for ( const auto& t : types.DistinctKeys() )
 		{
 		ExpandTypeVar(t);
-		types.LogIfNew(t, addl_tag, hm.HashFile());
+
+		if ( update )
+			types.LogIfNew(t, addl_tag, hm.HashFile());
 		}
 
 	NL();
@@ -597,9 +603,12 @@ void CPPCompile::GenEpilog()
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s, %s);",
 			f, f, Fmt(h), events);
 
-		fprintf(hm.HashFile(), "func\n%s%s\n",
-			ScopePrefix(addl_tag).c_str(), f.c_str());
-		fprintf(hm.HashFile(), "%llu\n", h);
+		if ( update )
+			{
+			fprintf(hm.HashFile(), "func\n%s%s\n",
+				ScopePrefix(addl_tag).c_str(), f.c_str());
+			fprintf(hm.HashFile(), "%llu\n", h);
+			}
 		}
 
 	EndBlock(true);
@@ -619,7 +628,7 @@ void CPPCompile::GenEpilog()
 		{
 		auto gn = g->Name();
 
-		if ( ! hm.HasGlobal(gn) )
+		if ( ! hm.HasGlobal(gn) && update )
 			{
 			auto ht = pfs.HashType(g->GetType());
 
@@ -707,7 +716,7 @@ bool CPPCompile::AddGlobal(const std::string& g, const char* suffix, bool track)
 			{
 			new_var = true;
 
-			if ( track )
+			if ( track && update )
 				fprintf(hm.HashFile(), "global-var\n%s\n%d\n",
 					gn.c_str(), addl_tag);
 			}

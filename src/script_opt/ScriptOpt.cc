@@ -289,6 +289,7 @@ void analyze_scripts()
 			}
 
 		CPPCompile cpp(funcs, *pfs, gen_name, *hm,
+				analysis_options.gen_CPP ||
 				analysis_options.update_CPP);
 
 		exit(0);
