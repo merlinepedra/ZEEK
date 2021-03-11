@@ -166,6 +166,12 @@ ValPtr assign_field__CPP(RecordValPtr rec, int field, ValPtr v)
 	return v;
 	}
 
+void check_iterators__CPP(bool invalid)
+	{
+	if ( invalid )
+		reporter->Warning("possible loop/iterator invalidation in compiled code");
+	}
+
 // Execute an assignment "v1[v2] = v3".
 TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	{
@@ -173,6 +179,9 @@ TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
 							std::move(v3),
 							iterators_invalidated);
+
+	check_iterators__CPP(iterators_invalidated);
+
 	if ( err_msg )
 		reporter->Error("%s", err_msg);
 
@@ -185,6 +194,9 @@ VectorValPtr assign_to_index__CPP(VectorValPtr v1, ValPtr v2, ValPtr v3)
 	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
 							std::move(v3),
 							iterators_invalidated);
+
+	check_iterators__CPP(iterators_invalidated);
+
 	if ( err_msg )
 		reporter->Error("%s", err_msg);
 
@@ -197,6 +209,9 @@ StringValPtr assign_to_index__CPP(StringValPtr v1, ValPtr v2, ValPtr v3)
 	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
 							std::move(v3),
 							iterators_invalidated);
+
+	check_iterators__CPP(iterators_invalidated);
+
 	if ( err_msg )
 		reporter->Error("%s", err_msg);
 
