@@ -155,7 +155,8 @@ protected:
 class CPPCompile {
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs,
-			const char* gen_name, CPPHashManager& hm);
+			const char* gen_name, CPPHashManager& hm,
+			bool update);
 	~CPPCompile();
 
 private:
@@ -472,6 +473,10 @@ private:
 	// If non-zero, provides a tag used for auxiliary/additional
 	// compilation units.
 	int addl_tag = 0;
+
+	// If true, then we're updating the C++ base (i.e., generating
+	// code meant for use by subsequently generated code).
+	bool update = false;
 
 	// Internal name of the function we're currently compiling.
 	std::string body_name;

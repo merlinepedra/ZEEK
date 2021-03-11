@@ -257,8 +257,8 @@ void CPPHashManager::BadLine(std::string& line)
 
 
 CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
-		const char* gen_name, CPPHashManager& _hm)
-: funcs(_funcs), pfs(_pfs), hm(_hm)
+		const char* gen_name, CPPHashManager& _hm, bool _update)
+: funcs(_funcs), pfs(_pfs), hm(_hm), update(_update)
 	{
 	auto mode = hm.Append() ? "a" : "w";
 

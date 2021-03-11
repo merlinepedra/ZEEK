@@ -124,24 +124,40 @@ void analyze_scripts()
 	{
 	static bool did_init = false;
 
+	bool generating_CPP = false;
+
 	if ( ! did_init )
 		{
 		check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
 		check_env_opt("ZEEK_XFORM", analysis_options.activate);
 		check_env_opt("ZEEK_ADD_CPP", analysis_options.add_CPP);
+		check_env_opt("ZEEK_UPDATE_CPP", analysis_options.update_CPP);
 		check_env_opt("ZEEK_GEN_CPP", analysis_options.gen_CPP);
 		check_env_opt("ZEEK_REPORT_CPP", analysis_options.report_CPP);
 		check_env_opt("ZEEK_USE_CPP", analysis_options.use_CPP);
 
-		if ( analysis_options.gen_CPP && analysis_options.add_CPP )
+		if ( analysis_options.gen_CPP )
 			{
-			reporter->Warning("gen-C++ incompatible with add-C++");
-			analysis_options.add_CPP = false;
+			if ( analysis_options.add_CPP )
+				{
+				reporter->Warning("gen-C++ incompatible with add-C++");
+				analysis_options.add_CPP = false;
+				}
+
+			if ( analysis_options.update_CPP )
+				{
+				reporter->Warning("gen-C++ incompatible with update-C++");
+				analysis_options.update_CPP = false;
+				}
+
+			generating_CPP = true;
 			}
 
-		if ( (analysis_options.gen_CPP || analysis_options.add_CPP) &&
-		     analysis_options.use_CPP )
+		if ( analysis_options.update_CPP || analysis_options.add_CPP )
+			generating_CPP = true;
+
+		if ( analysis_options.use_CPP && generating_CPP )
 			{
 			reporter->Error("generating C++ incompatible with using C++");
 			exit(1);
@@ -173,8 +189,8 @@ void analyze_scripts()
 		}
 
 	if ( ! analysis_options.activate && ! analysis_options.inliner &&
-	     ! analysis_options.gen_CPP && ! analysis_options.report_CPP &&
-	     ! analysis_options.add_CPP && ! analysis_options.use_CPP )
+	     ! generating_CPP && ! analysis_options.report_CPP &&
+	     ! analysis_options.use_CPP )
 		// Avoid profiling overhead.
 		return;
 
@@ -252,12 +268,12 @@ void analyze_scripts()
 		return;
 		}
 
-	if ( analysis_options.gen_CPP || analysis_options.add_CPP )
+	if ( generating_CPP )
 		{
 		auto hm = std::make_unique<CPPHashManager>(hash_name,
 						analysis_options.add_CPP);
 
-		if ( analysis_options.add_CPP )
+		if ( ! analysis_options.gen_CPP )
 			{
 			for ( auto& func : funcs )
 				{
@@ -272,7 +288,8 @@ void analyze_scripts()
 			pfs = std::make_unique<ProfileFuncs>(funcs);
 			}
 
-		CPPCompile cpp(funcs, *pfs, gen_name, *hm);
+		CPPCompile cpp(funcs, *pfs, gen_name, *hm,
+				analysis_options.update_CPP);
 
 		exit(0);
 		}
