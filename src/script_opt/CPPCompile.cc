@@ -2580,12 +2580,14 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op,
 std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
 					std::string op2, const char* vec_op)
 	{
-	auto gen = std::string("vec_op_") + vec_op + "__CPP(" + op1 +
-			", " + op2 + ")";
+	auto invoke = std::string(vec_op) + "__CPP(" + op1 + ", " + op2 + ")";
 
-	const auto& ytag = e->GetType()->Yield()->Tag();
+	if ( e->GetOp1()->GetType()->Tag() == TYPE_STRING )
+		return std::string("str_vec_op_") + invoke;
 
-	if ( ! IsArithmetic(ytag) && ytag != TYPE_STRING )
+	auto gen = std::string("vec_op_") + invoke;
+
+	if ( ! IsArithmetic(e->GetType()->Yield()->Tag()) )
 		gen = std::string("vector_coerce_to__CPP(") + gen + ", " +
 			GenTypeName(e->GetType()) + ")";
 

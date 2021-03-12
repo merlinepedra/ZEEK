@@ -624,6 +624,62 @@ VectorValPtr vec_op_add__CPP(const StringValPtr& s1, const VectorValPtr& v2)
 	return vec_op_str_vec_add__CPP(s1, v2, nullptr, nullptr);
 	}
 
+VectorValPtr vec_str_op_kernel__CPP(const VectorValPtr& v1,
+				const VectorValPtr& v2, int rel1, int rel2)
+	{
+	auto res_type = make_intrusive<VectorType>(base_type(TYPE_BOOL));
+	auto v_result = make_intrusive<VectorVal>(res_type);
+	auto n = v1->Size();
+
+	for ( unsigned int i = 0; i < n; ++i )
+		{
+		auto v1_i = v1->At(i);
+		auto v2_i = v2->At(i);
+		if ( ! v1_i || ! v2_i )
+			continue;
+
+		auto s1 = v1_i->AsString();
+		auto s2 = v2_i->AsString();
+
+		auto cmp = Bstr_cmp(s1, s2);
+		auto rel = (cmp == rel1) || (cmp == rel2);
+
+		v_result->Assign(i, val_mgr->Bool(rel));
+		}
+
+	return v_result;
+	}
+
+VectorValPtr vec_str_op_lt__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	return vec_str_op_kernel__CPP(v1, v2, -1, -1);
+	}
+
+VectorValPtr vec_str_op_le__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	return vec_str_op_kernel__CPP(v1, v2, -1, 0);
+	}
+
+VectorValPtr vec_str_op_eq__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	return vec_str_op_kernel__CPP(v1, v2, 0, 0);
+	}
+
+VectorValPtr vec_str_op_ne__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	return vec_str_op_kernel__CPP(v1, v2, -1, 1);
+	}
+
+VectorValPtr vec_str_op_gt__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	return vec_str_op_kernel__CPP(v1, v2, 1, 1);
+	}
+
+VectorValPtr vec_str_op_ge__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+	{
+	return vec_str_op_kernel__CPP(v1, v2, 0, 1);
+	}
+
 VectorValPtr vector_select__CPP(const VectorValPtr& v1, VectorValPtr v2,
 				VectorValPtr v3)
 	{
