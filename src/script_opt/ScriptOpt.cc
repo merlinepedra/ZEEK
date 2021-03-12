@@ -123,11 +123,16 @@ static void check_env_opt(const char* opt, bool& opt_flag)
 void analyze_scripts()
 	{
 	static bool did_init = false;
+	static std::string hash_dir;
 
 	bool generating_CPP = false;
 
 	if ( ! did_init )
 		{
+		auto hd = getenv("ZEEK_HASH_DIR");
+		if ( hd )
+			hash_dir = hd;
+
 		check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
 		check_env_opt("ZEEK_XFORM", analysis_options.activate);
@@ -194,10 +199,8 @@ void analyze_scripts()
 		// Avoid profiling overhead.
 		return;
 
-	const auto hash_name = "CPP-hashes";
-	const auto gen_name = "CPP-gen-addl.h";
-	// const auto gen_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-gen-addl.h";
-	// const auto hash_name = "/Users/vern/warehouse/zeek-cpp/testing/btest/CPP-hashes";
+	const auto hash_name = hash_dir + "/" + "CPP-hashes";
+	const auto gen_name = hash_dir + "/" + "CPP-gen-addl.h";
 
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
@@ -270,7 +273,7 @@ void analyze_scripts()
 
 	if ( generating_CPP )
 		{
-		auto hm = std::make_unique<CPPHashManager>(hash_name,
+		auto hm = std::make_unique<CPPHashManager>(hash_name.c_str(),
 						analysis_options.add_CPP);
 
 		if ( ! analysis_options.gen_CPP )
@@ -288,7 +291,7 @@ void analyze_scripts()
 			pfs = std::make_unique<ProfileFuncs>(funcs);
 			}
 
-		CPPCompile cpp(funcs, *pfs, gen_name, *hm,
+		CPPCompile cpp(funcs, *pfs, gen_name.c_str(), *hm,
 				analysis_options.gen_CPP ||
 				analysis_options.update_CPP);
 
