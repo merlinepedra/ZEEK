@@ -143,12 +143,12 @@ SubNetValPtr addr_mask__CPP(const IPAddr& a, uint32_t mask)
         if ( a.GetFamily() == IPv4 )
                 {
                 if ( mask > 32 )
-                        reporter->RuntimeError(&no_location, "bad IPv4 subnet prefix length: %d", int(mask));
+                        reporter->CPPRuntimeError("bad IPv4 subnet prefix length: %d", int(mask));
                 }
         else
                 {
                 if ( mask > 128 )
-                        reporter->RuntimeError(&no_location, "bad IPv6 subnet prefix length: %d", int(mask));
+                        reporter->CPPRuntimeError("bad IPv6 subnet prefix length: %d", int(mask));
                 }
 
         return make_intrusive<SubNetVal>(a, mask);
@@ -157,6 +157,15 @@ SubNetValPtr addr_mask__CPP(const IPAddr& a, uint32_t mask)
 ValPtr assign_field__CPP(RecordValPtr rec, int field, ValPtr v)
 	{
 	rec->Assign(field, v);
+	return v;
+	}
+
+ValPtr field_access__CPP(const RecordValPtr& rec, int field)
+	{
+	auto v = rec->GetFieldOrDefault(field);
+	if ( ! v )
+		reporter->CPPRuntimeError("field value missing");
+
 	return v;
 	}
 
@@ -367,7 +376,7 @@ bool check_vec_sizes__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	if ( v1->Size() == v2->Size() )
 		return true;
 
-	reporter->RuntimeError(&no_location, "vector operands are of different sizes");
+	reporter->CPPRuntimeError("vector operands are of different sizes");
 	return false;
 	}
 

@@ -1765,7 +1765,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto f = e->AsFieldExpr()->Field();
 		auto f_s = Fmt(f);
 
-		gen = GenExpr(e->GetOp1(), GEN_DONT_CARE) +
+		gen = std::string("field_access__CPP(") +
+			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ", " + f_s + ")";
 			"->GetFieldOrDefault(" + f_s + ")";
 
 		return GenericValPtrToGT(gen, t, gt);
