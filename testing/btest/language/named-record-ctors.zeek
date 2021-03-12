@@ -3,8 +3,6 @@
 
 @load frameworks/software/vulnerable
 
-module named_record_constructors_test;
-
 type MyRec: record {
 	min: count &optional;
 	max: count;

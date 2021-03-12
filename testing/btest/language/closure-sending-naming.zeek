@@ -10,8 +10,6 @@
 
 @TEST-START-FILE send.zeek
 
-module closure_sending_naming_test;
-
 redef exit_only_after_terminate = T;
 type myfunctype: function(c: count) : function(d: count) : count;
 
@@ -65,8 +63,6 @@ event pong(msg: string, f: myfunctype)
 @TEST-END-FILE
 
 @TEST-START-FILE recv.zeek
-
-module closure_sending_naming_test;
 
 redef exit_only_after_terminate = T;
 const events_to_recv = 1;

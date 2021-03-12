@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT >output
 # @TEST-EXEC: btest-diff output
 
-module rec_ref_test;
-
 type State: record {
 	host: string &default="NOT SET";
 };

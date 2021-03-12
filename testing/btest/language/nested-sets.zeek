@@ -24,8 +24,6 @@
 0
 @TEST-END-FILE
 
-module nested_sets_test;
-
 type r: record {
 	b: set[count];
 };

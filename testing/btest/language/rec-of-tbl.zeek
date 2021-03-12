@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT  >output 2>&1
 # @TEST-EXEC: btest-diff output
 
-module rec_of_tbl_test;
-
 type x: record {
 	a: table[int] of count;
 };

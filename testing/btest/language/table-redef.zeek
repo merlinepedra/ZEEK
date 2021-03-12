@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT > out
 # @TEST-EXEC: btest-diff out
 
-module tbl_redef_test;
-
 const foo: table[string] of double &redef;
 
 # full (re)initialization

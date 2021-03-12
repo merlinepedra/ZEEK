@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -uu -b %INPUT >out 2>&1
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff out
 
-module uninit_local_3_test;
-
 type r: record {
 	a: count;
 	b: count &optional;

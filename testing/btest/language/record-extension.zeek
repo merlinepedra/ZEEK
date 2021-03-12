@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT >output
 # @TEST-EXEC: btest-diff output
 
-module rec_extension_test;
-
 type Foo: record {
         a: count;
         b: count &optional;

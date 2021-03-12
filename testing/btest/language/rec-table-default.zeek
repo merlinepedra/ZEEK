@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT >output 2>&1
 # @TEST-EXEC: btest-diff output
 
-module rec_tbl_default_test;
-
 type X: record {
      a: table[string] of bool &default=table( ["foo"] = T );
      b: table[string] of bool &default=table();

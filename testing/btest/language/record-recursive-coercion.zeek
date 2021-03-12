@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT >output
 # @TEST-EXEC: btest-diff output
 
-module recursive_rec_test;
-
 type Version: record {
         major:  count  &optional;
         minor:  count  &optional;

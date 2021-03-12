@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT >output 2>&1
 # @TEST-EXEC: btest-diff output
 
-module vector_coerce_test;
-
 type X: record {
      a: vector of bool &default=vector(T, F, T);
      b: vector of bool &default=vector();

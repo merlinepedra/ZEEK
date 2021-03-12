@@ -11,8 +11,6 @@
 # are not defined and its application returns a count of 0. At the moment
 # the only type where this should happen is string patterns.
 
-module sizeof_test;
-
 type example_enum: enum { ENUM1, ENUM2, ENUM3 };
 
 type example_record: record {

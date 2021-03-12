@@ -1,8 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
 
-module incr_vector_test;
-
 type rec: record {
     a: count;
     b: string;
