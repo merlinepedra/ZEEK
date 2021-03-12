@@ -4449,9 +4449,10 @@ LambdaExpr::LambdaExpr(std::unique_ptr<function_ingredients> arg_ing,
 
 	for ( ; ; )
 		{
-		auto h = std::hash<std::string>{}(d.Description());
+		hash128_t h;
+		KeyedHash::Hash128(d.Bytes(), d.Len(), &h);
 
-		my_name = "lambda_<" + std::to_string(h) + ">";
+		my_name = "lambda_<" + std::to_string(h[0]) + ">";
 		auto fullname = make_full_var_name(current_module.data(), my_name.data());
 		const auto& id = global_scope()->Find(fullname);
 
