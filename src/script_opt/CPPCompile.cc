@@ -3054,7 +3054,7 @@ std::string CPPCompile::ParamDecl(const FuncTypePtr& ft,
 			const auto& t = id->GetType();
 			auto tn = FullTypeName(t);
 
-			decl = decl + tn + " " + name + ", ";
+			decl = decl + tn + "& " + name + ", ";
 			}
 		}
 
