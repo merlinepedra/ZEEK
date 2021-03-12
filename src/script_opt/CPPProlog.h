@@ -376,12 +376,15 @@ VectorTypePtr base_vector_type__CPP(const VectorTypePtr& vt)
 	switch ( vt->Yield()->InternalType() ) {
 	case TYPE_INTERNAL_INT:
 		return make_intrusive<VectorType>(base_type(TYPE_INT));
+
 	case TYPE_INTERNAL_UNSIGNED:
 		return make_intrusive<VectorType>(base_type(TYPE_COUNT));
+
 	case TYPE_INTERNAL_DOUBLE:
 		return make_intrusive<VectorType>(base_type(TYPE_DOUBLE));
 
-	return nullptr;
+	default:
+		return nullptr;
 	}
 	}
 

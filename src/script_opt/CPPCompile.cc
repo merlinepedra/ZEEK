@@ -886,6 +886,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		StartBlock();
 		Emit("flow = FLOW_BREAK;");
 		EndBlock();
+		Emit("return nullptr;");
 		}
 
 	else if ( IsNativeType(yt) )
