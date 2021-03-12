@@ -15,4 +15,4 @@ echo >$gen
 grep -c '^namespace' $gen
 mv $gen $so
 cd $build
-ninja >& errs
+ninja >& errs || test suite build failed

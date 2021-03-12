@@ -4,4 +4,4 @@ base=/Users/vern/warehouse/zeek-cpp
 so=$base/src/script_opt
 echo > $so/CPP-gen.cc
 cd $base/build
-ninja
+ninja || echo Non-embedded build failed
