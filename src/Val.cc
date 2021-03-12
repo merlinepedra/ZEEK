@@ -3532,7 +3532,8 @@ void describe_vals(const std::vector<ValPtr>& vals,
 		if ( i > offset && d->IsReadable() && d->Style() != RAW_STYLE )
 			d->Add(", ");
 
-		vals[i]->Describe(d);
+		if ( vals[i] )
+			vals[i]->Describe(d);
 		}
 	}
 
