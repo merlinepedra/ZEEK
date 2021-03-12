@@ -259,6 +259,10 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 			{
 			locals.insert(i);
 			RecordID(i);
+
+			if ( captures.count(i) == 0 &&
+			     i->Offset() < num_params )
+				params.insert(i);
 			}
 
 		// Avoid recursing into the body.
