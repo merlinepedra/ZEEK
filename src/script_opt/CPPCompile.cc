@@ -2119,11 +2119,24 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto name = Canonicalize(l->Name().c_str()) + "_lb_cl";
 		auto& ids = l->OuterIDs();
 		const auto& in = l->Ingredients();
+		const auto& captures = l->GetType<FuncType>()->GetCaptures();
 
 		std::string cl_args = "\"" + name + "\"";
 
 		for ( const auto& id : ids )
-			cl_args = cl_args + ", " + IDNameStr(id);
+			{
+			const auto& id_t = id->GetType();
+			auto arg = IDNameStr(id);
+
+			if ( captures && ! IsNativeType(id_t) )
+				{
+				for ( const auto& c : *captures )
+					if ( id == c.id && c.deep_copy )
+						arg = std::string("cast_intrusive<") + TypeName(id_t) + ">(" + arg + "->Clone())";
+				}
+
+			cl_args = cl_args + ", " + arg;
+			}
 
 		auto body = std::string("make_intrusive<") + name + ">(" +
 				cl_args + ")";
@@ -2570,7 +2583,9 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
 	auto gen = std::string("vec_op_") + vec_op + "__CPP(" + op1 +
 			", " + op2 + ")";
 
-	if ( ! IsArithmetic(e->GetType()->Yield()->Tag()) )
+	const auto& ytag = e->GetType()->Yield()->Tag();
+
+	if ( ! IsArithmetic(ytag) && ytag != TYPE_STRING )
 		gen = std::string("vector_coerce_to__CPP(") + gen + ", " +
 			GenTypeName(e->GetType()) + ")";
 

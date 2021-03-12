@@ -581,9 +581,25 @@ VectorValPtr vec_op_str_vec_add__CPP(const StringValPtr& s1,
 	for ( unsigned int i = 0; i < n; ++i )
 		{
 		std::vector<const String*> strings;
+
+		auto v2_i = v2->At(i);
+		if ( ! v2_i )
+			continue;
+
+		auto s2 = v2_i->AsString();
+		const String* s3 = nullptr;
+
+		if ( v3 )
+			{
+			auto v3_i = v3->At(i);
+			if ( ! v3_i )
+				continue;
+			s3 = v3_i->AsString();
+			}
+
 		if ( s1 ) strings.push_back(s1->AsString());
-		strings.push_back(v2->At(i)->AsString());
-		if ( v3 ) strings.push_back(v3->At(i)->AsString());
+		strings.push_back(s2);
+		if ( s3 ) strings.push_back(s3);
 		if ( s4 ) strings.push_back(s4->AsString());
 
 		auto res = make_intrusive<StringVal>(concatenate(strings));
