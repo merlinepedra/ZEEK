@@ -37,9 +37,11 @@ function reference_capture_double() : function() : function()
 
 event zeek_init()
 	{
+	print "reference capture";
 	local rc = reference_capture();
 	rc();
 
+	print "reference double capture";
 	local rc2 = reference_capture_double();
 	rc2()();
 	}

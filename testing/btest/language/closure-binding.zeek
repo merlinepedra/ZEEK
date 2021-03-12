@@ -135,27 +135,35 @@ function deep_copy3_capture_double() : function() : function()
 
 event zeek_init()
 	{
+	print "shallow copy";
 	local scc = shallow_copy_capture();
 	scc();
 
+	print "deep copy";
 	local dcc = deep_copy_capture();
 	dcc();
 
+	print "mixed copy, case 1";
 	local mcca = mixed_copy_capture_a();
 	mcca();
 
+	print "mixed copy, case 2";
 	local mccb = mixed_copy_capture_b();
 	mccb();
 
+	print "double shallow copy";
 	local scc2 = shallow_copy_capture_double();
 	scc2()();
 
+	print "double deep copy, case 1";
 	local dcc2_1 = deep_copy1_capture_double();
 	dcc2_1()();
 
+	print "double deep copy, case 2";
 	local dcc2_2 = deep_copy2_capture_double();
 	dcc2_2()();
 
+	print "double deep copy, case 3";
 	local dcc2_3 = deep_copy3_capture_double();
 	dcc2_3()();
 	}
