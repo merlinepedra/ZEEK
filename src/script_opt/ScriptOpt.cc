@@ -131,7 +131,7 @@ void analyze_scripts()
 		{
 		auto hd = getenv("ZEEK_HASH_DIR");
 		if ( hd )
-			hash_dir = hd;
+			hash_dir = std::string(hd) + "/";
 
 		check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
@@ -199,8 +199,8 @@ void analyze_scripts()
 		// Avoid profiling overhead.
 		return;
 
-	const auto hash_name = hash_dir + "/" + "CPP-hashes";
-	const auto gen_name = hash_dir + "/" + "CPP-gen-addl.h";
+	const auto hash_name = hash_dir + "CPP-hashes";
+	const auto gen_name = hash_dir + "CPP-gen-addl.h";
 
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
