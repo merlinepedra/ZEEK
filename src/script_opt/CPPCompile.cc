@@ -733,14 +733,13 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 		switch ( tag ) {
 		case TYPE_STRING:
 			{
+			Emit("StringValPtr %s;", const_name);
+
 			auto s = v->AsString();
 			const char* b = (const char*)(s->Bytes());
 			auto len = s->Len();
 
-			Emit("StringValPtr %s;", const_name);
-			auto def = std::string("make_intrusive<StringVal>(\"") +
-					CPPEscape(b, len) + "\")";
-			AddInit(c, const_name, def);
+			AddInit(c, const_name, GenString(b, len));
 			}
 			break;
 
@@ -751,8 +750,8 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			auto re = v->AsPatternVal()->Get();
 
 			AddInit(c,
-				std::string("{ auto re = new RE_Matcher(\"") +
-				CPPEscape(re->OrigText()) + "\");");
+				std::string("{ auto re = new RE_Matcher(") +
+				CPPEscape(re->OrigText()) + ");");
 			if ( re->IsCaseInsensitive() )
 				AddInit(c, "re->MakeCaseInsensitive();");
 			AddInit(c, "re->Compile();");
@@ -3551,9 +3550,15 @@ void CPPCompile::EndBlock(bool needs_semi)
 	--block_level;
 	}
 
+std::string CPPCompile::GenString(const char* b, int len) const
+	{
+	return std::string("make_intrusive<StringVal>(") + Fmt(len) +
+			", " + CPPEscape(b, len) + ")";
+	}
+
 std::string CPPCompile::CPPEscape(const char* b, int len) const
 	{
-	std::string res;
+	std::string res = "\"";
 
 	for ( int i = 0; i < len; ++i )
 		{
@@ -3585,7 +3590,7 @@ std::string CPPCompile::CPPEscape(const char* b, int len) const
 		}
 		}
 
-	return res;
+	return res + "\"";
 	}
 
 void CPPCompile::Indent() const

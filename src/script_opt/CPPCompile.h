@@ -366,6 +366,8 @@ private:
 
 	std::string Canonicalize(const char* name) const;
 
+	std::string GenString(const char* b, int len) const;
+
 	std::string CPPEscape(const char* b, int len) const;
 	std::string CPPEscape(const char* s) const
 		{ return CPPEscape(s, strlen(s)); }

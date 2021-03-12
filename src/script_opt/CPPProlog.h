@@ -362,13 +362,27 @@ double abs__CPP(double v)
 	return v < 0.0 ? -v : v;
 	}
 
-bool check_vec_sizes(const VectorValPtr& v1, const VectorValPtr& v2)
+bool check_vec_sizes__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
 	if ( v1->Size() == v2->Size() )
 		return true;
 
 	reporter->RuntimeError(&no_location, "vector operands are of different sizes");
 	return false;
+	}
+
+VectorTypePtr base_vector_type__CPP(const VectorTypePtr& vt)
+	{
+	switch ( vt->Yield()->InternalType() ) {
+	case TYPE_INTERNAL_INT:
+		return make_intrusive<VectorType>(base_type(TYPE_INT));
+	case TYPE_INTERNAL_UNSIGNED:
+		return make_intrusive<VectorType>(base_type(TYPE_COUNT));
+	case TYPE_INTERNAL_DOUBLE:
+		return make_intrusive<VectorType>(base_type(TYPE_DOUBLE));
+
+	return nullptr;
+	}
 	}
 
 #define VEC_OP1_KERNEL(accessor, type, op) \
@@ -381,7 +395,7 @@ bool check_vec_sizes(const VectorValPtr& v1, const VectorValPtr& v2)
 #define VEC_OP1(name, op, double_kernel) \
 VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v) \
 	{ \
-	auto vt = v->GetType<VectorType>(); \
+	auto vt = base_vector_type__CPP(v->GetType<VectorType>()); \
 	auto v_result = make_intrusive<VectorVal>(vt); \
  \
 	switch ( vt->Yield()->InternalType() ) { \
@@ -425,10 +439,10 @@ VEC_OP1(comp, ~,)
 #define VEC_OP2(name, op, double_kernel) \
 VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v1, const VectorValPtr& v2) \
 	{ \
-	if ( ! check_vec_sizes(v1, v2) ) \
+	if ( ! check_vec_sizes__CPP(v1, v2) ) \
 		return nullptr; \
  \
-	auto vt = v1->GetType<VectorType>(); \
+	auto vt = base_vector_type__CPP(v1->GetType<VectorType>()); \
 	auto v_result = make_intrusive<VectorVal>(vt); \
  \
 	switch ( vt->Yield()->InternalType() ) { \
@@ -473,7 +487,7 @@ VEC_OP2(oror, ||,)
 #define VEC_REL_OP(name, op) \
 VectorValPtr vec_op_ ## name ## __CPP(const VectorValPtr& v1, const VectorValPtr& v2) \
 	{ \
-	if ( ! check_vec_sizes(v1, v2) ) \
+	if ( ! check_vec_sizes__CPP(v1, v2) ) \
 		return nullptr; \
  \
 	auto vt = v1->GetType<VectorType>(); \
@@ -588,7 +602,7 @@ VectorValPtr vector_select__CPP(const VectorValPtr& v1, VectorValPtr v2,
 	auto vt = v2->GetType<VectorType>();
 	auto v_result = make_intrusive<VectorVal>(vt);
 
-	if ( ! check_vec_sizes(v1, v2) || ! check_vec_sizes(v1, v3) )
+	if ( ! check_vec_sizes__CPP(v1, v2) || ! check_vec_sizes__CPP(v1, v3) )
 		return nullptr;
 
 	auto n = v1->Size();
