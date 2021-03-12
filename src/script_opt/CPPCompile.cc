@@ -875,7 +875,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }",
 		fname, addl_args.c_str(), inits.c_str());
 
-	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) const override final");
+	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) override final");
 	StartBlock();
 
 	Emit("flow = FLOW_RETURN;");

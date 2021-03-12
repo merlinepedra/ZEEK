@@ -34,9 +34,8 @@ protected:
 
 	~ExprListStmt() override;
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
-	virtual ValPtr DoExec(std::vector<ValPtr> vals,
-	                      StmtFlowType& flow) const = 0;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
+	virtual ValPtr DoExec(std::vector<ValPtr> vals, StmtFlowType& flow) = 0;
 
 	void StmtDescribe(ODesc* d) const override;
 
@@ -58,8 +57,7 @@ public:
 	StmtPtr Duplicate() override;
 
 protected:
-	ValPtr DoExec(std::vector<ValPtr> vals,
-	              StmtFlowType& flow) const override;
+	ValPtr DoExec(std::vector<ValPtr> vals, StmtFlowType& flow) override;
 
 	// Optimization-related:
 	StmtPtr DoSubclassReduce(ListExprPtr singletons, Reducer* c) override;
@@ -77,7 +75,7 @@ public:
 	// not allowing us to use "friend" for protected access.
 	ExprStmt(StmtTag t, ExprPtr e);
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	const Expr* StmtExpr() const	{ return e.get(); }
 	ExprPtr StmtExprPtr() const;
@@ -94,7 +92,7 @@ public:
 	StmtPtr DoReduce(Reducer* c) override;
 
 protected:
-	virtual ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow) const;
+	virtual ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow);
 
 	bool IsPure() const override;
 
@@ -123,7 +121,7 @@ public:
 	bool NoFlowAfter(bool ignore_break) const override;
 
 protected:
-	ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow) const override;
+	ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow) override;
 	bool IsPure() const override;
 
 	StmtPtr s1;
@@ -183,7 +181,7 @@ public:
 	bool NoFlowAfter(bool ignore_break) const override;
 
 protected:
-	ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow) const override;
+	ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow) override;
 	bool IsPure() const override;
 
 	// Initialize composite hash and case label map.
@@ -232,7 +230,7 @@ class AddStmt final : public AddDelStmt {
 public:
 	explicit AddStmt(ExprPtr e);
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	// Optimization-related:
 	StmtPtr Duplicate() override;
@@ -242,7 +240,7 @@ class DelStmt final : public AddDelStmt {
 public:
 	explicit DelStmt(ExprPtr e);
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	// Optimization-related:
 	StmtPtr Duplicate() override;
@@ -252,7 +250,7 @@ class EventStmt final : public ExprStmt {
 public:
 	explicit EventStmt(EventExprPtr e);
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	TraversalCode Traverse(TraversalCallback* cb) const override;
 
@@ -293,7 +291,7 @@ public:
 	// execute zero times, so it's always the default of "false".
 
 protected:
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	ExprPtr loop_condition;
 	StmtPtr body;
@@ -342,7 +340,7 @@ public:
 	// execute zero times, so it's always the default of "false".
 
 protected:
-	ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow) const override;
+	ValPtr DoExec(Frame* f, Val* v, StmtFlowType& flow) override;
 
 	IDPList* loop_vars;
 	StmtPtr body;
@@ -355,7 +353,7 @@ class NextStmt final : public Stmt {
 public:
 	NextStmt() : Stmt(STMT_NEXT)	{ }
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 	bool IsPure() const override;
 
 	void StmtDescribe(ODesc* d) const override;
@@ -374,7 +372,7 @@ class BreakStmt final : public Stmt {
 public:
 	BreakStmt() : Stmt(STMT_BREAK)	{ }
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 	bool IsPure() const override;
 
 	void StmtDescribe(ODesc* d) const override;
@@ -394,7 +392,7 @@ class FallthroughStmt final : public Stmt {
 public:
 	FallthroughStmt() : Stmt(STMT_FALLTHROUGH)	{ }
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 	bool IsPure() const override;
 
 	void StmtDescribe(ODesc* d) const override;
@@ -412,7 +410,7 @@ class ReturnStmt final : public ExprStmt {
 public:
 	explicit ReturnStmt(ExprPtr e);
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	void StmtDescribe(ODesc* d) const override;
 
@@ -435,7 +433,7 @@ public:
 	StmtList();
 	~StmtList() override;
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	const StmtPList& Stmts() const	{ return *stmts; }
 	StmtPList& Stmts()		{ return *stmts; }
@@ -477,7 +475,7 @@ class InitStmt final : public Stmt {
 public:
 	explicit InitStmt(std::vector<IDPtr> arg_inits);
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	const std::vector<IDPtr>& Inits() const
 		{ return inits; }
@@ -500,7 +498,7 @@ class NullStmt final : public Stmt {
 public:
 	NullStmt() : Stmt(STMT_NULL)	{ }
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 	bool IsPure() const override;
 
 	void StmtDescribe(ODesc* d) const override;
@@ -519,7 +517,7 @@ public:
 	         ExprPtr timeout, bool is_return);
 	~WhenStmt() override;
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 	bool IsPure() const override;
 
 	const Expr* Cond() const	{ return cond.get(); }
@@ -563,7 +561,7 @@ public:
 	// or nil if it hasn't (the common case).
 	StmtPtr AssignStmt() const	{ return assign_stmt; }
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	bool IsPure() const override;
 
@@ -600,7 +598,7 @@ class CheckAnyLenStmt : public ExprStmt {
 public:
 	explicit CheckAnyLenStmt(ExprPtr e, int expected_len);
 
-	ValPtr Exec(Frame* f, StmtFlowType& flow) const override;
+	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
 	StmtPtr Duplicate() override;
 
