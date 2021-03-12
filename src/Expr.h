@@ -1437,6 +1437,8 @@ class IsExpr final : public UnaryExpr {
 public:
 	IsExpr(ExprPtr op, TypePtr t);
 
+	const TypePtr& TestType() const	{ return t; }
+
 	// Optimization-related:
 	ExprPtr Duplicate() override;
 

@@ -2145,10 +2145,13 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		return GenericValPtrToGT(gen, t, gt);
 
 	case EXPR_IS:
+		{
+		auto ie = static_cast<const IsExpr*>(e);
 		gen = std::string("can_cast_value_to_type(")
 			+ GenExpr(e->GetOp1(), GEN_VAL_PTR) + ".get(), " +
-			GenTypeName(t) + ".get())";
+			GenTypeName(ie->TestType()) + ".get())";
 		return NativeToGT(gen, t, gt);
+		}
 
 	case EXPR_FIELD_ASSIGN:
 	case EXPR_INDEX_SLICE_ASSIGN:
