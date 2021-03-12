@@ -1,0 +1,13 @@
+#! /bin/sh
+
+base=/Users/vern/warehouse/zeek-cpp
+test=$base/testing/btest
+so=$base/src/script_opt
+build=$base/build
+gen=CPP-gen-addl.h
+
+export -n ZEEK_ADD_CPP
+export ZEEK_USE_CPP=
+cd $test
+rm -rf .tmp
+../../auxil/btest/btest -j -f jtest.diag language
