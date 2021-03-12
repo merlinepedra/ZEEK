@@ -9,8 +9,6 @@
 
 @TEST-START-FILE send.zeek
 
-module pb_serial;
-
 redef exit_only_after_terminate = T;
 
 global event_count = 0;
@@ -59,8 +57,6 @@ event pong(msg: opaque of paraglob, n: count)
 
 
 @TEST-START-FILE recv.zeek
-
-module pb_serial;
 
 redef exit_only_after_terminate = T;
 

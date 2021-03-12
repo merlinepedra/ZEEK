@@ -5,9 +5,6 @@
 # @TEST-EXEC: TEST_DIFF_CANONIFIER=$SCRIPTS/diff-remove-abspath btest-diff warnings.out
 
 @TEST-START-FILE no-warnings.zeek
-
-module no_warnings_test;
-
 type blah: string &deprecated;
 
 global my_event: event(arg: string) &deprecated;
@@ -44,9 +41,9 @@ event zeek_init()
 
 	local ls: string = " test";
 
-	event no_warnings_test::my_event("generate my_event please");
-	schedule 1sec { no_warnings_test::my_event("schedule my_event please") };
-	hook no_warnings_test::my_hook("generate my_hook please");
+	event my_event("generate my_event please");
+	schedule 1sec { my_event("schedule my_event please") };
+	hook my_hook("generate my_hook please");
 
 	local mr = my_record($a = 3, $b = "yeah");
 	mr = [$a = 4, $b = "ye"];
@@ -88,9 +85,6 @@ function dont_use_me_either() &deprecated
 @TEST-END-FILE
 
 @TEST-START-FILE warnings.zeek
-
-module warnings_test;
-
 type blah: string &deprecated="type warning";
 
 global my_event: event(arg: string) &deprecated="event warning";
@@ -127,9 +121,9 @@ event zeek_init()
 
 	local ls: string = " test";
 
-	event warnings_test::my_event("generate my_event please");
-	schedule 1sec { warnings_test::my_event("schedule my_event please") };
-	hook warnings_test::my_hook("generate my_hook please");
+	event my_event("generate my_event please");
+	schedule 1sec { my_event("schedule my_event please") };
+	hook my_hook("generate my_hook please");
 
 	local mr = my_record($a = 3, $b = "yeah");
 	mr = [$a = 4, $b = "ye"];

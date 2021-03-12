@@ -5,8 +5,6 @@
 
 @load base/utils/queue
 
-module invalid_assignment_test;
-
 global q: Queue::Queue = Queue::init();
 
 type myrec: record {

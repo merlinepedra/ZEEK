@@ -9,8 +9,6 @@
 @TEST-START-FILE valid.zeek
 # First some simple code that should be valid and error-free.
 
-module const_test_valid;
-
 function f(c: count)
 	{
 	print "enter f", c;
@@ -43,9 +41,6 @@ event zeek_init()
 @TEST-END-FILE
 
 @TEST-START-FILE invalid.zeek
-
-module const_test_invalid;
-
 # Now some const assignments that should generate errors at parse-time.
 
 const foo = 0 &redef;
