@@ -264,7 +264,7 @@ void analyze_scripts()
 				ASSERT(bl_f != nullptr);
 
 				hash = MergeHashes(hash, hash_string(bl_f));
-				auto body = compiled_bodies.find(hash);
+				body = compiled_bodies.find(hash);
 				}
 
 			if ( body != compiled_bodies.end() )

@@ -922,6 +922,8 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		auto loc_f = body->GetLocationInfo()->filename;
 		ASSERT(loc_f != nullptr);
 		cf_locs[fname] = loc_f;
+
+		Emit("// compiled body for: %s", loc_f);
 		}
 
 	EndBlock(true);
@@ -2596,7 +2598,8 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
 
 	auto gen = std::string("vec_op_") + invoke;
 
-	if ( ! IsArithmetic(e->GetType()->Yield()->Tag()) )
+	auto yt = e->GetType()->Yield()->Tag();
+	if ( ! IsArithmetic(yt) && yt != TYPE_STRING )
 		gen = std::string("vector_coerce_to__CPP(") + gen + ", " +
 			GenTypeName(e->GetType()) + ")";
 
