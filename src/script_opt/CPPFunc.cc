@@ -9,7 +9,7 @@
 
 namespace zeek::detail {
 
-std::unordered_map<hash_type, IntrusivePtr<CPPStmt>> compiled_bodies;
+std::unordered_map<hash_type, CPPStmtPtr> compiled_bodies;
 std::unordered_map<hash_type, std::vector<std::string>> compiled_bodies_events;
 VarMapper compiled_items;
 
@@ -19,10 +19,10 @@ void CPPFunc::Describe(ODesc* d) const
 	d->Add(name);
 	}
 
-CPPLambdaFunc::CPPLambdaFunc(FuncTypePtr ft, IntrusivePtr<CPPStmt> _l_body)
+CPPLambdaFunc::CPPLambdaFunc(FuncTypePtr ft, CPPStmtPtr _l_body)
 : ScriptFunc(std::move(ft), _l_body)
 	{
-	l_body = _l_body;
+	l_body = std::move(_l_body);
 	}
 
 broker::expected<broker::data> CPPLambdaFunc::SerializeClosure() const

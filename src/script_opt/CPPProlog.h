@@ -51,20 +51,19 @@ int flag_init_CPP()
 
 static int dummy = flag_init_CPP();
 
-void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash,
+void register_body__CPP(CPPStmtPtr body, hash_type hash,
 			std::vector<std::string> events)
 	{
 	compiled_bodies[hash] = std::move(body);
 	compiled_bodies_events[hash] = std::move(events);
 	}
 
-void register_lambda__CPP(const char* name, TypePtr t, CPPStmt* body)
+void register_lambda__CPP(const char* name, TypePtr t, CPPStmtPtr body)
 	{
-	IntrusivePtr<CPPStmt> body_ptr = {NewRef{}, body};
 	auto ft = cast_intrusive<FuncType>(t);
 
 	auto id = install_ID(name, GLOBAL_MODULE_NAME, true, false);
-	auto func = make_intrusive<CPPLambdaFunc>(ft, body_ptr);
+	auto func = make_intrusive<CPPLambdaFunc>(ft, body);
 	func->SetName(name);
 
 	auto v = make_intrusive<FuncVal>(std::move(func));

@@ -876,9 +876,14 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			}
 		}
 
-	const char* lambda_reg = lambda_ids ? "Register();" : "";
-	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s {%s}",
-		fname, addl_args.c_str(), inits.c_str(), lambda_reg);
+	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }",
+		fname, addl_args.c_str(), inits.c_str());
+
+	// An additional constructor just used to generate place-holder
+	// instances, due to the mis-design that lambdas are identified
+	// by their Func objects rather than their FuncVal objects.
+	if ( lambda_ids && lambda_ids->length() > 0 )
+		Emit("%s_cl(const char* name) : CPPStmt(name) { }", fname);
 
 	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) override final");
 	StartBlock();
@@ -911,16 +916,14 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			Emit("%s %s;", tn, name.c_str());
 			}
 
-		Emit("static bool did_register__CPP;");
-		Emit("void Register()");
-		StartBlock();
-		Emit("if ( ! did_register__CPP )");
-		StartBlock();
-		Emit("register_lambda__CPP(\"%s\", %s, this);",
-			l->Name().c_str(), GenTypeName(ft));
-		Emit("did_register__CPP = true;");
-		EndBlock();
-		EndBlock();
+		auto literal_name = std::string("\"") + l->Name() + "\"";
+
+		auto instantiate = std::string("make_intrusive<") +
+			fname + "_cl>(" + literal_name + ")";
+		auto l_init = std::string("register_lambda__CPP(\"") +
+				l->Name() + "\", " + GenTypeName(ft) +
+				", " + instantiate + ");";
+		AddInit(l, l_init);
 
 		int nl = lambda_ids->length();
 
@@ -968,9 +971,6 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		}
 
 	EndBlock(true);
-
-	if ( l )
-		Emit("bool %s_cl::did_register__CPP = false;", fname);
 
 	body_hashes[fname] = pf->HashVal();
 	body_names.emplace(body.get(), std::move(fname));

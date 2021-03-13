@@ -291,7 +291,7 @@ private:
 		{ AddInit(o.get(), init); }
 	void AddInit(const Obj* o, const std::string& init);
 
-	// For objects w/o initializations, but with dependencies.
+	// For objects perhaps w/o initializations, but with dependencies.
 	void AddInit(const IntrusivePtr<Obj>& o)	{ AddInit(o.get()); }
 	void AddInit(const Obj* o);
 

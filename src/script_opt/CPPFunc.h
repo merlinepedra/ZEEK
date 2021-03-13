@@ -47,22 +47,24 @@ protected:
 	std::string name;
 };
 
+using CPPStmtPtr = IntrusivePtr<CPPStmt>;
+
 class CPPLambdaFunc : public ScriptFunc {
 public:
-	CPPLambdaFunc(FuncTypePtr ft, IntrusivePtr<CPPStmt> l_body);
+	CPPLambdaFunc(FuncTypePtr ft, CPPStmtPtr l_body);
 
 protected:
 	broker::expected<broker::data> SerializeClosure() const override;
 	void SetCaptures(Frame* f) override;
 
-	IntrusivePtr<CPPStmt> l_body;
+	CPPStmtPtr l_body;
 };
 
 struct CompiledItemPair { int index; int scope; };
 
 using VarMapper = std::unordered_map<hash_type, CompiledItemPair>;
 
-extern std::unordered_map<hash_type, IntrusivePtr<CPPStmt>> compiled_bodies;
+extern std::unordered_map<hash_type, CPPStmtPtr> compiled_bodies;
 extern std::unordered_map<hash_type, std::vector<std::string>> compiled_bodies_events;
 extern VarMapper compiled_items;
 
