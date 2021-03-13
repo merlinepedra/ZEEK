@@ -106,7 +106,18 @@ ListValPtr index_val__CPP(std::vector<ValPtr> indices)
 
 ValPtr index_table__CPP(const TableValPtr& t, std::vector<ValPtr> indices)
 	{
-	return t->FindOrDefault(index_val__CPP(std::move(indices)));
+	auto v = t->FindOrDefault(index_val__CPP(std::move(indices)));
+	if ( ! v )
+		reporter->CPPRuntimeError("no such index");
+	return v;
+	}
+
+ValPtr index_vec__CPP(const VectorValPtr& vec, int index)
+	{
+	auto v = vec->At(index);
+	if ( ! v )
+		reporter->CPPRuntimeError("no such index");
+	return v;
 	}
 
 ValPtr index_string__CPP(const StringValPtr& svp, std::vector<ValPtr> indices)
@@ -127,7 +138,7 @@ IntrusivePtr<T> val_to_valptr__CPP(T* v) { return {NewRef{}, v}; }
 
 ValPtr set_global__CPP(IDPtr g, ValPtr v)
 	{
-	g->SetVal(std::move(v));
+	g->SetVal(v);
 	return v;
 	}
 
@@ -135,6 +146,15 @@ ValPtr set_event__CPP(IDPtr g, ValPtr v, EventHandlerPtr& gh)
 	{
 	g->SetVal(std::move(v));
 	gh = event_registry->Register(g->Name());
+	return v;
+	}
+
+ValPtr cast_value_to_type__CPP(const ValPtr& v, const TypePtr& t)
+	{
+	auto v = cast_value_to_type(v.get(), t.get());
+	if ( ! v )
+		reporter->CPPRuntimeError("invalid cast of value with type '%s' to type '%s'",
+			type_name(v->GetType()->Tag()), type_name(t->Tag()));
 	return v;
 	}
 
@@ -186,7 +206,7 @@ TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	check_iterators__CPP(iterators_invalidated);
 
 	if ( err_msg )
-		reporter->Error("%s", err_msg);
+		reporter->CPPRuntimeError("%s", err_msg);
 
 	return v1;
 	}

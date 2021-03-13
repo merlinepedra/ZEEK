@@ -1825,7 +1825,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 					GenExpr(last, GEN_NATIVE) + ")";
 				}
 			else
-				gen = GenExpr(aggr, GEN_DONT_CARE) + "->At(" +
+				gen = std::string("index_vec__CPP(") +
+					GenExpr(aggr, GEN_NATIVE) + ", " +
 					GenExpr(e->GetOp2(), GEN_NATIVE) + ")";
 			}
 
@@ -2164,9 +2165,9 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		ASSERT(0);
 
 	case EXPR_CAST:
-		gen = std::string("cast_value_to_type(") +
-			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ".get(), " +
-			GenTypeName(t) + ".get())";
+		gen = std::string("cast_value_to_type__CPP(") +
+			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ", " +
+			GenTypeName(t) + ")";
 		return GenericValPtrToGT(gen, t, gt);
 
 	case EXPR_IS:
@@ -2593,7 +2594,7 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
 	{
 	auto invoke = std::string(vec_op) + "__CPP(" + op1 + ", " + op2 + ")";
 
-	if ( e->GetOp1()->GetType()->Tag() == TYPE_STRING )
+	if ( e->GetOp1()->GetType()->Yield()->Tag() == TYPE_STRING )
 		return std::string("str_vec_op_") + invoke;
 
 	auto gen = std::string("vec_op_") + invoke;
