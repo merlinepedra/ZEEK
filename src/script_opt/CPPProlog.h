@@ -151,11 +151,11 @@ ValPtr set_event__CPP(IDPtr g, ValPtr v, EventHandlerPtr& gh)
 
 ValPtr cast_value_to_type__CPP(const ValPtr& v, const TypePtr& t)
 	{
-	auto v = cast_value_to_type(v.get(), t.get());
-	if ( ! v )
+	auto result = cast_value_to_type(v.get(), t.get());
+	if ( ! result )
 		reporter->CPPRuntimeError("invalid cast of value with type '%s' to type '%s'",
 			type_name(v->GetType()->Tag()), type_name(t->Tag()));
-	return v;
+	return result;
 	}
 
 SubNetValPtr addr_mask__CPP(const IPAddr& a, uint32_t mask)
@@ -589,7 +589,7 @@ VectorValPtr vec_op_sub__CPP(VectorValPtr v, int i)
 
 // And these for vector-plus-scalar string operations.
 
-VectorValPtr vec_op_str_vec_add__CPP(const StringValPtr& s1,
+VectorValPtr str_vec_op_str_vec_add__CPP(const StringValPtr& s1,
 					const VectorValPtr& v2,
 					const VectorValPtr& v3,
 					const StringValPtr& s4)
@@ -629,22 +629,22 @@ VectorValPtr vec_op_str_vec_add__CPP(const StringValPtr& s1,
 	return v_result;
 	}
 
-VectorValPtr vec_str_op_add__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_add__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
-	return vec_op_str_vec_add__CPP(nullptr, v1, v2, nullptr);
+	return str_vec_op_str_vec_add__CPP(nullptr, v1, v2, nullptr);
 	}
 
-VectorValPtr vec_op_add__CPP(const VectorValPtr& v1, const StringValPtr& s2)
+VectorValPtr str_vec_op_add__CPP(const VectorValPtr& v1, const StringValPtr& s2)
 	{
-	return vec_op_str_vec_add__CPP(nullptr, v1, nullptr, s2);
+	return str_vec_op_str_vec_add__CPP(nullptr, v1, nullptr, s2);
 	}
 
-VectorValPtr vec_op_add__CPP(const StringValPtr& s1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_add__CPP(const StringValPtr& s1, const VectorValPtr& v2)
 	{
-	return vec_op_str_vec_add__CPP(s1, v2, nullptr, nullptr);
+	return str_vec_op_str_vec_add__CPP(s1, v2, nullptr, nullptr);
 	}
 
-VectorValPtr vec_str_op_kernel__CPP(const VectorValPtr& v1,
+VectorValPtr str_vec_op_kernel__CPP(const VectorValPtr& v1,
 				const VectorValPtr& v2, int rel1, int rel2)
 	{
 	auto res_type = make_intrusive<VectorType>(base_type(TYPE_BOOL));
@@ -670,34 +670,34 @@ VectorValPtr vec_str_op_kernel__CPP(const VectorValPtr& v1,
 	return v_result;
 	}
 
-VectorValPtr vec_str_op_lt__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_lt__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
-	return vec_str_op_kernel__CPP(v1, v2, -1, -1);
+	return str_vec_op_kernel__CPP(v1, v2, -1, -1);
 	}
 
-VectorValPtr vec_str_op_le__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_le__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
-	return vec_str_op_kernel__CPP(v1, v2, -1, 0);
+	return str_vec_op_kernel__CPP(v1, v2, -1, 0);
 	}
 
-VectorValPtr vec_str_op_eq__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_eq__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
-	return vec_str_op_kernel__CPP(v1, v2, 0, 0);
+	return str_vec_op_kernel__CPP(v1, v2, 0, 0);
 	}
 
-VectorValPtr vec_str_op_ne__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_ne__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
-	return vec_str_op_kernel__CPP(v1, v2, -1, 1);
+	return str_vec_op_kernel__CPP(v1, v2, -1, 1);
 	}
 
-VectorValPtr vec_str_op_gt__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_gt__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
-	return vec_str_op_kernel__CPP(v1, v2, 1, 1);
+	return str_vec_op_kernel__CPP(v1, v2, 1, 1);
 	}
 
-VectorValPtr vec_str_op_ge__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
+VectorValPtr str_vec_op_ge__CPP(const VectorValPtr& v1, const VectorValPtr& v2)
 	{
-	return vec_str_op_kernel__CPP(v1, v2, 0, 1);
+	return str_vec_op_kernel__CPP(v1, v2, 0, 1);
 	}
 
 VectorValPtr vector_select__CPP(const VectorValPtr& v1, VectorValPtr v2,
