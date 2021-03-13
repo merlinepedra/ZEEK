@@ -237,15 +237,6 @@ protected:
 
 	hash_type Hash(int val)		{ return std::hash<int>{}(val); }
 
-	hash_type MergeHashes(hash_type h1, hash_type h2)
-		{
-		// Taken from Boost.  See for example
-		// https://www.boost.org/doc/libs/1_35_0/doc/html/boost/hash_combine_id241013.html
-		// or
-		// https://stackoverflow.com/questions/4948780/magic-number-in-boosthash-combine
-		return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
-		}
-
 	// Globals seen across the functions, other than those solely seen
 	// as the function being called in a call.
 	std::unordered_set<const ID*> globals;
@@ -312,6 +303,15 @@ protected:
 inline hash_type hash_string(const char* val)
 	{
 	return std::hash<std::string>{}(std::string(val));
+	}
+
+inline hash_type MergeHashes(hash_type h1, hash_type h2)
+	{
+	// Taken from Boost.  See for example
+	// https://www.boost.org/doc/libs/1_35_0/doc/html/boost/hash_combine_id241013.html
+	// or
+	// https://stackoverflow.com/questions/4948780/magic-number-in-boosthash-combine
+	return h1 ^ (h2 + 0x9e3779b9 + (h1 << 6) + (h1 >> 2));
 	}
 
 extern hash_type hash_obj(const Obj* o);

@@ -257,6 +257,16 @@ void analyze_scripts()
 			auto hash = f.Profile()->HashVal();
 			auto body = compiled_bodies.find(hash);
 
+			if ( body == compiled_bodies.end() )
+				{ // Look for script-specific body.
+				auto body_loc = f.Body()->GetLocationInfo();
+				auto bl_f = body_loc->filename;
+				ASSERT(bl_f != nullptr);
+
+				hash = MergeHashes(hash, hash_string(bl_f));
+				auto body = compiled_bodies.find(hash);
+				}
+
 			if ( body != compiled_bodies.end() )
 				{
 				f.Func()->ReplaceBody(f.Body(), body->second);

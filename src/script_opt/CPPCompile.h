@@ -401,6 +401,10 @@ private:
 	// Functions that we've declared/compiled.
 	std::unordered_set<std::string> compiled_funcs;
 
+	// Maps those to their associated files - used to make add-C++ body
+	// hashes distinct.
+	std::unordered_map<std::string, std::string> cf_locs;
+
 	// Maps function names to hashes of bodies.
 	std::unordered_map<std::string, hash_type> body_hashes;
 

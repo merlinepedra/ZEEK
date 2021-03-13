@@ -589,6 +589,9 @@ void CPPCompile::GenEpilog()
 
 		events = std::string("{") + events + "}";
 
+		if ( addl_tag > 0 )
+			h = MergeHashes(h, hash_string(cf_locs[f].c_str()));
+
 		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s, %s);",
 			f, f, Fmt(h), events);
 
@@ -908,12 +911,18 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		}
 
 	else
+		{
 		// We don't track lambda bodies as compiled because they
 		// can't be instantiated directly without also supplying
 		// the captures.  In principle we could make an exception
 		// for lambdas that don't take any arguments, but that
 		// seems potentially more confusing than beneficial.
 		compiled_funcs.emplace(fname);
+
+		auto loc_f = body->GetLocationInfo()->filename;
+		ASSERT(loc_f != nullptr);
+		cf_locs[fname] = loc_f;
+		}
 
 	EndBlock(true);
 
