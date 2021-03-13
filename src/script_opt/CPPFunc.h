@@ -33,6 +33,11 @@ public:
 
 	const std::string& Name()	{ return name; }
 
+	// The following only get defined by lambda bodies.
+	virtual void SetLambdaCaptures(Frame* f)	{ }
+	virtual std::vector<ValPtr> SerializeLambdaCaptures() const
+		{ return std::vector<ValPtr>{}; }
+
 protected:
 	StmtPtr Duplicate() override	{ ASSERT(0); return ThisPtr(); }
 
@@ -40,6 +45,17 @@ protected:
 		{ return TC_CONTINUE; }
 
 	std::string name;
+};
+
+class CPPLambdaFunc : public ScriptFunc {
+public:
+	CPPLambdaFunc(FuncTypePtr ft, IntrusivePtr<CPPStmt> l_body);
+
+protected:
+	broker::expected<broker::data> SerializeClosure() const override;
+	void SetCaptures(Frame* f) override;
+
+	IntrusivePtr<CPPStmt> l_body;
 };
 
 struct CompiledItemPair { int index; int scope; };

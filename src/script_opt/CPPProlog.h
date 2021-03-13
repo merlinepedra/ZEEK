@@ -58,6 +58,20 @@ void register_body__CPP(IntrusivePtr<CPPStmt> body, hash_type hash,
 	compiled_bodies_events[hash] = std::move(events);
 	}
 
+void register_lambda__CPP(const char* name, TypePtr t, CPPStmt* body)
+	{
+	IntrusivePtr<CPPStmt> body_ptr = {NewRef{}, body};
+	auto ft = cast_intrusive<FuncType>(t);
+
+	auto id = install_ID(name, GLOBAL_MODULE_NAME, true, false);
+	auto func = make_intrusive<CPPLambdaFunc>(ft, body_ptr);
+	func->SetName(name);
+
+	auto v = make_intrusive<FuncVal>(std::move(func));
+	id->SetVal(std::move(v));
+	id->SetType(ft);
+	}
+
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 	{
 	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);

@@ -171,7 +171,7 @@ private:
 
 	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			const std::string& fname, const StmtPtr& body,
-			const IDPList* lambda_ids, FunctionFlavor flavor);
+			const LambdaExpr* l, FunctionFlavor flavor);
 
 	void GenSubclassTypeAssignment(Func* f);
 	void GenInvokeBody(const std::string& fname, const TypePtr& t,

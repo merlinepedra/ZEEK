@@ -815,7 +815,7 @@ void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
 		lambda_names[id] = l_id_name;
 		}
 
-	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, &ids,
+	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, l,
 				FUNC_FLAVOR_FUNCTION);
 	}
 
@@ -845,10 +845,11 @@ void CPPCompile::CompileLambda(const LambdaExpr* l, const ProfileFunc* pf)
 
 void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			const std::string& fname, const StmtPtr& body,
-			const IDPList* lambda_ids, FunctionFlavor flavor)
+			const LambdaExpr* l, FunctionFlavor flavor)
 	{
 	const auto& yt = ft->Yield();
 	in_hook = flavor == FUNC_FLAVOR_HOOK;
+	const IDPList* lambda_ids = l ? &l->OuterIDs() : nullptr;
 
 	auto yt_decl = in_hook ? "bool" : FullTypeName(yt);
 
@@ -875,8 +876,9 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			}
 		}
 
-	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }",
-		fname, addl_args.c_str(), inits.c_str());
+	const char* lambda_reg = lambda_ids ? "Register();" : "";
+	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s {%s}",
+		fname, addl_args.c_str(), inits.c_str(), lambda_reg);
 
 	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) override final");
 	StartBlock();
@@ -908,6 +910,45 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			auto tn = FullTypeName(id->GetType());
 			Emit("%s %s;", tn, name.c_str());
 			}
+
+		Emit("static bool did_register__CPP;");
+		Emit("void Register()");
+		StartBlock();
+		Emit("if ( ! did_register__CPP )");
+		StartBlock();
+		Emit("register_lambda__CPP(\"%s\", %s, this);",
+			l->Name().c_str(), GenTypeName(ft));
+		Emit("did_register__CPP = true;");
+		EndBlock();
+		EndBlock();
+
+		int nl = lambda_ids->length();
+
+		Emit("void SetLambdaCaptures(Frame* f) override");
+		StartBlock();
+		for ( int i = 0; i < nl; ++i )
+			{
+			auto l_i = (*lambda_ids)[i];
+			const auto& t_i = l_i->GetType();
+			auto cap_i = std::string("f->GetElement(") +
+					Fmt(i) + ")";
+			Emit("%s = %s;", lambda_names[l_i],
+				GenericValPtrToGT(cap_i, t_i, GEN_NATIVE));
+			}
+		EndBlock();
+
+		Emit("std::vector<ValPtr> SerializeLambdaCaptures() const override");
+		StartBlock();
+		Emit("std::vector<ValPtr> vals;");
+		for ( int i = 0; i < nl; ++i )
+			{
+			auto l_i = (*lambda_ids)[i];
+			const auto& t_i = l_i->GetType();
+			Emit("vals.emplace_back(%s);",
+				NativeToGT(lambda_names[l_i], t_i, GEN_VAL_PTR));
+			}
+		Emit("return vals;");
+		EndBlock();
 		}
 
 	else
@@ -927,6 +968,9 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		}
 
 	EndBlock(true);
+
+	if ( l )
+		Emit("bool %s_cl::did_register__CPP = false;", fname);
 
 	body_hashes[fname] = pf->HashVal();
 	body_names.emplace(body.get(), std::move(fname));
@@ -2152,7 +2196,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 
 		auto body = std::string("make_intrusive<") + name + ">(" +
 				cl_args + ")";
-		auto func = std::string("make_intrusive<ScriptFunc>(") +
+		auto func = std::string("make_intrusive<CPPLambdaFunc>(") +
 				"cast_intrusive<FuncType>(" +
 				GenTypeName(t) + "), " + body + ")";
 		return std::string("make_intrusive<FuncVal>(") + func + ")";

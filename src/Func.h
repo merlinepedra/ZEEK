@@ -218,7 +218,7 @@ public:
 	 *
 	 * @return a serialized version of the function's closure/capture frame.
 	 */
-	broker::expected<broker::data> SerializeClosure() const;
+	virtual broker::expected<broker::data> SerializeClosure() const;
 
 	/**
 	 * Sets the captures frame to one built from *data*.
@@ -284,7 +284,7 @@ protected:
 	 *
 	 * @param f  the frame holding the values of capture variables
 	 */
-	void SetCaptures(Frame* f);
+	virtual void SetCaptures(Frame* f);
 
 private:
 	size_t frame_size;
