@@ -63,7 +63,7 @@ void register_lambda__CPP(const char* name, TypePtr t, CPPStmtPtr body)
 	auto ft = cast_intrusive<FuncType>(t);
 
 	auto id = install_ID(name, GLOBAL_MODULE_NAME, true, false);
-	auto func = make_intrusive<CPPLambdaFunc>(ft, body);
+	auto func = make_intrusive<CPPLambdaFunc>(name, ft, body);
 	func->SetName(name);
 
 	auto v = make_intrusive<FuncVal>(std::move(func));

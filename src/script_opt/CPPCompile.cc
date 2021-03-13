@@ -924,6 +924,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 				l->Name() + "\", " + GenTypeName(ft) +
 				", " + instantiate + ");";
 		AddInit(l, l_init);
+		NoteInitDependency(l, TypeRep(ft));
 
 		int nl = lambda_ids->length();
 
@@ -2196,8 +2197,8 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 
 		auto body = std::string("make_intrusive<") + name + ">(" +
 				cl_args + ")";
-		auto func = std::string("make_intrusive<CPPLambdaFunc>(") +
-				"cast_intrusive<FuncType>(" +
+		auto func = std::string("make_intrusive<CPPLambdaFunc>(\"") +
+				l->Name() + "\", cast_intrusive<FuncType>(" +
 				GenTypeName(t) + "), " + body + ")";
 		return std::string("make_intrusive<FuncVal>(") + func + ")";
 		}

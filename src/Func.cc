@@ -310,9 +310,9 @@ ScriptFunc::ScriptFunc(const IDPtr& arg_id, StmtPtr arg_body,
 		}
 	}
 
-ScriptFunc::ScriptFunc(FuncTypePtr ft, StmtPtr body)
+ScriptFunc::ScriptFunc(std::string _name, FuncTypePtr ft, StmtPtr body)
 	{
-	name = "compiled-lambda";
+	name = std::move(_name);
 	frame_size = ft->ParamList()->GetTypes().size();
 	type = std::move(ft);
 

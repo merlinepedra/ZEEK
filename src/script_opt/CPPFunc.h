@@ -51,7 +51,7 @@ using CPPStmtPtr = IntrusivePtr<CPPStmt>;
 
 class CPPLambdaFunc : public ScriptFunc {
 public:
-	CPPLambdaFunc(FuncTypePtr ft, CPPStmtPtr l_body);
+	CPPLambdaFunc(std::string name, FuncTypePtr ft, CPPStmtPtr l_body);
 
 protected:
 	broker::expected<broker::data> SerializeClosure() const override;

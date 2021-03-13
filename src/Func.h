@@ -152,7 +152,7 @@ public:
 	        size_t frame_size, int priority);
 
 	// For compiled lambdas.
-	ScriptFunc(FuncTypePtr ft, StmtPtr body);
+	ScriptFunc(std::string name, FuncTypePtr ft, StmtPtr body);
 
 	~ScriptFunc() override;
 
