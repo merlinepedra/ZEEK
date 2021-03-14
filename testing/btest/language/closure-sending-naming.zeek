@@ -8,6 +8,12 @@
 # @TEST-EXEC: btest-diff recv/recv.out
 # @TEST-EXEC: btest-diff send/send.out
 
+####
+# NOTE: for "use-C++", this test performs differently depending on whether
+# send.zeek and recv.zeek are compiled together (in which case the lambda
+# still works), or separately.
+####
+
 @TEST-START-FILE send.zeek
 
 redef exit_only_after_terminate = T;
@@ -29,7 +35,7 @@ function send_event()
     {
     local event_count = 1;
     # log fails to be looked up because of a missing print statment
-    # functions must have the sama name on both ends of broker.
+    # functions must have the same name on both ends of broker.
     local log : myfunctype = function(c: count) : function(d: count) : count
         {
         # print fmt("inside: %s | outside: %s | global: %s", c, event_count, global_with_same_name);
