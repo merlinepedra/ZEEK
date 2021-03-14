@@ -1292,7 +1292,7 @@ void CPPCompile::GenStmt(const Stmt* s)
 		auto aggr = GenExpr(op->GetOp1(), GEN_DONT_CARE);
 		auto indices = op->GetOp2();
 
-		Emit("%s->Assign(index_val__CPP({%s}), nullptr, true);",
+		Emit("add_element__CPP(%s, index_val__CPP({%s}));",
 			aggr, GenExpr(indices, GEN_VAL_PTR));
 		}
 		break;
@@ -1300,13 +1300,13 @@ void CPPCompile::GenStmt(const Stmt* s)
 	case STMT_DELETE:
 		{
 		auto op = static_cast<const ExprStmt*>(s)->StmtExpr();
-		auto aggr = GenExpr(op->GetOp1(), GEN_DONT_CARE);
+		auto aggr = GenExpr(op->GetOp1(), GEN_VAL_PTR);
 
 		if ( op->Tag() == EXPR_INDEX )
 			{
 			auto indices = op->GetOp2();
 
-			Emit("%s->Remove(*(index_val__CPP({%s}).get()), true);",
+			Emit("remove_element__CPP(%s, index_val__CPP({%s}));",
 				aggr, GenExpr(indices, GEN_VAL_PTR));
 			}
 

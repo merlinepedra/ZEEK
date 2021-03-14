@@ -211,7 +211,7 @@ void check_iterators__CPP(bool invalid)
 // Execute an assignment "v1[v2] = v3".
 TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	{
-	bool iterators_invalidated;
+	bool iterators_invalidated = false;
 	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
 							std::move(v3),
 							iterators_invalidated);
@@ -226,7 +226,7 @@ TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 
 VectorValPtr assign_to_index__CPP(VectorValPtr v1, ValPtr v2, ValPtr v3)
 	{
-	bool iterators_invalidated;
+	bool iterators_invalidated = false;
 	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
 							std::move(v3),
 							iterators_invalidated);
@@ -241,7 +241,7 @@ VectorValPtr assign_to_index__CPP(VectorValPtr v1, ValPtr v2, ValPtr v3)
 
 StringValPtr assign_to_index__CPP(StringValPtr v1, ValPtr v2, ValPtr v3)
 	{
-	bool iterators_invalidated;
+	bool iterators_invalidated = false;
 	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
 							std::move(v3),
 							iterators_invalidated);
@@ -252,6 +252,20 @@ StringValPtr assign_to_index__CPP(StringValPtr v1, ValPtr v2, ValPtr v3)
 		reporter->CPPRuntimeError("%s", err_msg);
 
 	return v1;
+	}
+
+void add_element__CPP(TableValPtr aggr, ListValPtr indices)
+	{
+	bool iterators_invalidated = false;
+	aggr->Assign(indices, nullptr, true, &iterators_invalidated);
+	check_iterators__CPP(iterators_invalidated);
+	}
+
+void remove_element__CPP(TableValPtr aggr, ListValPtr indices)
+	{
+	bool iterators_invalidated = false;
+	aggr->Remove(*indices.get(), true, &iterators_invalidated);
+	check_iterators__CPP(iterators_invalidated);
 	}
 
 ValPtr vector_append__CPP(VectorValPtr v1, ValPtr v2)
