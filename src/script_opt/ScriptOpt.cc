@@ -226,9 +226,23 @@ void analyze_scripts()
 			auto name = f.Func()->Name();
 			auto hash = f.Profile()->HashVal();
 			bool have = compiled_bodies.count(hash) > 0;
+			auto specific = "";
 
-			printf("script function %s (hash %llu): %s\n",
-				name, hash, have ? "yes" : "no");
+			if ( ! have )
+				{ // Look for script-specific body.
+				auto body_loc = f.Body()->GetLocationInfo();
+				auto bl_f = body_loc->filename;
+				ASSERT(bl_f != nullptr);
+
+				hash = MergeHashes(hash, hash_string(bl_f));
+				have = compiled_bodies.count(hash) > 0;
+
+				if ( have )
+					specific = " - specific";
+				}
+
+			printf("script function %s (hash %llu%s): %s\n",
+				name, hash, specific, have ? "yes" : "no");
 
 			if ( have )
 				already_reported.insert(hash);
@@ -276,6 +290,11 @@ void analyze_scripts()
 					h->SetUsed();
 					}
 				}
+
+#if 0
+			else
+				printf("not using C++ for %s\n", f.Func()->Name());
+#endif
 			}
 
 		return;
