@@ -234,7 +234,7 @@ VectorValPtr assign_to_index__CPP(VectorValPtr v1, ValPtr v2, ValPtr v3)
 	check_iterators__CPP(iterators_invalidated);
 
 	if ( err_msg )
-		reporter->Error("%s", err_msg);
+		reporter->CPPRuntimeError("%s", err_msg);
 
 	return v1;
 	}
@@ -249,7 +249,7 @@ StringValPtr assign_to_index__CPP(StringValPtr v1, ValPtr v2, ValPtr v3)
 	check_iterators__CPP(iterators_invalidated);
 
 	if ( err_msg )
-		reporter->Error("%s", err_msg);
+		reporter->CPPRuntimeError("%s", err_msg);
 
 	return v1;
 	}
@@ -265,7 +265,7 @@ TableValPtr table_coerce__CPP(const ValPtr& v, const TypePtr& t)
 	TableVal* tv = v->AsTableVal();
 
 	if ( tv->Size() > 0 )
-		reporter->Error("coercion of non-empty table/set");
+		reporter->CPPRuntimeError("coercion of non-empty table/set");
 
 	return make_intrusive<TableVal>(cast_intrusive<TableType>(t),
 					tv->GetAttrs());
@@ -276,7 +276,7 @@ VectorValPtr vector_coerce__CPP(const ValPtr& v, const TypePtr& t)
 	VectorVal* vv = v->AsVectorVal();
 
 	if ( vv->Size() > 0 )
-		reporter->Error("coercion of non-empty vector");
+		reporter->CPPRuntimeError("coercion of non-empty vector");
 
 	return make_intrusive<VectorVal>(cast_intrusive<VectorType>(t));
 	}
