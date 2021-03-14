@@ -149,7 +149,10 @@ static void parse_new_enum (void)
 	assert(cur_enum_type == nullptr);
 
 	if ( cur_decl_type_id )
-		cur_enum_type = new zeek::EnumType(cur_decl_type_id->Name());
+		{
+		auto name = zeek::detail::make_full_var_name(current_module.c_str(), cur_decl_type_id->Name());
+		cur_enum_type = new zeek::EnumType(name);
+		}
 	else
 		zeek::reporter->FatalError("incorrect syntax for enum type declaration");
 	}
