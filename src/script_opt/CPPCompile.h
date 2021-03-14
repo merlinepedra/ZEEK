@@ -231,6 +231,8 @@ private:
 	std::string GenVectorOp(const Expr* e, std::string op1,
 				std::string op2, const char* vec_op);
 
+	std::string GenLambdaClone(const LambdaExpr* l, bool all_deep);
+
 	std::string GenIntVector(const std::vector<int>& vec);
 
 	std::string NativeToGT(const std::string& expr, const TypePtr& t,

@@ -38,6 +38,11 @@ public:
 	virtual std::vector<ValPtr> SerializeLambdaCaptures() const
 		{ return std::vector<ValPtr>{}; }
 
+	virtual IntrusivePtr<CPPStmt> Clone()	
+		{
+		return {NewRef{}, this};
+		}
+
 protected:
 	StmtPtr Duplicate() override	{ ASSERT(0); return ThisPtr(); }
 
@@ -56,6 +61,8 @@ public:
 protected:
 	broker::expected<broker::data> SerializeClosure() const override;
 	void SetCaptures(Frame* f) override;
+
+	FuncPtr DoClone() override;
 
 	CPPStmtPtr l_body;
 };

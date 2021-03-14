@@ -58,4 +58,9 @@ void CPPLambdaFunc::SetCaptures(Frame* f)
 	l_body->SetLambdaCaptures(f);
 	}
 
+FuncPtr CPPLambdaFunc::DoClone()
+	{
+	return make_intrusive<CPPLambdaFunc>(name, type, l_body->Clone());
+	}
+
 } // zeek::detail

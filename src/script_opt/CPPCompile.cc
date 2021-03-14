@@ -953,6 +953,12 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 			}
 		Emit("return vals;");
 		EndBlock();
+
+		Emit("CPPStmtPtr Clone() override");
+		StartBlock();
+		auto arg_clones = GenLambdaClone(l, true);
+		Emit("return make_intrusive<%s>(name%s);", fname, arg_clones);
+		EndBlock();
 		}
 
 	else
@@ -2174,26 +2180,11 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		{
 		auto l = static_cast<const LambdaExpr*>(e);
 		auto name = Canonicalize(l->Name().c_str()) + "_lb_cl";
-		auto& ids = l->OuterIDs();
-		const auto& in = l->Ingredients();
-		const auto& captures = l->GetType<FuncType>()->GetCaptures();
 
 		std::string cl_args = "\"" + name + "\"";
 
-		for ( const auto& id : ids )
-			{
-			const auto& id_t = id->GetType();
-			auto arg = IDNameStr(id);
-
-			if ( captures && ! IsNativeType(id_t) )
-				{
-				for ( const auto& c : *captures )
-					if ( id == c.id && c.deep_copy )
-						arg = std::string("cast_intrusive<") + TypeName(id_t) + ">(" + arg + "->Clone())";
-				}
-
-			cl_args = cl_args + ", " + arg;
-			}
+		if ( l->OuterIDs().size() > 0 )
+			cl_args = cl_args + ", " + GenLambdaClone(l, false);
 
 		auto body = std::string("make_intrusive<") + name + ">(" +
 				cl_args + ")";
@@ -2650,6 +2641,31 @@ std::string CPPCompile::GenVectorOp(const Expr* e, std::string op1,
 			GenTypeName(e->GetType()) + ")";
 
 	return gen;
+	}
+
+std::string CPPCompile::GenLambdaClone(const LambdaExpr* l, bool all_deep)
+	{
+	auto& ids = l->OuterIDs();
+	const auto& captures = l->GetType<FuncType>()->GetCaptures();
+
+	std::string cl_args;
+
+	for ( const auto& id : ids )
+		{
+		const auto& id_t = id->GetType();
+		auto arg = IDNameStr(id);
+
+		if ( captures && ! IsNativeType(id_t) )
+			{
+			for ( const auto& c : *captures )
+				if ( id == c.id && (c.deep_copy || all_deep) )
+					arg = std::string("cast_intrusive<") + TypeName(id_t) + ">(" + arg + "->Clone())";
+			}
+
+		cl_args = cl_args + ", " + arg;
+		}
+
+	return cl_args;
 	}
 
 std::string CPPCompile::GenIntVector(const std::vector<int>& vec)
