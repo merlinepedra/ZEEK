@@ -214,6 +214,11 @@ public:
 	bool StrengthenClosureReference(Frame* f);
 
 	/**
+	 * Whether the function's closure uses copy semantics.
+	 */
+	virtual bool CopySemantics() const;
+
+	/**
 	 * Serializes this function's closure or capture frame.
 	 *
 	 * @return a serialized version of the function's closure/capture frame.

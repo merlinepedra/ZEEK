@@ -58,6 +58,8 @@ class CPPLambdaFunc : public ScriptFunc {
 public:
 	CPPLambdaFunc(std::string name, FuncTypePtr ft, CPPStmtPtr l_body);
 
+	bool CopySemantics() const override	{ return true; }
+
 protected:
 	broker::expected<broker::data> SerializeClosure() const override;
 	void SetCaptures(Frame* f) override;
