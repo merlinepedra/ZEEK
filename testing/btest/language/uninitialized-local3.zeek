@@ -30,5 +30,10 @@ event zeek_init()
 	print x3;
 
 	local x4: count;
-	print x4;	# note, no execution after this point due to error
+	# note, no execution after this point due to error
+
+	# We use this slightly baroque expression because compiled code
+	# may have x4 genuinely uninitialized, and we want deterministic
+	# output in that case.
+	print x4 ? T : T;
 	}
