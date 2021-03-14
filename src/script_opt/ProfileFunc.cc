@@ -1,5 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+#include <unistd.h>
+
 #include "zeek/script_opt/ProfileFunc.h"
 #include "zeek/script_opt/CPPCompile.h"
 #include "zeek/Desc.h"
@@ -608,6 +610,34 @@ void ProfileFuncs::TrackAttrs(const Attributes* Attrs)
 		}
 	}
 
+
+std::string script_specific_filename(const StmtPtr& body)
+	{
+	auto body_loc = body->GetLocationInfo();
+	auto bl_f = body_loc->filename;
+	ASSERT(bl_f != nullptr);
+
+	if ( bl_f[0] == '.' && bl_f[1] == '/' )
+		{ // Add working directory to make more explicit
+		static std::string working_dir;
+		if ( working_dir.size() == 0 )
+			{
+			char buf[8192];
+			getcwd(buf, sizeof buf);
+			working_dir = buf;
+			}
+
+		return working_dir + "/" + bl_f;
+		}
+
+	return bl_f;
+	}
+
+hash_type script_specific_hash(const StmtPtr& body, hash_type generic_hash)
+	{ // Look for script-specific body.
+	auto bl_f = script_specific_filename(body);
+	return MergeHashes(generic_hash, hash_string(bl_f.c_str()));
+	}
 
 hash_type hash_obj(const Obj* o)
 	{

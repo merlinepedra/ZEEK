@@ -229,14 +229,9 @@ void analyze_scripts()
 			auto specific = "";
 
 			if ( ! have )
-				{ // Look for script-specific body.
-				auto body_loc = f.Body()->GetLocationInfo();
-				auto bl_f = body_loc->filename;
-				ASSERT(bl_f != nullptr);
-
-				hash = MergeHashes(hash, hash_string(bl_f));
+				{
+				hash = script_specific_hash(f.Body(), hash);
 				have = compiled_bodies.count(hash) > 0;
-
 				if ( have )
 					specific = " - specific";
 				}
@@ -273,11 +268,7 @@ void analyze_scripts()
 
 			if ( body == compiled_bodies.end() )
 				{ // Look for script-specific body.
-				auto body_loc = f.Body()->GetLocationInfo();
-				auto bl_f = body_loc->filename;
-				ASSERT(bl_f != nullptr);
-
-				hash = MergeHashes(hash, hash_string(bl_f));
+				hash = script_specific_hash(f.Body(), hash);
 				body = compiled_bodies.find(hash);
 				}
 

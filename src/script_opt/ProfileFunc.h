@@ -299,6 +299,10 @@ protected:
 	std::vector<const Expr*> pending_exprs;
 };
 
+extern std::string script_specific_filename(const StmtPtr& body);
+extern hash_type script_specific_hash(const StmtPtr& body,
+					hash_type generic_hash);
+
 // Helper functions.
 inline hash_type hash_string(const char* val)
 	{

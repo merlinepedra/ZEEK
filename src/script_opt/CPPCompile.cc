@@ -970,8 +970,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		// seems potentially more confusing than beneficial.
 		compiled_funcs.emplace(fname);
 
-		auto loc_f = body->GetLocationInfo()->filename;
-		ASSERT(loc_f != nullptr);
+		auto loc_f = script_specific_filename(body);
 		cf_locs[fname] = loc_f;
 
 		Emit("// compiled body for: %s", loc_f);
