@@ -14,6 +14,7 @@
 #include "zeek/Expr.h"
 #include "zeek/Event.h"
 #include "zeek/EventRegistry.h"
+#include "zeek/RunState.h"
 #include "zeek/script_opt/CPPFunc.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
@@ -376,7 +377,9 @@ VectorValPtr vector_constructor__CPP(std::vector<ValPtr> vals, VectorTypePtr t)
 
 ValPtr schedule__CPP(double dt, EventHandlerPtr event, std::vector<ValPtr> args)
 	{
-	timer_mgr->Add(new ScheduleTimer(event, std::move(args), dt));
+	if ( ! run_state::terminating )
+		timer_mgr->Add(new ScheduleTimer(event, std::move(args), dt));
+
 	return nullptr;
 	}
 
