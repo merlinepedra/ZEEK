@@ -35,5 +35,5 @@ event zeek_init()
 	# We use this slightly baroque expression because compiled code
 	# may have x4 genuinely uninitialized, and we want deterministic
 	# output in that case.
-	print x4 ? T : T;
+	print x4 > 5 ? T : T;
 	}
