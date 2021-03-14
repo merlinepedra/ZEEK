@@ -16,7 +16,14 @@ namespace zeek::detail {
 // Helper functions.
 std::string Fmt(int i)		{ return std::to_string(i); }
 std::string Fmt(hash_type u)	{ return std::to_string(u) + "ULL"; }
-std::string Fmt(double d)	{ return std::to_string(d); }
+std::string Fmt(double d)
+	{
+	// Unfortunately, to_string(double) is hardwired to use %f with
+	// default of 6 digits precision.
+	char buf[8192];
+	snprintf(buf, sizeof buf, "%.17g", d);
+	return buf;
+	}
 
 std::string ScopePrefix(const std::string& scope)
 	{

@@ -11,7 +11,7 @@ export ZEEK_HASH_DIR=$test ZEEK_ADD_CPP=
 cd $test
 cp $build/CPP-hashes.dat .
 echo >$gen
-../../auxil/btest/btest language >jlang-build.out 2>&1
+../../auxil/btest/btest bifs >jlang-build.out 2>&1
 grep -c '^namespace' $gen
 mv $gen $so
 cd $build
