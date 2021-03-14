@@ -811,8 +811,8 @@ void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
 
 	for ( auto id : ids )
 		{
-		auto l_id_name = LocalName(id) + "_" + lname;
-		lambda_names[id] = l_id_name;
+		auto l_id_name = LocalName(id);
+		lambda_names[id] = l_id_name; // ### just use LocalName
 		}
 
 	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, l,
@@ -957,7 +957,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 		Emit("CPPStmtPtr Clone() override");
 		StartBlock();
 		auto arg_clones = GenLambdaClone(l, true);
-		Emit("return make_intrusive<%s>(name%s);", fname, arg_clones);
+		Emit("return make_intrusive<%s_cl>(name.c_str()%s);", fname, arg_clones);
 		EndBlock();
 		}
 
@@ -2184,7 +2184,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		std::string cl_args = "\"" + name + "\"";
 
 		if ( l->OuterIDs().size() > 0 )
-			cl_args = cl_args + ", " + GenLambdaClone(l, false);
+			cl_args = cl_args + GenLambdaClone(l, false);
 
 		auto body = std::string("make_intrusive<") + name + ">(" +
 				cl_args + ")";
@@ -2653,7 +2653,7 @@ std::string CPPCompile::GenLambdaClone(const LambdaExpr* l, bool all_deep)
 	for ( const auto& id : ids )
 		{
 		const auto& id_t = id->GetType();
-		auto arg = IDNameStr(id);
+		auto arg = LocalName(id);
 
 		if ( captures && ! IsNativeType(id_t) )
 			{
