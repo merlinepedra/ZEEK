@@ -2350,14 +2350,18 @@ std::string CPPCompile::GenBinary(const Expr* e, GenType gt,
 	auto g1 = GenExpr(e->GetOp1(), GEN_NATIVE);
 	auto g2 = GenExpr(e->GetOp2(), GEN_NATIVE);
 
+	std::string gen;
+
 	if ( e->Tag() == EXPR_DIVIDE )
-		return std::string("div__CPP(") + g1 + ", " + g2 + ")";
+		gen = std::string("div__CPP(") + g1 + ", " + g2 + ")";
 
-	if ( e->Tag() == EXPR_MOD )
-		return std::string("mod_CPP(") + g1 + ", " + g2 + ")";
+	else if ( e->Tag() == EXPR_MOD )
+		gen = std::string("mod__CPP(") + g1 + ", " + g2 + ")";
 
-	return NativeToGT(std::string("(") + g1 + ")" + op + "(" + g2 + ")",
-				e->GetType(), gt);
+	else
+		gen = std::string("(") + g1 + ")" + op + "(" + g2 + ")";
+
+	return NativeToGT(gen, e->GetType(), gt);
 	}
 
 std::string CPPCompile::GenBinarySet(const Expr* e, GenType gt, const char* op)
