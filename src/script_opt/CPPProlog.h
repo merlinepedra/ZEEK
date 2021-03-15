@@ -210,11 +210,10 @@ void check_iterators__CPP(bool invalid)
 	}
 
 // Execute an assignment "v1[v2] = v3".
-TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
+ValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	{
 	bool iterators_invalidated = false;
-	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2),
-							std::move(v3),
+	auto err_msg = zeek::detail::assign_to_index(v1, std::move(v2), v3,
 							iterators_invalidated);
 
 	check_iterators__CPP(iterators_invalidated);
@@ -222,7 +221,7 @@ TableValPtr assign_to_index__CPP(TableValPtr v1, ValPtr v2, ValPtr v3)
 	if ( err_msg )
 		reporter->CPPRuntimeError("%s", err_msg);
 
-	return v1;
+	return v3;
 	}
 
 VectorValPtr assign_to_index__CPP(VectorValPtr v1, ValPtr v2, ValPtr v3)

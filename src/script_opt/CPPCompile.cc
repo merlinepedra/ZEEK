@@ -2570,6 +2570,9 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 			"index_val__CPP({" +
 			GenExpr(lhs->GetOp2(), GEN_VAL_PTR) + "}), " +
 			rhs_val_ptr + ")";
+
+		if ( ! top_level )
+			gen = GenericValPtrToGT(gen, rhs->GetType(), gt);
 		break;
 
 	case EXPR_FIELD:
