@@ -160,6 +160,7 @@ static void set_analysis_option(const char* opt, Options& opts)
 		fprintf(stderr, "    all	equivalent to \"inline\" and \"activate\"\n");
 		fprintf(stderr, "    add-C++	generate private C++ for any missing script bodies\n");
 		fprintf(stderr, "    dump-xform	dump transformed scripts to stdout; implies xform\n");
+		fprintf(stderr, "    force-use-C++	use available C++ script bodies, warning about missing ones\n");
 		fprintf(stderr, "    gen-C++	generate C++ script bodies\n");
 		fprintf(stderr, "    help	print this list\n");
 		fprintf(stderr, "    inline	inline function calls\n");
@@ -177,6 +178,8 @@ static void set_analysis_option(const char* opt, Options& opts)
 		a_o.add_CPP = true;
 	else if ( util::streq(opt, "dump-xform") )
 		a_o.activate = a_o.dump_xform = true;
+	else if ( util::streq(opt, "force-use-C++") )
+		a_o.force_use_CPP = true;
 	else if ( util::streq(opt, "gen-C++") )
 		a_o.gen_CPP = true;
 	else if ( util::streq(opt, "inline") )

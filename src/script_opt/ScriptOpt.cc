@@ -141,6 +141,10 @@ void analyze_scripts()
 		check_env_opt("ZEEK_GEN_CPP", analysis_options.gen_CPP);
 		check_env_opt("ZEEK_REPORT_CPP", analysis_options.report_CPP);
 		check_env_opt("ZEEK_USE_CPP", analysis_options.use_CPP);
+		check_env_opt("ZEEK_FORCE_USE_CPP", analysis_options.force_use_CPP);
+
+		if ( analysis_options.force_use_CPP )
+			analysis_options.use_CPP = true;
 
 		if ( analysis_options.gen_CPP )
 			{
@@ -282,10 +286,8 @@ void analyze_scripts()
 					}
 				}
 
-#if 0
-			else
-				printf("not using C++ for %s\n", f.Func()->Name());
-#endif
+			else if ( analysis_options.force_use_CPP )
+				reporter->Warning("no C++ available for %s", f.Func()->Name());
 			}
 
 		return;
