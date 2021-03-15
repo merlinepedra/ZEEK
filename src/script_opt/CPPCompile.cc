@@ -2347,10 +2347,16 @@ std::string CPPCompile::GenBinary(const Expr* e, GenType gt,
 		break;
 	}
 
-	return NativeToGT(std::string("(") +
-				GenExpr(e->GetOp1(), GEN_NATIVE) + ")" +
-				op +
-				"(" + GenExpr(e->GetOp2(), GEN_NATIVE) + ")",
+	auto g1 = GenExpr(e->GetOp1(), GEN_NATIVE);
+	auto g2 = GenExpr(e->GetOp2(), GEN_NATIVE);
+
+	if ( e->Tag() == EXPR_DIVIDE )
+		return std::string("div__CPP(") + g1 + ", " + g2 + ")";
+
+	if ( e->Tag() == EXPR_MOD )
+		return std::string("mod_CPP(") + g1 + ", " + g2 + ")";
+
+	return NativeToGT(std::string("(") + g1 + ")" + op + "(" + g2 + ")",
 				e->GetType(), gt);
 	}
 

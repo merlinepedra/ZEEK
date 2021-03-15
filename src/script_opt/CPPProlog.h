@@ -831,3 +831,38 @@ VectorValPtr vec_coerce_to_double__CPP(const VectorValPtr& v, TypePtr targ)
 
 	return v_result;
 	}
+
+bro_int_t div__CPP(bro_int_t v1, bro_int_t v2)
+	{
+	if ( v2 == 0 )
+		reporter->CPPRuntimeError("division by zero");
+	return v1 / v2;
+	}
+
+bro_int_t mod__CPP(bro_int_t v1, bro_int_t v2)
+	{
+	if ( v2 == 0 )
+		reporter->CPPRuntimeError("modulo by zero");
+	return v1 % v2;
+	}
+
+bro_uint_t div__CPP(bro_uint_t v1, bro_uint_t v2)
+	{
+	if ( v2 == 0 )
+		reporter->CPPRuntimeError("division by zero");
+	return v1 / v2;
+	}
+
+bro_uint_t mod__CPP(bro_uint_t v1, bro_uint_t v2)
+	{
+	if ( v2 == 0 )
+		reporter->CPPRuntimeError("modulo by zero");
+	return v1 % v2;
+	}
+
+double div__CPP(double v1, double v2)
+	{
+	if ( v2 == 0.0 )
+		reporter->CPPRuntimeError("division by zero");
+	return v1 / v2;
+	}
