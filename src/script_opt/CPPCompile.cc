@@ -18,6 +18,10 @@ std::string Fmt(int i)		{ return std::to_string(i); }
 std::string Fmt(hash_type u)	{ return std::to_string(u) + "ULL"; }
 std::string Fmt(double d)
 	{
+	// Special hack to preserve the signed-ness of the magic -0.0.
+	if ( d == -0.0 )
+		return "-0.0";
+
 	// Unfortunately, to_string(double) is hardwired to use %f with
 	// default of 6 digits precision.
 	char buf[8192];
