@@ -659,8 +659,8 @@ function Log::rotation_format_func(ri: Log::RotationFmtInfo): Log::RotationPath
 	# chose a different date format.
 	if ( ri$postprocessor == __default_rotation_postprocessor &&
 	    ri$writer == WRITER_ASCII &&
-	    ri$writer in default_rotation_postprocessors ) # &&
-	    # default_rotation_postprocessors[WRITER_ASCII] == default_ascii_rotation_postprocessor_func)
+	    ri$writer in default_rotation_postprocessors &&
+	    default_rotation_postprocessors[WRITER_ASCII] == default_ascii_rotation_postprocessor_func)
 		{
 		open_str = strftime(Log::default_rotation_date_format, ri$open);
 		rval = RotationPath($file_basename=fmt("%s.%s", ri$path, open_str));

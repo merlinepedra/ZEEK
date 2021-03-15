@@ -2492,34 +2492,18 @@ std::string CPPCompile::GenEQ(const Expr* e, GenType gt,
 					"->AsString())",
 					e->GetType(), gt);
 
-#if 0
 	if ( tag == TYPE_FUNC )
 		{
-		auto f1 = op1->Tag() == EXPR_NAME ?
-				op1->AsNameExpr()->Id()->Name() : nullptr;
-		auto f2 = op2->Tag() == EXPR_NAME ?
-				op2->AsNameExpr()->Id()->Name() : nullptr;
-
-		if ( f1 && f2 )
-			{
-			auto gen = util::streq(f1, f2) ? "true" : "false";
-			return NativeToGT(negated + gen, e->GetType(), gt);
-			}
-
 		auto gen_f1 = GenExpr(op1, GEN_DONT_CARE);
 		auto gen_f2 = GenExpr(op2, GEN_DONT_CARE);
 
-		gen_f1 += "->AsFunc()->Name()";
-		gen_f2 += "->AsFunc()->Name()";
+		gen_f1 += "->AsFunc()";
+		gen_f2 += "->AsFunc()";
 
-		if ( f1 ) gen_f1 = std::string("\"") + f1 + "\"";
-		if ( f2 ) gen_f2 = std::string("\"") + f2 + "\"";
-
-		auto gen = "util::streq(" + gen_f1 + ", " + gen_f2 + ")";
+		auto gen = std::string("(") + gen_f1 + "==" + gen_f2 + ")";
 
 		return NativeToGT(negated + gen, e->GetType(), gt);
 		}
-#endif
 
 	return GenBinary(e, gt, op, vec_op);
 	}
