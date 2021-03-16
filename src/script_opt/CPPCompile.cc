@@ -1109,6 +1109,11 @@ void CPPCompile::DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
 		in_hook = false;
 		}
 
+	// Seatbelts for running off the end of a function that's supposed
+	// to return a non-native type.
+	if ( ! IsNativeType(ret_type) )
+		Emit("return nullptr;");
+
 	EndBlock();
 	}
 
