@@ -359,7 +359,8 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 	all_globals.insert(pf->AllGlobals().begin(), pf->AllGlobals().end());
 	globals.insert(pf->Globals().begin(), pf->Globals().end());
 	constants.insert(pf->Constants().begin(), pf->Constants().end());
-	main_types.insert(pf->Types().begin(), pf->Types().end());
+	main_types.insert(main_types.end(),
+			pf->OrderedTypes().begin(), pf->OrderedTypes().end());
 	script_calls.insert(pf->ScriptCalls().begin(), pf->ScriptCalls().end());
 	BiF_globals.insert(pf->BiFGlobals().begin(), pf->BiFGlobals().end());
 	events.insert(pf->Events().begin(), pf->Events().end());
@@ -390,14 +391,22 @@ void ProfileFuncs::DrainPendingExprs()
 			expr_profs[e] = pf;
 			MergeInProfile(pf.get());
 
-			ComputeTypeHashes(pf->Types());
+			// It's important to compute the hashes over the
+			// ordered types rather than the unordered.  If type
+			// T1 depends on a recursive type T2, then T1's hash
+			// will vary with depending on whether we arrive at
+			// T1 via an in-progress traversal of T2 (in which
+			// case T1 will see the "stub" in-progress hash for
+			// T2), or via a separate type T3 (in which case it
+			// will see the full hash).
+			ComputeTypeHashes(pf->OrderedTypes());
 			}
 		}
 	}
 
-void ProfileFuncs::ComputeTypeHashes(const std::unordered_set<const Type*>& type_set)
+void ProfileFuncs::ComputeTypeHashes(const std::vector<const Type*>& types)
 	{
-	for ( auto t : type_set )
+	for ( auto t : types )
 		(void) HashType(t);
 	}
 

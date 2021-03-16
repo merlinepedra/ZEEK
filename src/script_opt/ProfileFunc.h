@@ -40,11 +40,11 @@ public:
 		{ return lambdas; }
 	const std::vector<const ConstExpr*>& Constants() const
 		{ return constants; }
-	const std::unordered_set<const ID*>& Identifiers() const
+	const std::unordered_set<const ID*>& UnorderedIdentifiers() const
 		{ return ids; }
 	const std::vector<const ID*>& OrderedIdentifiers() const
 		{ return ordered_ids; }
-	const std::unordered_set<const Type*>& Types() const
+	const std::unordered_set<const Type*>& UnorderedTypes() const
 		{ return types; }
 	const std::vector<const Type*>& OrderedTypes() const
 		{ return ordered_types; }
@@ -196,7 +196,7 @@ public:
 		{ return all_globals; }
 	const std::unordered_set<const ConstExpr*>& Constants() const
 		{ return constants; }
-	const std::unordered_set<const Type*>& MainTypes() const
+	const std::vector<const Type*>& MainTypes() const
 		{ return main_types; }
 	const std::vector<const Type*>& RepTypes() const
 		{ return rep_types; }
@@ -228,7 +228,7 @@ protected:
 
 	// Computes hashes for the given set of types.  Potentially recursive
 	// upon discovering additional types.
-	void ComputeTypeHashes(const std::unordered_set<const Type*>& type_set);
+	void ComputeTypeHashes(const std::vector<const Type*>& types);
 
 	void ComputeBodyHashes(std::vector<FuncInfo>& funcs);
 	void ComputeProfileHash(ProfileFunc* pf);
@@ -248,7 +248,7 @@ protected:
 	std::unordered_set<const ConstExpr*> constants;
 
 	// Types seen across the functions.  Does not include subtypes.
-	std::unordered_set<const Type*> main_types;
+	std::vector<const Type*> main_types;
 
 	// "Representative" types seen across the functions.  Includes
 	// subtypes.  These all have unique hashes, and are returned by
