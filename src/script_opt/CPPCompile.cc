@@ -724,16 +724,31 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 		// Already did this one.
 		return;
 
+	// Formulate a key that's unique per distinct constant.
+
 	auto v = c->Value();
-	ODesc d;
-	v->Describe(&d);
-	std::string val_desc(d.Description());
+	const auto& t = v->GetType();
+	std::string c_desc;
 
-	// Don't confuse constants of different types that happen to
-	// render the same.
-	v->GetType()->Describe(&d);
+	if ( t->Tag() == TYPE_STRING )
+		{
+		// We can't rely on these to render with consistent
+		// escaping, sigh.  Just use the raw string.
+		auto s = v->AsString();
+		auto b = (const char*)(s->Bytes());
+		c_desc = std::string(b, s->Len()) + "string";
+		}
+	else
+		{
+		ODesc d;
+		v->Describe(&d);
 
-	std::string c_desc(d.Description());
+		// Don't confuse constants of different types that happen to
+		// render the same.
+		t->Describe(&d);
+
+		c_desc = d.Description();
+		}
 
 	if ( constants.count(c_desc) == 0 )
 		{
