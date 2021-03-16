@@ -168,7 +168,10 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		}
 
 	case EXPR_FIELD:
-		addl_ints.push_back(e->AsFieldExpr()->Field());
+		{
+		auto f = e->AsFieldExpr()->Field();
+		addl_hashes.push_back(std::hash<int>{}(f));
+		}
 		break;
 
 	case EXPR_ASSIGN:
@@ -250,7 +253,11 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		}
 
 	case EXPR_EVENT:
-		events.insert(e->AsEventExpr()->Name());
+		{
+		auto ev = e->AsEventExpr()->Name();
+		events.insert(ev);
+		addl_hashes.push_back(hash_string(ev));
+		}
 		break;
 
 	case EXPR_LAMBDA:
@@ -449,8 +456,8 @@ void ProfileFuncs::ComputeProfileHash(ProfileFunc* pf)
 		h = MergeHashes(h, hash_obj(i));
 
 	h = MergeHashes(h, hash_string("addl"));
-	for ( auto i : pf->AdditionalInts() )
-		h = MergeHashes(h, Hash(i));
+	for ( auto i : pf->AdditionalHashes() )
+		h = MergeHashes(h, i);
 
 	pf->SetHashVal(h);
 	}

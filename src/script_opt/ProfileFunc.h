@@ -64,7 +64,8 @@ public:
 		{ return type_switches; }
 	bool DoesIndirectCalls()		{ return does_indirect_calls; }
 
-	const std::vector<int>& AdditionalInts() const	{ return addl_ints; }
+	const std::vector<hash_type>& AdditionalHashes() const
+		{ return addl_hashes; }
 
 	void SetHashVal(hash_type hash)	{ hash_val = hash; }
 	hash_type HashVal() const	{ return hash_val; }
@@ -167,9 +168,9 @@ protected:
 	// than simply a function's (global) name.
 	bool does_indirect_calls = false;
 
-	// Additional integers present in the body that should be factored
+	// Additional values present in the body that should be factored
 	// into its hash.
-	std::vector<int> addl_ints;
+	std::vector<hash_type> addl_hashes;
 
 	// Associated hash value.
 	hash_type hash_val = 0;
