@@ -208,7 +208,7 @@ void analyze_scripts()
 
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
-	auto pfs = std::make_unique<ProfileFuncs>(funcs);
+	auto pfs = std::make_unique<ProfileFuncs>(funcs, is_CPP_compilable);
 
 	if ( CPP_init_hook )
 		(*CPP_init_hook)();
@@ -305,12 +305,12 @@ void analyze_scripts()
 				auto hash = func.Profile()->HashVal();
 				if ( compiled_bodies.count(hash) > 0 ||
 				     hm->HasHash(hash) )
-					func.SetSkip();
+					func.SetSkip(true);
 				}
 
 			// Now that we've presumably marked a lot of functions
 			// as skippable, recompute the global profile.
-			pfs = std::make_unique<ProfileFuncs>(funcs);
+			pfs = std::make_unique<ProfileFuncs>(funcs, is_CPP_compilable);
 			}
 
 		CPPCompile cpp(funcs, *pfs, gen_name.c_str(), *hm,

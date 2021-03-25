@@ -667,7 +667,7 @@ void CPPCompile::GenEpilog()
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)
 	{
-	if ( func.Skip() )
+	if ( func.ShouldSkip() )
 		return false;
 
 	if ( hm.HasHash(func.Profile()->HashVal()) )

@@ -3,7 +3,6 @@
 #include <unistd.h>
 
 #include "zeek/script_opt/ProfileFunc.h"
-#include "zeek/script_opt/CPPCompile.h"
 #include "zeek/Desc.h"
 #include "zeek/Stmt.h"
 #include "zeek/Func.h"
@@ -336,21 +335,21 @@ void ProfileFunc::RecordID(const ID* id)
 	}
 
 
-ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs)
+ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred)
 	{
 	std::vector<const LambdaExpr*> lambda_exprs;
 
 	for ( auto& f : funcs )
 		{
-		if ( f.Skip() )
+		if ( f.ShouldSkip() )
 			continue;
 
 		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body());
 
-		if ( is_CPP_compilable(pf.get()) )
+		if ( (*pred)(pf.get()) )
 			MergeInProfile(pf.get());
 		else
-			f.SetSkip();
+			f.SetSkip(true);
 
 		f.SetProfile(std::move(pf));
 		func_profs[f.Func()] = f.Profile();
@@ -420,7 +419,7 @@ void ProfileFuncs::ComputeTypeHashes(const std::vector<const Type*>& types)
 void ProfileFuncs::ComputeBodyHashes(std::vector<FuncInfo>& funcs)
 	{
 	for ( auto& f : funcs )
-		if ( ! f.Skip() )
+		if ( ! f.ShouldSkip() )
 			ComputeProfileHash(f.Profile());
 
 	for ( auto& l : lambdas )

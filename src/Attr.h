@@ -137,8 +137,5 @@ protected:
 	bool global_var;
 };
 
-// Returns the name (suitable for parsing) of the given attribute.
-const char* attr_name(AttrTag t);
-
 } // namespace detail
 } // namespace zeek

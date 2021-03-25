@@ -185,11 +185,17 @@ protected:
 	bool in_when = false;
 };
 
+// Function pointer for a predicate that determines whether a given
+// profile is compilable.  Alternatively we could derive subclasses
+// from ProfileFuncs and use a virtual method for this, but that seems
+// heavier-weight for what's really a simple notion.
+typedef bool (*is_compilable_pred)(const ProfileFunc*);
+
 // Collectively profile an entire collection of functions.
 class ProfileFuncs {
 public:
 	// Updates entries in "funcs" to include profiles.
-	ProfileFuncs(std::vector<FuncInfo>& funcs);
+	ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred);
 
 	const std::unordered_set<const ID*>& Globals() const
 		{ return globals; }

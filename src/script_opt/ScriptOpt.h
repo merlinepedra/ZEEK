@@ -93,8 +93,8 @@ public:
 	void SetProfile(std::unique_ptr<ProfileFunc> _pf);
 	void SetSaveFile(std::string _sf)	{ save_file = std::move(_sf); }
 
-	bool Skip() const	{ return skip; }
-	void SetSkip()		{ skip = true; }
+	bool ShouldSkip() const		{ return skip; }
+	void SetSkip(bool should_skip)	{ skip = true; }
 
 protected:
 	ScriptFuncPtr func;
