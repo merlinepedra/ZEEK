@@ -235,6 +235,8 @@ private:
 
 	std::string GenIntVector(const std::vector<int>& vec);
 
+	std::string GenField(const ExprPtr& rec, int field);
+
 	std::string NativeToGT(const std::string& expr, const TypePtr& t,
 				GenType gt);
 	std::string GenericValPtrToGT(const std::string& expr, const TypePtr& t,
@@ -249,6 +251,9 @@ private:
 	const char* AttrName(const AttrPtr& attr);
 
 	void ExpandTypeVar(const TypePtr& t);
+	// The following assumes we're populating a type_decl_list
+	// called "tl".
+	std::string GenTypeDecl(const TypeDecl* td);
 
 	std::string GenTypeName(const Type* t);
 	std::string GenTypeName(const TypePtr& t)
@@ -469,6 +474,19 @@ private:
 
 	// Maps function bodies to the names we use for them.
 	std::unordered_map<const Stmt*, std::string> body_names;
+
+	// For record that are extended via redef's, maps fields
+	// beyond the original definition to locations in the
+	// global (in the compiled code) "field_mapping" array.
+	//
+	// So for each such record, there's a second map of
+	// field-in-the-record to offset-in-field_mapping.
+	std::unordered_map<const RecordType*, std::unordered_map<int, int>>
+		record_field_mappings;
+
+	// For each entry in "field_mapping", the record and TypeDecl
+	// associated with the mapping.
+	std::vector<std::pair<const RecordType*, const TypeDecl*>> field_decls;
 
 	// If non-zero, provides a tag used for auxiliary/additional
 	// compilation units.

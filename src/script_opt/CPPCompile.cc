@@ -475,6 +475,10 @@ void CPPCompile::GenProlog()
 		Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
 
 	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir.c_str());
+
+	// The following might-or-might-not wind up being populated/used.
+	Emit("std::vector<int> field_mapping;");
+	NL();
 	}
 
 void CPPCompile::GenEpilog()
@@ -581,6 +585,27 @@ void CPPCompile::GenEpilog()
 			}
 
 		NL();
+		}
+
+	// Populate mappings for dynamic offsets.
+	Emit("int fm_offset;");
+	for ( const auto& mapping : field_decls )
+		{
+		auto rt = mapping.first;
+		auto td = mapping.second;
+		auto fn = td->id;
+		auto rt_name = GenTypeName(rt) + "->AsRecordType()";
+
+		Emit("fm_offset = %s->FieldOffset(\"%s\");", rt_name, fn);
+		Emit("if ( fm_offset < 0 )");
+		StartBlock();
+		Emit("// field does not exist, create it");
+		Emit("fm_offset = %s->AsRecordType()->NumFields();", rt_name);
+		Emit("type_decl_list tl;");
+		Emit(GenTypeDecl(td));
+		Emit("%s->AddFieldsDirectly(tl);", rt_name);
+		EndBlock();
+		Emit("field_mapping.push_back(fm_offset);");
 		}
 
 	// ... and then instantiate the bodies themselves.
@@ -1336,21 +1361,22 @@ void CPPCompile::GenStmt(const Stmt* s)
 	case STMT_DELETE:
 		{
 		auto op = static_cast<const ExprStmt*>(s)->StmtExpr();
-		auto aggr = GenExpr(op->GetOp1(), GEN_VAL_PTR);
+		auto aggr = op->GetOp1();
+		auto aggr_gen = GenExpr(aggr, GEN_VAL_PTR);
 
 		if ( op->Tag() == EXPR_INDEX )
 			{
 			auto indices = op->GetOp2();
 
 			Emit("remove_element__CPP(%s, index_val__CPP({%s}));",
-				aggr, GenExpr(indices, GEN_VAL_PTR));
+				aggr_gen, GenExpr(indices, GEN_VAL_PTR));
 			}
 
 		else
 			{
 			ASSERT(op->Tag() == EXPR_FIELD);
-			auto field = Fmt(op->AsFieldExpr()->Field());
-			Emit("%s->Assign(%s, nullptr);", aggr, field);
+			auto field = GenField(aggr, op->AsFieldExpr()->Field());
+			Emit("%s->Assign(%s, nullptr);", aggr_gen, field);
 			}
 		}
 		break;
@@ -1855,7 +1881,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	case EXPR_FIELD:
 		{
 		auto f = e->AsFieldExpr()->Field();
-		auto f_s = Fmt(f);
+		auto f_s = GenField(e->GetOp1(), f);
 
 		gen = std::string("field_access__CPP(") +
 			GenExpr(e->GetOp1(), GEN_VAL_PTR) + ", " + f_s + ")";
@@ -1867,7 +1893,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	case EXPR_HAS_FIELD:
 		{
 		auto f = e->AsHasFieldExpr()->Field();
-		auto f_s = Fmt(f);
+		auto f_s = GenField(e->GetOp1(), f);
 
 		// Need to use accessors for native types.
 		gen = std::string("(") + GenExpr(e->GetOp1(), GEN_DONT_CARE) +
@@ -2585,16 +2611,17 @@ std::string CPPCompile::GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
 
 	case EXPR_FIELD:
 		{
-		auto rec = GenExpr(lhs->GetOp1(), GEN_VAL_PTR);
-		auto field = Fmt(lhs->AsFieldExpr()->Field());
+		auto rec = lhs->GetOp1();
+		auto rec_gen = GenExpr(rec, GEN_VAL_PTR);
+		auto field = GenField(rec, lhs->AsFieldExpr()->Field());
 
 		if ( top_level )
-			gen = rec + "->Assign(" + field + ", " +
-						rhs_val_ptr + ")";
+			gen = rec_gen + "->Assign(" + field + ", " +
+							rhs_val_ptr + ")";
 		else
 			{
-			gen = std::string("assign_field__CPP(") +
-				rec + ", " + field + ", " + rhs_val_ptr + ")";
+			gen = std::string("assign_field__CPP(") + rec_gen +
+					", " + field + ", " + rhs_val_ptr + ")";
 			gen = GenericValPtrToGT(gen, rhs->GetType(), gt);
 			}
 		}
@@ -2708,6 +2735,46 @@ std::string CPPCompile::GenIntVector(const std::vector<int>& vec)
 		}
 
 	return res + " }";
+	}
+
+std::string CPPCompile::GenField(const ExprPtr& rec, int field)
+	{
+	auto t = TypeRep(rec->GetType());
+	auto rt = t->AsRecordType();
+
+	if ( field < rt->NumOrigFields() )
+		// Can use direct access.
+		return Fmt(field);
+
+	// Need to dynamically map the field.
+	int mapping_slot;
+
+	if ( record_field_mappings.count(rt) > 0 &&
+	     record_field_mappings[rt].count(field) > 0 )
+		// We're already tracking this field.
+		mapping_slot = record_field_mappings[rt][field];
+
+	else
+		{
+		// New mapping.
+		mapping_slot = record_field_mappings.size();
+
+		std::string field_name = rt->FieldName(field);
+		field_decls.emplace_back(std::pair(rt, rt->FieldDecl(field)));
+
+		if ( record_field_mappings.count(rt) > 0 )
+			// We're already tracking this record.
+			record_field_mappings[rt][field] = mapping_slot;
+		else
+			{
+			// Need to start tracking this record.
+			std::unordered_map<int, int> rt_mapping;
+			rt_mapping[field] = mapping_slot;
+			record_field_mappings[rt] = rt_mapping;
+			}
+		}
+
+	return std::string("field_mapping[") + Fmt(mapping_slot) + "]";
 	}
 
 std::string CPPCompile::NativeToGT(const std::string& expr, const TypePtr& t,
@@ -2968,18 +3035,7 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 		for ( auto i = 0; i < r->length(); ++i )
 			{
 			const auto& td = (*r)[i];
-			auto type_accessor = GenTypeName(td->type);
-
-			auto td_name = std::string("util::copy_string(\"") +
-					td->id + "\")";
-
-			if ( td->attrs )
-				AddInit(t, std::string("tl.append(new TypeDecl(") +
-					td_name + ", " + type_accessor +
-					", " + AttrsName(td->attrs) +"));");
-			else
-				AddInit(t, std::string("tl.append(new TypeDecl(") +
-					td_name + ", " + type_accessor +"));");
+			AddInit(t, GenTypeDecl(td));
 			}
 
 		AddInit(t, t_name + "->AddFieldsDirectly(tl);");
@@ -3072,6 +3128,22 @@ void CPPCompile::ExpandTypeVar(const TypePtr& t)
 	}
 
 	AddInit(t);
+	}
+
+std::string CPPCompile::GenTypeDecl(const TypeDecl* td)
+	{
+	auto type_accessor = GenTypeName(td->type);
+
+	auto td_name = std::string("util::copy_string(\"") +
+			td->id + "\")";
+
+	if ( td->attrs )
+		return std::string("tl.append(new TypeDecl(") +
+			td_name + ", " + type_accessor +
+			", " + AttrsName(td->attrs) +"));";
+
+	return std::string("tl.append(new TypeDecl(") + td_name + ", "
+				+ type_accessor +"));";
 	}
 
 std::string CPPCompile::GenTypeName(const Type* t)
