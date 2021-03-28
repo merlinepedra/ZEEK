@@ -838,7 +838,7 @@ void TypeDecl::DescribeReST(ODesc* d, bool roles_only) const
 RecordType::RecordType(type_decl_list* arg_types) : Type(TYPE_RECORD)
 	{
 	types = arg_types;
-	num_fields = types ? types->length() : 0;
+	num_orig_fields = num_fields = types ? types->length() : 0;
 	}
 
 // in this case the clone is actually not so shallow, since
@@ -1319,6 +1319,9 @@ void EnumType::CheckAndAddName(const string& module_name, const char* name,
                                bro_int_t val, bool is_export, detail::Expr* deprecation,
                                bool from_redef)
 	{
+	if ( from_redef )
+		has_redefs = true;
+
 	if ( Lookup(val) )
 		{
 		reporter->Error("enumerator value in enumerated type definition already exists");

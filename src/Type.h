@@ -606,6 +606,7 @@ public:
 	TypeDecl* FieldDecl(int field);
 
 	int NumFields() const			{ return num_fields; }
+	int NumOrigFields() const		{ return num_orig_fields; }
 
 	/**
 	 * Returns a "record_field_table" value for introspection purposes.
@@ -643,7 +644,12 @@ public:
 protected:
 	RecordType() { types = nullptr; }
 
+	// Number of fields in the type.
 	int num_fields;
+
+	// Number of fields in the type when originally declared.
+	int num_orig_fields;
+
 	type_decl_list* types;
 };
 
@@ -711,6 +717,8 @@ public:
 	// will be fully qualified with their module name.
 	enum_name_list Names() const;
 
+	bool HasRedefs() const		{ return has_redefs; }
+
 	void Describe(ODesc* d) const override;
 	void DescribeReST(ODesc* d, bool roles_only = false) const override;
 
@@ -731,6 +739,9 @@ protected:
 
 	typedef std::map<std::string, bro_int_t> NameMap;
 	NameMap names;
+
+	// Whether any of the elements of the enum were added via redef's.
+	bool has_redefs = false;
 
 	using ValMap = std::unordered_map<bro_int_t, EnumValPtr>;
 	ValMap vals;
