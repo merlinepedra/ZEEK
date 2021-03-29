@@ -16,8 +16,8 @@ using hash_type = unsigned long long;
 
 class ProfileFunc : public TraversalCallback {
 public:
-	ProfileFunc(const Func* func, const StmtPtr& body);
-	ProfileFunc(const Expr* func);
+	ProfileFunc(const Func* func, const StmtPtr& body, bool abs_rec_fields);
+	ProfileFunc(const Expr* func, bool abs_rec_fields);
 
 	const std::unordered_set<const ID*>& Globals() const
 		{ return globals; }
@@ -180,6 +180,10 @@ protected:
 	// that's mattered is whether a given body contains any.
 	int num_when_stmts = 0;
 
+	// Whether we should treat record field accesses as absolute
+	// (integer offset) or relative (name-based).
+	bool abs_rec_fields;
+
 	// Whether we're separately processing a "when" condition to
 	// mine out its script calls.
 	bool in_when = false;
@@ -195,7 +199,11 @@ typedef bool (*is_compilable_pred)(const ProfileFunc*);
 class ProfileFuncs {
 public:
 	// Updates entries in "funcs" to include profiles.
-	ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred);
+	// "full_record_hashes" controls whether the hashes for extended
+	// records covers their final, full form, or should only their
+	// original fields.
+	ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred,
+	             bool full_record_hashes);
 
 	const std::unordered_set<const ID*>& Globals() const
 		{ return globals; }
@@ -227,6 +235,8 @@ public:
 
 	hash_type HashType(const TypePtr& t)	{ return HashType(t.get()); }
 	hash_type HashType(const Type* t);
+
+	hash_type HashAttrs(const AttributesPtr& attrs);
 
 protected:
 	void MergeInProfile(ProfileFunc* pf);
@@ -304,6 +314,10 @@ protected:
 	// profile.  These can arise for example due to lambdas or
 	// record attributes.
 	std::vector<const Expr*> pending_exprs;
+
+	// Whether the hashes for extended records should cover their final,
+	// full form, or only their original fields.
+	bool full_record_hashes;
 };
 
 extern std::string script_specific_filename(const StmtPtr& body);

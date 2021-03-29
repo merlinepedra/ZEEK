@@ -83,7 +83,7 @@ void optimize_func(ScriptFunc* f, ProfileFunc* pf, ScopePtr scope_ptr,
 	f->ReplaceBody(body, new_body);
 	body = new_body;
 
-	ProfileFunc new_pf(f, body);
+	ProfileFunc new_pf(f, body, true);
 
 	RD_Decorate reduced_rds(&new_pf);
 	reduced_rds.TraverseFunction(f, scope, body);
@@ -208,7 +208,7 @@ void analyze_scripts()
 
 	// Now that everything's parsed and BiF's have been initialized,
 	// profile the functions.
-	auto pfs = std::make_unique<ProfileFuncs>(funcs, is_CPP_compilable);
+	auto pfs = std::make_unique<ProfileFuncs>(funcs, is_CPP_compilable, false);
 
 	if ( CPP_init_hook )
 		(*CPP_init_hook)();
@@ -310,7 +310,7 @@ void analyze_scripts()
 
 			// Now that we've presumably marked a lot of functions
 			// as skippable, recompute the global profile.
-			pfs = std::make_unique<ProfileFuncs>(funcs, is_CPP_compilable);
+			pfs = std::make_unique<ProfileFuncs>(funcs, is_CPP_compilable, false);
 			}
 
 		CPPCompile cpp(funcs, *pfs, gen_name.c_str(), *hm,

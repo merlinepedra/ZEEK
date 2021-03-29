@@ -11,13 +11,16 @@
 namespace zeek::detail {
 
 
-ProfileFunc::ProfileFunc(const Func* func, const StmtPtr& body)
+ProfileFunc::ProfileFunc(const Func* func, const StmtPtr& body, bool _abs_rec_fields)
 	{
+	abs_rec_fields = _abs_rec_fields;
 	Profile(func->GetType().get(), body);
 	}
 
-ProfileFunc::ProfileFunc(const Expr* e)
+ProfileFunc::ProfileFunc(const Expr* e, bool _abs_rec_fields)
 	{
+	abs_rec_fields = _abs_rec_fields;
+
 	if ( e->Tag() == EXPR_LAMBDA )
 		{
 		auto func = e->AsLambdaExpr();
@@ -167,10 +170,16 @@ TraversalCode ProfileFunc::PreExpr(const Expr* e)
 		}
 
 	case EXPR_FIELD:
-		{
-		auto f = e->AsFieldExpr()->Field();
-		addl_hashes.push_back(std::hash<int>{}(f));
-		}
+		if ( abs_rec_fields )
+			{
+			auto f = e->AsFieldExpr()->Field();
+			addl_hashes.push_back(std::hash<int>{}(f));
+			}
+		else
+			{
+			auto fn = e->AsFieldExpr()->FieldName();
+			addl_hashes.push_back(std::hash<std::string>{}(fn));
+			}
 		break;
 
 	case EXPR_ASSIGN:
@@ -335,8 +344,10 @@ void ProfileFunc::RecordID(const ID* id)
 	}
 
 
-ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred)
+ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred, bool _full_record_hashes)
 	{
+	full_record_hashes = _full_record_hashes;
+
 	std::vector<const LambdaExpr*> lambda_exprs;
 
 	for ( auto& f : funcs )
@@ -344,7 +355,7 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred
 		if ( f.ShouldSkip() )
 			continue;
 
-		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body());
+		auto pf = std::make_unique<ProfileFunc>(f.Func(), f.Body(), full_record_hashes);
 
 		if ( (*pred)(pf.get()) )
 			MergeInProfile(pf.get());
@@ -392,7 +403,7 @@ void ProfileFuncs::DrainPendingExprs()
 
 		for ( auto e : pe )
 			{
-			auto pf = std::make_shared<ProfileFunc>(e);
+			auto pf = std::make_shared<ProfileFunc>(e, full_record_hashes);
 
 			expr_profs[e] = pf;
 			MergeInProfile(pf.get());
@@ -482,6 +493,8 @@ hash_type ProfileFuncs::HashType(const Type* t)
 		}
 
 	auto h = Hash(t->Tag());
+	if ( tn.size() > 0 )
+		h = MergeHashes(h, hash_string(tn.c_str()));
 
 	// Enter an initial value for this type's hash.  We'll update it
 	// at the end, but having it here first will prevent recursive
@@ -518,22 +531,37 @@ hash_type ProfileFuncs::HashType(const Type* t)
 		{
 		const auto& ft = t->AsRecordType();
 		auto n = ft->NumFields();
+		auto orig_n = ft->NumOrigFields();
 
 		h = MergeHashes(h, hash_string("record"));
-		h = MergeHashes(h, Hash(n));
+
+		if ( full_record_hashes )
+			h = MergeHashes(h, Hash(n));
+		else
+			h = MergeHashes(h, Hash(orig_n));
 
 		for ( auto i = 0; i < n; ++i )
 			{
+			bool do_hash = full_record_hashes;
+			if ( ! do_hash )
+				do_hash = (i < orig_n);
+
 			const auto& f = ft->FieldDecl(i);
-			h = MergeHashes(h, hash_string(f->id));
-			h = MergeHashes(h, HashType(f->type));
+			auto type_h = HashType(f->type);
+
+			if ( do_hash )
+				{
+				h = MergeHashes(h, hash_string(f->id));
+				h = MergeHashes(h, type_h);
+				}
 
 			// We don't hash the field name, as in some contexts
 			// those are ignored.
 
 			if ( f->attrs )
 				{
-				h = MergeHashes(h, hash_obj(f->attrs));
+				if ( do_hash )
+					h = MergeHashes(h, HashAttrs(f->attrs));
 				TrackAttrs(f->attrs.get());
 				}
 			}
@@ -604,6 +632,29 @@ hash_type ProfileFuncs::HashType(const Type* t)
 
 	if ( tn.size() > 0 )
 		seen_type_names[tn] = t;
+
+	return h;
+	}
+
+hash_type ProfileFuncs::HashAttrs(const AttributesPtr& Attrs)
+	{
+	// It's tempting to just use hash_obj, but that won't work
+	// if the attributes wind up with extensible records in their
+	// descriptions, if we're not doing full record hashes.
+	auto attrs = Attrs->GetAttrs();
+	hash_type h = 0;
+
+	for ( const auto& a : attrs )
+		{
+		h = MergeHashes(h, Hash(a->Tag()));
+		auto e = a->GetExpr();
+
+		// We don't try to hash an associated expression, since those
+		// can vary in structure due to compilation of elements.  We
+		// do though enforce consistency for their types.
+		if ( e )
+			h = MergeHashes(h, HashType(e->GetType()));
+		}
 
 	return h;
 	}
