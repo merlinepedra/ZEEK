@@ -478,6 +478,7 @@ void CPPCompile::GenProlog()
 
 	// The following might-or-might-not wind up being populated/used.
 	Emit("std::vector<int> field_mapping;");
+	Emit("std::vector<int> enum_mapping;");
 	NL();
 	}
 
@@ -600,12 +601,31 @@ void CPPCompile::GenEpilog()
 		Emit("if ( fm_offset < 0 )");
 		StartBlock();
 		Emit("// field does not exist, create it");
-		Emit("fm_offset = %s->AsRecordType()->NumFields();", rt_name);
+		Emit("fm_offset = %s->NumFields();", rt_name);
 		Emit("type_decl_list tl;");
 		Emit(GenTypeDecl(td));
 		Emit("%s->AddFieldsDirectly(tl);", rt_name);
 		EndBlock();
 		Emit("field_mapping.push_back(fm_offset);");
+		}
+
+	Emit("int em_offset;");
+	for ( const auto& mapping : enum_names )
+		{
+		auto et = mapping.first;
+		const auto& e_name = mapping.second;
+		auto et_name = GenTypeName(et) + "->AsEnumType()";
+
+		Emit("em_offset = %s->Lookup(\"%s\");", et_name, e_name);
+		Emit("if ( em_offset < 0 )");
+		StartBlock();
+		Emit("// enum does not exist, create it");
+		Emit("em_offset = %s->Names().size();", et_name);
+		Emit("if ( %s->Lookup(em_offset) )", et_name);
+		Emit("\treporter->InternalError(\"enum inconsistency while initializing compiled scripts\");");
+		Emit("%s->AddNameInternal(\"%s\", em_offset);", et_name, e_name);
+		EndBlock();
+		Emit("enum_mapping.push_back(em_offset);");
 		}
 
 	// ... and then instantiate the bodies themselves.
@@ -1673,7 +1693,7 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 			gen = std::string(v->IsZero() ? "false" : "true");
 
 		else if ( tag == TYPE_ENUM )
-			gen = Fmt(v->AsEnum());
+			gen = GenEnum(c);
 
 		else if ( tag == TYPE_PORT )
 			gen = Fmt(v->AsCount());
@@ -2757,7 +2777,7 @@ std::string CPPCompile::GenField(const ExprPtr& rec, int field)
 	else
 		{
 		// New mapping.
-		mapping_slot = record_field_mappings.size();
+		mapping_slot = num_rf_mappings++;
 
 		std::string field_name = rt->FieldName(field);
 		field_decls.emplace_back(std::pair(rt, rt->FieldDecl(field)));
@@ -2775,6 +2795,49 @@ std::string CPPCompile::GenField(const ExprPtr& rec, int field)
 		}
 
 	return std::string("field_mapping[") + Fmt(mapping_slot) + "]";
+	}
+
+std::string CPPCompile::GenEnum(const ConstExpr* c)
+	{
+	auto t = TypeRep(c->GetType());
+	auto et = t->AsEnumType();
+	auto v = c->Value()->AsEnum();
+
+	if ( ! et->HasRedefs() )
+		// Can use direct access.
+		return Fmt(v);
+
+	// Need to dynamically map the access.
+	int mapping_slot;
+
+	if ( enum_val_mappings.count(et) > 0 &&
+	     enum_val_mappings[et].count(v) > 0 )
+		// We're already tracking this value.
+		mapping_slot = enum_val_mappings[et][v];
+
+	else
+		{
+		// New mapping.
+		mapping_slot = num_ev_mappings++;
+
+		std::string enum_name = et->Lookup(v);
+		enum_names.emplace_back(std::pair(et, std::move(enum_name)));
+
+		if ( enum_val_mappings.count(et) > 0 )
+			{
+			// We're already tracking this enum.
+			enum_val_mappings[et][v] = mapping_slot;
+			}
+		else
+			{
+			// Need to start tracking this enum.
+			std::unordered_map<int, int> et_mapping;
+			et_mapping[v] = mapping_slot;
+			enum_val_mappings[et] = et_mapping;
+			}
+		}
+
+	return std::string("enum_mapping[") + Fmt(mapping_slot) + "]";
 	}
 
 std::string CPPCompile::NativeToGT(const std::string& expr, const TypePtr& t,

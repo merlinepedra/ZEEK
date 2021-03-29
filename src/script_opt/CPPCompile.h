@@ -237,6 +237,8 @@ private:
 
 	std::string GenField(const ExprPtr& rec, int field);
 
+	std::string GenEnum(const ConstExpr* c);
+
 	std::string NativeToGT(const std::string& expr, const TypePtr& t,
 				GenType gt);
 	std::string GenericValPtrToGT(const std::string& expr, const TypePtr& t,
@@ -484,9 +486,30 @@ private:
 	std::unordered_map<const RecordType*, std::unordered_map<int, int>>
 		record_field_mappings;
 
+	// Total number of such mappings (i.e., entries in the inner maps,
+	// not the outer map).
+	int num_rf_mappings = 0;
+
 	// For each entry in "field_mapping", the record and TypeDecl
 	// associated with the mapping.
 	std::vector<std::pair<const RecordType*, const TypeDecl*>> field_decls;
+
+	// For enums that are extended via redef's, maps each distinct
+	// value (that the compiled scripts refer to) to locations in the
+	// global (in the compiled code) "enum_mapping" array.
+	//
+	// So for each such enum, there's a second map of
+	// value-during-compilation to offset-in-enum_mapping.
+	std::unordered_map<const EnumType*, std::unordered_map<int, int>>
+		enum_val_mappings;
+
+	// Total number of such mappings (i.e., entries in the inner maps,
+	// not the outer map).
+	int num_ev_mappings = 0;
+
+	// For each entry in "enum_mapping", the record and name
+	// associated with the mapping.
+	std::vector<std::pair<const EnumType*, std::string>> enum_names;
 
 	// If non-zero, provides a tag used for auxiliary/additional
 	// compilation units.

@@ -709,8 +709,12 @@ public:
 	// added that aren't likewise explicitly initalized.
 	void AddName(const std::string& module_name, const char* name, bro_int_t val, bool is_export, detail::Expr* deprecation = nullptr, bool from_redef = false);
 
-	// -1 indicates not found.
+	// -1 indicates not found.  Second version is for full names
+	// that already incorporate the module, akin to what's returned
+	// by Lookup().
 	bro_int_t Lookup(const std::string& module_name, const char* name) const;
+	bro_int_t Lookup(const std::string& full_name) const;
+
 	const char* Lookup(bro_int_t value) const; // Returns 0 if not found
 
 	// Returns the list of defined names with their values. The names
