@@ -903,10 +903,7 @@ void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	auto& ids = l->OuterIDs();
 
 	for ( auto id : ids )
-		{
-		auto l_id_name = LocalName(id);
-		lambda_names[id] = l_id_name; // ### just use LocalName
-		}
+		lambda_names[id] = LocalName(id);
 
 	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, l,
 				FUNC_FLAVOR_FUNCTION);
