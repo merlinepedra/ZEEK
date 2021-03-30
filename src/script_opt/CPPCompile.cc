@@ -850,6 +850,23 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			}
 			break;
 
+		case TYPE_FUNC:
+			// We can get here when compiling additional code
+			// that refers to already-compiled types that have
+			// attributes that include lambdas.  The traversal
+			// of those types will surface function-valued
+			// constants (the compiled lambdas).  We shouldn't
+			// actually wind up needing to instantiate those
+			// constants, so here we ensure both of those
+			// assumptions are correct.
+			ASSERT(addl_tag > 0);	// compiling *additional* code
+
+			// Ensure that if we wind up trying to generate
+			// code that refers to this constant, it induces
+			// a C++ compilation error.
+			constants[c_desc] = "###";
+			break;
+
 		default:
 			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
