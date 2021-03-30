@@ -248,6 +248,8 @@ private:
 	bool IsSimpleInitExpr(const ExprPtr& e) const;
 	std::string InitExprName(const ExprPtr& e);
 
+	std::string GenGlobalInitVal(const ID* g);
+
 	void GenAttrs(const AttributesPtr& attrs);
 	std::string AttrsName(const AttributesPtr& attrs);
 	const char* AttrName(const AttrPtr& attr);
@@ -443,6 +445,10 @@ private:
 
 	// Maps (non-native) constants to associated C++ globals.
 	std::unordered_map<const ConstExpr*, std::string> const_exprs;
+
+	// Memory management for ConstExpr's we create to hold the value
+	// of globals that require initialization.
+	std::vector<ConstExprPtr> gl_vals;
 
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.

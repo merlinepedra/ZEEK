@@ -72,7 +72,7 @@ void register_lambda__CPP(const char* name, TypePtr t, CPPStmtPtr body)
 	id->SetType(ft);
 	}
 
-IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
+IDPtr lookup_global__CPP(const char* g, const TypePtr& t, ValPtr init_val)
 	{
 	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);
 
@@ -81,6 +81,9 @@ IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 		gl = install_ID(g, GLOBAL_MODULE_NAME, true, false);
 		gl->SetType(t);
 		}
+
+	if ( init_val && ! gl->HasVal() )
+		gl->SetVal(init_val);
 
 	return gl;
 	}
