@@ -57,9 +57,8 @@
 %type <id> local_id global_id def_global_id event_id global_or_event_id resolve_id begin_lambda case_type
 %type <id_l> local_id_list case_type_list
 %type <ic> init_class
-%type <expr> opt_init
 %type <val> TOK_CONSTANT
-%type <expr> expr opt_expr init anonymous_function lambda_body index_slice opt_deprecated when_condition
+%type <expr> expr opt_expr init opt_init anonymous_function lambda_body index_slice opt_deprecated when_condition
 %type <event_expr> event
 %type <stmt> stmt stmt_list func_body for_head
 %type <type> type opt_type enum_body
@@ -234,6 +233,24 @@ static bool expr_is_table_type_name(const zeek::detail::Expr* expr)
 		return type->AsTypeType()->GetType()->IsTable();
 
 	return false;
+	}
+
+static void create_global(zeek::detail::ID* id, zeek::Type* t,
+                          zeek::detail::InitClass ic, zeek::detail::Expr* e,
+                          std::vector<zeek::detail::AttrPtr>* attrs,
+                          zeek::detail::DeclType dt)
+	{
+	zeek::IntrusivePtr id_ptr{zeek::AdoptRef{}, id};
+	zeek::IntrusivePtr t_ptr{zeek::AdoptRef{}, t};
+	zeek::IntrusivePtr e_ptr{zeek::AdoptRef{}, e};
+	auto attrs_ptr = attrs ? std::make_unique<std::vector<zeek::detail::AttrPtr>>(*attrs) : nullptr;
+
+	zeek::detail::add_global(id_ptr, t_ptr, ic, e_ptr, std::move(attrs_ptr), dt);
+
+	if ( dt == zeek::detail::VAR_REDEF )
+		zeek::detail::zeekygen_mgr->Redef(id, ::filename, ic, std::move(e_ptr));
+	else
+		zeek::detail::zeekygen_mgr->Identifier(std::move(id_ptr));
 	}
 %}
 
@@ -1118,39 +1135,22 @@ decl:
 
 	|	TOK_GLOBAL def_global_id opt_type init_class opt_init opt_attr ';'
 			{
-			zeek::IntrusivePtr id{zeek::AdoptRef{}, $2};
-			zeek::detail::add_global(id, {zeek::AdoptRef{}, $3}, $4, {zeek::AdoptRef{}, $5},
-			                         std::unique_ptr<std::vector<zeek::detail::AttrPtr>>{$6},
-			                         zeek::detail::VAR_REGULAR);
-			zeek::detail::zeekygen_mgr->Identifier(std::move(id));
+			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_REGULAR);
 			}
 
 	|	TOK_OPTION def_global_id opt_type init_class opt_init opt_attr ';'
 			{
-			zeek::IntrusivePtr id{zeek::AdoptRef{}, $2};
-			zeek::detail::add_global(id, {zeek::AdoptRef{}, $3}, $4, {zeek::AdoptRef{}, $5},
-			                         std::unique_ptr<std::vector<zeek::detail::AttrPtr>>{$6},
-			                         zeek::detail::VAR_OPTION);
-			zeek::detail::zeekygen_mgr->Identifier(std::move(id));
+			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_OPTION);
 			}
 
 	|	TOK_CONST def_global_id opt_type init_class opt_init opt_attr ';'
 			{
-			zeek::IntrusivePtr id{zeek::AdoptRef{}, $2};
-			zeek::detail::add_global(id, {zeek::AdoptRef{}, $3}, $4, {zeek::AdoptRef{}, $5},
-			                         std::unique_ptr<std::vector<zeek::detail::AttrPtr>>{$6},
-			                         zeek::detail::VAR_CONST);
-			zeek::detail::zeekygen_mgr->Identifier(std::move(id));
+			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_CONST);
 			}
 
 	|	TOK_REDEF global_id opt_type init_class opt_init opt_attr ';'
 			{
-			zeek::IntrusivePtr id{zeek::AdoptRef{}, $2};
-			zeek::detail::ExprPtr init{zeek::AdoptRef{}, $5};
-			zeek::detail::add_global(id, {zeek::AdoptRef{}, $3}, $4, init,
-			                         std::unique_ptr<std::vector<zeek::detail::AttrPtr>>{$6},
-			                         zeek::detail::VAR_REDEF);
-			zeek::detail::zeekygen_mgr->Redef(id.get(), ::filename, $4, std::move(init));
+			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_REDEF);
 			}
 
 	|	TOK_REDEF TOK_ENUM global_id TOK_ADD_TO '{'
