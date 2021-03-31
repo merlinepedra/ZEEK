@@ -3011,10 +3011,8 @@ std::string CPPCompile::GenGlobalInitVal(const ID* g)
 	if ( ! i_e )
 		return "nullptr";
 
-	auto gen = GenExpr(i_e, GEN_VAL_PTR, false);
-
 	if ( i_e->Tag() != EXPR_LIST )
-		return gen;
+		return GenExpr(i_e, GEN_VAL_PTR, false);
 
 	// Expression lists are used for old-style initializers that
 	// leave off the associated constructor.  We deal with these
@@ -3027,6 +3025,8 @@ std::string CPPCompile::GenGlobalInitVal(const ID* g)
 
 	std::string create_type;
 
+	auto gen = GenExpr(i_e, GEN_VAL_PTR, false);
+
 	if ( t->Tag() == TYPE_TABLE )
 		{
 		if ( t->AsTableType()->IsSet() )
@@ -3034,7 +3034,10 @@ std::string CPPCompile::GenGlobalInitVal(const ID* g)
 		else
 			{
 			if ( i_e->AsListExpr()->Exprs().length() != 0 )
-				reporter->Error("C++ compilation does not support old-style table constructors");
+				{
+				reporter->Error("C++ compilation does not support old-style table constructors: %s", obj_desc(g).c_str());
+				return "nullptr";
+				}
 			create_type = "tbl";
 			}
 		}
