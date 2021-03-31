@@ -3008,7 +3008,45 @@ std::string CPPCompile::InitExprName(const ExprPtr& e)
 std::string CPPCompile::GenGlobalInitVal(const ID* g)
 	{
 	const auto i_e = g->GetInitExpr();
-	return i_e ? GenExpr(i_e, GEN_VAL_PTR, false) : "nullptr";
+	if ( ! i_e )
+		return "nullptr";
+
+	auto gen = GenExpr(i_e, GEN_VAL_PTR, false);
+
+	if ( i_e->Tag() != EXPR_LIST )
+		return gen;
+
+	// Expression lists are used for old-style initializers that
+	// leave off the associated constructor.  We deal with these
+	// here, rather than in GenExpr(), because the latter lacks
+	// the context of knowing (1) that the ListExpr is being used
+	// for an initialization, and (2) the type associated with
+	// that initialization.
+	const auto& t = g->GetType();
+	auto tn = GenTypeName(t);
+
+	std::string create_type;
+
+	if ( t->Tag() == TYPE_TABLE )
+		{
+		if ( t->AsTableType()->IsSet() )
+			create_type = "set";
+		else
+			{
+			if ( i_e->AsListExpr()->Exprs().length() != 0 )
+				reporter->Error("C++ compilation does not support old-style table constructors");
+			create_type = "tbl";
+			}
+		}
+
+	else if ( t->Tag() == TYPE_VECTOR )
+		create_type = "vec";
+
+	else
+		reporter->InternalError("bad initializer list in CPPCompile::GenGlobalInitVal");
+
+	return std::string("create_") + create_type + "__CPP(" +
+		GenTypeName(t) + ", {" + gen + "})";
 	}
 
 void CPPCompile::GenAttrs(const AttributesPtr& attrs)
