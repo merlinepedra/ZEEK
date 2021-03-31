@@ -393,6 +393,12 @@ void CPPCompile::Compile()
 	auto& gl = pfs.Globals();
 	auto& bifs = pfs.BiFGlobals();
 
+	// Track which globals require initialization.  We initialize
+	// separately from declaring them (which we do first) because
+	// initialization can depend on other globals and constants
+	// having been declared.
+	std::unordered_set<const ID*> needs_gl_init;
+
 	for ( auto& g : pfs.AllGlobals() )
 		{
 		auto gn = std::string(g->Name());
@@ -419,17 +425,9 @@ void CPPCompile::Compile()
 			{
 			const auto& t = g->GetType();
 			NoteInitDependency(g, TypeRep(t));
+			needs_gl_init.insert(g);
 
 			Emit("IDPtr %s;", globals[gn]);
-
-			// Represents the value of the global (as a ValPtr),
-			// or nil if it doesn't have a relevant one that
-			// we need to initialize.
-			std::string gl_val = GenGlobalInitVal(g);
-
-			AddInit(g, globals[gn],
-				std::string("lookup_global__CPP(\"") + gn +
-				"\", " + GenTypeName(t) + ", " + gl_val + ")");
 
 			if ( pfs.Events().count(gn) > 0 )
 				// This is an event that's also used as
@@ -455,6 +453,20 @@ void CPPCompile::Compile()
 		ASSERT(types.HasKey(t));
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		RegisterType(tp);
+		}
+
+	for ( auto& g : needs_gl_init )
+		{
+		// Represents the value of the global (as a ValPtr),
+		// or nil if it doesn't have a relevant one that
+		// we need to initialize.
+		std::string gl_val = GenGlobalInitVal(g);
+		const auto& t = g->GetType();
+		auto gn = std::string(g->Name());
+
+		AddInit(g, globals[gn],
+			std::string("lookup_global__CPP(\"") + gn +
+			"\", " + GenTypeName(t) + ", " + gl_val + ")");
 		}
 
 	for ( const auto& func : funcs )
@@ -520,6 +532,13 @@ void CPPCompile::GenEpilog()
 	Emit("void init__CPP()");
 
 	StartBlock();
+
+	// If any script/BiF functions are used for initializing globals,
+	// the code generated from that will expect the presence of a
+	// frame pointer, even if nil.
+	Emit("Frame* f__CPP = nullptr;");
+
+	NL();
 
 	for ( const auto& i : pre_inits )
 		Emit(i);
@@ -681,7 +700,7 @@ void CPPCompile::GenEpilog()
 		{
 		auto gn = g->Name();
 
-		if ( ! hm.HasGlobal(gn) && update )
+		if ( update && ! hm.HasGlobal(gn) )
 			{
 			auto ht = pfs.HashType(g->GetType());
 
@@ -2988,40 +3007,8 @@ std::string CPPCompile::InitExprName(const ExprPtr& e)
 
 std::string CPPCompile::GenGlobalInitVal(const ID* g)
 	{
-	if ( ! g->HasVal() )
-		return "nullptr";
-
-	const auto& t = g->GetType();
-	auto tag = t->Tag();
-
-	if ( tag == TYPE_FUNC )
-		// Value will be set upon matching/loading hashes.
-		return "nullptr";
-
-	// We need to create the global's value at run-time so we can
-	// initialize it.
-	ValPtr v = g->GetVal();
-
-	if ( ! IsAggr(tag) )
-		{
-		// We already have a lot of machinery for generating
-		// non-aggregate values associated with ConstExpr's,
-		// so we use that rather than having to slice out from
-		// it the subset that deals with a ConstExpr's value.
-		auto ce = make_intrusive<ConstExpr>(v);
-		AddConstant(ce.get());
-
-		// Even though we're not going to later need to refer to
-		// it, keep "ce" around during compilation so const_exprs
-		// doesn't have stale entries in it, which could lead to
-		// incorrect behavior if the associated pointer is reused.
-		gl_vals.push_back(std::move(ce));
-
-		return GenExpr(ce, GEN_VAL_PTR, false);
-		}
-
-	// ###
-	return "nullptr";
+	const auto i_e = g->GetInitExpr();
+	return i_e ? GenExpr(i_e, GEN_VAL_PTR, false) : "nullptr";
 	}
 
 void CPPCompile::GenAttrs(const AttributesPtr& attrs)

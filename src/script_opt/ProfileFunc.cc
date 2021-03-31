@@ -348,8 +348,6 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred
 	{
 	full_record_hashes = _full_record_hashes;
 
-	std::vector<const LambdaExpr*> lambda_exprs;
-
 	for ( auto& f : funcs )
 		{
 		if ( f.ShouldSkip() )
@@ -374,7 +372,24 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred
 void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 	{
 	all_globals.insert(pf->AllGlobals().begin(), pf->AllGlobals().end());
-	globals.insert(pf->Globals().begin(), pf->Globals().end());
+
+	for ( auto& g : pf->Globals() )
+		{
+		if ( globals.count(g) > 0 )
+			continue;
+
+		globals.insert(g);
+
+		const Expr* i_e = g->GetInitExpr().get();
+		if ( i_e )
+			{
+			pending_exprs.push_back(i_e);
+
+			if ( i_e->Tag() == EXPR_LAMBDA )
+				lambdas.insert(i_e->AsLambdaExpr());
+			}
+		}
+
 	constants.insert(pf->Constants().begin(), pf->Constants().end());
 	main_types.insert(main_types.end(),
 			pf->OrderedTypes().begin(), pf->OrderedTypes().end());
