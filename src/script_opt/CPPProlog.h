@@ -72,7 +72,7 @@ void register_lambda__CPP(const char* name, TypePtr t, CPPStmtPtr body)
 	id->SetType(ft);
 	}
 
-IDPtr lookup_global__CPP(const char* g, const TypePtr& t, ValPtr init_val)
+IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
 	{
 	auto gl = lookup_ID(g, GLOBAL_MODULE_NAME, false, false, false);
 
@@ -81,9 +81,6 @@ IDPtr lookup_global__CPP(const char* g, const TypePtr& t, ValPtr init_val)
 		gl = install_ID(g, GLOBAL_MODULE_NAME, true, false);
 		gl->SetType(t);
 		}
-
-	if ( init_val && ! gl->HasVal() )
-		gl->SetVal(init_val);
 
 	return gl;
 	}
@@ -107,34 +104,6 @@ bool str_in__CPP(const String* s1, const String* s2)
 	{
 	auto s = reinterpret_cast<const unsigned char*>(s1->CheckString());
 	return util::strstr_n(s2->Len(), s2->Bytes(), s1->Len(), s) != -1;
-	}
-
-ValPtr create_vec__CPP(const TypePtr& t, std::vector<ValPtr> vals)
-	{
-	auto vt = cast_intrusive<VectorType>(t);
-	auto vec = make_intrusive<VectorVal>(vt);
-
-	for ( const auto& v : vals )
-		vec->Append(v);
-
-	return vec;
-	}
-
-ValPtr create_set__CPP(const TypePtr& t, std::vector<ValPtr> vals)
-	{
-	auto tt = cast_intrusive<TableType>(t);
-	auto sv = make_intrusive<TableVal>(tt);
-
-	for ( const auto& v : vals )
-		sv->Assign(v, nullptr);
-
-	return sv;
-	}
-
-ValPtr create_tbl__CPP(const TypePtr& t, std::vector<ValPtr> vals)
-	{
-	auto tt = cast_intrusive<TableType>(t);
-	return make_intrusive<TableVal>(tt);
 	}
 
 ListValPtr index_val__CPP(std::vector<ValPtr> indices)

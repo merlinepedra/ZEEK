@@ -390,14 +390,13 @@ void CPPCompile::Compile()
 
 	NL();
 
+	for ( const auto& c : pfs.Constants() )
+		AddConstant(c);
+
+	NL();
+
 	auto& gl = pfs.Globals();
 	auto& bifs = pfs.BiFGlobals();
-
-	// Track which globals require initialization.  We initialize
-	// separately from declaring them (which we do first) because
-	// initialization can depend on other globals and constants
-	// having been declared.
-	std::unordered_set<const ID*> needs_gl_init;
 
 	for ( auto& g : pfs.AllGlobals() )
 		{
@@ -423,16 +422,22 @@ void CPPCompile::Compile()
 
 		if ( AddGlobal(gn, "gl", true) )
 			{
-			const auto& t = g->GetType();
-			NoteInitDependency(g, TypeRep(t));
-			needs_gl_init.insert(g);
-
 			Emit("IDPtr %s;", globals[gn]);
 
 			if ( pfs.Events().count(gn) > 0 )
 				// This is an event that's also used as
 				// a variable.
 				Emit("EventHandlerPtr %s_ev;", globals[gn]);
+
+			const auto& t = g->GetType();
+			NoteInitDependency(g, TypeRep(t));
+
+			AddInit(g, globals[gn],
+				std::string("lookup_global__CPP(\"") + gn +
+				"\", " + GenTypeName(t) + ")");
+
+			if ( g->HasVal() )
+				GenGlobalInit(g, globals[gn], g->GetVal());
 			}
 
 		global_vars.emplace(g);
@@ -445,28 +450,11 @@ void CPPCompile::Compile()
 		if ( AddGlobal(e, "gl", false) )
 			Emit("EventHandlerPtr %s_ev;", globals[std::string(e)]);
 
-	for ( const auto& c : pfs.Constants() )
-		AddConstant(c);
-
 	for ( const auto& t : pfs.RepTypes() )
 		{
 		ASSERT(types.HasKey(t));
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		RegisterType(tp);
-		}
-
-	for ( auto& g : needs_gl_init )
-		{
-		// Represents the value of the global (as a ValPtr),
-		// or nil if it doesn't have a relevant one that
-		// we need to initialize.
-		std::string gl_val = GenGlobalInitVal(g);
-		const auto& t = g->GetType();
-		auto gn = std::string(g->Name());
-
-		AddInit(g, globals[gn],
-			std::string("lookup_global__CPP(\"") + gn +
-			"\", " + GenTypeName(t) + ", " + gl_val + ")");
 		}
 
 	for ( const auto& func : funcs )
@@ -785,17 +773,28 @@ bool CPPCompile::AddGlobal(const std::string& g, const char* suffix, bool track)
 
 void CPPCompile::AddConstant(const ConstExpr* c)
 	{
-	if ( IsNativeType(c->GetType()) )
-		// These we instantiate directly.
-		return;
+	auto v = c->Value();
 
-	if ( const_exprs.count(c) > 0 )
+	if ( AddConstant(v) )
+		{
+		AddInit(c);
+		AddInit(v);
+		NoteInitDependency(c, v);
+		}
+	}
+
+bool CPPCompile::AddConstant(const Val* v)
+	{
+	if ( IsNativeType(v->GetType()) )
+		// These we instantiate directly.
+		return false;
+
+	if ( const_vals.count(v) > 0 )
 		// Already did this one.
-		return;
+		return true;
 
 	// Formulate a key that's unique per distinct constant.
 
-	auto v = c->Value();
 	const auto& t = v->GetType();
 	std::string c_desc;
 
@@ -826,7 +825,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 					Fmt(int(constants.size()));
 
 		constants[c_desc] = const_name;
-		auto tag = c->GetType()->Tag();
+		auto tag = t->Tag();
 
 		switch ( tag ) {
 		case TYPE_STRING:
@@ -837,7 +836,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			const char* b = (const char*)(s->Bytes());
 			auto len = s->Len();
 
-			AddInit(c, const_name, GenString(b, len));
+			AddInit(v, const_name, GenString(b, len));
 			}
 			break;
 
@@ -847,14 +846,14 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 
 			auto re = v->AsPatternVal()->Get();
 
-			AddInit(c,
+			AddInit(v,
 				std::string("{ auto re = new RE_Matcher(") +
 				CPPEscape(re->OrigText()) + ");");
 			if ( re->IsCaseInsensitive() )
-				AddInit(c, "re->MakeCaseInsensitive();");
-			AddInit(c, "re->Compile();");
-			AddInit(c, const_name, "make_intrusive<PatternVal>(re)");
-			AddInit(c, "}");
+				AddInit(v, "re->MakeCaseInsensitive();");
+			AddInit(v, "re->Compile();");
+			AddInit(v, const_name, "make_intrusive<PatternVal>(re)");
+			AddInit(v, "}");
 			}
 			break;
 
@@ -868,7 +867,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 			ODesc d;
 			v->Describe(&d);
 
-			AddInit(c, const_name,
+			AddInit(v, const_name,
 				std::string("make_intrusive<") + prefix +
 				"Val>(\"" + d.Description() + "\")");
 			}
@@ -896,7 +895,9 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 		}
 		}
 
-	const_exprs[c] = constants[c_desc];
+	const_vals[v] = constants[c_desc];
+
+	return true;
 	}
 
 void CPPCompile::DeclareFunc(const FuncInfo& func)
@@ -1718,34 +1719,9 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 		auto c = e->AsConstExpr();
 
 		if ( ! IsNativeType(t) )
-			return NativeToGT(const_exprs[c], t, gt);
+			return NativeToGT(const_vals[c->Value()], t, gt);
 
-		auto v = c->Value();
-		auto tag = t->Tag();
-		auto it = t->InternalType();
-
-		// Check for types that don't render into what
-		// C++ expects.
-
-		if ( tag == TYPE_BOOL )
-			gen = std::string(v->IsZero() ? "false" : "true");
-
-		else if ( tag == TYPE_ENUM )
-			gen = GenEnum(c);
-
-		else if ( tag == TYPE_PORT )
-			gen = Fmt(v->AsCount());
-
-		else if ( it == TYPE_INTERNAL_DOUBLE )
-			gen = Fmt(v->AsDouble());
-
-		else
-			{
-			ODesc d;
-			d.SetQuotes(true);
-			v->Describe(&d);
-			gen = std::string(d.Description());
-			}
+		gen = GenVal(c->ValuePtr());
 
 		return NativeToGT(gen, t, gt);
 		}
@@ -2341,6 +2317,30 @@ std::string CPPCompile::GenExpr(const Expr* e, GenType gt, bool top_level)
 	}
 	}
 
+std::string CPPCompile::GenVal(const ValPtr& v)
+	{
+	const auto& t = v->GetType();
+	auto tag = t->Tag();
+	auto it = t->InternalType();
+
+	if ( tag == TYPE_BOOL )
+		return std::string(v->IsZero() ? "false" : "true");
+
+	if ( tag == TYPE_ENUM )
+		return GenEnum(t, v);
+
+	if ( tag == TYPE_PORT )
+		return Fmt(v->AsCount());
+
+	if ( it == TYPE_INTERNAL_DOUBLE )
+		return Fmt(v->AsDouble());
+
+	ODesc d;
+	d.SetQuotes(true);
+	v->Describe(&d);
+	return d.Description();
+	}
+
 void CPPCompile::BuildAttrs(const AttributesPtr& attrs,
 				std::string& attr_tags, std::string& attr_vals)
 	{
@@ -2835,11 +2835,10 @@ std::string CPPCompile::GenField(const ExprPtr& rec, int field)
 	return std::string("field_mapping[") + Fmt(mapping_slot) + "]";
 	}
 
-std::string CPPCompile::GenEnum(const ConstExpr* c)
+std::string CPPCompile::GenEnum(const TypePtr& t, const ValPtr& ev)
 	{
-	auto t = TypeRep(c->GetType());
-	auto et = t->AsEnumType();
-	auto v = c->Value()->AsEnum();
+	auto et = TypeRep(t)->AsEnumType();
+	auto v = ev->AsEnum();
 
 	if ( ! et->HasRedefs() )
 		// Can use direct access.
@@ -3005,51 +3004,37 @@ std::string CPPCompile::InitExprName(const ExprPtr& e)
 	return init_exprs.KeyName(e);
 	}
 
-std::string CPPCompile::GenGlobalInitVal(const ID* g)
+std::string CPPCompile::GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v)
 	{
-	const auto i_e = g->GetInitExpr();
-	if ( ! i_e )
-		return "nullptr";
+	return "nullptr";
+	const auto& t = v->GetType();
 
-	if ( i_e->Tag() != EXPR_LIST )
-		return GenExpr(i_e, GEN_VAL_PTR, false);
+	std::string gen;
 
-	// Expression lists are used for old-style initializers that
-	// leave off the associated constructor.  We deal with these
-	// here, rather than in GenExpr(), because the latter lacks
-	// the context of knowing (1) that the ListExpr is being used
-	// for an initialization, and (2) the type associated with
-	// that initialization.
-	const auto& t = g->GetType();
-	auto tn = GenTypeName(t);
+	switch ( t->Tag() ) {
+	case TYPE_ADDR:
+	case TYPE_BOOL:
+	case TYPE_COUNT:
+	case TYPE_DOUBLE:
+	case TYPE_ENUM:
+	case TYPE_INT:
+	case TYPE_INTERVAL:
+	case TYPE_PATTERN:
+	case TYPE_PORT:
+	case TYPE_STRING:
+	case TYPE_SUBNET:
+		// gen = GenVal
 
-	std::string create_type;
+	case TYPE_FUNC:
 
-	auto gen = GenExpr(i_e, GEN_VAL_PTR, false);
+	case TYPE_RECORD:
+	case TYPE_TABLE:
+	case TYPE_VECTOR:
 
-	if ( t->Tag() == TYPE_TABLE )
-		{
-		if ( t->AsTableType()->IsSet() )
-			create_type = "set";
-		else
-			{
-			if ( i_e->AsListExpr()->Exprs().length() != 0 )
-				{
-				reporter->Error("C++ compilation does not support old-style table constructors: %s", obj_desc(g).c_str());
-				return "nullptr";
-				}
-			create_type = "tbl";
-			}
-		}
+	default:
+		reporter->InternalError("bad type in CPPCompile::TypeTagName");
 
-	else if ( t->Tag() == TYPE_VECTOR )
-		create_type = "vec";
-
-	else
-		reporter->InternalError("bad initializer list in CPPCompile::GenGlobalInitVal");
-
-	return std::string("create_") + create_type + "__CPP(" +
-		GenTypeName(t) + ", {" + gen + "})";
+	}
 	}
 
 void CPPCompile::GenAttrs(const AttributesPtr& attrs)

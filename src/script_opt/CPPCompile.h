@@ -163,6 +163,7 @@ private:
 	void AddBiF(const ID* b, bool is_var);
 	bool AddGlobal(const std::string& g, const char* suffix, bool track);
 	void AddConstant(const ConstExpr* c);
+	bool AddConstant(const Val* v);
 
 	void DeclareFunc(const FuncInfo& func);
 	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
@@ -204,6 +205,8 @@ private:
 		{ return GenExpr(e.get(), gt, top_level); }
 	std::string GenExpr(const Expr* e, GenType gt, bool top_level = false);
 
+	std::string GenVal(const ValPtr& v);
+
 	void BuildAttrs(const AttributesPtr& attrs,
 				std::string& attr_tags, std::string& attr_vals);
 
@@ -237,7 +240,7 @@ private:
 
 	std::string GenField(const ExprPtr& rec, int field);
 
-	std::string GenEnum(const ConstExpr* c);
+	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
 
 	std::string NativeToGT(const std::string& expr, const TypePtr& t,
 				GenType gt);
@@ -248,7 +251,7 @@ private:
 	bool IsSimpleInitExpr(const ExprPtr& e) const;
 	std::string InitExprName(const ExprPtr& e);
 
-	std::string GenGlobalInitVal(const ID* g);
+	std::string GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v);
 
 	void GenAttrs(const AttributesPtr& attrs);
 	std::string AttrsName(const AttributesPtr& attrs);
@@ -446,9 +449,8 @@ private:
 	// Maps (non-native) constants to associated C++ globals.
 	std::unordered_map<const ConstExpr*, std::string> const_exprs;
 
-	// Memory management for ConstExpr's we create to hold the value
-	// of globals that require initialization.
-	std::vector<ConstExprPtr> gl_vals;
+	// Maps the values of (non-native) constants to associated C++ globals.
+	std::unordered_map<const Val*, std::string> const_vals;
 
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.
