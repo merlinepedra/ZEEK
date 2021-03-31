@@ -111,6 +111,9 @@ public:
 
 	const AttrPtr& GetAttr(AttrTag t) const;
 
+	void SetInitExpr(ExprPtr init_expr);
+	const ExprPtr& GetInitExpr() const	{ return init_expr; }
+
 	bool IsDeprecated() const;
 
 	void MakeDeprecated(ExprPtr deprecation);
@@ -155,6 +158,7 @@ protected:
 	int offset;
 	ValPtr val;
 	AttributesPtr attrs;
+	ExprPtr init_expr;	// expression used to initialize the identifier
 	// contains list of functions that are called when an option changes
 	std::multimap<int, FuncPtr> option_handlers;
 

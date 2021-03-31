@@ -284,6 +284,11 @@ const AttrPtr& ID::GetAttr(AttrTag t) const
 	return attrs ? attrs->Find(t) : Attr::nil;
 	}
 
+void ID::SetInitExpr(ExprPtr _init_expr)
+	{
+	init_expr = std::move(_init_expr);
+	}
+
 bool ID::IsDeprecated() const
 	{
 	return GetAttr(ATTR_DEPRECATED) != nullptr;

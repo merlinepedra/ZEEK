@@ -235,7 +235,7 @@ static bool expr_is_table_type_name(const zeek::detail::Expr* expr)
 	return false;
 	}
 
-static void create_global(zeek::detail::ID* id, zeek::Type* t,
+static void build_global(zeek::detail::ID* id, zeek::Type* t,
                           zeek::detail::InitClass ic, zeek::detail::Expr* e,
                           std::vector<zeek::detail::AttrPtr>* attrs,
                           zeek::detail::DeclType dt)
@@ -250,7 +250,30 @@ static void create_global(zeek::detail::ID* id, zeek::Type* t,
 	if ( dt == zeek::detail::VAR_REDEF )
 		zeek::detail::zeekygen_mgr->Redef(id, ::filename, ic, std::move(e_ptr));
 	else
+		{
+		id->SetInitExpr(std::move(e_ptr));
 		zeek::detail::zeekygen_mgr->Identifier(std::move(id_ptr));
+		}
+	}
+
+static zeek::detail::StmtPtr build_local(zeek::detail::ID* id, zeek::Type* t,
+                           zeek::detail::InitClass ic, zeek::detail::Expr* e,
+                           std::vector<zeek::detail::AttrPtr>* attrs,
+                           zeek::detail::DeclType dt, bool do_coverage)
+	{
+	zeek::IntrusivePtr id_ptr{zeek::AdoptRef{}, id};
+	zeek::IntrusivePtr t_ptr{zeek::AdoptRef{}, t};
+	zeek::IntrusivePtr e_ptr{zeek::AdoptRef{}, e};
+	auto attrs_ptr = attrs ? std::make_unique<std::vector<zeek::detail::AttrPtr>>(*attrs) : nullptr;
+
+	auto init = zeek::detail::add_local(id_ptr, t_ptr, ic, e_ptr, std::move(attrs_ptr), zeek::detail::VAR_REGULAR);
+
+	id->SetInitExpr(std::move(e_ptr));
+
+	if ( do_coverage )
+		zeek::detail::script_coverage_mgr.AddStmt(init.get());
+
+	return init;
 	}
 %}
 
@@ -1135,22 +1158,22 @@ decl:
 
 	|	TOK_GLOBAL def_global_id opt_type init_class opt_init opt_attr ';'
 			{
-			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_REGULAR);
+			build_global($2, $3, $4, $5, $6, zeek::detail::VAR_REGULAR);
 			}
 
 	|	TOK_OPTION def_global_id opt_type init_class opt_init opt_attr ';'
 			{
-			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_OPTION);
+			build_global($2, $3, $4, $5, $6, zeek::detail::VAR_OPTION);
 			}
 
 	|	TOK_CONST def_global_id opt_type init_class opt_init opt_attr ';'
 			{
-			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_CONST);
+			build_global($2, $3, $4, $5, $6, zeek::detail::VAR_CONST);
 			}
 
 	|	TOK_REDEF global_id opt_type init_class opt_init opt_attr ';'
 			{
-			create_global($2, $3, $4, $5, $6, zeek::detail::VAR_REDEF);
+			build_global($2, $3, $4, $5, $6, zeek::detail::VAR_REDEF);
 			}
 
 	|	TOK_REDEF TOK_ENUM global_id TOK_ADD_TO '{'
@@ -1639,23 +1662,13 @@ stmt:
 	|	TOK_LOCAL local_id opt_type init_class opt_init opt_attr ';' opt_no_test
 			{
 			zeek::detail::set_location(@1, @7);
-			$$ = zeek::detail::add_local({zeek::AdoptRef{}, $2}, {zeek::AdoptRef{}, $3}, $4,
-			                             {zeek::AdoptRef{}, $5},
-			                             std::unique_ptr<std::vector<zeek::detail::AttrPtr>>{$6},
-			                             zeek::detail::VAR_REGULAR).release();
-			if ( ! $8 )
-			    zeek::detail::script_coverage_mgr.AddStmt($$);
+			$$ = build_local($2, $3, $4, $5, $6, zeek::detail::VAR_REGULAR, ! $8).release();
 			}
 
 	|	TOK_CONST local_id opt_type init_class opt_init opt_attr ';' opt_no_test
 			{
-			zeek::detail::set_location(@1, @6);
-			$$ = zeek::detail::add_local({zeek::AdoptRef{}, $2}, {zeek::AdoptRef{}, $3}, $4,
-			                             {zeek::AdoptRef{}, $5},
-			                             std::unique_ptr<std::vector<zeek::detail::AttrPtr>>{$6},
-			                             zeek::detail::VAR_CONST).release();
-			if ( ! $8 )
-			    zeek::detail::script_coverage_mgr.AddStmt($$);
+			zeek::detail::set_location(@1, @7);
+			$$ = build_local($2, $3, $4, $5, $6, zeek::detail::VAR_CONST, ! $8).release();
 			}
 
 	|	TOK_WHEN '(' when_condition ')' stmt
