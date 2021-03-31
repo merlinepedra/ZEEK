@@ -238,11 +238,12 @@ static bool expr_is_table_type_name(const Expr* expr)
 	}
 
 static void build_global(ID* id, Type* t, InitClass ic, Expr* e,
-                          std::vector<AttrPtr>* attrs, DeclType dt)
+                         std::vector<AttrPtr>* attrs, DeclType dt)
 	{
-	IntrusivePtr id_ptr{AdoptRef{}, id};
-	IntrusivePtr t_ptr{AdoptRef{}, t};
-	IntrusivePtr e_ptr{AdoptRef{}, e};
+	IDPtr id_ptr{AdoptRef{}, id};
+	TypePtr t_ptr{AdoptRef{}, t};
+	ExprPtr e_ptr{AdoptRef{}, e};
+
 	auto attrs_ptr = attrs ? std::make_unique<std::vector<AttrPtr>>(*attrs) : nullptr;
 
 	add_global(id_ptr, t_ptr, ic, e_ptr, std::move(attrs_ptr), dt);
@@ -260,9 +261,10 @@ static StmtPtr build_local(ID* id, Type* t, InitClass ic, Expr* e,
                            std::vector<AttrPtr>* attrs, DeclType dt,
                            bool do_coverage)
 	{
-	IntrusivePtr id_ptr{AdoptRef{}, id};
-	IntrusivePtr t_ptr{AdoptRef{}, t};
-	IntrusivePtr e_ptr{AdoptRef{}, e};
+	IDPtr id_ptr{AdoptRef{}, id};
+	TypePtr t_ptr{AdoptRef{}, t};
+	ExprPtr e_ptr{AdoptRef{}, e};
+
 	auto attrs_ptr = attrs ? std::make_unique<std::vector<AttrPtr>>(*attrs) : nullptr;
 
 	auto init = add_local(id_ptr, t_ptr, ic, e_ptr, std::move(attrs_ptr), VAR_REGULAR);
