@@ -473,6 +473,12 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
+	// Maps the same representations to the Val* associated with their
+	// original creation.  This enables us to construct initialization
+	// dependencies for later Val*'s that are able to reuse the same
+	// constant.
+	std::unordered_map<std::string, const Val*> constants_to_vals;
+
 	// Maps an object requiring initialization to its initializers.
 	std::unordered_map<const Obj*, std::vector<std::string>> obj_inits;
 

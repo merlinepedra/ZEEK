@@ -781,7 +781,6 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 	if ( AddConstant(v) )
 		{
 		AddInit(c);
-		AddInit(v.get());
 		NoteInitDependency(c, v.get());
 		}
 	}
@@ -826,6 +825,12 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 	if ( constants.count(c_desc) > 0 )
 		{
 		const_vals[v] = constants[c_desc];
+
+		auto orig_v = constants_to_vals[c_desc];
+		ASSERT(v != orig_v);
+		AddInit(v);
+		NoteInitDependency(v, orig_v);
+
 		return true;
 		}
 
@@ -834,6 +839,7 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 				Fmt(int(constants.size()));
 
 	const_vals[v] = constants[c_desc] = const_name;
+	constants_to_vals[c_desc] = v;
 
 	auto tag = t->Tag();
 
@@ -998,7 +1004,6 @@ std::string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
 		{
 		auto v = vp.get();
 		AddInit(parent);
-		AddInit(v);
 		NoteInitDependency(parent, v);
 
 		// Make sure the value pointer, which might be transient
