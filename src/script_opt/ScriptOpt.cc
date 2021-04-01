@@ -229,13 +229,13 @@ void analyze_scripts()
 			{
 			auto name = f.Func()->Name();
 			auto hash = f.Profile()->HashVal();
-			bool have = compiled_bodies.count(hash) > 0;
+			bool have = compiled_scripts.count(hash) > 0;
 			auto specific = "";
 
 			if ( ! have )
 				{
 				hash = script_specific_hash(f.Body(), hash);
-				have = compiled_bodies.count(hash) > 0;
+				have = compiled_scripts.count(hash) > 0;
 				if ( have )
 					specific = " - specific";
 				}
@@ -249,11 +249,11 @@ void analyze_scripts()
 
 		printf("\nAdditional C++ script bodies available:\n");
 		int addl = 0;
-		for ( auto b : compiled_bodies )
-			if ( already_reported.count(b.first) == 0 )
+		for ( auto s : compiled_scripts )
+			if ( already_reported.count(s.first) == 0 )
 				{
 				printf("%s body (hash %llu)\n",
-					b.second->Name().c_str(), b.first);
+					s.second.body->Name().c_str(), s.first);
 				++addl;
 				}
 
@@ -268,18 +268,18 @@ void analyze_scripts()
 		for ( auto& f : funcs )
 			{
 			auto hash = f.Profile()->HashVal();
-			auto body = compiled_bodies.find(hash);
+			auto s = compiled_scripts.find(hash);
 
-			if ( body == compiled_bodies.end() )
+			if ( s == compiled_scripts.end() )
 				{ // Look for script-specific body.
 				hash = script_specific_hash(f.Body(), hash);
-				body = compiled_bodies.find(hash);
+				s = compiled_scripts.find(hash);
 				}
 
-			if ( body != compiled_bodies.end() )
+			if ( s != compiled_scripts.end() )
 				{
-				f.Func()->ReplaceBody(f.Body(), body->second);
-				for ( auto& e : compiled_bodies_events[hash] )
+				f.Func()->ReplaceBody(f.Body(), s->second.body);
+				for ( auto& e : s->second.events )
 					{
 					auto h = event_registry->Register(e);
 					h->SetUsed();
@@ -303,7 +303,7 @@ void analyze_scripts()
 			for ( auto& func : funcs )
 				{
 				auto hash = func.Profile()->HashVal();
-				if ( compiled_bodies.count(hash) > 0 ||
+				if ( compiled_scripts.count(hash) > 0 ||
 				     hm->HasHash(hash) )
 					func.SetSkip(true);
 				}

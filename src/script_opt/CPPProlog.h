@@ -55,11 +55,11 @@ static int dummy = flag_init_CPP();
 void register_body__CPP(CPPStmtPtr body, hash_type hash,
 			std::vector<std::string> events)
 	{
-	compiled_bodies[hash] = std::move(body);
-	compiled_bodies_events[hash] = std::move(events);
+	compiled_scripts[hash] = { std::move(body), std::move(events) };
 	}
 
-void register_lambda__CPP(const char* name, TypePtr t, CPPStmtPtr body)
+void register_lambda__CPP(CPPStmtPtr body, hash_type hash, const char* name,
+			  TypePtr t, bool has_captures)
 	{
 	auto ft = cast_intrusive<FuncType>(t);
 
@@ -70,6 +70,9 @@ void register_lambda__CPP(const char* name, TypePtr t, CPPStmtPtr body)
 	auto v = make_intrusive<FuncVal>(std::move(func));
 	id->SetVal(std::move(v));
 	id->SetType(ft);
+
+	if ( ! has_captures )
+		register_body__CPP(body, hash, {});
 	}
 
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
@@ -89,6 +92,22 @@ Func* lookup_bif__CPP(const char* bif)
 	{
 	auto b = lookup_ID(bif, GLOBAL_MODULE_NAME, false, false, false);
 	return b ? b->GetVal()->AsFunc() : nullptr;
+	}
+
+FuncValPtr lookup_func__CPP(std::string name, hash_type h, const TypePtr& t)
+	{
+	ASSERT(compiled_scripts.count(h) > 0);
+	const auto& f = compiled_scripts[h];
+	auto ft = cast_intrusive<FuncType>(t);
+	auto sf = make_intrusive<ScriptFunc>(std::move(name), std::move(ft), f.body);
+
+	for ( auto& e : f.events )
+		{
+		auto eh = event_registry->Register(e);
+		eh->SetUsed();
+		}
+
+	return make_intrusive<FuncVal>(std::move(sf));
 	}
 
 StringValPtr str_concat__CPP(const String* s1, const String* s2)

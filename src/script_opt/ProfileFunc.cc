@@ -380,6 +380,10 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 
 		globals.insert(g);
 
+		auto& v = g->GetVal();
+		if ( v )
+			main_types.push_back(v->GetType().get());
+
 		const Expr* i_e = g->GetInitExpr().get();
 		if ( i_e )
 			{

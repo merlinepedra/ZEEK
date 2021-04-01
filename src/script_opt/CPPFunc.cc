@@ -9,8 +9,7 @@
 
 namespace zeek::detail {
 
-std::unordered_map<hash_type, CPPStmtPtr> compiled_bodies;
-std::unordered_map<hash_type, std::vector<std::string>> compiled_bodies_events;
+std::unordered_map<hash_type, CompiledScript> compiled_scripts;
 VarMapper compiled_items;
 
 void CPPFunc::Describe(ODesc* d) const

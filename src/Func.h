@@ -151,7 +151,7 @@ public:
 	        const std::vector<IDPtr>& inits,
 	        size_t frame_size, int priority);
 
-	// For compiled lambdas.
+	// For compiled scripts.
 	ScriptFunc(std::string name, FuncTypePtr ft, StmtPtr body);
 
 	~ScriptFunc() override;

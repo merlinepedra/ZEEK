@@ -11,18 +11,19 @@ namespace detail {
 
 class CPPFunc : public Func {
 public:
-	CPPFunc(const char* _name, bool _is_pure)
-		{
-		name = _name;
-		is_pure = _is_pure;
-		}
-
 	bool IsPure() const override	{ return is_pure; }
 	// ValPtr Invoke(zeek::Args* args, Frame* parent) const override;
 
 	void Describe(ODesc* d) const override;
 
 protected:
+	// Constructor used when deriving subclasses.
+	CPPFunc(const char* _name, bool _is_pure)
+		{
+		name = _name;
+		is_pure = _is_pure;
+		}
+
 	std::string name;
 	bool is_pure;
 };
@@ -69,12 +70,17 @@ protected:
 	CPPStmtPtr l_body;
 };
 
-struct CompiledItemPair { int index; int scope; };
 
+struct CompiledScript {
+	CPPStmtPtr body; 
+	std::vector<std::string> events;
+};
+
+extern std::unordered_map<hash_type, CompiledScript> compiled_scripts;
+
+struct CompiledItemPair { int index; int scope; };
 using VarMapper = std::unordered_map<hash_type, CompiledItemPair>;
 
-extern std::unordered_map<hash_type, CPPStmtPtr> compiled_bodies;
-extern std::unordered_map<hash_type, std::vector<std::string>> compiled_bodies_events;
 extern VarMapper compiled_items;
 
 } // namespace detail

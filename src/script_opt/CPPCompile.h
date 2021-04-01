@@ -162,8 +162,10 @@ private:
 	void DeclareGlobals(const FuncInfo& func);
 	void AddBiF(const ID* b, bool is_var);
 	bool AddGlobal(const std::string& g, const char* suffix, bool track);
+
 	void AddConstant(const ConstExpr* c);
-	bool AddConstant(const Val* v);
+	bool AddConstant(const ValPtr& v);
+	std::string BuildConstant(const Obj* parent, const ValPtr& vp);
 
 	void DeclareFunc(const FuncInfo& func);
 	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
@@ -251,7 +253,8 @@ private:
 	bool IsSimpleInitExpr(const ExprPtr& e) const;
 	std::string InitExprName(const ExprPtr& e);
 
-	std::string GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v);
+	void GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v);
+	void GenFuncVarInits();
 
 	void GenAttrs(const AttributesPtr& attrs);
 	std::string AttrsName(const AttributesPtr& attrs);
@@ -419,11 +422,22 @@ private:
 	// hashes distinct.
 	std::unordered_map<std::string, std::string> cf_locs;
 
+	// Maps function bodies to the names we use for them.
+	std::unordered_map<const Stmt*, std::string> body_names;
+
+	// Reverse mapping.
+	std::unordered_map<std::string, const Stmt*> names_to_bodies;
+
 	// Maps function names to hashes of bodies.
 	std::unordered_map<std::string, hash_type> body_hashes;
 
 	// Maps function names to events relevant to them.
 	std::unordered_map<std::string, std::vector<std::string>> body_events;
+
+	// Function variables that we need to create dynamically for
+	// initializing globals, coupled with the name of their associated
+	// constant.
+	std::unordered_map<FuncVal*, std::string> func_vars;
 
 	// Script functions that we are able to compile.  We compute
 	// these ahead of time so that when compiling script function A
@@ -451,6 +465,9 @@ private:
 
 	// Maps the values of (non-native) constants to associated C++ globals.
 	std::unordered_map<const Val*, std::string> const_vals;
+
+	// Used for memory management associated with const_vals's index.
+	std::vector<ValPtr> cv_indices;
 
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.
@@ -481,9 +498,6 @@ private:
 	// code.  Currently, these are only expressions appearing in
 	// attributes.
 	CPPTracker<const Expr*, ExprPtr> init_exprs = {"gen_init_expr", &compiled_items};
-
-	// Maps function bodies to the names we use for them.
-	std::unordered_map<const Stmt*, std::string> body_names;
 
 	// For record that are extended via redef's, maps fields
 	// beyond the original definition to locations in the

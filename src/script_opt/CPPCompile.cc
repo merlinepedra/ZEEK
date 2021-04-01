@@ -471,6 +471,40 @@ void CPPCompile::Compile()
 	for ( const auto& l : pfs.Lambdas() )
 		CompileLambda(l, pfs.ExprProf(l));
 
+	for ( const auto& f : compiled_funcs )
+		{
+		auto h = body_hashes[f];
+
+		std::string events;
+		if ( body_events.count(f) > 0 )
+			for ( auto e : body_events[f] )
+				{
+				if ( events.size() > 0 )
+					events += ", ";
+				events = events + "\"" + e + "\"";
+				}
+
+		events = std::string("{") + events + "}";
+
+		if ( addl_tag > 0 )
+			h = MergeHashes(h, hash_string(cf_locs[f].c_str()));
+
+		auto init = std::string("register_body__CPP(make_intrusive<") +
+				f + "_cl>(\"" + f + "\"), " + Fmt(h) +
+				", " + events + ");";
+
+		AddInit(names_to_bodies[f], init);
+
+		if ( update )
+			{
+			fprintf(hm.HashFile(), "func\n%s%s\n",
+				ScopePrefix(addl_tag).c_str(), f.c_str());
+			fprintf(hm.HashFile(), "%llu\n", h);
+			}
+		}
+
+	GenFuncVarInits();
+
 	GenEpilog();
 	}
 
@@ -640,37 +674,6 @@ void CPPCompile::GenEpilog()
 		Emit("enum_mapping.push_back(em_offset);");
 		}
 
-	// ... and then instantiate the bodies themselves.
-	NL();
-	for ( const auto& f : compiled_funcs )
-		{
-		auto h = body_hashes[f];
-
-		std::string events;
-		if ( body_events.count(f) > 0 )
-			for ( auto e : body_events[f] )
-				{
-				if ( events.size() > 0 )
-					events += ", ";
-				events = events + "\"" + e + "\"";
-				}
-
-		events = std::string("{") + events + "}";
-
-		if ( addl_tag > 0 )
-			h = MergeHashes(h, hash_string(cf_locs[f].c_str()));
-
-		Emit("register_body__CPP(make_intrusive<%s_cl>(\"%s\"), %s, %s);",
-			f, f, Fmt(h), events);
-
-		if ( update )
-			{
-			fprintf(hm.HashFile(), "func\n%s%s\n",
-				ScopePrefix(addl_tag).c_str(), f.c_str());
-			fprintf(hm.HashFile(), "%llu\n", h);
-			}
-		}
-
 	EndBlock(true);
 
 	NL();
@@ -773,18 +776,20 @@ bool CPPCompile::AddGlobal(const std::string& g, const char* suffix, bool track)
 
 void CPPCompile::AddConstant(const ConstExpr* c)
 	{
-	auto v = c->Value();
+	auto v = c->ValuePtr();
 
 	if ( AddConstant(v) )
 		{
 		AddInit(c);
-		AddInit(v);
-		NoteInitDependency(c, v);
+		AddInit(v.get());
+		NoteInitDependency(c, v.get());
 		}
 	}
 
-bool CPPCompile::AddConstant(const Val* v)
+bool CPPCompile::AddConstant(const ValPtr& vp)
 	{
+	auto v = vp.get();
+
 	if ( IsNativeType(v->GetType()) )
 		// These we instantiate directly.
 		return false;
@@ -818,86 +823,193 @@ bool CPPCompile::AddConstant(const Val* v)
 		c_desc = d.Description();
 		}
 
-	if ( constants.count(c_desc) == 0 )
+	if ( constants.count(c_desc) > 0 )
 		{
-		// Need a C++ global for this constant.
-		auto const_name = std::string("CPP__const__") +
-					Fmt(int(constants.size()));
-
-		constants[c_desc] = const_name;
-		auto tag = t->Tag();
-
-		switch ( tag ) {
-		case TYPE_STRING:
-			{
-			Emit("StringValPtr %s;", const_name);
-
-			auto s = v->AsString();
-			const char* b = (const char*)(s->Bytes());
-			auto len = s->Len();
-
-			AddInit(v, const_name, GenString(b, len));
-			}
-			break;
-
-		case TYPE_PATTERN:
-			{
-			Emit("PatternValPtr %s;", const_name);
-
-			auto re = v->AsPatternVal()->Get();
-
-			AddInit(v,
-				std::string("{ auto re = new RE_Matcher(") +
-				CPPEscape(re->OrigText()) + ");");
-			if ( re->IsCaseInsensitive() )
-				AddInit(v, "re->MakeCaseInsensitive();");
-			AddInit(v, "re->Compile();");
-			AddInit(v, const_name, "make_intrusive<PatternVal>(re)");
-			AddInit(v, "}");
-			}
-			break;
-
-		case TYPE_ADDR:
-		case TYPE_SUBNET:
-			{
-			auto prefix = (tag == TYPE_ADDR) ? "Addr" : "SubNet";
-
-			Emit("%sValPtr %s;", prefix, const_name);
-
-			ODesc d;
-			v->Describe(&d);
-
-			AddInit(v, const_name,
-				std::string("make_intrusive<") + prefix +
-				"Val>(\"" + d.Description() + "\")");
-			}
-			break;
-
-		case TYPE_FUNC:
-			// We can get here when compiling additional code
-			// that refers to already-compiled types that have
-			// attributes that include lambdas.  The traversal
-			// of those types will surface function-valued
-			// constants (the compiled lambdas).  We shouldn't
-			// actually wind up needing to instantiate those
-			// constants, so here we ensure both of those
-			// assumptions are correct.
-			ASSERT(addl_tag > 0);	// compiling *additional* code
-
-			// Ensure that if we wind up trying to generate
-			// code that refers to this constant, it induces
-			// a C++ compilation error.
-			constants[c_desc] = "###";
-			break;
-
-		default:
-			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
-		}
+		const_vals[v] = constants[c_desc];
+		return true;
 		}
 
-	const_vals[v] = constants[c_desc];
+	// Need a C++ global for this constant.
+	auto const_name = std::string("CPP__const__") +
+				Fmt(int(constants.size()));
 
-	return true;
+	const_vals[v] = constants[c_desc] = const_name;
+
+	auto tag = t->Tag();
+
+	switch ( tag ) {
+	case TYPE_STRING:
+		{
+		Emit("StringValPtr %s;", const_name);
+
+		auto s = v->AsString();
+		const char* b = (const char*)(s->Bytes());
+		auto len = s->Len();
+
+		AddInit(v, const_name, GenString(b, len));
+		}
+		return true;
+
+	case TYPE_PATTERN:
+		{
+		Emit("PatternValPtr %s;", const_name);
+
+		auto re = v->AsPatternVal()->Get();
+
+		AddInit(v, std::string("{ auto re = new RE_Matcher(") +
+			CPPEscape(re->OrigText()) + ");");
+		if ( re->IsCaseInsensitive() )
+			AddInit(v, "re->MakeCaseInsensitive();");
+		AddInit(v, "re->Compile();");
+		AddInit(v, const_name, "make_intrusive<PatternVal>(re)");
+		AddInit(v, "}");
+		}
+		return true;
+
+	case TYPE_ADDR:
+	case TYPE_SUBNET:
+		{
+		auto prefix = (tag == TYPE_ADDR) ? "Addr" : "SubNet";
+
+		Emit("%sValPtr %s;", prefix, const_name);
+
+		ODesc d;
+		v->Describe(&d);
+
+		AddInit(v, const_name,
+			std::string("make_intrusive<") + prefix +
+			"Val>(\"" + d.Description() + "\")");
+		}
+		return true;
+
+	case TYPE_LIST:
+		{
+		Emit("ListValPtr %s;", const_name);
+
+		// No initialization dependency since we don't use the
+		// underlying TypeList.
+
+		AddInit(v, const_name,
+			std::string("make_intrusive<ListVal>(TYPE_ANY)"));
+
+		auto lv = cast_intrusive<ListVal>(vp);
+		auto n = lv->Length();
+
+		for ( auto i = 0; i < n; ++i )
+			{
+			const auto& l_i = lv->Idx(i);
+			auto l_i_c = BuildConstant(v, l_i);
+			AddInit(v, const_name + "->Append(" + l_i_c + ");");
+			}
+		}
+		return true;
+
+	case TYPE_VECTOR:
+		{
+		Emit("VectorValPtr %s;", const_name);
+
+		NoteInitDependency(v, TypeRep(t));
+		AddInit(v, const_name,
+			std::string("make_intrusive<VectorVal>(") +
+			"cast_intrusive<VectorType>(" + GenTypeName(t) + "))");
+
+		auto vv = cast_intrusive<VectorVal>(vp);
+		auto n = vv->Size();
+
+		for ( auto i = 0; i < n; ++i )
+			{
+			const auto& v_i = vv->At(i);
+			auto v_i_c = BuildConstant(v, v_i);
+			AddInit(v, const_name + "->Append(" + v_i_c + ");");
+			}
+		}
+		return true;
+
+	case TYPE_RECORD:
+		{
+		Emit("RecordValPtr %s;", const_name);
+
+		NoteInitDependency(v, TypeRep(t));
+		AddInit(v, const_name,
+			std::string("make_intrusive<RecordVal>(") +
+			"cast_intrusive<RecordType>(" + GenTypeName(t) + "))");
+
+		auto r = cast_intrusive<RecordVal>(vp);
+		auto n = r->NumFields();
+
+		for ( auto i = 0; i < n; ++i )
+			{
+			const auto& r_i = r->GetField(i);
+
+			if ( r_i )
+				{
+				auto r_i_c = BuildConstant(v, r_i);
+				AddInit(v, const_name + "->Assign(" + Fmt(i) +
+					", " + r_i_c + ");");
+				}
+			}
+		}
+		return true;
+
+	case TYPE_TABLE:
+		{
+		Emit("TableValPtr %s;", const_name);
+
+		NoteInitDependency(v, TypeRep(t));
+		AddInit(v, const_name,
+			std::string("make_intrusive<TableVal>(") +
+			"cast_intrusive<TableType>(" + GenTypeName(t) + "))");
+
+		auto tv = cast_intrusive<TableVal>(vp);
+		auto tv_map = tv->ToMap();
+
+		for ( auto& tv_i : tv_map )
+			{
+			auto ind = BuildConstant(v, {AdoptRef{}, tv_i.first});
+			auto val = BuildConstant(v, tv_i.second);
+			AddInit(v, const_name + "->Assign(" + ind + ", " +
+				val + ");");
+			}
+		}
+		return true;
+
+	case TYPE_FUNC:
+		Emit("FuncValPtr %s;", const_name);
+
+		// We can't generate the initialization now because it
+		// depends on first having compiled the associated body,
+		// so we know its hash.  So for now we just note it
+		// to deal with later.
+		func_vars[v->AsFuncVal()] = const_name;
+
+		return true;
+
+	default:
+		reporter->InternalError("bad constant type in CPPCompile::AddConstant");
+	}
+	}
+
+std::string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
+	{
+	if ( ! vp )
+		return "nullptr";
+
+	if ( AddConstant(vp) )
+		{
+		auto v = vp.get();
+		AddInit(parent);
+		AddInit(v);
+		NoteInitDependency(parent, v);
+
+		// Make sure the value pointer, which might be transient
+		// in construction, sticks around so we can track its
+		// value.
+		cv_indices.push_back(vp);
+
+		return const_vals[v];
+		}
+	else
+		return NativeToGT(GenVal(vp), vp->GetType(), GEN_VAL_PTR);
 	}
 
 void CPPCompile::DeclareFunc(const FuncInfo& func)
@@ -1028,15 +1140,25 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 
 		auto literal_name = std::string("\"") + l->Name() + "\"";
 
+		int nl = lambda_ids->length();
+
 		auto instantiate = std::string("make_intrusive<") +
 			fname + "_cl>(" + literal_name + ")";
-		auto l_init = std::string("register_lambda__CPP(\"") +
-				l->Name() + "\", " + GenTypeName(ft) +
-				", " + instantiate + ");";
+		auto h = Fmt(pf->HashVal());
+		auto has_captures = nl > 0 ? "true" : "false";
+		auto l_init = std::string("register_lambda__CPP(") +
+				instantiate + ", " + h +
+				", \"" + l->Name() + "\", "
+				+ GenTypeName(ft) + ", " + has_captures + ");";
 		AddInit(l, l_init);
 		NoteInitDependency(l, TypeRep(ft));
 
-		int nl = lambda_ids->length();
+		// Make the lambda's body's initialization depend on the
+		// lambda's initialization.  That way GenFuncVarInits()
+		// can generate initializations with the assurance that
+		// the associated body hashes will have been registered.
+		AddInit(body.get());
+		NoteInitDependency(body.get(), l);
 
 		Emit("void SetLambdaCaptures(Frame* f) override");
 		StartBlock();
@@ -1089,7 +1211,8 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 	EndBlock(true);
 
 	body_hashes[fname] = pf->HashVal();
-	body_names.emplace(body.get(), std::move(fname));
+	body_names.emplace(body.get(), fname);
+	names_to_bodies.emplace(std::move(fname), body.get());
 	}
 
 void CPPCompile::GenSubclassTypeAssignment(Func* f)
@@ -2942,7 +3065,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s_cl() : CPPFunc(\"%s\", false)", name, name);
+	Emit("%s_cl() : CPPFunc(\"%s\", %s)", name, name, e->IsPure() ? "true" : "false");
 
 	StartBlock();
 	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, FUNC_FLAVOR_FUNCTION);", GenTypeName(t));
@@ -3004,37 +3127,47 @@ std::string CPPCompile::InitExprName(const ExprPtr& e)
 	return init_exprs.KeyName(e);
 	}
 
-std::string CPPCompile::GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v)
+void CPPCompile::GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v)
 	{
-	return "nullptr";
-	const auto& t = v->GetType();
+	if ( v->GetType()->Tag() == TYPE_FUNC )
+		return;
 
-	std::string gen;
-
-	switch ( t->Tag() ) {
-	case TYPE_ADDR:
-	case TYPE_BOOL:
-	case TYPE_COUNT:
-	case TYPE_DOUBLE:
-	case TYPE_ENUM:
-	case TYPE_INT:
-	case TYPE_INTERVAL:
-	case TYPE_PATTERN:
-	case TYPE_PORT:
-	case TYPE_STRING:
-	case TYPE_SUBNET:
-		// gen = GenVal
-
-	case TYPE_FUNC:
-
-	case TYPE_RECORD:
-	case TYPE_TABLE:
-	case TYPE_VECTOR:
-
-	default:
-		reporter->InternalError("bad type in CPPCompile::TypeTagName");
-
+	AddInit(g, std::string("if ( ! ") + gl + "->HasVal() )");
+	AddInit(g, std::string("\t") + gl + "->SetVal(" + BuildConstant(g, v) + ");");
 	}
+
+void CPPCompile::GenFuncVarInits()
+	{
+	for ( const auto& fv_init : func_vars )
+		{
+		auto& fv = fv_init.first;
+		auto f = fv->AsFunc();
+		auto& const_name = fv_init.second;
+
+		const auto& bodies = f->GetBodies();
+		ASSERT(bodies.size() == 1);
+
+		const auto body = bodies[0].stmts.get();
+		ASSERT(body_names.count(body) > 0);
+
+		auto& body_name = body_names[body];
+		ASSERT(body_hashes.count(body_name) > 0);
+
+		NoteInitDependency(fv, body);
+
+		const auto& h = body_hashes[body_name];
+		const auto& fn = f->Name();
+
+		const auto& ft = f->GetType();
+		auto ftr = TypeRep(ft);
+		NoteInitDependency(fv, ftr);
+
+		auto init = std::string("lookup_func__CPP(\"") + fn + "\", " +
+				Fmt(h) + ", " + GenTypeName(ft) + ")";
+
+		ValPtr fvp{NewRef{}, fv};
+		AddInit(fvp, const_name, init);
+		}
 	}
 
 void CPPCompile::GenAttrs(const AttributesPtr& attrs)
@@ -3424,6 +3557,10 @@ bool CPPCompile::IsNativeType(const TypePtr& t) const
 	case TYPE_TABLE:
 	case TYPE_TYPE:
 	case TYPE_VECTOR:
+		return false;
+
+	case TYPE_LIST:
+		// These occur for initializing tables.
 		return false;
 
 	default:
