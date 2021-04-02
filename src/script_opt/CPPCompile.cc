@@ -511,8 +511,9 @@ void CPPCompile::Compile()
 void CPPCompile::GenProlog()
 	{
 	if ( addl_tag == 0 )
-		Emit("#include \"zeek/script_opt/CPPProlog.h\"\n");
+		Emit("#include \"zeek/script_opt/CPPRuntime.h\"\n");
 
+	Emit("namespace zeek::detail { //\n");
 	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir.c_str());
 
 	// The following might-or-might-not wind up being populated/used.
@@ -722,7 +723,6 @@ void CPPCompile::GenEpilog()
 
 	Emit("#include \"zeek/script_opt/CPP-gen-addl.h\"\n");
 	Emit("} // zeek::detail");
-	Emit("} // zeek");
 	}
 
 bool CPPCompile::IsCompilable(const FuncInfo& func)

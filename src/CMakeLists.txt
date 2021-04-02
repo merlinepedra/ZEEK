@@ -327,6 +327,9 @@ set(MAIN_SRCS
 
     script_opt/CPPCompile.cc
     script_opt/CPPFunc.cc
+    script_opt/CPPRuntimeOps.cc
+    script_opt/CPPRuntimeInit.cc
+    script_opt/CPPRuntimeVec.cc
     script_opt/DefItem.cc
     script_opt/DefSetsMgr.cc
     script_opt/Expr.cc
