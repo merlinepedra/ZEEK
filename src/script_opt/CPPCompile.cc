@@ -2,8 +2,6 @@
 
 #include <errno.h>
 #include <unistd.h>
-#include <sys/types.h>
-#include <sys/file.h>
 #include <sys/stat.h>
 
 #include "zeek/RE.h"
@@ -12,107 +10,6 @@
 
 
 namespace zeek::detail {
-
-// Helper functions.
-std::string Fmt(int i)		{ return std::to_string(i); }
-std::string Fmt(hash_type u)	{ return std::to_string(u) + "ULL"; }
-std::string Fmt(double d)
-	{
-	// Special hack to preserve the signed-ness of the magic -0.0.
-	if ( d == -0.0 )
-		return "-0.0";
-
-	// Unfortunately, to_string(double) is hardwired to use %f with
-	// default of 6 digits precision.
-	char buf[8192];
-	snprintf(buf, sizeof buf, "%.17g", d);
-	return buf;
-	}
-
-std::string ScopePrefix(const std::string& scope)
-	{
-	return std::string("zeek::detail::CPP_") + scope + "::";
-	}
-
-std::string ScopePrefix(int scope)
-	{
-	return ScopePrefix(std::to_string(scope));
-	}
-
-
-template<class T1, class T2>
-void CPPTracker<T1, T2>::AddKey(T2 key, hash_type h)
-	{
-	if ( HasKey(key) )
-		return;
-
-	if ( h == 0 )
-		h = Hash(key);
-
-	if ( map2.count(h) == 0 )
-		{
-		int index;
-		if ( mapper && mapper->count(h) > 0 )
-			{
-			const auto& pair = (*mapper)[h];
-			index = pair.index;
-			scope2[h] = Fmt(pair.scope);
-			inherited.insert(h);
-			}
-		else
-			{
-			index = num_non_inherited++;
-			keys2.push_back(key);
-			}
-
-		map2[h] = index;
-		reps[h] = key.get();
-		}
-
-	ASSERT(h != 0);
-
-	map[key.get()] = h;
-	keys.push_back(key);
-	}
-
-template<class T1, class T2>
-std::string CPPTracker<T1, T2>::KeyName(T1 key)
-	{
-	ASSERT(HasKey(key));
-
-	auto hash = map[key];
-	ASSERT(hash != 0);
-
-	auto index = map2[hash];
-
-	std::string scope;
-	if ( IsInherited(hash) )
-		scope = ScopePrefix(scope2[hash]);
-
-	return scope + std::string(base_name) + "_" + Fmt(index) + "__CPP";
-	}
-
-template<class T1, class T2>
-void CPPTracker<T1, T2>::LogIfNew(T2 key, int scope, FILE* log_file)
-	{
-	if ( IsInherited(key) )
-		return;
-
-	auto hash = map[key.get()];
-	auto index = map2[hash];
-	fprintf(log_file, "hash\n%llu %d %d\n", hash, index, scope);
-	}
-
-template<class T1, class T2>
-hash_type CPPTracker<T1, T2>::Hash(T2 key) const
-	{
-	ODesc d;
-	d.SetDeterminism(true);
-	key->Describe(&d);
-	std::string desc = d.Description();
-	auto h = std::hash<std::string>{}(base_name + desc);
-	return hash_type(h);
-	}
 
 
 CPPHashManager::CPPHashManager(const char* hash_name_base, bool _append)
@@ -498,7 +395,7 @@ void CPPCompile::Compile()
 		if ( update )
 			{
 			fprintf(hm.HashFile(), "func\n%s%s\n",
-				ScopePrefix(addl_tag).c_str(), f.c_str());
+				scope_prefix(addl_tag).c_str(), f.c_str());
 			fprintf(hm.HashFile(), "%llu\n", h);
 			}
 		}
@@ -686,7 +583,7 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("static int dummy = hook_in_init();\n");
 
-	Emit("} // %s\n", ScopePrefix(addl_tag).c_str());
+	Emit("} // %s\n", scope_prefix(addl_tag).c_str());
 
 	for ( auto& g : pfs.AllGlobals() )
 		{
@@ -758,7 +655,7 @@ bool CPPCompile::AddGlobal(const std::string& g, const char* suffix, bool track)
 		auto gn = GlobalName(g, suffix);
 
 		if ( hm.HasGlobalVar(gn) )
-			gn = ScopePrefix(hm.GlobalVarScope(gn)) + gn;
+			gn = scope_prefix(hm.GlobalVarScope(gn)) + gn;
 		else
 			{
 			new_var = true;
@@ -4067,40 +3964,6 @@ void CPPCompile::Indent() const
 	{
 	for ( auto i = 0; i < block_level; ++i )
 		fprintf(write_file, "%s", "\t");
-	}
-
-
-bool is_CPP_compilable(const ProfileFunc* pf)
-	{
-	if ( pf->NumWhenStmts() > 0 )
-		return false;
-
-	if ( pf->TypeSwitches().size() > 0 )
-		return false;
-
-	return true;
-	}
-
-void lock_file(const std::string& fname, FILE* f)
-	{
-	if ( flock(fileno(f), LOCK_EX) < 0 )
-		{
-		char buf[256];
-		util::zeek_strerror_r(errno, buf, sizeof(buf));
-		reporter->Error("flock failed on %s: %s", fname.c_str(), buf);
-		exit(1);
-		}
-	}
-
-void unlock_file(const std::string& fname, FILE* f)
-	{
-	if ( flock(fileno(f), LOCK_UN) < 0 )
-		{
-		char buf[256];
-		util::zeek_strerror_r(errno, buf, sizeof(buf));
-		reporter->Error("un-flock failed on %s: %s", fname.c_str(), buf);
-		exit(1);
-		}
 	}
 
 } // zeek::detail

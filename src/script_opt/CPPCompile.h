@@ -4,81 +4,12 @@
 
 #include "zeek/Desc.h"
 #include "zeek/script_opt/CPPFunc.h"
+#include "zeek/script_opt/CPPUtil.h"
+#include "zeek/script_opt/CPPTracker.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
 
 namespace zeek::detail {
-
-// Helper class that tracks distinct instances of a given key.  T1 is the
-// pointer version of the type and T2 the IntrusivePtr version.
-template <class T1, class T2>
-class CPPTracker {
-public:
-	CPPTracker(const char* _base_name, VarMapper* _mapper = nullptr)
-	: base_name(_base_name), mapper(_mapper)
-		{
-		}
-
-	bool HasKey(T1 key) const	{ return map.count(key) > 0; }
-	bool HasKey(T2 key) const	{ return HasKey(key.get()); }
-
-	// Only adds the key if it's not already present.
-	void AddKey(T2 key, hash_type h = 0);
-
-	std::string KeyName(T1 key);
-	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
-
-	int KeyIndex(T1 key)	{ ASSERT(HasKey(key)); return map2[map[key]]; }
-	int KeyIndex(T2 key)	{ ASSERT(HasKey(key)); return map2[map[key.get()]]; }
-
-	const std::vector<T2>& Keys() const		{ return keys; }
-
-	// A key is "distinct" if it's both (1) a representative and
-	// (2) not inherited.
-	const std::vector<T2>& DistinctKeys() const	{ return keys2; }
-
-	int Size() const		{ return keys.size(); }
-	int DistinctSize() const	{ return num_non_inherited; }
-
-	const T1& GetRep(T1 key) 	{ ASSERT(HasKey(key)); return reps[map[key]]; }
-	const T1& GetRep(T2 key) 	{ return GetRep(key.get()); }
-
-	bool IsInherited(T1 key)	{ ASSERT(HasKey(key)); return IsInherited(map[key]); }
-	bool IsInherited(const T2& key)	{ ASSERT(HasKey(key)); return IsInherited(map[key.get()]); }
-	bool IsInherited(hash_type h)	{ return inherited.count(h) > 0; }
-
-	void LogIfNew(T2 key, int scope, FILE* log_file);
-
-private:
-	hash_type Hash(T2 key) const;
-
-	// Maps keys to internal representations.
-	std::unordered_map<T1, hash_type> map;
-
-	// Maps internal representations to distinct values.  These
-	// may-or-may-not be indices into an "inherited" namespace scope.
-	std::unordered_map<hash_type, int> map2;
-	std::unordered_map<hash_type, std::string> scope2;	// only if inherited
-	std::unordered_set<hash_type> inherited;	// which are inherited
-	int num_non_inherited = 0;	// distinct non-inherited map2 entries
-
-	// Tracks the set of keys, to facilitate iterating over them.
-	// Parallel to "map".
-	std::vector<T2> keys;
-
-	// Similar, but only for "representative" keys, i.e., those
-	// associated with distinct slots in map2.
-	std::vector<T2> keys2;
-
-	// Maps internal names to representatives.
-	std::unordered_map<hash_type, T1> reps;
-
-	// Used to construct key names.
-	std::string base_name;
-
-	// If non-nil, the mapper to consult for previous names.
-	VarMapper* mapper;
-};
 
 class CPPHashManager {
 public:
@@ -566,10 +497,5 @@ private:
 
 	int block_level = 0;
 };
-
-extern bool is_CPP_compilable(const ProfileFunc* pf);
-
-extern void lock_file(const std::string& fname, FILE* f);
-extern void unlock_file(const std::string& fname, FILE* f);
 
 } // zeek::detail
