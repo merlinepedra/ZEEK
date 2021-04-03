@@ -6,74 +6,11 @@
 #include "zeek/script_opt/CPPFunc.h"
 #include "zeek/script_opt/CPPUtil.h"
 #include "zeek/script_opt/CPPTracker.h"
+#include "zeek/script_opt/CPPHashMgr.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
 
 namespace zeek::detail {
-
-class CPPHashManager {
-public:
-	CPPHashManager(const char* hash_name_base, bool append);
-	~CPPHashManager();
-
-	bool Append() const		{ return append; }
-
-	bool HasHash(hash_type h) const
-		{ return previously_compiled.count(h) > 0; }
-
-	const std::string& FuncBodyName(hash_type h)
-		{ return previously_compiled[h]; }
-
-	bool HasGlobal(const std::string& gl) const
-		{ return gl_type_hashes.count(gl) > 0; }
-	hash_type GlobalTypeHash(const std::string& gl)
-		{ return gl_type_hashes[gl]; }
-	hash_type GlobalValHash(const std::string& gl)
-		{ return gl_val_hashes[gl]; }
-
-	bool HasGlobalVar(const std::string& gv) const
-		{ return gv_scopes.count(gv) > 0; }
-	int GlobalVarScope(const std::string& gv)
-		{ return gv_scopes[gv]; }
-
-	bool HasRecordTypeGlobal(const std::string& BiF) const
-		{ return record_type_globals.count(BiF) > 0; }
-	bool HasEnumTypeGlobal(const std::string& BiF) const
-		{ return enum_type_globals.count(BiF) > 0; }
-
-	FILE* HashFile() const	{ return hf_w; }
-
-protected:
-	void LoadHashes(FILE* f);
-
-	void RequireLine(FILE* f, std::string& line);
-	bool GetLine(FILE* f, std::string& line);
-
-	void BadLine(std::string& line);
-
-	// Tracks previously compiled bodies based on hashes, mapping them
-	// to a fully qualified name.
-	std::unordered_map<hash_type, std::string> previously_compiled;
-
-	// Tracks globals that are record or enum types.
-	std::unordered_set<std::string> record_type_globals;
-	std::unordered_set<std::string> enum_type_globals;
-
-	// Tracks globals seen in previously compiled bodies, mapping
-	// names to hashes of their types and their values.
-	std::unordered_map<std::string, hash_type> gl_type_hashes;
-	std::unordered_map<std::string, hash_type> gl_val_hashes;
-
-	// Information about globals in terms of their internal variable
-	// names, rather than their script-level names.
-	std::unordered_map<std::string, int> gv_scopes;
-
-	bool append;
-
-	std::string hash_name;
-	FILE* hf_r = nullptr;
-	FILE* hf_w = nullptr;
-};
 
 class CPPCompile {
 public:
