@@ -61,7 +61,7 @@ private:
 	// ---------------------------------------------------------------
 	// Start of methods related to generating code for AST Stmt's.
 	// See CPPCompileStmt.cc for definitions.
-	//
+
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
 	void GenStmt(const Stmt* s);
 	void GenInitStmt(const InitStmt* init);
@@ -78,14 +78,22 @@ private:
                              const IDPList* loop_vars);
 	void GenForOverVector(const ExprPtr& tbl, const IDPList* loop_vars);
 	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
-	//
+
 	// End of methods related to generating code for AST Stmt's.
 	// ---------------------------------------------------------------
 
 	// ---------------------------------------------------------------
 	// Start of methods related to generating code for AST Expr's.
 	// See CPPCompileExpr.cc for definitions.
-	//
+
+	// These methods are all oriented around returning strings
+	// of C++ code; they do not directly emit the code, since often
+	// the caller will be embedding the result in some surrounding
+	// context.  No effort is made to reduce string copying; this
+	// isn't worth the hassle, as it takes just a few seconds for
+	// the compiler to generate 100K+ LOC that clang will then need
+	// 10s of seconds to compile, so speeding up the compiler has
+	// little practical advantage.
 
 	// The following enum's represent whether, for expressions yielding
 	// native values, the end goal is to have the value in (1) native
@@ -98,12 +106,47 @@ private:
 		GEN_DONT_CARE,
 	};
 
+	// Generate an expression for which we want the result embedded
+	// in {} initializers (generally to be used in calling a function
+	// where we want those values to be translated to a vector<ValPtr>).
 	std::string GenExprs(const Expr* e);
-	std::string GenExprList(const Expr* e, GenType gt, bool nested);
+
+	// Generate the value(s) associated with a ListExpr.  If true,
+	// the "nested" parameter indicates that this list is embedded
+	// within an outer list, in which case it's expanded to include
+	// {}'s.  It's false if the ListExpr is at the top level, such
+	// as when expanding the arguments in a CallExpr.
+	std::string GenListExpr(const Expr* e, GenType gt, bool nested);
 
 	std::string GenExpr(const ExprPtr& e, GenType gt, bool top_level = false)
 		{ return GenExpr(e.get(), gt, top_level); }
 	std::string GenExpr(const Expr* e, GenType gt, bool top_level = false);
+
+	std::string GenNameExpr(const NameExpr* ne, GenType gt);
+	std::string GenConstExpr(const ConstExpr* c, GenType gt);
+	std::string GenIncrExpr(const Expr* e, GenType gt, bool is_incr, bool top_level);
+	std::string GenCondExpr(const Expr* e, GenType gt);
+	std::string GenCallExpr(const CallExpr* c, GenType gt);
+	std::string GenInExpr(const Expr* e, GenType gt);
+	std::string GenFieldExpr(const FieldExpr* fe, GenType gt);
+	std::string GenHasFieldExpr(const HasFieldExpr* hfe, GenType gt);
+	std::string GenIndexExpr(const Expr* e, GenType gt);
+	std::string GenAssignExpr(const Expr* e, GenType gt, bool top_level);
+	std::string GenAddToExpr(const Expr* e, GenType gt, bool top_level);
+	std::string GenSizeExpr(const Expr* e, GenType gt);
+	std::string GenScheduleExpr(const Expr* e);
+	std::string GenLambdaExpr(const Expr* e);
+	std::string GenIsExpr(const Expr* e, GenType gt);
+
+	std::string GenArithCoerceExpr(const Expr* e, GenType gt);
+	std::string GenRecordCoerceExpr(const Expr* e);
+	std::string GenTableCoerceExpr(const Expr* e);
+	std::string GenVectorCoerceExpr(const Expr* e);
+
+	std::string GenRecordConstructorExpr(const Expr* e);
+	std::string GenSetConstructorExpr(const Expr* e);
+	std::string GenTableConstructorExpr(const Expr* e);
+	std::string GenVectorConstructorExpr(const Expr* e);
 
 	std::string GenVal(const ValPtr& v);
 
@@ -136,7 +179,7 @@ private:
 	std::string GenField(const ExprPtr& rec, int field);
 
 	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
-	//
+
 	// End of methods related to generating code for AST Expr's.
 	// ---------------------------------------------------------------
 
