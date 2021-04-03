@@ -379,19 +379,19 @@ private:
 	std::vector<std::string> pre_inits;
 
 	// Maps types to indices in the global "types__CPP" array.
-	CPPTracker<const Type*, TypePtr> types = {"types", &compiled_items};
+	CPPTracker<Type> types = {"types", &compiled_items};
 
 	// Used to prevent analysis of mutually-referring types from
 	// leading to infinite recursion.
 	std::unordered_set<const Type*> processed_types;
 
 	// Similar for attributes, so we can reconstruct record types.
-	CPPTracker<const Attributes*, AttributesPtr> attributes = {"attrs", &compiled_items};
+	CPPTracker<Attributes> attributes = {"attrs", &compiled_items};
 
 	// Expressions for which we need to generate initialization-time
 	// code.  Currently, these are only expressions appearing in
 	// attributes.
-	CPPTracker<const Expr*, ExprPtr> init_exprs = {"gen_init_expr", &compiled_items};
+	CPPTracker<Expr> init_exprs = {"gen_init_expr", &compiled_items};
 
 	// For record that are extended via redef's, maps fields
 	// beyond the original definition to locations in the

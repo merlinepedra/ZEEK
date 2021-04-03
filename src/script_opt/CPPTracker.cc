@@ -8,8 +8,8 @@
 
 namespace zeek::detail {
 
-template<class T1, class T2>
-void CPPTracker<T1, T2>::AddKey(T2 key, hash_type h)
+template<class T>
+void CPPTracker<T>::AddKey(IntrusivePtr<T> key, hash_type h)
 	{
 	if ( HasKey(key) )
 		return;
@@ -42,8 +42,8 @@ void CPPTracker<T1, T2>::AddKey(T2 key, hash_type h)
 	map[key.get()] = h;
 	}
 
-template<class T1, class T2>
-std::string CPPTracker<T1, T2>::KeyName(T1 key)
+template<class T>
+std::string CPPTracker<T>::KeyName(const T* key)
 	{
 	ASSERT(HasKey(key));
 
@@ -59,8 +59,8 @@ std::string CPPTracker<T1, T2>::KeyName(T1 key)
 	return scope + std::string(base_name) + "_" + Fmt(index) + "__CPP";
 	}
 
-template<class T1, class T2>
-void CPPTracker<T1, T2>::LogIfNew(T2 key, int scope, FILE* log_file)
+template<class T>
+void CPPTracker<T>::LogIfNew(IntrusivePtr<T> key, int scope, FILE* log_file)
 	{
 	if ( IsInherited(key) )
 		return;
@@ -71,8 +71,8 @@ void CPPTracker<T1, T2>::LogIfNew(T2 key, int scope, FILE* log_file)
 	fprintf(log_file, "hash\n%llu %d %d\n", hash, index, scope);
 	}
 
-template<class T1, class T2>
-hash_type CPPTracker<T1, T2>::Hash(T2 key) const
+template<class T>
+hash_type CPPTracker<T>::Hash(IntrusivePtr<T> key) const
 	{
 	ODesc d;
 	d.SetDeterminism(true);
@@ -84,8 +84,8 @@ hash_type CPPTracker<T1, T2>::Hash(T2 key) const
 
 
 // Instantiate the templates we'll need.
-template class CPPTracker<const Type*, TypePtr>;
-template class CPPTracker<const Attributes*, AttributesPtr>;
-template class CPPTracker<const Expr*, ExprPtr>;
+template class CPPTracker<Type>;
+template class CPPTracker<Attributes>;
+template class CPPTracker<Expr>;
 
 } // zeek::detail

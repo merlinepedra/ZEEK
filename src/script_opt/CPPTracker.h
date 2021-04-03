@@ -18,9 +18,9 @@
 
 namespace zeek::detail {
 
-// T1 is the pointer version of the type and T2 the IntrusivePtr version.
+// T is a type that has an IntrusivePtr instantiation.
 
-template <class T1, class T2>
+template <class T>
 class CPPTracker {
 public:
 	// The base name is used to construct key names.  The mapper,
@@ -32,41 +32,46 @@ public:
 		}
 
 	// True if the given key has already been entered.
-	bool HasKey(T1 key) const	{ return map.count(key) > 0; }
-	bool HasKey(T2 key) const	{ return HasKey(key.get()); }
+	bool HasKey(const T* key) const		{ return map.count(key) > 0; }
+	bool HasKey(IntrusivePtr<T> key) const	{ return HasKey(key.get()); }
 
 	// Only adds the key if it's not already present.  If a hash
 	// is provided, then refrains from computing it.
-	void AddKey(T2 key, hash_type h = 0);
+	void AddKey(IntrusivePtr<T> key, hash_type h = 0);
 
 	// Returns the (C++ variable) name associated with the given key.
-	std::string KeyName(T1 key);
-	std::string KeyName(T2 key)	{ return KeyName(key.get()); }
+	std::string KeyName(const T* key);
+	std::string KeyName(IntrusivePtr<T> key)
+		{ return KeyName(key.get()); }
 
 	// Returns all of the distinct keys entered into the tracker.
 	// A key is "distinct" if it's both (1) a representative and
 	// (2) not inherited.
-	const std::vector<T2>& DistinctKeys() const	{ return keys; }
+	const std::vector<IntrusivePtr<T>>& DistinctKeys() const
+		{ return keys; }
 
 	// For a given key, get its representative.
-	const T1& GetRep(T1 key) 	{ ASSERT(HasKey(key)); return reps[map[key]]; }
-	const T1& GetRep(T2 key) 	{ return GetRep(key.get()); }
+	const T* GetRep(const T* key)
+		{ ASSERT(HasKey(key)); return reps[map[key]]; }
+	const T* GetRep(IntrusivePtr<T> key) 	{ return GetRep(key.get()); }
 
 	// True if the given key is represented by an inherited value.
-	bool IsInherited(T1 key)	{ ASSERT(HasKey(key)); return IsInherited(map[key]); }
-	bool IsInherited(const T2& key)	{ ASSERT(HasKey(key)); return IsInherited(map[key.get()]); }
+	bool IsInherited(const T* key)
+		{ ASSERT(HasKey(key)); return IsInherited(map[key]); }
+	bool IsInherited(const IntrusivePtr<T>& key)
+		{ ASSERT(HasKey(key)); return IsInherited(map[key.get()]); }
 	bool IsInherited(hash_type h)	{ return inherited.count(h) > 0; }
 
 	// If the given key is not inherited, logs it and its associated
 	// scope to the given file.
-	void LogIfNew(T2 key, int scope, FILE* log_file);
+	void LogIfNew(IntrusivePtr<T> key, int scope, FILE* log_file);
 
 private:
 	// Compute a hash for the given key.
-	hash_type Hash(T2 key) const;
+	hash_type Hash(IntrusivePtr<T> key) const;
 
 	// Maps keys to internal representations (i.e., hashes).
-	std::unordered_map<T1, hash_type> map;
+	std::unordered_map<const T*, hash_type> map;
 
 	// Maps internal representations to distinct values.  These
 	// may-or-may-not be indices into an "inherited" namespace scope.
@@ -77,10 +82,10 @@ private:
 
 	// Tracks the set of distinct keys, to facilitate iterating over them.
 	// Each such key also has an entry in map2.
-	std::vector<T2> keys;
+	std::vector<IntrusivePtr<T>> keys;
 
 	// Maps internal representations back to keys.
-	std::unordered_map<hash_type, T1> reps;
+	std::unordered_map<hash_type, const T*> reps;
 
 	// Used to construct key names.
 	std::string base_name;
