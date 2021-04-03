@@ -166,6 +166,17 @@ private:
 				const std::string& rhs_native,
 				const std::string& rhs_val_ptr,
 				GenType gt, bool top_level);
+	std::string GenDirectAssign(const ExprPtr& lhs,
+				const std::string& rhs_native,
+				const std::string& rhs_val_ptr,
+				GenType gt, bool top_level);
+	std::string GenIndexAssign(const ExprPtr& lhs, const ExprPtr& rhs,
+				const std::string& rhs_val_ptr,
+				GenType gt, bool top_level);
+	std::string GenFieldAssign(const ExprPtr& lhs, const ExprPtr& rhs,
+				const std::string& rhs_val_ptr,
+				GenType gt, bool top_level);
+	std::string GenListAssign(const ExprPtr& lhs, const ExprPtr& rhs);
 
 	std::string GenVectorOp(const Expr* e, std::string op,
 				const char* vec_op);
