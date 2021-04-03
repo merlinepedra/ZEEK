@@ -58,9 +58,29 @@ private:
 
 	std::string BodyName(const FuncInfo& func);
 
+	// -----------
+	// Start of methods related to generating code for AST Stmt's.
+	// See CPPCompileStmt.cc for definitions.
+	//
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
 	void GenStmt(const Stmt* s);
+	void GenInitStmt(const InitStmt* init);
+	void GenIfStmt(const IfStmt* i);
+	void GenWhileStmt(const WhileStmt* w);
+	void GenReturnStmt(const ReturnStmt* r);
+	void GenAddStmt(const ExprStmt* es);
+	void GenDeleteStmt(const ExprStmt* es);
+	void GenEventStmt(const EventStmt* ev);
 	void GenSwitchStmt(const SwitchStmt* sw);
+
+	void GenForStmt(const ForStmt* f);
+	void GenForOverTable(const ExprPtr& tbl, const IDPtr& value_var,
+                             const IDPList* loop_vars);
+	void GenForOverVector(const ExprPtr& tbl, const IDPList* loop_vars);
+	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
+	//
+	// End of methods related to generating code for AST Stmt's.
+	// -----------
 
 	enum GenType {
 		GEN_DONT_CARE,
