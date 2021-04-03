@@ -183,12 +183,24 @@ private:
 	std::string GenVectorOp(const Expr* e, std::string op1,
 				std::string op2, const char* vec_op);
 
+	// If "all_deep" is true, it means make all of the captures
+	// deep copies, not just the ones that were explicitly marked
+	// as deep copies.
 	std::string GenLambdaClone(const LambdaExpr* l, bool all_deep);
 
+	// Returns an initializer list for a vector of integers.
 	std::string GenIntVector(const std::vector<int>& vec);
 
+	// The following are used to generate accesses to elements of
+	// extensible types.  They first check whether the type has
+	// been extended (for records, beyond the field of interest);
+	// if not, then the access is done directly.  If the access
+	// is however to an extended element, then they indirect the
+	// access through a map that is generated dynamically when
+	// the compiled code.  Doing so allows the compiled code to
+	// work in contexts where other extensions occur that would
+	// otherwise conflict with hardwired offsets/values.
 	std::string GenField(const ExprPtr& rec, int field);
-
 	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
 
 	// End of methods related to generating code for AST Expr's.
