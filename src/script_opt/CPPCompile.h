@@ -58,7 +58,7 @@ private:
 
 	std::string BodyName(const FuncInfo& func);
 
-	// -----------
+	// ---------------------------------------------------------------
 	// Start of methods related to generating code for AST Stmt's.
 	// See CPPCompileStmt.cc for definitions.
 	//
@@ -80,12 +80,22 @@ private:
 	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
 	//
 	// End of methods related to generating code for AST Stmt's.
-	// -----------
+	// ---------------------------------------------------------------
 
+	// ---------------------------------------------------------------
+	// Start of methods related to generating code for AST Expr's.
+	// See CPPCompileExpr.cc for definitions.
+	//
+
+	// The following enum's represent whether, for expressions yielding
+	// native values, the end goal is to have the value in (1) native
+	// form, (2) instead in ValPtr form, or (3) whichever is more
+	// convenient to generate (sometimes used when the caller knows
+	// that the value is non-native).
 	enum GenType {
-		GEN_DONT_CARE,
 		GEN_NATIVE,
 		GEN_VAL_PTR,
+		GEN_DONT_CARE,
 	};
 
 	std::string GenExprs(const Expr* e);
@@ -96,11 +106,6 @@ private:
 	std::string GenExpr(const Expr* e, GenType gt, bool top_level = false);
 
 	std::string GenVal(const ValPtr& v);
-
-	void BuildAttrs(const AttributesPtr& attrs,
-				std::string& attr_tags, std::string& attr_vals);
-
-	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
 	std::string GenUnary(const Expr* e, GenType gt,
 				const char* op, const char* vec_op = nullptr);
@@ -131,6 +136,14 @@ private:
 	std::string GenField(const ExprPtr& rec, int field);
 
 	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
+	//
+	// End of methods related to generating code for AST Expr's.
+	// ---------------------------------------------------------------
+
+	void BuildAttrs(const AttributesPtr& attrs,
+				std::string& attr_tags, std::string& attr_vals);
+
+	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
 	std::string NativeToGT(const std::string& expr, const TypePtr& t,
 				GenType gt);
