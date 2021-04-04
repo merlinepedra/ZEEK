@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+#include "zeek/File.h"
 #include "zeek/RE.h"
 #include "zeek/script_opt/CPPCompile.h"
 #include "zeek/script_opt/ProfileFunc.h"
@@ -735,6 +736,18 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		// to deal with later.
 		func_vars[v->AsFuncVal()] = const_name;
 
+		return true;
+
+	case TYPE_FILE:
+		{
+		Emit("FileValPtr %s;", const_name);
+
+		auto f = cast_intrusive<FileVal>(vp)->Get();
+
+		AddInit(v, const_name,
+			std::string("make_intrusive<FileVal>(") +
+			"make_intrusive<File>(\"" + f->Name() + "\", \"w\"))");
+		}
 		return true;
 
 	default:

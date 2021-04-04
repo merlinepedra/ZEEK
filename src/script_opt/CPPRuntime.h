@@ -5,6 +5,7 @@
 #include "zeek/module_util.h"
 #include "zeek/ZeekString.h"
 #include "zeek/Func.h"
+#include "zeek/File.h"
 #include "zeek/Frame.h"
 #include "zeek/Scope.h"
 #include "zeek/RE.h"
