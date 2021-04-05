@@ -329,6 +329,7 @@ set(MAIN_SRCS
     script_opt/CPPCompileAttrs.cc
     script_opt/CPPCompileConsts.cc
     script_opt/CPPCompileExprs.cc
+    script_opt/CPPCompileInits.cc
     script_opt/CPPCompileStmts.cc
     script_opt/CPPCompileTypes.cc
     script_opt/CPPFunc.cc

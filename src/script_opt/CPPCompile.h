@@ -306,26 +306,43 @@ private:
 
 	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
+	// Start of methods related to run-time initialization.
+	// See CPPCompileInits.cc for definitions.
+	//
+
+	// Generates code to construct a CallExpr that can be used to
+	// evaluate the expression 'e' as an initializer (typically
+	// for a record &default attribute).
 	void GenInitExpr(const ExprPtr& e);
+
+	// True if the given expression is simple enough that we can
+	// generate code to evaluate it directly, and don't need to
+	// create a separate function per GenInitExpr().
 	bool IsSimpleInitExpr(const ExprPtr& e) const;
+
+	// Returns the name of a function used to evaluate an
+	// initialization expression.
 	std::string InitExprName(const ExprPtr& e);
 
+	// Generates code to initializes the global 'g' (with C++ name "gl")
+	// to the given value *if* on start-up it doesn't already have a value.
 	void GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v);
+
+	// Generates code to initialize all of the function-valued globals
+	// (i.e., those pointing to lambdas).
 	void GenFuncVarInits();
 
-	const char* IDName(const ID& id)	{ return IDName(&id); }
-	const char* IDName(const IDPtr& id)	{ return IDName(id.get()); }
-	const char* IDName(const ID* id)	{ return IDNameStr(id).c_str(); }
-	const std::string& IDNameStr(const ID* id) const;
-
-	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
-				const ProfileFunc* pf);
-	const ID* FindParam(int i, const ProfileFunc* pf);
-
+	// Generates the "pre-initialization" for a given type.  For
+	// extensible types (records, enums, lists), these are empty
+	// versions that we'll later populate.
 	void GenPreInit(const Type* t);
 
-	void RegisterEvent(std::string ev_name);
-
+	// The following all track that for a given object, code associated
+	// with initializing it.  Multiple calls for the same object append
+	// additional lines of code (the order of the calls is preserved).
+	//
+	// Versions with "lhs" and "rhs" arguments provide an initialization
+	// of the form "lhs = rhs;", as a convenience.
 	void AddInit(const IntrusivePtr<Obj>& o,
 			const std::string& lhs, const std::string& rhs)
 		{ AddInit(o.get(), lhs + " = " + rhs + ";"); }
@@ -336,7 +353,11 @@ private:
 		{ AddInit(o.get(), init); }
 	void AddInit(const Obj* o, const std::string& init);
 
-	// For objects perhaps w/o initializations, but with dependencies.
+	// We do consistency checking of initialization dependencies by
+	// looking for depended-on objects have initializations.  Sometimes
+	// it's unclear whether the object will actually require
+	// initialization, in which case we add an empty initialization
+	// for it so that the consistency-checking is happy.
 	void AddInit(const IntrusivePtr<Obj>& o)	{ AddInit(o.get()); }
 	void AddInit(const Obj* o);
 
@@ -351,6 +372,10 @@ private:
 		{ NoteInitDependency(o1, o2.get()); }
 	void NoteInitDependency(const Obj* o1, const Obj* o2);
 
+	// Records an initialization dependency of the given object
+	// on the given type, unless the type is a record.  We need
+	// this notion to protect against circular dependencies in
+	// the face of recursive records.
 	void NoteNonRecordInitDependency(const Obj* o, const TypePtr& t)
 		{
 		if ( t && t->Tag() != TYPE_RECORD )
@@ -358,6 +383,20 @@ private:
 		}
 	void NoteNonRecordInitDependency(const IntrusivePtr<Obj> o, const TypePtr& t)
 		{ NoteNonRecordInitDependency(o.get(), t); }
+
+	//
+	// End of methods related to run-time initialization.
+
+	const char* IDName(const ID& id)	{ return IDName(&id); }
+	const char* IDName(const IDPtr& id)	{ return IDName(id.get()); }
+	const char* IDName(const ID* id)	{ return IDNameStr(id).c_str(); }
+	const std::string& IDNameStr(const ID* id) const;
+
+	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
+				const ProfileFunc* pf);
+	const ID* FindParam(int i, const ProfileFunc* pf);
+
+	void RegisterEvent(std::string ev_name);
 
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);
