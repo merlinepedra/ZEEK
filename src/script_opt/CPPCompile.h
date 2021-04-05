@@ -275,6 +275,10 @@ private:
 	const char* TypeType(const TypePtr& t);
 
 	void RegisterType(const TypePtr& t);
+	void RegisterListType(const TypePtr& t);
+	void RegisterTableType(const TypePtr& t);
+	void RegisterRecordType(const TypePtr& t);
+	void RegisterFuncType(const TypePtr& t);
 
 	const char* NativeAccessor(const TypePtr& t);
 	const char* IntrusiveVal(const TypePtr& t);
@@ -337,11 +341,14 @@ private:
 	void NoteInitDependency(const Obj* o1, const IntrusivePtr<Obj>& o2)
 		{ NoteInitDependency(o1, o2.get()); }
 	void NoteInitDependency(const Obj* o1, const Obj* o2);
+
 	void NoteNonRecordInitDependency(const Obj* o, const TypePtr& t)
 		{
 		if ( t && t->Tag() != TYPE_RECORD )
 			NoteInitDependency(o, TypeRep(t));
 		}
+	void NoteNonRecordInitDependency(const IntrusivePtr<Obj> o, const TypePtr& t)
+		{ NoteNonRecordInitDependency(o.get(), t); }
 
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);

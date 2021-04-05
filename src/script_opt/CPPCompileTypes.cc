@@ -174,8 +174,8 @@ void CPPCompile::ExpandEnumTypeVar(const TypePtr& t, std::string& tn)
 
 	for ( const auto& name_pair : et->Names() )
 		AddInit(t, std::string("\tet->AddNameInternal(\"") +
-			name_pair.first + "\", " +
-			Fmt(int(name_pair.second)) + ");");
+		        name_pair.first + "\", " +
+		        Fmt(int(name_pair.second)) + ");");
 
 	AddInit(t, "}}");
 	}
@@ -189,14 +189,13 @@ void CPPCompile::ExpandTableTypeVar(const TypePtr& t, std::string& tn)
 
 	if ( tbl->IsSet() )
 		AddInit(t, tn,
-			std::string("make_intrusive<SetType>(cast_intrusive<TypeList>(") +
-			GenTypeName(indices) +
-			" ), nullptr)");
+		        std::string("make_intrusive<SetType>(cast_intrusive<TypeList>(") +
+		        GenTypeName(indices) + " ), nullptr)");
 	else
 		AddInit(t, tn,
-			std::string("make_intrusive<TableType>(cast_intrusive<TypeList>(") +
-			GenTypeName(indices) + "), " +
-			GenTypeName(yield) + ")");
+		        std::string("make_intrusive<TableType>(cast_intrusive<TypeList>(") +
+		        GenTypeName(indices) + "), " +
+		        GenTypeName(yield) + ")");
 	}
 
 void CPPCompile::ExpandFuncTypeVar(const TypePtr& t, std::string& tn)
@@ -224,8 +223,8 @@ void CPPCompile::ExpandFuncTypeVar(const TypePtr& t, std::string& tn)
 		fl_name = "FUNC_FLAVOR_HOOK";
 
 	auto type_init = std::string("make_intrusive<FuncType>(cast_intrusive<RecordType>(") +
-		args_type_accessor + "), " +
-		yield_type_accessor + ", " + fl_name + ")";
+	                 args_type_accessor + "), " +
+	                 yield_type_accessor + ", " + fl_name + ")";
 
 	AddInit(t, tn, type_init);
 	}
@@ -234,16 +233,15 @@ std::string CPPCompile::GenTypeDecl(const TypeDecl* td)
 	{
 	auto type_accessor = GenTypeName(td->type);
 
-	auto td_name = std::string("util::copy_string(\"") +
-			td->id + "\")";
+	auto td_name = std::string("util::copy_string(\"") + td->id + "\")";
 
 	if ( td->attrs )
 		return std::string("tl.append(new TypeDecl(") +
-			td_name + ", " + type_accessor +
-			", " + AttrsName(td->attrs) +"));";
+		       td_name + ", " + type_accessor +
+		       ", " + AttrsName(td->attrs) +"));";
 
-	return std::string("tl.append(new TypeDecl(") + td_name + ", "
-				+ type_accessor +"));";
+	return std::string("tl.append(new TypeDecl(") + td_name + ", " +
+	                   type_accessor +"));";
 	}
 
 std::string CPPCompile::GenTypeName(const Type* t)
@@ -411,66 +409,19 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 		break;
 
 	case TYPE_LIST:
-		{
-		auto tl = t->AsTypeList()->GetTypes();
-		for ( auto i = 0; i < tl.size(); ++i )
-			{
-			NoteNonRecordInitDependency(t, tl[i]);
-			RegisterType(tl[i]);
-			}
-		}
+		RegisterListType(tp);
 		break;
 
 	case TYPE_TABLE:
-		{
-		auto tbl = t->AsTableType();
-		const auto& indices = tbl->GetIndices();
-		const auto& yield = tbl->Yield();
-
-		NoteNonRecordInitDependency(t, indices);
-		RegisterType(indices);
-
-		if ( yield )
-			{
-			NoteNonRecordInitDependency(t, yield);
-			RegisterType(yield);
-			}
-		}
+		RegisterTableType(tp);
 		break;
 
 	case TYPE_RECORD:
-		{
-		auto r = t->AsRecordType()->Types();
-
-		for ( auto i = 0; i < r->length(); ++i )
-			{
-			const auto& r_i = (*r)[i];
-
-			NoteNonRecordInitDependency(t, r_i->type);
-			RegisterType(r_i->type);
-
-			if ( r_i->attrs )
-				{
-				NoteInitDependency(t, r_i->attrs);
-				RegisterAttributes(r_i->attrs);
-				}
-			}
-		}
+		RegisterRecordType(tp);
 		break;
 
 	case TYPE_FUNC:
-		{
-		auto f = t->AsFuncType();
-
-		NoteInitDependency(t, TypeRep(f->Params()));
-		RegisterType(f->Params());
-
-		if ( f->Yield() )
-			{
-			NoteNonRecordInitDependency(t, f->Yield());
-			RegisterType(f->Yield());
-			}
-		}
+		RegisterFuncType(tp);
 		break;
 
 	default:
@@ -486,6 +437,66 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 			GenPreInit(t);
 		else
 			NoteInitDependency(t, t_rep);
+		}
+	}
+
+void CPPCompile::RegisterListType(const TypePtr& t)
+	{
+	auto tl = t->AsTypeList()->GetTypes();
+
+	for ( auto i = 0; i < tl.size(); ++i )
+		{
+		NoteNonRecordInitDependency(t, tl[i]);
+		RegisterType(tl[i]);
+		}
+	}
+
+void CPPCompile::RegisterTableType(const TypePtr& t)
+	{
+	auto tbl = t->AsTableType();
+	const auto& indices = tbl->GetIndices();
+	const auto& yield = tbl->Yield();
+
+	NoteNonRecordInitDependency(t, indices);
+	RegisterType(indices);
+
+	if ( yield )
+		{
+		NoteNonRecordInitDependency(t, yield);
+		RegisterType(yield);
+		}
+	}
+
+void CPPCompile::RegisterRecordType(const TypePtr& t)
+	{
+	auto r = t->AsRecordType()->Types();
+
+	for ( auto i = 0; i < r->length(); ++i )
+		{
+		const auto& r_i = (*r)[i];
+
+		NoteNonRecordInitDependency(t, r_i->type);
+		RegisterType(r_i->type);
+
+		if ( r_i->attrs )
+			{
+			NoteInitDependency(t, r_i->attrs);
+			RegisterAttributes(r_i->attrs);
+			}
+		}
+	}
+
+void CPPCompile::RegisterFuncType(const TypePtr& t)
+	{
+	auto f = t->AsFuncType();
+
+	NoteInitDependency(t, TypeRep(f->Params()));
+	RegisterType(f->Params());
+
+	if ( f->Yield() )
+		{
+		NoteNonRecordInitDependency(t, f->Yield());
+		RegisterType(f->Yield());
 		}
 	}
 
