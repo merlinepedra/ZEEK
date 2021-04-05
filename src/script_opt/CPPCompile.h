@@ -31,9 +31,27 @@ private:
 	void AddBiF(const ID* b, bool is_var);
 	bool AddGlobal(const std::string& g, const char* suffix, bool track);
 
+	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
+	// Start of methods related to generating code for representing
+	// script constants as run-time values.
+	// See CPPCompileConsts.cc for definitions.
+
 	void AddConstant(const ConstExpr* c);
 	bool AddConstant(const ValPtr& v);
+
+	void AddStringConstant(const ValPtr& v, std::string& const_name);
+	void AddPatternConstant(const ValPtr& v, std::string& const_name);
+	void AddListConstant(const ValPtr& v, std::string& const_name);
+	void AddRecordConstant(const ValPtr& v, std::string& const_name);
+	void AddTableConstant(const ValPtr& v, std::string& const_name);
+	void AddVectorConstant(const ValPtr& v, std::string& const_name);
+
+	std::string BuildConstant(IntrusivePtr<Obj> parent, const ValPtr& vp)
+		{ return BuildConstant(parent.get(), vp); }
 	std::string BuildConstant(const Obj* parent, const ValPtr& vp);
+
+	// End of methods related to generating code for script constants.
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 	void DeclareFunc(const FuncInfo& func);
 	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
@@ -58,7 +76,7 @@ private:
 
 	std::string BodyName(const FuncInfo& func);
 
-	// ---------------------------------------------------------------
+	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to generating code for AST Stmt's.
 	// See CPPCompileStmt.cc for definitions.
 
@@ -80,9 +98,9 @@ private:
 	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
 
 	// End of methods related to generating code for AST Stmt's.
-	// ---------------------------------------------------------------
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-	// ---------------------------------------------------------------
+	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to generating code for AST Expr's.
 	// See CPPCompileExpr.cc for definitions.
 
@@ -204,17 +222,70 @@ private:
 	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
 
 	// End of methods related to generating code for AST Expr's.
-	// ---------------------------------------------------------------
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
+	// Start of methods related to managing script types.
+	// See CPPCompileTypes.cc for definitions.
+
+	// "Native" types are those Zeek scripting types that we support
+	// using low-level C++ types (like "bro_uint_t" for "count").
+	// Types that we instead support using some form of ValPtr
+	// representation are "non-native".
+	bool IsNativeType(const TypePtr& t) const;
+
+	// Given an expression corresponding to a native type (and with
+	// the given script type 't'), converts it to the given GenType.
+	std::string NativeToGT(const std::string& expr, const TypePtr& t,
+	                       GenType gt);
+
+	// Given an expression with a C++ type of generic "ValPtr", of the
+	// given script type 't', converts it as needed to the given GenType.
+	std::string GenericValPtrToGT(const std::string& expr, const TypePtr& t,
+	                              GenType gt);
+
+	// For a given type, generates the code necessary to initialize
+	// it at run time.  The term "expand" in the method's name refers
+	// to the fact that the type has already been previously declared
+	// (necessary to facilitate defining recursive types), so this method
+	// generates the "meat" of the type but not its original declaration.
+	void ExpandTypeVar(const TypePtr& t);
+
+	// Methods for expanding specific such types.  "tn" is the name
+	// of the C++ variable used for the particular type.
+	void ExpandListTypeVar(const TypePtr& t, std::string& tn);
+	void ExpandRecordTypeVar(const TypePtr& t, std::string& tn);
+	void ExpandEnumTypeVar(const TypePtr& t, std::string& tn);
+	void ExpandTableTypeVar(const TypePtr& t, std::string& tn);
+	void ExpandFuncTypeVar(const TypePtr& t, std::string& tn);
+
+	// The following assumes we're populating a type_decl_list called "tl".
+	std::string GenTypeDecl(const TypeDecl* td);
+
+	std::string GenTypeName(const Type* t);
+	std::string GenTypeName(const TypePtr& t)
+		{ return GenTypeName(t.get()); }
+
+	const Type* TypeRep(const Type* t)	{ return pfs.TypeRep(t); }
+	const Type* TypeRep(const TypePtr& t)	{ return TypeRep(t.get()); }
+
+	const char* TypeTagName(TypeTag tag) const;
+	const char* TypeName(const TypePtr& t);
+	const char* FullTypeName(const TypePtr& t);
+	const char* TypeType(const TypePtr& t);
+
+	void RegisterType(const TypePtr& t);
+
+	const char* NativeAccessor(const TypePtr& t);
+	const char* IntrusiveVal(const TypePtr& t);
+
+	// End of methods related to managing script types.
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 	void BuildAttrs(const AttributesPtr& attrs,
 				std::string& attr_tags, std::string& attr_vals);
 
 	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
-
-	std::string NativeToGT(const std::string& expr, const TypePtr& t,
-				GenType gt);
-	std::string GenericValPtrToGT(const std::string& expr, const TypePtr& t,
-					GenType gt);
 
 	void GenInitExpr(const ExprPtr& e);
 	bool IsSimpleInitExpr(const ExprPtr& e) const;
@@ -227,20 +298,6 @@ private:
 	std::string AttrsName(const AttributesPtr& attrs);
 	const char* AttrName(const AttrPtr& attr);
 
-	void ExpandTypeVar(const TypePtr& t);
-	// The following assumes we're populating a type_decl_list
-	// called "tl".
-	std::string GenTypeDecl(const TypeDecl* td);
-
-	std::string GenTypeName(const Type* t);
-	std::string GenTypeName(const TypePtr& t)
-		{ return GenTypeName(t.get()); }
-
-	const Type* TypeRep(const Type* t)	{ return pfs.TypeRep(t); }
-	const Type* TypeRep(const TypePtr& t)	{ return TypeRep(t.get()); }
-
-	const char* TypeTagName(TypeTag tag) const;
-
 	const char* IDName(const ID& id)	{ return IDName(&id); }
 	const char* IDName(const IDPtr& id)	{ return IDName(id.get()); }
 	const char* IDName(const ID* id)	{ return IDNameStr(id).c_str(); }
@@ -250,20 +307,11 @@ private:
 				const ProfileFunc* pf);
 	const ID* FindParam(int i, const ProfileFunc* pf);
 
-	bool IsNativeType(const TypePtr& t) const;
-	const char* FullTypeName(const TypePtr& t);
-	const char* TypeName(const TypePtr& t);
-	const char* TypeType(const TypePtr& t);
-
-	void RegisterType(const TypePtr& t);
 	void GenPreInit(const Type* t);
 
 	void RegisterAttributes(const AttributesPtr& attrs);
 
 	void RegisterEvent(std::string ev_name);
-
-	const char* NativeAccessor(const TypePtr& t);
-	const char* IntrusiveVal(const TypePtr& t);
 
 	void AddInit(const IntrusivePtr<Obj>& o,
 			const std::string& lhs, const std::string& rhs)
