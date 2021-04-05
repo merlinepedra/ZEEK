@@ -31,10 +31,10 @@ private:
 	void AddBiF(const ID* b, bool is_var);
 	bool AddGlobal(const std::string& g, const char* suffix, bool track);
 
-	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to generating code for representing
 	// script constants as run-time values.
 	// See CPPCompileConsts.cc for definitions.
+	//
 
 	void AddConstant(const ConstExpr* c);
 	bool AddConstant(const ValPtr& v);
@@ -50,8 +50,8 @@ private:
 		{ return BuildConstant(parent.get(), vp); }
 	std::string BuildConstant(const Obj* parent, const ValPtr& vp);
 
+	//
 	// End of methods related to generating code for script constants.
-	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 	void DeclareFunc(const FuncInfo& func);
 	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
@@ -76,9 +76,9 @@ private:
 
 	std::string BodyName(const FuncInfo& func);
 
-	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to generating code for AST Stmt's.
 	// See CPPCompileStmts.cc for definitions.
+	//
 
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
 	void GenStmt(const Stmt* s);
@@ -97,12 +97,12 @@ private:
 	void GenForOverVector(const ExprPtr& tbl, const IDPList* loop_vars);
 	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
 
+	//
 	// End of methods related to generating code for AST Stmt's.
-	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to generating code for AST Expr's.
 	// See CPPCompileExprs.cc for definitions.
+	//
 
 	// These methods are all oriented around returning strings
 	// of C++ code; they do not directly emit the code, since often
@@ -221,12 +221,12 @@ private:
 	std::string GenField(const ExprPtr& rec, int field);
 	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
 
+	//
 	// End of methods related to generating code for AST Expr's.
-	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to managing script types.
 	// See CPPCompileTypes.cc for definitions.
+	//
 
 	// "Native" types are those Zeek scripting types that we support
 	// using low-level C++ types (like "bro_uint_t" for "count").
@@ -283,12 +283,12 @@ private:
 	const char* NativeAccessor(const TypePtr& t);
 	const char* IntrusiveVal(const TypePtr& t);
 
+	//
 	// End of methods related to managing script types.
-	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to managing script type attributes.
 	// See CPPCompileAttrs.cc for definitions.
+	//
 
 	void BuildAttrs(const AttributesPtr& attrs, std::string& attr_tags,
 	                std::string& attr_vals);
@@ -301,8 +301,8 @@ private:
 
 	void RegisterAttributes(const AttributesPtr& attrs);
 
+	//
 	// End of methods related to managing script type attributes.
-	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
