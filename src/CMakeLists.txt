@@ -325,21 +325,21 @@ set(MAIN_SRCS
     plugin/Manager.cc
     plugin/Plugin.cc
 
-    script_opt/CPPCompile.cc
-    script_opt/CPPCompileAttrs.cc
-    script_opt/CPPCompileConsts.cc
-    script_opt/CPPCompileExprs.cc
-    script_opt/CPPCompileInits.cc
-    script_opt/CPPCompileStmts.cc
-    script_opt/CPPCompileTypes.cc
+    script_opt/CPPAttrs.cc
+    script_opt/CPPConsts.cc
     script_opt/CPPDeclFunc.cc
+    script_opt/CPPDriver.cc
+    script_opt/CPPExprs.cc
     script_opt/CPPFunc.cc
     script_opt/CPPGenFunc.cc
     script_opt/CPPHashMgr.cc
-    script_opt/CPPRuntimeOps.cc
+    script_opt/CPPInits.cc
     script_opt/CPPRuntimeInit.cc
+    script_opt/CPPRuntimeOps.cc
     script_opt/CPPRuntimeVec.cc
+    script_opt/CPPStmts.cc
     script_opt/CPPTracker.cc
+    script_opt/CPPTypes.cc
     script_opt/CPPUtil.cc
     script_opt/CPPVars.cc
     script_opt/DefItem.cc
