@@ -326,6 +326,7 @@ set(MAIN_SRCS
     plugin/Plugin.cc
 
     script_opt/CPPCompile.cc
+    script_opt/CPPCompileAttrs.cc
     script_opt/CPPCompileConsts.cc
     script_opt/CPPCompileExprs.cc
     script_opt/CPPCompileStmts.cc

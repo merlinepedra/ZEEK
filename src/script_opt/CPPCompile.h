@@ -286,8 +286,23 @@ private:
 	// End of methods related to managing script types.
 	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-	void BuildAttrs(const AttributesPtr& attrs,
-				std::string& attr_tags, std::string& attr_vals);
+	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
+	// Start of methods related to managing script type attributes.
+	// See CPPCompileAttrs.cc for definitions.
+
+	void BuildAttrs(const AttributesPtr& attrs, std::string& attr_tags,
+	                std::string& attr_vals);
+
+	void GenAttrs(const AttributesPtr& attrs);
+	std::string GenAttrExpr(const ExprPtr& e);
+
+	std::string AttrsName(const AttributesPtr& attrs);
+	const char* AttrName(const AttrPtr& attr);
+
+	void RegisterAttributes(const AttributesPtr& attrs);
+
+	// End of methods related to managing script type attributes.
+	// ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
@@ -297,10 +312,6 @@ private:
 
 	void GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v);
 	void GenFuncVarInits();
-
-	void GenAttrs(const AttributesPtr& attrs);
-	std::string AttrsName(const AttributesPtr& attrs);
-	const char* AttrName(const AttrPtr& attr);
 
 	const char* IDName(const ID& id)	{ return IDName(&id); }
 	const char* IDName(const IDPtr& id)	{ return IDName(id.get()); }
@@ -312,8 +323,6 @@ private:
 	const ID* FindParam(int i, const ProfileFunc* pf);
 
 	void GenPreInit(const Type* t);
-
-	void RegisterAttributes(const AttributesPtr& attrs);
 
 	void RegisterEvent(std::string ev_name);
 
