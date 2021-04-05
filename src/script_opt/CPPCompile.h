@@ -86,6 +86,30 @@ private:
 	//
 	// End of methods related to script/C++ variables.
 
+	// Start of methods related to declaring compiled script functions,
+	// including related classes.
+	// See CPPDeclFunc.cc for definitions.
+	//
+
+	void DeclareFunc(const FuncInfo& func);
+	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
+
+	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
+                             const std::string& fname, const StmtPtr& body,
+                             const LambdaExpr* l, FunctionFlavor flavor);
+	void BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf,
+                         const std::string& fname, const StmtPtr& body,
+                         const LambdaExpr* l, const IDPList* lambda_ids);
+
+	std::string BindArgs(const FuncTypePtr& ft, const IDPList* lambda_ids);
+
+	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
+	                      const ProfileFunc* pf);
+	const ID* FindParam(int i, const ProfileFunc* pf);
+
+	//
+	// End of methods related to declaring compiled script functions.
+
 	// Start of methods related to generating code for representing
 	// script constants as run-time values.
 	// See CPPCompileConsts.cc for definitions.
@@ -108,24 +132,15 @@ private:
 	//
 	// End of methods related to generating code for script constants.
 
-	void DeclareFunc(const FuncInfo& func);
-	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
 	void CompileFunc(const FuncInfo& func);
 	void CompileLambda(const LambdaExpr* l, const ProfileFunc* pf);
 
-	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
-			const std::string& fname, const StmtPtr& body,
-			const LambdaExpr* l, FunctionFlavor flavor);
-
-	void GenSubclassTypeAssignment(Func* f);
 	void GenInvokeBody(const std::string& fname, const TypePtr& t,
 				const std::string& args);
 
 	void DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
 			const std::string& fname, const StmtPtr& body,
 			const IDPList* lambda_ids, FunctionFlavor flavor);
-
-	std::string BindArgs(const FuncTypePtr& ft, const IDPList* lambda_ids);
 
 	void DeclareLocals(const ProfileFunc* func, const IDPList* lambda_ids);
 
@@ -462,10 +477,6 @@ private:
 
 	//
 	// End of methods related to run-time initialization.
-
-	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
-				const ProfileFunc* pf);
-	const ID* FindParam(int i, const ProfileFunc* pf);
 
 	void RegisterEvent(std::string ev_name);
 

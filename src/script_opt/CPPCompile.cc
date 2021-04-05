@@ -5,7 +5,6 @@
 #include <sys/stat.h>
 
 #include "zeek/script_opt/CPPCompile.h"
-#include "zeek/script_opt/ProfileFunc.h"
 
 
 namespace zeek::detail {
@@ -286,35 +285,6 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 	return is_CPP_compilable(func.Profile());
 	}
 
-void CPPCompile::DeclareFunc(const FuncInfo& func)
-	{
-	if ( ! IsCompilable(func) )
-		return;
-
-	auto fname = Canonicalize(BodyName(func).c_str()) + "_zf";
-	auto pf = func.Profile();
-	auto f = func.Func();
-	auto body = func.Body();
-
-	DeclareSubclass(f->GetType(), pf, fname, body, nullptr, f->Flavor());
-	}
-
-void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
-	{
-	ASSERT(is_CPP_compilable(pf));
-
-	auto lname = Canonicalize(l->Name().c_str()) + "_lb";
-	auto body = l->Ingredients().body;
-	auto l_id = l->Ingredients().id;
-	auto& ids = l->OuterIDs();
-
-	for ( auto id : ids )
-		lambda_names[id] = LocalName(id);
-
-	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, l,
-				FUNC_FLAVOR_FUNCTION);
-	}
-
 void CPPCompile::CompileFunc(const FuncInfo& func)
 	{
 	if ( ! IsCompilable(func) )
@@ -337,161 +307,6 @@ void CPPCompile::CompileLambda(const LambdaExpr* l, const ProfileFunc* pf)
 
 	DefineBody(l_id->GetType<FuncType>(), pf, lname, body, &ids,
 			FUNC_FLAVOR_FUNCTION);
-	}
-
-void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
-			const std::string& fname, const StmtPtr& body,
-			const LambdaExpr* l, FunctionFlavor flavor)
-	{
-	const auto& yt = ft->Yield();
-	in_hook = flavor == FUNC_FLAVOR_HOOK;
-	const IDPList* lambda_ids = l ? &l->OuterIDs() : nullptr;
-
-	auto yt_decl = in_hook ? "bool" : FullTypeName(yt);
-
-	NL();
-	Emit("static %s %s(%s);", yt_decl, fname, ParamDecl(ft, lambda_ids, pf));
-
-	Emit("class %s_cl : public CPPStmt", fname);
-	StartBlock();
-
-	Emit("public:");
-
-	std::string addl_args;
-	std::string inits;
-
-	if ( lambda_ids )
-		{
-		for ( auto& id : *lambda_ids )
-			{
-			auto name = lambda_names[id];
-			auto tn = FullTypeName(id->GetType());
-			addl_args = addl_args + ", " + tn + " _" + name;
-
-			inits = inits + ", " + name + "(_" + name + ")";
-			}
-		}
-
-	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }",
-		fname, addl_args.c_str(), inits.c_str());
-
-	// An additional constructor just used to generate place-holder
-	// instances, due to the mis-design that lambdas are identified
-	// by their Func objects rather than their FuncVal objects.
-	if ( lambda_ids && lambda_ids->length() > 0 )
-		Emit("%s_cl(const char* name) : CPPStmt(name) { }", fname);
-
-	Emit("ValPtr Exec(Frame* f, StmtFlowType& flow) override final");
-	StartBlock();
-
-	Emit("flow = FLOW_RETURN;");
-
-	if ( in_hook )
-		{
-		Emit("if ( ! %s(%s) )", fname, BindArgs(ft, lambda_ids));
-		StartBlock();
-		Emit("flow = FLOW_BREAK;");
-		EndBlock();
-		Emit("return nullptr;");
-		}
-
-	else if ( IsNativeType(yt) )
-		GenInvokeBody(fname, yt, BindArgs(ft, lambda_ids));
-
-	else
-		Emit("return %s(%s);", fname, BindArgs(ft, lambda_ids));
-
-	EndBlock();
-
-	if ( lambda_ids )
-		{
-		for ( auto& id : *lambda_ids )
-			{
-			auto name = lambda_names[id];
-			auto tn = FullTypeName(id->GetType());
-			Emit("%s %s;", tn, name.c_str());
-			}
-
-		auto literal_name = std::string("\"") + l->Name() + "\"";
-
-		int nl = lambda_ids->length();
-
-		auto instantiate = std::string("make_intrusive<") +
-			fname + "_cl>(" + literal_name + ")";
-		auto h = Fmt(pf->HashVal());
-		auto has_captures = nl > 0 ? "true" : "false";
-		auto l_init = std::string("register_lambda__CPP(") +
-				instantiate + ", " + h +
-				", \"" + l->Name() + "\", "
-				+ GenTypeName(ft) + ", " + has_captures + ");";
-		AddInit(l, l_init);
-		NoteInitDependency(l, TypeRep(ft));
-
-		// Make the lambda's body's initialization depend on the
-		// lambda's initialization.  That way GenFuncVarInits()
-		// can generate initializations with the assurance that
-		// the associated body hashes will have been registered.
-		AddInit(body.get());
-		NoteInitDependency(body.get(), l);
-
-		Emit("void SetLambdaCaptures(Frame* f) override");
-		StartBlock();
-		for ( int i = 0; i < nl; ++i )
-			{
-			auto l_i = (*lambda_ids)[i];
-			const auto& t_i = l_i->GetType();
-			auto cap_i = std::string("f->GetElement(") +
-					Fmt(i) + ")";
-			Emit("%s = %s;", lambda_names[l_i],
-				GenericValPtrToGT(cap_i, t_i, GEN_NATIVE));
-			}
-		EndBlock();
-
-		Emit("std::vector<ValPtr> SerializeLambdaCaptures() const override");
-		StartBlock();
-		Emit("std::vector<ValPtr> vals;");
-		for ( int i = 0; i < nl; ++i )
-			{
-			auto l_i = (*lambda_ids)[i];
-			const auto& t_i = l_i->GetType();
-			Emit("vals.emplace_back(%s);",
-				NativeToGT(lambda_names[l_i], t_i, GEN_VAL_PTR));
-			}
-		Emit("return vals;");
-		EndBlock();
-
-		Emit("CPPStmtPtr Clone() override");
-		StartBlock();
-		auto arg_clones = GenLambdaClone(l, true);
-		Emit("return make_intrusive<%s_cl>(name.c_str()%s);", fname, arg_clones);
-		EndBlock();
-		}
-
-	else
-		{
-		// We don't track lambda bodies as compiled because they
-		// can't be instantiated directly without also supplying
-		// the captures.  In principle we could make an exception
-		// for lambdas that don't take any arguments, but that
-		// seems potentially more confusing than beneficial.
-		compiled_funcs.emplace(fname);
-
-		auto loc_f = script_specific_filename(body);
-		cf_locs[fname] = loc_f;
-
-		Emit("// compiled body for: %s", loc_f);
-		}
-
-	EndBlock(true);
-
-	body_hashes[fname] = pf->HashVal();
-	body_names.emplace(body.get(), fname);
-	names_to_bodies.emplace(std::move(fname), body.get());
-	}
-
-void CPPCompile::GenSubclassTypeAssignment(Func* f)
-	{
-	Emit("type = cast_intrusive<FuncType>(%s);", GenTypeName(f->GetType()));
 	}
 
 void CPPCompile::GenInvokeBody(const std::string& fname, const TypePtr& t,
@@ -655,36 +470,6 @@ std::string CPPCompile::BodyName(const FuncInfo& func)
 	return fname;
 	}
 
-std::string CPPCompile::BindArgs(const FuncTypePtr& ft,
-					const IDPList* lambda_ids)
-	{
-	const auto& params = ft->Params();
-
-	std::string res;
-
-	int n = params->Types()->size();
-	for ( auto i = 0; i < n; ++i )
-		{
-		auto arg_i = std::string("f->GetElement(") + Fmt(i) + ")";
-		const auto& ft = params->GetFieldType(i);
-
-		if ( IsNativeType(ft) )
-			res += arg_i + NativeAccessor(ft);
-		else
-			res += GenericValPtrToGT(arg_i, ft, GEN_VAL_PTR);
-
-		res += ", ";
-		}
-
-	if ( lambda_ids )
-		{
-		for ( auto& id : *lambda_ids )
-			res += lambda_names[id] + ", ";
-		}
-
-	return res + "f";
-	}
-
 std::string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)
 	{
 	ASSERT(e->Tag() == EXPR_LIST);
@@ -718,71 +503,6 @@ std::string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)
 		}
 
 	return gen;
-	}
-
-std::string CPPCompile::ParamDecl(const FuncTypePtr& ft,
-			const IDPList* lambda_ids, const ProfileFunc* pf)
-	{
-	const auto& params = ft->Params();
-	int n = params->NumFields();
-
-	std::string decl;
-
-	for ( auto i = 0; i < n; ++i )
-		{
-		const auto& t = params->GetFieldType(i);
-		auto tn = FullTypeName(t);
-		auto param_id = FindParam(i, pf);
-		std::string fn;
-
-		if ( param_id )
-			{
-			if ( t->Tag() == TYPE_ANY &&
-			     param_id->GetType()->Tag() != TYPE_ANY )
-				fn = std::string("any_param__CPP_") + Fmt(i);
-			else
-				fn = LocalName(param_id);
-			}
-		else
-			fn = std::string("unused_param__CPP_") + Fmt(i);
-
-		if ( IsNativeType(t) )
-			decl = decl + tn + " " + fn;
-		else
-			{
-			if ( param_id && pf->Assignees().count(param_id) > 0 )
-				decl = decl + tn + " " + fn;
-			else
-				decl = decl + "const " + tn + "& " + fn;
-			}
-
-		decl += ", ";
-		}
-
-	if ( lambda_ids )
-		{
-		for ( auto& id : *lambda_ids )
-			{
-			auto name = lambda_names[id];
-			const auto& t = id->GetType();
-			auto tn = FullTypeName(t);
-
-			decl = decl + tn + "& " + name + ", ";
-			}
-		}
-
-	return decl + "Frame* f__CPP";
-	}
-
-const ID* CPPCompile::FindParam(int i, const ProfileFunc* pf)
-	{
-	const auto& params = pf->Params();
-
-	for ( const auto& p : params )
-		if ( p->Offset() == i )
-			return p;
-
-	return nullptr;
 	}
 
 void CPPCompile::RegisterEvent(std::string ev_name)
