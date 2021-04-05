@@ -26,6 +26,12 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 
 	if ( hm.IsAppend() )
 		{
+		// We need a unique number to associate with the name
+		// space for the code we're adding.  A convenient way to
+		// generate this safely is to use the present size of the
+		// file we're appending to.  That guarantees that every
+		// incremental compilation will wind up with a different
+		// number.
 		struct stat st;
 		if ( fstat(fileno(write_file), &st) != 0 )
 			{
@@ -35,6 +41,9 @@ CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
 			exit(1);
 			}
 
+		// We use a value of "0" to mean "we're not appending,
+		// we're generating from scratch", so make sure we're
+		// distinct from that.
 		addl_tag = st.st_size + 1;
 		}
 
@@ -48,90 +57,51 @@ CPPCompile::~CPPCompile()
 
 void CPPCompile::Compile()
 	{
+	// Get the working directory so we can use it in diagnostic messages
+	// as a way to identify this compilation.  Only germane when doing
+	// incremental compilation (particularly of the test suite).
 	char buf[8192];
 	getcwd(buf, sizeof buf);
 	working_dir = buf;
 
-	if ( update && addl_tag > 0 )
-		{
-		for ( auto& g : pfs.AllGlobals() )
-			{
-			auto gn = std::string(g->Name());
-
-			if ( hm.HasGlobal(gn) )
-				{
-				auto ht_orig = hm.GlobalTypeHash(gn);
-				auto hv_orig = hm.GlobalValHash(gn);
-
-				auto ht = pfs.HashType(g->GetType());
-				hash_type hv = 0;
-				if ( g->GetVal() )
-					hv = hash_obj(g->GetVal());
-
-				if ( ht != ht_orig || hv != hv_orig )
-					{
-					fprintf(stderr, "%s: hash clash for global %s (%llu/%llu vs. %llu/%llu)\n",
-						working_dir.c_str(), gn.c_str(),
-						ht, hv, ht_orig, hv_orig);
-					fprintf(stderr, "val: %s\n", g->GetVal() ? obj_desc(g->GetVal().get()).c_str() : "<none>");
-					exit(1);
-					}
-				}
-			}
-
-		bool collision = false;
-		for ( auto& t : pfs.RepTypes() )
-			{
-			auto tag = t->Tag();
-
-			if ( tag != TYPE_ENUM && tag != TYPE_RECORD )
-				continue;
-
-			const auto& tn = t->GetName();
-			if ( tn.size() == 0 || ! hm.HasGlobal(tn) )
-				continue;
-
-			if ( tag == TYPE_ENUM && hm.HasEnumTypeGlobal(tn) )
-				continue;
-
-			if ( tag == TYPE_RECORD && hm.HasRecordTypeGlobal(tn) )
-				continue;
-
-			fprintf(stderr, "%s: type \"%s\" collides with compiled global\n",
-				working_dir.c_str(), tn.c_str());
-			collision = true;
-			// exit(1);
-			}
-
-		if ( collision )
-			exit(1);
-		}
+	if ( update && addl_tag > 0 && CheckForCollisions() )
+		// Inconsistent compilation environment.
+		exit(1);
 
 	GenProlog();
 
+	// Determine which functions we can call directly, and reuse
+	// previously compiled instances of those if present.
 	for ( const auto& func : funcs )
 		{
-		if ( func.Func()->Flavor() == FUNC_FLAVOR_FUNCTION )
-			{
-			if ( IsCompilable(func) )
-				compilable_funcs.insert(BodyName(func));
+		if ( func.Func()->Flavor() != FUNC_FLAVOR_FUNCTION )
+			// Can't be called directly.
+			continue;
 
-			auto h = func.Profile()->HashVal();
-			if ( hm.HasHash(h) )
-				hashed_funcs[func.Func()->Name()] =
-					hm.FuncBodyName(h);
+		if ( IsCompilable(func) )
+			compilable_funcs.insert(BodyName(func));
+
+		auto h = func.Profile()->HashVal();
+		if ( hm.HasHash(h) )
+			{
+			// Track the previously compiled instance
+			// of this function.
+			auto n = func.Func()->Name();
+			hashed_funcs[n] = hm.FuncBodyName(h);
 			}
 		}
 
+	// Track all of the types we'll be using.
 	for ( const auto& t : pfs.RepTypes() )
 		{
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		types.AddKey(tp, pfs.HashType(t));
-		ASSERT(pfs.HashType(t) != 0);
 		}
 
 	for ( const auto& t : types.DistinctKeys() )
 		if ( ! types.IsInherited(t) )
+			// Type is new to this compilation, so we'll
+			// be generating it.
 			Emit("TypePtr %s;", types.KeyName(t));
 
 	NL();
@@ -141,56 +111,8 @@ void CPPCompile::Compile()
 
 	NL();
 
-	auto& gl = pfs.Globals();
-	auto& bifs = pfs.BiFGlobals();
-
 	for ( auto& g : pfs.AllGlobals() )
-		{
-		auto gn = std::string(g->Name());
-		bool is_bif = bifs.count(g) > 0;
-
-		if ( gl.count(g) == 0 )
-			{
-			// Only used in the context of calls.  If it's
-			// compilable, the we'll call it directly.
-			if ( compilable_funcs.count(gn) > 0 )
-				{
-				AddGlobal(gn, "zf", true);
-				continue;
-				}
-
-			if ( is_bif )
-				{
-				AddBiF(g, false);
-				continue;
-				}
-			}
-
-		if ( AddGlobal(gn, "gl", true) )
-			{
-			Emit("IDPtr %s;", globals[gn]);
-
-			if ( pfs.Events().count(gn) > 0 )
-				// This is an event that's also used as
-				// a variable.
-				Emit("EventHandlerPtr %s_ev;", globals[gn]);
-
-			const auto& t = g->GetType();
-			NoteInitDependency(g, TypeRep(t));
-
-			AddInit(g, globals[gn],
-				std::string("lookup_global__CPP(\"") + gn +
-				"\", " + GenTypeName(t) + ")");
-
-			if ( g->HasVal() )
-				GenGlobalInit(g, globals[gn], g->GetVal());
-			}
-
-		if ( is_bif )
-			AddBiF(g, true);
-
-		global_vars.emplace(g);
-		}
+		CreateGlobal(g);
 
 	for ( const auto& e : pfs.Events() )
 		if ( AddGlobal(e, "gl", false) )
@@ -203,6 +125,8 @@ void CPPCompile::Compile()
 		RegisterType(tp);
 		}
 
+	// The scaffolding is now in place to go ahead and generate
+	// the functions & lambdas.  First declare them ...
 	for ( const auto& func : funcs )
 		DeclareFunc(func);
 
@@ -211,6 +135,7 @@ void CPPCompile::Compile()
 
 	NL();
 
+	// ... and now generate their bodies.
 	for ( const auto& func : funcs )
 		CompileFunc(func);
 
@@ -218,40 +143,74 @@ void CPPCompile::Compile()
 		CompileLambda(l, pfs.ExprProf(l));
 
 	for ( const auto& f : compiled_funcs )
-		{
-		auto h = body_hashes[f];
-
-		std::string events;
-		if ( body_events.count(f) > 0 )
-			for ( auto e : body_events[f] )
-				{
-				if ( events.size() > 0 )
-					events += ", ";
-				events = events + "\"" + e + "\"";
-				}
-
-		events = std::string("{") + events + "}";
-
-		if ( addl_tag > 0 )
-			h = MergeHashes(h, hash_string(cf_locs[f].c_str()));
-
-		auto init = std::string("register_body__CPP(make_intrusive<") +
-				f + "_cl>(\"" + f + "\"), " + Fmt(h) +
-				", " + events + ");";
-
-		AddInit(names_to_bodies[f], init);
-
-		if ( update )
-			{
-			fprintf(hm.HashFile(), "func\n%s%s\n",
-				scope_prefix(addl_tag).c_str(), f.c_str());
-			fprintf(hm.HashFile(), "%llu\n", h);
-			}
-		}
+		RegisterCompiledBody(f);
 
 	GenFuncVarInits();
 
 	GenEpilog();
+	}
+
+bool CPPCompile::CheckForCollisions()
+	{
+	for ( auto& g : pfs.AllGlobals() )
+		{
+		auto gn = std::string(g->Name());
+
+		if ( hm.HasGlobal(gn) )
+			{
+			// Make sure the previous compilation used the
+			// same type and initialization value for the global.
+			auto ht_orig = hm.GlobalTypeHash(gn);
+			auto hv_orig = hm.GlobalValHash(gn);
+
+			auto ht = pfs.HashType(g->GetType());
+			hash_type hv = 0;
+			if ( g->GetVal() )
+				hv = hash_obj(g->GetVal());
+
+			if ( ht != ht_orig || hv != hv_orig )
+				{
+				fprintf(stderr, "%s: hash clash for global %s (%llu/%llu vs. %llu/%llu)\n",
+					working_dir.c_str(), gn.c_str(),
+					ht, hv, ht_orig, hv_orig);
+				fprintf(stderr, "val: %s\n", g->GetVal() ? obj_desc(g->GetVal().get()).c_str() : "<none>");
+				return true;
+				}
+			}
+		}
+
+	for ( auto& t : pfs.RepTypes() )
+		{
+		auto tag = t->Tag();
+
+		if ( tag != TYPE_ENUM && tag != TYPE_RECORD )
+			// Other types, if inconsistent, will just not reuse
+			// the previously compiled version of the type.
+			continue;
+
+		// We identify enum's and record's by name.  Make sure that
+		// the name either (1) wasn't previously used, or (2) if it
+		// was, it was likewise for an enum or a record.
+		const auto& tn = t->GetName();
+		if ( tn.size() == 0 || ! hm.HasGlobal(tn) )
+			// No concern of collision since the type name
+			// wasn't previously compiled.
+			continue;
+
+		if ( tag == TYPE_ENUM && hm.HasEnumTypeGlobal(tn) )
+			// No inconsistency.
+			continue;
+
+		if ( tag == TYPE_RECORD && hm.HasRecordTypeGlobal(tn) )
+			// No inconsistency.
+			continue;
+
+		fprintf(stderr, "%s: type \"%s\" collides with compiled global\n",
+			working_dir.c_str(), tn.c_str());
+		return true;
+		}
+
+	return false;
 	}
 
 void CPPCompile::GenProlog()
@@ -268,6 +227,96 @@ void CPPCompile::GenProlog()
 	NL();
 	}
 
+void CPPCompile::CreateGlobal(const ID* g)
+	{
+	auto gn = std::string(g->Name());
+	bool is_bif = pfs.BiFGlobals().count(g) > 0;
+
+	if ( pfs.Globals().count(g) == 0 )
+		{
+		// Only used in the context of calls.  If it's compilable,
+		// the we'll call it directly.
+		if ( compilable_funcs.count(gn) > 0 )
+			{
+			AddGlobal(gn, "zf", true);
+			return;
+			}
+
+		if ( is_bif )
+			{
+			AddBiF(g, false);
+			return;
+			}
+		}
+
+	if ( AddGlobal(gn, "gl", true) )
+		{ // We'll be creating this global.
+		Emit("IDPtr %s;", globals[gn]);
+
+		if ( pfs.Events().count(gn) > 0 )
+			// This is an event that's also used as
+			// a variable.
+			Emit("EventHandlerPtr %s_ev;", globals[gn]);
+
+		const auto& t = g->GetType();
+		NoteInitDependency(g, TypeRep(t));
+
+		AddInit(g, globals[gn],
+		        std::string("lookup_global__CPP(\"") + gn + "\", " +
+		        GenTypeName(t) + ")");
+
+		if ( g->HasVal() )
+			GenGlobalInit(g, globals[gn], g->GetVal());
+		}
+
+	if ( is_bif )
+		// This is a BiF that's referred to in a non-call context,
+		// so we didn't already add it above.
+		AddBiF(g, true);
+
+	global_vars.emplace(g);
+	}
+
+void CPPCompile::RegisterCompiledBody(const std::string& f)
+	{
+	auto h = body_hashes[f];
+
+	// Build up an initializer of the events relevant to the function.
+	std::string events;
+	if ( body_events.count(f) > 0 )
+		for ( auto e : body_events[f] )
+			{
+			if ( events.size() > 0 )
+				events += ", ";
+			events = events + "\"" + e + "\"";
+			}
+
+	events = std::string("{") + events + "}";
+
+	if ( addl_tag > 0 )
+		// Hash in the location associated with this compilation
+		// pass, to get a final hash that avoids conflicts with
+		// identical-but-in-a-different-context function bodies
+		// when compiling potentially conflicting additional code
+		// (which we want to support to enable quicker test suite
+		// runs by enabling multiple tests to be compiled into the
+		// same binary).
+		h = MergeHashes(h, hash_string(cf_locs[f].c_str()));
+
+	auto init = std::string("register_body__CPP(make_intrusive<") +
+			f + "_cl>(\"" + f + "\"), " + Fmt(h) +
+			", " + events + ");";
+
+	AddInit(names_to_bodies[f], init);
+
+	if ( update )
+		{
+		fprintf(hm.HashFile(), "func\n%s%s\n",
+		        scope_prefix(addl_tag).c_str(), f.c_str());
+		fprintf(hm.HashFile(), "%llu\n", h);
+		}
+	}
+
 void CPPCompile::GenEpilog()
 	{
 	NL();
@@ -275,7 +324,6 @@ void CPPCompile::GenEpilog()
 	for ( const auto& e : init_exprs.DistinctKeys() )
 		{
 		GenInitExpr(e);
-
 		if ( update )
 			init_exprs.LogIfNew(e, addl_tag, hm.HashFile());
 		}
@@ -283,7 +331,6 @@ void CPPCompile::GenEpilog()
 	for ( const auto& a : attributes.DistinctKeys() )
 		{
 		GenAttrs(a);
-
 		if ( update )
 			attributes.LogIfNew(a, addl_tag, hm.HashFile());
 		}
@@ -292,7 +339,6 @@ void CPPCompile::GenEpilog()
 	for ( const auto& t : types.DistinctKeys() )
 		{
 		ExpandTypeVar(t);
-
 		if ( update )
 			types.LogIfNew(t, addl_tag, hm.HashFile());
 		}
@@ -318,151 +364,20 @@ void CPPCompile::GenEpilog()
 	for ( const auto& oi : obj_inits )
 		to_do.insert(oi.first);
 
-	// Check for consistency.
-	for ( const auto& od : obj_deps )
-		{
-		const auto& o = od.first;
-
-		if ( to_do.count(o) == 0 )
-			{
-			fprintf(stderr, "object not in to_do: %s\n",
-				obj_desc(o).c_str());
-			exit(1);
-			}
-
-		for ( const auto& d : od.second )
-			{
-			if ( to_do.count(d) == 0 )
-				{
-				fprintf(stderr, "dep object for %s not in to_do: %s\n",
-					obj_desc(o).c_str(), obj_desc(d).c_str());
-				exit(1);
-				}
-			}
-		}
-
-	while ( to_do.size() > 0 )
-		{
-		std::unordered_set<const Obj*> done;
-
-		for ( const auto& o : to_do )
-			{
-			const auto& od = obj_deps.find(o);
-
-			bool has_pending_dep = false;
-
-			if ( od != obj_deps.end() )
-				{
-				for ( const auto& d : od->second )
-					if ( to_do.count(d) > 0 )
-						{
-						has_pending_dep = true;
-						break;
-						}
-				}
-
-			if ( has_pending_dep )
-				continue;
-
-			for ( const auto& i : obj_inits.find(o)->second )
-				Emit("%s", i);
-
-			done.insert(o);
-			}
-
-		ASSERT(done.size() > 0);
-
-		for ( const auto& o : done )
-			{
-			ASSERT(to_do.count(o) > 0);
-			to_do.erase(o);
-			}
-
-		NL();
-		}
+	CheckInitConsistency(to_do);
+	GenDependentInits(to_do);
 
 	// Populate mappings for dynamic offsets.
-	Emit("int fm_offset;");
-	for ( const auto& mapping : field_decls )
-		{
-		auto rt = mapping.first;
-		auto td = mapping.second;
-		auto fn = td->id;
-		auto rt_name = GenTypeName(rt) + "->AsRecordType()";
-
-		Emit("fm_offset = %s->FieldOffset(\"%s\");", rt_name, fn);
-		Emit("if ( fm_offset < 0 )");
-		StartBlock();
-		Emit("// field does not exist, create it");
-		Emit("fm_offset = %s->NumFields();", rt_name);
-		Emit("type_decl_list tl;");
-		Emit(GenTypeDecl(td));
-		Emit("%s->AddFieldsDirectly(tl);", rt_name);
-		EndBlock();
-		Emit("field_mapping.push_back(fm_offset);");
-		}
-
-	Emit("int em_offset;");
-	for ( const auto& mapping : enum_names )
-		{
-		auto et = mapping.first;
-		const auto& e_name = mapping.second;
-		auto et_name = GenTypeName(et) + "->AsEnumType()";
-
-		Emit("em_offset = %s->Lookup(\"%s\");", et_name, e_name);
-		Emit("if ( em_offset < 0 )");
-		StartBlock();
-		Emit("// enum does not exist, create it");
-		Emit("em_offset = %s->Names().size();", et_name);
-		Emit("if ( %s->Lookup(em_offset) )", et_name);
-		Emit("\treporter->InternalError(\"enum inconsistency while initializing compiled scripts\");");
-		Emit("%s->AddNameInternal(\"%s\", em_offset);", et_name, e_name);
-		EndBlock();
-		Emit("enum_mapping.push_back(em_offset);");
-		}
+	InitializeFieldMappings();
+	InitializeEnumMappings();
 
 	EndBlock(true);
+	Emit("} // %s\n\n", scope_prefix(addl_tag).c_str());
 
-	NL();
-	Emit("int hook_in_init()");
-	StartBlock();
-	Emit("CPP_init_funcs.push_back(init__CPP);");
-        Emit("return 0;");
-	EndBlock();
-	NL();
-	Emit("static int dummy = hook_in_init();\n");
+	GenInitHook();
 
-	Emit("} // %s\n", scope_prefix(addl_tag).c_str());
-
-	for ( auto& g : pfs.AllGlobals() )
-		{
-		auto gn = g->Name();
-
-		if ( update && ! hm.HasGlobal(gn) )
-			{
-			auto ht = pfs.HashType(g->GetType());
-
-			hash_type hv = 0;
-			if ( g->GetVal() )
-				hv = hash_obj(g->GetVal());
-
-			fprintf(hm.HashFile(), "global\n%s\n", gn);
-			fprintf(hm.HashFile(), "%llu %llu\n", ht, hv);
-
-			auto loc = g->GetLocationInfo();
-			fprintf(hm.HashFile(), "%s %d\n",
-				loc->filename, loc->first_line);
-
-			if ( g->IsType() )
-				{
-				const auto& t = g->GetType();
-				if ( t->Tag() == TYPE_RECORD )
-					fprintf(hm.HashFile(), "record\n%s\n", gn);
-				else if ( t->Tag() == TYPE_ENUM )
-					fprintf(hm.HashFile(), "enum\n%s\n", gn);
-				}
-			}
-		}
+	if ( update )
+		UpdateGlobalHashes();
 
 	if ( addl_tag > 0 )
 		return;
@@ -471,12 +386,50 @@ void CPPCompile::GenEpilog()
 	Emit("} // zeek::detail");
 	}
 
+void CPPCompile::UpdateGlobalHashes()
+	{
+	for ( auto& g : pfs.AllGlobals() )
+		{
+		auto gn = g->Name();
+
+		if ( hm.HasGlobal(gn) )
+			// Not new to this compilation run.
+			continue;
+
+		auto ht = pfs.HashType(g->GetType());
+
+		hash_type hv = 0;
+		if ( g->GetVal() )
+			hv = hash_obj(g->GetVal());
+
+		fprintf(hm.HashFile(), "global\n%s\n", gn);
+		fprintf(hm.HashFile(), "%llu %llu\n", ht, hv);
+
+		// Record location information in the hash file for
+		// diagnostic purposes.
+		auto loc = g->GetLocationInfo();
+		fprintf(hm.HashFile(), "%s %d\n", loc->filename, loc->first_line);
+
+		// Flag any named record/enum types.
+		if ( g->IsType() )
+			{
+			const auto& t = g->GetType();
+			if ( t->Tag() == TYPE_RECORD )
+				fprintf(hm.HashFile(), "record\n%s\n", gn);
+			else if ( t->Tag() == TYPE_ENUM )
+				fprintf(hm.HashFile(), "enum\n%s\n", gn);
+			}
+		}
+	}
+
 bool CPPCompile::IsCompilable(const FuncInfo& func)
 	{
 	if ( func.ShouldSkip() )
+		// Caller marked this function as one to skip.
 		return false;
 
 	if ( hm.HasHash(func.Profile()->HashVal()) )
+		// We've already compiled it.
 		return false;
 
 	return is_CPP_compilable(func.Profile());

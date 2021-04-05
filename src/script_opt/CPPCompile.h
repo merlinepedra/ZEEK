@@ -22,8 +22,31 @@ public:
 private:
 	void Compile();
 
+	// Returns true if the current compilation context has collisions
+	// with previously generated code (globals with conflicting types
+	// or initialization values, or types with differing elements).
+	bool CheckForCollisions();
+
+	// Generate the beginning of the compiled code: run-time functions,
+	// namespace, auxiliary globals.
 	void GenProlog();
+
+	// Generate declarations associated with the given global, and, if
+	// it's used as a variable (not just as a function being called),
+	// track it as such.
+	void CreateGlobal(const ID* g);
+
+	// Given the name of a function body that's been compiled, generate
+	// code to register it at run-time, and track its associated hash
+	// so subsequent compilations can reuse it.
+	void RegisterCompiledBody(const std::string& f);
+
 	void GenEpilog();
+
+	// For the globals used in the compilation, if new then append
+	// them to the hash file to make the information available
+	// to subsequent compilation runs.
+	void UpdateGlobalHashes();
 
 	bool IsCompilable(const FuncInfo& func);
 
@@ -383,6 +406,27 @@ private:
 		}
 	void NoteNonRecordInitDependency(const IntrusivePtr<Obj> o, const TypePtr& t)
 		{ NoteNonRecordInitDependency(o.get(), t); }
+
+	// Analyzes the initialization dependencies to ensure that they're
+	// consistent, i.e., every object that either depends on another,
+	// or is itself depended on, appears in the "to_do" set.
+	void CheckInitConsistency(std::unordered_set<const Obj*>& to_do);
+
+	// Generate initializations for the items in the "to_do" set,
+	// in accordance with their dependencies.
+	void GenDependentInits(std::unordered_set<const Obj*>& to_do);
+
+	// Initialize the mappings for record field offsets for field
+	// accesses into regions of records that can be extensible (and
+	// thus can vary at run-time to the offsets encountered during
+	// compilation).
+	void InitializeFieldMappings();
+
+	// Same, but for enum types.
+	void InitializeEnumMappings();
+
+	// Generate the initialization hook for this set of compiled code.
+	void GenInitHook();
 
 	//
 	// End of methods related to run-time initialization.

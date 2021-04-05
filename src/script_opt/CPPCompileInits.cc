@@ -226,4 +226,142 @@ void CPPCompile::NoteInitDependency(const Obj* o1, const Obj* o2)
 	obj_deps[o1].emplace(o2);
 	}
 
+void CPPCompile::CheckInitConsistency(std::unordered_set<const Obj*>& to_do)
+	{
+	for ( const auto& od : obj_deps )
+		{
+		const auto& o = od.first;
+
+		if ( to_do.count(o) == 0 )
+			{
+			fprintf(stderr, "object not in to_do: %s\n",
+				obj_desc(o).c_str());
+			exit(1);
+			}
+
+		for ( const auto& d : od.second )
+			{
+			if ( to_do.count(d) == 0 )
+				{
+				fprintf(stderr, "dep object for %s not in to_do: %s\n",
+					obj_desc(o).c_str(), obj_desc(d).c_str());
+				exit(1);
+				}
+			}
+		}
+	}
+
+void CPPCompile::GenDependentInits(std::unordered_set<const Obj*>& to_do)
+	{
+	// The basic approach is fairly brute force: find elements of
+	// to_do that don't have any pending dependencies; generate those;
+	// and remove them from the to_do list, freeing up other to_do entries
+	// to now not having any pending dependencies.  Iterate until there
+	// are no more to-do items.
+	while ( to_do.size() > 0 )
+		{
+		std::unordered_set<const Obj*> done;
+
+		for ( const auto& o : to_do )
+			{
+			const auto& od = obj_deps.find(o);
+
+			bool has_pending_dep = false;
+
+			if ( od != obj_deps.end() )
+				{
+				for ( const auto& d : od->second )
+					if ( to_do.count(d) > 0 )
+						{
+						has_pending_dep = true;
+						break;
+						}
+				}
+
+			if ( has_pending_dep )
+				continue;
+
+			for ( const auto& i : obj_inits.find(o)->second )
+				Emit("%s", i);
+
+			done.insert(o);
+			}
+
+		ASSERT(done.size() > 0);
+
+		for ( const auto& o : done )
+			{
+			ASSERT(to_do.count(o) > 0);
+			to_do.erase(o);
+			}
+
+		NL();
+		}
+	}
+
+void CPPCompile::InitializeFieldMappings()
+	{
+	Emit("int fm_offset;");
+
+	for ( const auto& mapping : field_decls )
+		{
+		auto rt = mapping.first;
+		auto td = mapping.second;
+		auto fn = td->id;
+		auto rt_name = GenTypeName(rt) + "->AsRecordType()";
+
+		Emit("fm_offset = %s->FieldOffset(\"%s\");", rt_name, fn);
+		Emit("if ( fm_offset < 0 )");
+
+		StartBlock();
+		Emit("// field does not exist, create it");
+		Emit("fm_offset = %s->NumFields();", rt_name);
+		Emit("type_decl_list tl;");
+		Emit(GenTypeDecl(td));
+		Emit("%s->AddFieldsDirectly(tl);", rt_name);
+		EndBlock();
+
+		Emit("field_mapping.push_back(fm_offset);");
+		}
+	}
+
+void CPPCompile::InitializeEnumMappings()
+	{
+	Emit("int em_offset;");
+
+	for ( const auto& mapping : enum_names )
+		{
+		auto et = mapping.first;
+		const auto& e_name = mapping.second;
+		auto et_name = GenTypeName(et) + "->AsEnumType()";
+
+		Emit("em_offset = %s->Lookup(\"%s\");", et_name, e_name);
+		Emit("if ( em_offset < 0 )");
+
+		StartBlock();
+		Emit("// enum does not exist, create it");
+		Emit("em_offset = %s->Names().size();", et_name);
+		Emit("if ( %s->Lookup(em_offset) )", et_name);
+		Emit("\treporter->InternalError(\"enum inconsistency while initializing compiled scripts\");");
+		Emit("%s->AddNameInternal(\"%s\", em_offset);", et_name, e_name);
+		EndBlock();
+
+		Emit("enum_mapping.push_back(em_offset);");
+		}
+	}
+
+void CPPCompile::GenInitHook()
+	{
+	Emit("int hook_in_init()");
+
+	StartBlock();
+	Emit("CPP_init_funcs.push_back(init__CPP);");
+        Emit("return 0;");
+	EndBlock();
+
+	// Trigger the activation of the hook at run-time.
+	NL();
+	Emit("static int dummy = hook_in_init();\n");
+	}
+
 } // zeek::detail
