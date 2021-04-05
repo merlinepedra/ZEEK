@@ -150,69 +150,6 @@ void CPPCompile::Compile()
 	GenEpilog();
 	}
 
-bool CPPCompile::CheckForCollisions()
-	{
-	for ( auto& g : pfs.AllGlobals() )
-		{
-		auto gn = std::string(g->Name());
-
-		if ( hm.HasGlobal(gn) )
-			{
-			// Make sure the previous compilation used the
-			// same type and initialization value for the global.
-			auto ht_orig = hm.GlobalTypeHash(gn);
-			auto hv_orig = hm.GlobalValHash(gn);
-
-			auto ht = pfs.HashType(g->GetType());
-			hash_type hv = 0;
-			if ( g->GetVal() )
-				hv = hash_obj(g->GetVal());
-
-			if ( ht != ht_orig || hv != hv_orig )
-				{
-				fprintf(stderr, "%s: hash clash for global %s (%llu/%llu vs. %llu/%llu)\n",
-					working_dir.c_str(), gn.c_str(),
-					ht, hv, ht_orig, hv_orig);
-				fprintf(stderr, "val: %s\n", g->GetVal() ? obj_desc(g->GetVal().get()).c_str() : "<none>");
-				return true;
-				}
-			}
-		}
-
-	for ( auto& t : pfs.RepTypes() )
-		{
-		auto tag = t->Tag();
-
-		if ( tag != TYPE_ENUM && tag != TYPE_RECORD )
-			// Other types, if inconsistent, will just not reuse
-			// the previously compiled version of the type.
-			continue;
-
-		// We identify enum's and record's by name.  Make sure that
-		// the name either (1) wasn't previously used, or (2) if it
-		// was, it was likewise for an enum or a record.
-		const auto& tn = t->GetName();
-		if ( tn.size() == 0 || ! hm.HasGlobal(tn) )
-			// No concern of collision since the type name
-			// wasn't previously compiled.
-			continue;
-
-		if ( tag == TYPE_ENUM && hm.HasEnumTypeGlobal(tn) )
-			// No inconsistency.
-			continue;
-
-		if ( tag == TYPE_RECORD && hm.HasRecordTypeGlobal(tn) )
-			// No inconsistency.
-			continue;
-
-		fprintf(stderr, "%s: type \"%s\" collides with compiled global\n",
-			working_dir.c_str(), tn.c_str());
-		return true;
-		}
-
-	return false;
-	}
-
 void CPPCompile::GenProlog()
 	{
 	if ( addl_tag == 0 )
@@ -225,56 +162,6 @@ void CPPCompile::GenProlog()
 	Emit("std::vector<int> field_mapping;");
 	Emit("std::vector<int> enum_mapping;");
 	NL();
-	}
-
-void CPPCompile::CreateGlobal(const ID* g)
-	{
-	auto gn = std::string(g->Name());
-	bool is_bif = pfs.BiFGlobals().count(g) > 0;
-
-	if ( pfs.Globals().count(g) == 0 )
-		{
-		// Only used in the context of calls.  If it's compilable,
-		// the we'll call it directly.
-		if ( compilable_funcs.count(gn) > 0 )
-			{
-			AddGlobal(gn, "zf", true);
-			return;
-			}
-
-		if ( is_bif )
-			{
-			AddBiF(g, false);
-			return;
-			}
-		}
-
-	if ( AddGlobal(gn, "gl", true) )
-		{ // We'll be creating this global.
-		Emit("IDPtr %s;", globals[gn]);
-
-		if ( pfs.Events().count(gn) > 0 )
-			// This is an event that's also used as
-			// a variable.
-			Emit("EventHandlerPtr %s_ev;", globals[gn]);
-
-		const auto& t = g->GetType();
-		NoteInitDependency(g, TypeRep(t));
-
-		AddInit(g, globals[gn],
-		        std::string("lookup_global__CPP(\"") + gn + "\", " +
-		        GenTypeName(t) + ")");
-
-		if ( g->HasVal() )
-			GenGlobalInit(g, globals[gn], g->GetVal());
-		}
-
-	if ( is_bif )
-		// This is a BiF that's referred to in a non-call context,
-		// so we didn't already add it above.
-		AddBiF(g, true);
-
-	global_vars.emplace(g);
 	}
 
 void CPPCompile::RegisterCompiledBody(const std::string& f)
@@ -386,42 +273,6 @@ void CPPCompile::GenEpilog()
 	Emit("} // zeek::detail");
 	}
 
-void CPPCompile::UpdateGlobalHashes()
-	{
-	for ( auto& g : pfs.AllGlobals() )
-		{
-		auto gn = g->Name();
-
-		if ( hm.HasGlobal(gn) )
-			// Not new to this compilation run.
-			continue;
-
-		auto ht = pfs.HashType(g->GetType());
-
-		hash_type hv = 0;
-		if ( g->GetVal() )
-			hv = hash_obj(g->GetVal());
-
-		fprintf(hm.HashFile(), "global\n%s\n", gn);
-		fprintf(hm.HashFile(), "%llu %llu\n", ht, hv);
-
-		// Record location information in the hash file for
-		// diagnostic purposes.
-		auto loc = g->GetLocationInfo();
-		fprintf(hm.HashFile(), "%s %d\n", loc->filename, loc->first_line);
-
-		// Flag any named record/enum types.
-		if ( g->IsType() )
-			{
-			const auto& t = g->GetType();
-			if ( t->Tag() == TYPE_RECORD )
-				fprintf(hm.HashFile(), "record\n%s\n", gn);
-			else if ( t->Tag() == TYPE_ENUM )
-				fprintf(hm.HashFile(), "enum\n%s\n", gn);
-			}
-		}
-	}
-
 bool CPPCompile::IsCompilable(const FuncInfo& func)
 	{
 	if ( func.ShouldSkip() )
@@ -433,44 +284,6 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 		return false;
 
 	return is_CPP_compilable(func.Profile());
-	}
-
-void CPPCompile::AddBiF(const ID* b, bool is_var)
-	{
-	auto bn = b->Name();
-	auto n = std::string(bn);
-	if ( is_var )
-		n = n + "_";	// make the name distinct
-
-	if ( AddGlobal(n, "bif", true) )
-		Emit("Func* %s;", globals[n]);
-
-	AddInit(b, globals[n], std::string("lookup_bif__CPP(\"") + bn + "\")");
-	}
-
-bool CPPCompile::AddGlobal(const std::string& g, const char* suffix, bool track)
-	{
-	bool new_var = false;
-
-	if ( globals.count(g) == 0 )
-		{
-		auto gn = GlobalName(g, suffix);
-
-		if ( hm.HasGlobalVar(gn) )
-			gn = scope_prefix(hm.GlobalVarScope(gn)) + gn;
-		else
-			{
-			new_var = true;
-
-			if ( track && update )
-				fprintf(hm.HashFile(), "global-var\n%s\n%d\n",
-					gn.c_str(), addl_tag);
-			}
-
-		globals.emplace(g, gn);
-		}
-
-	return new_var;
 	}
 
 void CPPCompile::DeclareFunc(const FuncInfo& func)
@@ -907,20 +720,6 @@ std::string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)
 	return gen;
 	}
 
-const std::string& CPPCompile::IDNameStr(const ID* id) const
-	{
-	if ( id->IsGlobal() )
-		{
-		auto g = std::string(id->Name());
-		ASSERT(globals.count(g) > 0);
-		return ((CPPCompile*)(this))->globals[g];
-		}
-
-	ASSERT(locals.count(id) > 0);
-
-	return ((CPPCompile*)(this))->locals[id];
-	}
-
 std::string CPPCompile::ParamDecl(const FuncTypePtr& ft,
 			const IDPList* lambda_ids, const ProfileFunc* pf)
 	{
@@ -989,39 +788,6 @@ const ID* CPPCompile::FindParam(int i, const ProfileFunc* pf)
 void CPPCompile::RegisterEvent(std::string ev_name)
 	{
 	body_events[body_name].emplace_back(std::move(ev_name));
-	}
-
-std::string CPPCompile::LocalName(const ID* l) const
-	{
-	auto n = l->Name();
-	auto without_module = strstr(n, "::");
-
-	if ( without_module )
-		return Canonicalize(without_module + 2);
-	else
-		return Canonicalize(n);
-	}
-
-std::string CPPCompile::Canonicalize(const char* name) const
-	{
-	std::string cname;
-
-	for ( int i = 0; name[i]; ++i )
-		{
-		auto c = name[i];
-
-		// Strip <>'s - these get introduced for lambdas.
-		if ( c == '<' || c == '>' )
-			continue;
-
-		if ( c == ':' )
-			c = '_';
-
-		cname = cname + c;
-		}
-
-	// Add a trailing '_' to avoid conflicts with C++ keywords.
-	return cname + "_";
 	}
 
 void CPPCompile::StartBlock()

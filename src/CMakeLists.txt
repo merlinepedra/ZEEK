@@ -339,6 +339,7 @@ set(MAIN_SRCS
     script_opt/CPPRuntimeVec.cc
     script_opt/CPPTracker.cc
     script_opt/CPPUtil.cc
+    script_opt/CPPVars.cc
     script_opt/DefItem.cc
     script_opt/DefSetsMgr.cc
     script_opt/Expr.cc

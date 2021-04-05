@@ -22,19 +22,9 @@ public:
 private:
 	void Compile();
 
-	// Returns true if the current compilation context has collisions
-	// with previously generated code (globals with conflicting types
-	// or initialization values, or types with differing elements).
-	bool CheckForCollisions();
-
 	// Generate the beginning of the compiled code: run-time functions,
 	// namespace, auxiliary globals.
 	void GenProlog();
-
-	// Generate declarations associated with the given global, and, if
-	// it's used as a variable (not just as a function being called),
-	// track it as such.
-	void CreateGlobal(const ID* g);
 
 	// Given the name of a function body that's been compiled, generate
 	// code to register it at run-time, and track its associated hash
@@ -43,16 +33,58 @@ private:
 
 	void GenEpilog();
 
+	bool IsCompilable(const FuncInfo& func);
+
+	// Start of methods related to script variables and their C++
+	// counterparts.
+	// See CPPVars.cc for definitions.
+	//
+
+	// Returns true if the current compilation context has collisions
+	// with previously generated code (globals with conflicting types
+	// or initialization values, or types with differing elements).
+	bool CheckForCollisions();
+
+	// Generate declarations associated with the given global, and, if
+	// it's used as a variable (not just as a function being called),
+	// track it as such.
+	void CreateGlobal(const ID* g);
+
 	// For the globals used in the compilation, if new then append
 	// them to the hash file to make the information available
 	// to subsequent compilation runs.
 	void UpdateGlobalHashes();
 
-	bool IsCompilable(const FuncInfo& func);
-
-	void DeclareGlobals(const FuncInfo& func);
 	void AddBiF(const ID* b, bool is_var);
 	bool AddGlobal(const std::string& g, const char* suffix, bool track);
+
+	// The following match various forms of identifiers to the
+	// name used for their C++ equivalent.
+	const char* IDName(const ID& id)	{ return IDName(&id); }
+	const char* IDName(const IDPtr& id)	{ return IDName(id.get()); }
+	const char* IDName(const ID* id)	{ return IDNameStr(id).c_str(); }
+	const std::string& IDNameStr(const ID* id) const;
+
+	// Returns a canonicalized version of a variant of a global made
+	// distinct by the given suffix.
+	std::string GlobalName(const std::string& g, const char* suffix)
+		{
+		return Canonicalize(g.c_str()) + "_" + suffix;
+		}
+
+	// Returns a canonicalized form of a local identifier's name,
+	// expanding its module prefix if needed.
+	std::string LocalName(const ID* l) const;
+	std::string LocalName(const IDPtr& l) const
+		{ return LocalName(l.get()); }
+
+	// Returns a canonicalized name, with various non-alphanumeric
+	// characters stripped or transformed, and guananteed not to
+	// conflict with C++ keywords.
+	std::string Canonicalize(const char* name) const;
+
+	//
+	// End of methods related to script/C++ variables.
 
 	// Start of methods related to generating code for representing
 	// script constants as run-time values.
@@ -431,11 +463,6 @@ private:
 	//
 	// End of methods related to run-time initialization.
 
-	const char* IDName(const ID& id)	{ return IDName(&id); }
-	const char* IDName(const IDPtr& id)	{ return IDName(id.get()); }
-	const char* IDName(const ID* id)	{ return IDNameStr(id).c_str(); }
-	const std::string& IDNameStr(const ID* id) const;
-
 	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
 				const ProfileFunc* pf);
 	const ID* FindParam(int i, const ProfileFunc* pf);
@@ -486,17 +513,6 @@ private:
 		NL();
 		}
 
-	std::string GlobalName(const std::string& g, const char* suffix)
-		{
-		return Canonicalize(g.c_str()) + "_" + suffix;
-		}
-
-	std::string LocalName(const ID* l) const;
-	std::string LocalName(const IDPtr& l) const
-		{ return LocalName(l.get()); }
-
-	std::string Canonicalize(const char* name) const;
-
 	std::string GenString(const char* b, int len) const;
 
 	std::string CPPEscape(const char* b, int len) const;
@@ -519,6 +535,9 @@ private:
 
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
+
+	// Similar for locals, for the function currently being compiled.
+	std::unordered_map<const ID*, std::string> locals;
 
 	// Maps event names to the names we use for them.
 	std::unordered_map<std::string, std::string> events;
@@ -562,9 +581,6 @@ private:
 	//
 	// Indexed by the name of the function.
 	std::unordered_set<std::string> compilable_funcs;
-
-	// Same for locals, for the function currently being compiled.
-	std::unordered_map<const ID*, std::string> locals;
 
 	// Names for lambda capture ID's.  These require a separate space
 	// that incorporates the lambda's name, to deal with nested lambda's
