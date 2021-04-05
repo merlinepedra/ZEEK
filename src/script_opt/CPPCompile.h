@@ -82,7 +82,7 @@ private:
 	// characters stripped or transformed, and guananteed not to
 	// conflict with C++ keywords.
 	std::string Canonicalize(const char* name) const;
-
+	//
 	//
 	// End of methods related to script/C++ variables.
 
@@ -106,9 +106,49 @@ private:
 	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
 	                      const ProfileFunc* pf);
 	const ID* FindParam(int i, const ProfileFunc* pf);
-
+	//
 	//
 	// End of methods related to declaring compiled script functions.
+
+	// Start of methods related to generating the bodies of compiled
+	// script functions.  Note that some of this sort of functionality is
+	// instead in CPPDeclFunc.cc, due to the presence of inlined methods.
+	// See CPPGenFunc.cc for definitions.
+	//
+
+	void CompileFunc(const FuncInfo& func);
+	void CompileLambda(const LambdaExpr* l, const ProfileFunc* pf);
+
+	// Generate the body of the Invoke() method (which supplies the
+	// "glue" between for calling the C++-generated code).
+	void GenInvokeBody(const std::string& fname, const TypePtr& t,
+	                   const std::string& args);
+
+	void DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
+			const std::string& fname, const StmtPtr& body,
+			const IDPList* lambda_ids, FunctionFlavor flavor);
+
+	// Declare any parameters that originate from a type signature of
+	// "any" but were concretized in this declaration.
+	void TranslateAnyParams(const FuncTypePtr& ft, const ProfileFunc* pf);
+
+	// Generates code to dynamically initialize any events referred to
+	// in the function.
+	void InitializeEvents(const ProfileFunc* pf);
+
+	// Declare local variables (which are non-globals that aren't
+	// parameters or lambda captures).
+	void DeclareLocals(const ProfileFunc* func, const IDPList* lambda_ids);
+
+	// Returns the C++ name to use for a given function body.
+	std::string BodyName(const FuncInfo& func);
+
+	// Generate the arguments to be used when calling a C++-generated
+	// function.
+	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
+	//
+	//
+	// End of methods related to generating compiled script bodies.
 
 	// Start of methods related to generating code for representing
 	// script constants as run-time values.
@@ -128,23 +168,9 @@ private:
 	std::string BuildConstant(IntrusivePtr<Obj> parent, const ValPtr& vp)
 		{ return BuildConstant(parent.get(), vp); }
 	std::string BuildConstant(const Obj* parent, const ValPtr& vp);
-
+	//
 	//
 	// End of methods related to generating code for script constants.
-
-	void CompileFunc(const FuncInfo& func);
-	void CompileLambda(const LambdaExpr* l, const ProfileFunc* pf);
-
-	void GenInvokeBody(const std::string& fname, const TypePtr& t,
-				const std::string& args);
-
-	void DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
-			const std::string& fname, const StmtPtr& body,
-			const IDPList* lambda_ids, FunctionFlavor flavor);
-
-	void DeclareLocals(const ProfileFunc* func, const IDPList* lambda_ids);
-
-	std::string BodyName(const FuncInfo& func);
 
 	// Start of methods related to generating code for AST Stmt's.
 	// See CPPCompileStmts.cc for definitions.
@@ -166,7 +192,7 @@ private:
                              const IDPList* loop_vars);
 	void GenForOverVector(const ExprPtr& tbl, const IDPList* loop_vars);
 	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
-
+	//
 	//
 	// End of methods related to generating code for AST Stmt's.
 
@@ -290,7 +316,7 @@ private:
 	// otherwise conflict with hardwired offsets/values.
 	std::string GenField(const ExprPtr& rec, int field);
 	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
-
+	//
 	//
 	// End of methods related to generating code for AST Expr's.
 
@@ -352,7 +378,7 @@ private:
 
 	const char* NativeAccessor(const TypePtr& t);
 	const char* IntrusiveVal(const TypePtr& t);
-
+	//
 	//
 	// End of methods related to managing script types.
 
@@ -370,11 +396,9 @@ private:
 	const char* AttrName(const AttrPtr& attr);
 
 	void RegisterAttributes(const AttributesPtr& attrs);
-
+	//
 	//
 	// End of methods related to managing script type attributes.
-
-	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
 
 	// Start of methods related to run-time initialization.
 	// See CPPCompileInits.cc for definitions.
@@ -474,7 +498,7 @@ private:
 
 	// Generate the initialization hook for this set of compiled code.
 	void GenInitHook();
-
+	//
 	//
 	// End of methods related to run-time initialization.
 
