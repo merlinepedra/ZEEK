@@ -327,8 +327,8 @@ set(MAIN_SRCS
 
     script_opt/CPPCompile.cc
     script_opt/CPPCompileConsts.cc
-    script_opt/CPPCompileExpr.cc
-    script_opt/CPPCompileStmt.cc
+    script_opt/CPPCompileExprs.cc
+    script_opt/CPPCompileStmts.cc
     script_opt/CPPCompileTypes.cc
     script_opt/CPPFunc.cc
     script_opt/CPPHashMgr.cc

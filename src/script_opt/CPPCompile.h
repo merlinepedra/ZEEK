@@ -78,7 +78,7 @@ private:
 
 	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to generating code for AST Stmt's.
-	// See CPPCompileStmt.cc for definitions.
+	// See CPPCompileStmts.cc for definitions.
 
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
 	void GenStmt(const Stmt* s);
@@ -102,7 +102,7 @@ private:
 
 	// \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/-
 	// Start of methods related to generating code for AST Expr's.
-	// See CPPCompileExpr.cc for definitions.
+	// See CPPCompileExprs.cc for definitions.
 
 	// These methods are all oriented around returning strings
 	// of C++ code; they do not directly emit the code, since often
