@@ -4,7 +4,7 @@
 #include "zeek/RunState.h"
 #include "zeek/EventRegistry.h"
 #include "zeek/IPAddr.h"
-#include "zeek/script_opt/CPPRuntimeOps.h"
+#include "zeek/script_opt/CPP/RuntimeOps.h"
 
 namespace zeek::detail {
 

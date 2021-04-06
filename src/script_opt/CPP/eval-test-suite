@@ -2,7 +2,7 @@
 
 base=/Users/vern/warehouse/zeek-cpp
 test=$base/testing/btest
-so=$base/src/script_opt
+so=$base/src/script_opt/CPP
 build=$base/build
 gen=CPP-gen-addl.h
 

@@ -2,7 +2,7 @@
 
 #include "zeek/module_util.h"
 #include "zeek/EventRegistry.h"
-#include "zeek/script_opt/CPPRuntimeInit.h"
+#include "zeek/script_opt/CPP/RuntimeInit.h"
 
 namespace zeek::detail {
 

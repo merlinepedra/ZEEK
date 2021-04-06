@@ -16,11 +16,11 @@
 #include "zeek/Event.h"
 #include "zeek/EventRegistry.h"
 #include "zeek/RunState.h"
-#include "zeek/script_opt/CPPFunc.h"
 #include "zeek/script_opt/ScriptOpt.h"
-#include "zeek/script_opt/CPPRuntimeInit.h"
-#include "zeek/script_opt/CPPRuntimeOps.h"
-#include "zeek/script_opt/CPPRuntimeVec.h"
+#include "zeek/script_opt/CPP/Func.h"
+#include "zeek/script_opt/CPP/RuntimeInit.h"
+#include "zeek/script_opt/CPP/RuntimeOps.h"
+#include "zeek/script_opt/CPP/RuntimeVec.h"
 
 namespace zeek {
 

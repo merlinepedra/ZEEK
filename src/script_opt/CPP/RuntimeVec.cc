@@ -1,7 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include "zeek/ZeekString.h"
-#include "zeek/script_opt/CPPRuntimeVec.h"
+#include "zeek/script_opt/CPP/RuntimeVec.h"
 
 namespace zeek::detail {
 

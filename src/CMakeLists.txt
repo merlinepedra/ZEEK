@@ -325,24 +325,24 @@ set(MAIN_SRCS
     plugin/Manager.cc
     plugin/Plugin.cc
 
-    script_opt/CPPAttrs.cc
-    script_opt/CPPConsts.cc
-    script_opt/CPPDeclFunc.cc
-    script_opt/CPPDriver.cc
-    script_opt/CPPEmit.cc
-    script_opt/CPPExprs.cc
-    script_opt/CPPFunc.cc
-    script_opt/CPPGenFunc.cc
-    script_opt/CPPHashMgr.cc
-    script_opt/CPPInits.cc
-    script_opt/CPPRuntimeInit.cc
-    script_opt/CPPRuntimeOps.cc
-    script_opt/CPPRuntimeVec.cc
-    script_opt/CPPStmts.cc
-    script_opt/CPPTracker.cc
-    script_opt/CPPTypes.cc
-    script_opt/CPPUtil.cc
-    script_opt/CPPVars.cc
+    script_opt/CPP/Attrs.cc
+    script_opt/CPP/Consts.cc
+    script_opt/CPP/DeclFunc.cc
+    script_opt/CPP/Driver.cc
+    script_opt/CPP/Emit.cc
+    script_opt/CPP/Exprs.cc
+    script_opt/CPP/Func.cc
+    script_opt/CPP/GenFunc.cc
+    script_opt/CPP/HashMgr.cc
+    script_opt/CPP/Inits.cc
+    script_opt/CPP/RuntimeInit.cc
+    script_opt/CPP/RuntimeOps.cc
+    script_opt/CPP/RuntimeVec.cc
+    script_opt/CPP/Stmts.cc
+    script_opt/CPP/Tracker.cc
+    script_opt/CPP/Types.cc
+    script_opt/CPP/Util.cc
+    script_opt/CPP/Vars.cc
     script_opt/DefItem.cc
     script_opt/DefSetsMgr.cc
     script_opt/Expr.cc
@@ -355,7 +355,7 @@ set(MAIN_SRCS
     script_opt/Stmt.cc
     script_opt/TempVar.cc
 
-    script_opt/CPP-gen.cc
+    script_opt/CPP/CPP-gen.cc
 
     nb_dns.c
     digest.h

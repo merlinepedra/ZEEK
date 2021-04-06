@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#include "zeek/script_opt/CPPCompile.h"
+#include "zeek/script_opt/CPP/Compile.h"
 
 
 namespace zeek::detail {

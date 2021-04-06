@@ -11,8 +11,8 @@
 #include "zeek/script_opt/Inline.h"
 #include "zeek/script_opt/Reduce.h"
 #include "zeek/script_opt/GenRDs.h"
-#include "zeek/script_opt/CPPCompile.h"
-#include "zeek/script_opt/CPPFunc.h"
+#include "zeek/script_opt/CPP/Compile.h"
+#include "zeek/script_opt/CPP/Func.h"
 
 
 namespace zeek::detail {

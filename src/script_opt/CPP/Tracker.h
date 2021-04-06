@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "zeek/script_opt/CPPFunc.h"
+#include "zeek/script_opt/CPP/Func.h"
 
 namespace zeek::detail {
 

@@ -2,7 +2,7 @@
 
 // C++ compiler methods relating to generating code for Stmt's.
 
-#include "zeek/script_opt/CPPCompile.h"
+#include "zeek/script_opt/CPP/Compile.h"
 
 namespace zeek::detail {
 

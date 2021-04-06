@@ -1,6 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include "zeek/script_opt/CPPCompile.h"
+#include "zeek/script_opt/CPP/Compile.h"
 
 
 namespace zeek::detail {

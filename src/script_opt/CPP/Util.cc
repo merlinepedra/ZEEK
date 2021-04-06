@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <sys/file.h>
 
-#include "zeek/script_opt/CPPUtil.h"
+#include "zeek/script_opt/CPP/Util.h"
 
 namespace zeek::detail {
 

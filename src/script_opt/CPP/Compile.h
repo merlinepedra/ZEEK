@@ -3,11 +3,11 @@
 #pragma once
 
 #include "zeek/Desc.h"
-#include "zeek/script_opt/CPPFunc.h"
-#include "zeek/script_opt/CPPUtil.h"
-#include "zeek/script_opt/CPPTracker.h"
-#include "zeek/script_opt/CPPHashMgr.h"
 #include "zeek/script_opt/ScriptOpt.h"
+#include "zeek/script_opt/CPP/Func.h"
+#include "zeek/script_opt/CPP/Util.h"
+#include "zeek/script_opt/CPP/Tracker.h"
+#include "zeek/script_opt/CPP/HashMgr.h"
 
 
 namespace zeek::detail {

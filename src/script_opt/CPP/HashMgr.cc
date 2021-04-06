@@ -1,8 +1,8 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include "zeek/script_opt/CPPHashMgr.h"
-#include "zeek/script_opt/CPPFunc.h"
-#include "zeek/script_opt/CPPUtil.h"
+#include "zeek/script_opt/CPP/HashMgr.h"
+#include "zeek/script_opt/CPP/Func.h"
+#include "zeek/script_opt/CPP/Util.h"
 
 namespace zeek::detail {
 

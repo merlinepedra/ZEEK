@@ -1,8 +1,8 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include "zeek/Desc.h"
-#include "zeek/script_opt/CPPTracker.h"
-#include "zeek/script_opt/CPPUtil.h"
+#include "zeek/script_opt/CPP/Tracker.h"
+#include "zeek/script_opt/CPP/Util.h"
 #include "zeek/script_opt/ProfileFunc.h"
 
 
