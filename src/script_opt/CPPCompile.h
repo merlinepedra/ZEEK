@@ -152,7 +152,7 @@ private:
 
 	// Start of methods related to generating code for representing
 	// script constants as run-time values.
-	// See CPPCompileConsts.cc for definitions.
+	// See CPPConsts.cc for definitions.
 	//
 
 	void AddConstant(const ConstExpr* c);
@@ -173,7 +173,7 @@ private:
 	// End of methods related to generating code for script constants.
 
 	// Start of methods related to generating code for AST Stmt's.
-	// See CPPCompileStmts.cc for definitions.
+	// See CPPStmts.cc for definitions.
 	//
 
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
@@ -197,7 +197,7 @@ private:
 	// End of methods related to generating code for AST Stmt's.
 
 	// Start of methods related to generating code for AST Expr's.
-	// See CPPCompileExprs.cc for definitions.
+	// See CPPExprs.cc for definitions.
 	//
 
 	// These methods are all oriented around returning strings
@@ -321,7 +321,7 @@ private:
 	// End of methods related to generating code for AST Expr's.
 
 	// Start of methods related to managing script types.
-	// See CPPCompileTypes.cc for definitions.
+	// See CPPTypes.cc for definitions.
 	//
 
 	// "Native" types are those Zeek scripting types that we support
@@ -383,7 +383,7 @@ private:
 	// End of methods related to managing script types.
 
 	// Start of methods related to managing script type attributes.
-	// See CPPCompileAttrs.cc for definitions.
+	// See CPPAttrs.cc for definitions.
 	//
 
 	void BuildAttrs(const AttributesPtr& attrs, std::string& attr_tags,
@@ -401,7 +401,7 @@ private:
 	// End of methods related to managing script type attributes.
 
 	// Start of methods related to run-time initialization.
-	// See CPPCompileInits.cc for definitions.
+	// See CPPInits.cc for definitions.
 	//
 
 	// Generates code to construct a CallExpr that can be used to
@@ -502,7 +502,9 @@ private:
 	//
 	// End of methods related to run-time initialization.
 
-	void RegisterEvent(std::string ev_name);
+	// Start of methods related to low-level code generation.
+	// See CPPEmit.cc for definitions.
+	//
 
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);
@@ -560,6 +562,11 @@ private:
 		}
 
 	void Indent() const;
+	//
+	//
+	// End of methods related to run-time initialization.
+
+	void RegisterEvent(std::string ev_name);
 
 	std::vector<FuncInfo>& funcs;
 	ProfileFuncs& pfs;

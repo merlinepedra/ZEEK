@@ -329,6 +329,7 @@ set(MAIN_SRCS
     script_opt/CPPConsts.cc
     script_opt/CPPDeclFunc.cc
     script_opt/CPPDriver.cc
+    script_opt/CPPEmit.cc
     script_opt/CPPExprs.cc
     script_opt/CPPFunc.cc
     script_opt/CPPGenFunc.cc
