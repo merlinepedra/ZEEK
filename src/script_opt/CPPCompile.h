@@ -44,7 +44,42 @@ private:
 	// True if the given function (plus body and profile) is one 
 	// that should be compiled.
 	bool IsCompilable(const FuncInfo& func);
+
+	// The set of functions/bodies we're compiling.
+	std::vector<FuncInfo>& funcs;
+
+	// The global profile of all of the functions.
+	ProfileFuncs& pfs;
+
+	// Hash-indexed information about previously compiled code (and used
+	// to update it from this compilation run).
+	CPPHashManager& hm;
+
+	// Script functions that we are able to compile.  We compute
+	// these ahead of time so that when compiling script function A
+	// which makes a call to script function B, we know whether
+	// B will indeed be compiled, or if it'll be interpreted due to
+	// it including some functionality we don't currently support
+	// for compilation.
 	//
+	// Indexed by the name of the function.
+	std::unordered_set<std::string> compilable_funcs;
+
+	// Maps functions (not hooks or events) to upstream compiled names.
+	std::unordered_map<std::string, std::string> hashed_funcs;
+
+	// If non-zero, provides a tag used for auxiliary/additional
+	// compilation units.
+	int addl_tag = 0;
+
+	// If true, then we're updating the C++ base (i.e., generating
+	// code meant for use by subsequently generated code).
+	bool update = false;
+
+	// Working directory in which we're compiling.  Used to quasi-locate
+	// error messages when doing test-suite "add-C++" crunches.
+	std::string working_dir;
+
 	//
 	// End of methods related to script/C++ variables.
 
@@ -108,7 +143,19 @@ private:
 	// characters stripped or transformed, and guananteed not to
 	// conflict with C++ keywords.
 	std::string Canonicalize(const char* name) const;
-	//
+
+	// Maps global names (not identifiers) to the names we use for them.
+	std::unordered_map<std::string, std::string> globals;
+
+	// Similar for locals, for the function currently being compiled.
+	std::unordered_map<const ID*, std::string> locals;
+
+	// Maps event names to the names we use for them.
+	std::unordered_map<std::string, std::string> events;
+
+	// Globals that correspond to variables, not functions.
+	std::unordered_set<const ID*> global_vars;
+
 	//
 	// End of methods related to script/C++ variables.
 
@@ -155,7 +202,18 @@ private:
 	// at 0).  Returns nil if the profile indicates that that parameter
 	// is not used by the function.
 	const ID* FindParam(int i, const ProfileFunc* pf);
-	//
+
+	// Names for lambda capture ID's.  These require a separate space
+	// that incorporates the lambda's name, to deal with nested lambda's
+	// that refer to the identifiers with the same name.
+	std::unordered_map<const ID*, std::string> lambda_names;
+
+	// The function's parameters.  Tracked so we don't re-declare them.
+	std::unordered_set<const ID*> params;
+
+	// Whether we're parsing a hook.
+	bool in_hook = false;
+
 	//
 	// End of methods related to declaring compiled script functions.
 
@@ -201,7 +259,32 @@ private:
 	// Generate the arguments to be used when calling a C++-generated
 	// function.
 	std::string GenArgs(const RecordTypePtr& params, const Expr* e);
-	//
+
+	// Functions that we've declared/compiled.
+	std::unordered_set<std::string> compiled_funcs;
+
+	// Maps those to their associated files - used to make add-C++ body
+	// hashes distinct.
+	std::unordered_map<std::string, std::string> cf_locs;
+
+	// Maps function bodies to the names we use for them.
+	std::unordered_map<const Stmt*, std::string> body_names;
+
+	// Reverse mapping.
+	std::unordered_map<std::string, const Stmt*> names_to_bodies;
+
+	// Maps function names to hashes of bodies.
+	std::unordered_map<std::string, hash_type> body_hashes;
+
+	// Maps function names to events relevant to them.
+	std::unordered_map<std::string, std::vector<std::string>> body_events;
+
+	// Return type of the function we're currently compiling.
+	TypePtr ret_type = nullptr;
+
+	// Internal name of the function we're currently compiling.
+	std::string body_name;
+
 	//
 	// End of methods related to generating compiled script bodies.
 
@@ -236,7 +319,31 @@ private:
 	void AddRecordConstant(const ValPtr& v, std::string& const_name);
 	void AddTableConstant(const ValPtr& v, std::string& const_name);
 	void AddVectorConstant(const ValPtr& v, std::string& const_name);
-	//
+
+	// Maps (non-native) constants to associated C++ globals.
+	std::unordered_map<const ConstExpr*, std::string> const_exprs;
+
+	// Maps the values of (non-native) constants to associated C++ globals.
+	std::unordered_map<const Val*, std::string> const_vals;
+
+	// Used for memory management associated with const_vals's index.
+	std::vector<ValPtr> cv_indices;
+
+	// Maps string representations of (non-native) constants to
+	// associated C++ globals.
+	std::unordered_map<std::string, std::string> constants;
+
+	// Maps the same representations to the Val* associated with their
+	// original creation.  This enables us to construct initialization
+	// dependencies for later Val*'s that are able to reuse the same
+	// constant.
+	std::unordered_map<std::string, const Val*> constants_to_vals;
+
+	// Function variables that we need to create dynamically for
+	// initializing globals, coupled with the name of their associated
+	// constant.
+	std::unordered_map<FuncVal*, std::string> func_vars;
+
 	//
 	// End of methods related to generating code for script constants.
 
@@ -264,7 +371,11 @@ private:
 	                     const IDPList* loop_vars);
 	void GenForOverVector(const ExprPtr& tbl, const IDPList* loop_vars);
 	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
-	//
+
+	// Nested level of loops/switches for which "break"'s should be
+	// C++ breaks rather than a "hook" break.
+	int break_level = 0;
+
 	//
 	// End of methods related to generating code for AST Stmt's.
 
@@ -397,7 +508,41 @@ private:
 	// otherwise conflict with hardwired offsets/values.
 	std::string GenField(const ExprPtr& rec, int field);
 	std::string GenEnum(const TypePtr& et, const ValPtr& ev);
+
+	// For record that are extended via redef's, maps fields
+	// beyond the original definition to locations in the
+	// global (in the compiled code) "field_mapping" array.
 	//
+	// So for each such record, there's a second map of
+	// field-in-the-record to offset-in-field_mapping.
+	std::unordered_map<const RecordType*, std::unordered_map<int, int>>
+		record_field_mappings;
+
+	// Total number of such mappings (i.e., entries in the inner maps,
+	// not the outer map).
+	int num_rf_mappings = 0;
+
+	// For each entry in "field_mapping", the record and TypeDecl
+	// associated with the mapping.
+	std::vector<std::pair<const RecordType*, const TypeDecl*>> field_decls;
+
+	// For enums that are extended via redef's, maps each distinct
+	// value (that the compiled scripts refer to) to locations in the
+	// global (in the compiled code) "enum_mapping" array.
+	//
+	// So for each such enum, there's a second map of
+	// value-during-compilation to offset-in-enum_mapping.
+	std::unordered_map<const EnumType*, std::unordered_map<int, int>>
+		enum_val_mappings;
+
+	// Total number of such mappings (i.e., entries in the inner maps,
+	// not the outer map).
+	int num_ev_mappings = 0;
+
+	// For each entry in "enum_mapping", the record and name
+	// associated with the mapping.
+	std::vector<std::pair<const EnumType*, std::string>> enum_names;
+
 	//
 	// End of methods related to generating code for AST Expr's.
 
@@ -475,7 +620,14 @@ private:
 	// The name for a type that should be used in declaring
 	// an IntrusivePtr to such a type.
 	const char* IntrusiveVal(const TypePtr& t);
-	//
+
+	// Maps types to indices in the global "types__CPP" array.
+	CPPTracker<Type> types = {"types", &compiled_items};
+
+	// Used to prevent analysis of mutually-referring types from
+	// leading to infinite recursion.
+	std::unordered_set<const Type*> processed_types;
+
 	//
 	// End of methods related to managing script types.
 
@@ -507,7 +659,10 @@ private:
 	// Returns a string representation of the name associated with
 	// different attributes (e.g., "ATTR_DEFAULT").
 	const char* AttrName(const AttrPtr& attr);
-	//
+
+	// Similar for attributes, so we can reconstruct record types.
+	CPPTracker<Attributes> attributes = {"attrs", &compiled_items};
+
 	//
 	// End of methods related to managing script type attributes.
 
@@ -610,7 +765,23 @@ private:
 
 	// Generate the initialization hook for this set of compiled code.
 	void GenInitHook();
-	//
+
+	// A list of pre-initializations (those potentially required by
+	// other initializations, and that themselves have no dependencies).
+	std::vector<std::string> pre_inits;
+
+	// Expressions for which we need to generate initialization-time
+	// code.  Currently, these are only expressions appearing in
+	// attributes.
+	CPPTracker<Expr> init_exprs = {"gen_init_expr", &compiled_items};
+
+	// Maps an object requiring initialization to its initializers.
+	std::unordered_map<const Obj*, std::vector<std::string>> obj_inits;
+
+	// Maps an object requiring initializations to its dependencies
+	// on other such objects.
+	std::unordered_map<const Obj*, std::unordered_set<const Obj*>> obj_deps;
+
 	//
 	// End of methods related to run-time initialization.
 
@@ -683,180 +854,15 @@ private:
 
 	// Indents to the current indentation level.
 	void Indent() const;
-	//
+
+	// File to which we're generating code.
+	FILE* write_file;
+
+	// Indentation level.
+	int block_level = 0;
+
 	//
 	// End of methods related to run-time initialization.
-
-
-	std::vector<FuncInfo>& funcs;
-	ProfileFuncs& pfs;
-	CPPHashManager& hm;
-
-	FILE* write_file;
-	FILE* hash_file;
-
-	// Maps global names (not identifiers) to the names we use for them.
-	std::unordered_map<std::string, std::string> globals;
-
-	// Similar for locals, for the function currently being compiled.
-	std::unordered_map<const ID*, std::string> locals;
-
-	// Maps event names to the names we use for them.
-	std::unordered_map<std::string, std::string> events;
-
-	// Globals that correspond to variables, not functions.
-	std::unordered_set<const ID*> global_vars;
-
-	// Maps functions (not hooks or events) to upstream compiled names.
-	std::unordered_map<std::string, std::string> hashed_funcs;
-
-	// Functions that we've declared/compiled.
-	std::unordered_set<std::string> compiled_funcs;
-
-	// Maps those to their associated files - used to make add-C++ body
-	// hashes distinct.
-	std::unordered_map<std::string, std::string> cf_locs;
-
-	// Maps function bodies to the names we use for them.
-	std::unordered_map<const Stmt*, std::string> body_names;
-
-	// Reverse mapping.
-	std::unordered_map<std::string, const Stmt*> names_to_bodies;
-
-	// Maps function names to hashes of bodies.
-	std::unordered_map<std::string, hash_type> body_hashes;
-
-	// Maps function names to events relevant to them.
-	std::unordered_map<std::string, std::vector<std::string>> body_events;
-
-	// Function variables that we need to create dynamically for
-	// initializing globals, coupled with the name of their associated
-	// constant.
-	std::unordered_map<FuncVal*, std::string> func_vars;
-
-	// Script functions that we are able to compile.  We compute
-	// these ahead of time so that when compiling script function A
-	// which makes a call to script function B, we know whether
-	// B will indeed be compiled, or if it'll be interpreted due to
-	// it including some functionality we don't currently support
-	// for compilation.
-	//
-	// Indexed by the name of the function.
-	std::unordered_set<std::string> compilable_funcs;
-
-	// Names for lambda capture ID's.  These require a separate space
-	// that incorporates the lambda's name, to deal with nested lambda's
-	// that refer to the identifiers with the same name.
-	std::unordered_map<const ID*, std::string> lambda_names;
-
-	// The function's parameters.  Tracked so we don't re-declare them.
-	std::unordered_set<const ID*> params;
-
-	// Maps (non-native) constants to associated C++ globals.
-	std::unordered_map<const ConstExpr*, std::string> const_exprs;
-
-	// Maps the values of (non-native) constants to associated C++ globals.
-	std::unordered_map<const Val*, std::string> const_vals;
-
-	// Used for memory management associated with const_vals's index.
-	std::vector<ValPtr> cv_indices;
-
-	// Maps string representations of (non-native) constants to
-	// associated C++ globals.
-	std::unordered_map<std::string, std::string> constants;
-
-	// Maps the same representations to the Val* associated with their
-	// original creation.  This enables us to construct initialization
-	// dependencies for later Val*'s that are able to reuse the same
-	// constant.
-	std::unordered_map<std::string, const Val*> constants_to_vals;
-
-	// Maps an object requiring initialization to its initializers.
-	std::unordered_map<const Obj*, std::vector<std::string>> obj_inits;
-
-	// Maps an object requiring initializations to its dependencies
-	// on other such objects.
-	std::unordered_map<const Obj*, std::unordered_set<const Obj*>> obj_deps;
-
-	// A list of pre-initializations (those potentially required by
-	// other initializations, and that themselves have no dependencies).
-	std::vector<std::string> pre_inits;
-
-	// Maps types to indices in the global "types__CPP" array.
-	CPPTracker<Type> types = {"types", &compiled_items};
-
-	// Used to prevent analysis of mutually-referring types from
-	// leading to infinite recursion.
-	std::unordered_set<const Type*> processed_types;
-
-	// Similar for attributes, so we can reconstruct record types.
-	CPPTracker<Attributes> attributes = {"attrs", &compiled_items};
-
-	// Expressions for which we need to generate initialization-time
-	// code.  Currently, these are only expressions appearing in
-	// attributes.
-	CPPTracker<Expr> init_exprs = {"gen_init_expr", &compiled_items};
-
-	// For record that are extended via redef's, maps fields
-	// beyond the original definition to locations in the
-	// global (in the compiled code) "field_mapping" array.
-	//
-	// So for each such record, there's a second map of
-	// field-in-the-record to offset-in-field_mapping.
-	std::unordered_map<const RecordType*, std::unordered_map<int, int>>
-		record_field_mappings;
-
-	// Total number of such mappings (i.e., entries in the inner maps,
-	// not the outer map).
-	int num_rf_mappings = 0;
-
-	// For each entry in "field_mapping", the record and TypeDecl
-	// associated with the mapping.
-	std::vector<std::pair<const RecordType*, const TypeDecl*>> field_decls;
-
-	// For enums that are extended via redef's, maps each distinct
-	// value (that the compiled scripts refer to) to locations in the
-	// global (in the compiled code) "enum_mapping" array.
-	//
-	// So for each such enum, there's a second map of
-	// value-during-compilation to offset-in-enum_mapping.
-	std::unordered_map<const EnumType*, std::unordered_map<int, int>>
-		enum_val_mappings;
-
-	// Total number of such mappings (i.e., entries in the inner maps,
-	// not the outer map).
-	int num_ev_mappings = 0;
-
-	// For each entry in "enum_mapping", the record and name
-	// associated with the mapping.
-	std::vector<std::pair<const EnumType*, std::string>> enum_names;
-
-	// If non-zero, provides a tag used for auxiliary/additional
-	// compilation units.
-	int addl_tag = 0;
-
-	// If true, then we're updating the C++ base (i.e., generating
-	// code meant for use by subsequently generated code).
-	bool update = false;
-
-	// Internal name of the function we're currently compiling.
-	std::string body_name;
-
-	// Return type of the function we're currently compiling.
-	TypePtr ret_type = nullptr;
-
-	// Working directory in which we're compiling.  Used to quasi-locate
-	// error messages when doing test-suite "add-C++" crunches.
-	std::string working_dir;
-
-	// Whether we're parsing a hook.
-	bool in_hook = false;
-
-	// Nested level of loops/switches for which "break"'s should be
-	// C++ breaks rather than a "hook" break.
-	int break_level = 0;
-
-	int block_level = 0;
 };
 
 } // zeek::detail
