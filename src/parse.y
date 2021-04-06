@@ -267,7 +267,7 @@ static StmtPtr build_local(ID* id, Type* t, InitClass ic, Expr* e,
 
 	auto attrs_ptr = attrs ? std::make_unique<std::vector<AttrPtr>>(*attrs) : nullptr;
 
-	auto init = add_local(id_ptr, t_ptr, ic, e_ptr, std::move(attrs_ptr), VAR_REGULAR);
+	auto init = add_local(id_ptr, t_ptr, ic, e_ptr, std::move(attrs_ptr), dt);
 
 	id->SetInitExpr(std::move(e_ptr));
 

@@ -44,6 +44,10 @@ void optimize_func(ScriptFunc* f, ProfileFunc* pf, ScopePtr scope_ptr,
 	if ( analysis_options.only_func )
 		printf("Original: %s\n", obj_desc(body.get()).c_str());
 
+	if ( body->Tag() == STMT_CPP )
+		// We're not able to optimize this.
+		return;
+
 	if ( pf->NumWhenStmts() > 0 || pf->NumLambdas() > 0 )
 		{
 		if ( analysis_options.only_func )
@@ -279,6 +283,7 @@ void analyze_scripts()
 			if ( s != compiled_scripts.end() )
 				{
 				f.Func()->ReplaceBody(f.Body(), s->second.body);
+				f.SetBody(s->second.body);
 				for ( auto& e : s->second.events )
 					{
 					auto h = event_registry->Register(e);
@@ -289,8 +294,6 @@ void analyze_scripts()
 			else if ( analysis_options.force_use_CPP )
 				reporter->Warning("no C++ available for %s", f.Func()->Name());
 			}
-
-		return;
 		}
 
 	if ( generating_CPP )

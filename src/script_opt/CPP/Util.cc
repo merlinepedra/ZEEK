@@ -11,7 +11,7 @@ namespace zeek::detail {
 std::string Fmt(double d)
 	{
 	// Special hack to preserve the signed-ness of the magic -0.0.
-	if ( d == -0.0 )
+	if ( d == 0.0 && signbit(d) )
 		return "-0.0";
 
 	// Unfortunately, to_string(double) is hardwired to use %f with

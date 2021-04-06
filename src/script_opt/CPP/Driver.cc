@@ -152,7 +152,7 @@ void CPPCompile::Compile()
 void CPPCompile::GenProlog()
 	{
 	if ( addl_tag == 0 )
-		Emit("#include \"zeek/script_opt/CPPRuntime.h\"\n");
+		Emit("#include \"zeek/script_opt/CPP/Runtime.h\"\n");
 
 	Emit("namespace zeek::detail { //\n");
 	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir.c_str());
@@ -258,9 +258,10 @@ void CPPCompile::GenEpilog()
 	InitializeEnumMappings();
 
 	EndBlock(true);
-	Emit("} // %s\n\n", scope_prefix(addl_tag).c_str());
 
 	GenInitHook();
+
+	Emit("} // %s\n\n", scope_prefix(addl_tag).c_str());
 
 	if ( update )
 		UpdateGlobalHashes();
