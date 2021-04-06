@@ -197,6 +197,11 @@ bool CPPCompile::AddGlobal(const std::string& g, const char* suffix, bool track)
 	return new_var;
 	}
 
+void CPPCompile::RegisterEvent(std::string ev_name)
+	{
+	body_events[body_name].emplace_back(std::move(ev_name));
+	}
+
 const std::string& CPPCompile::IDNameStr(const ID* id) const
 	{
 	if ( id->IsGlobal() )

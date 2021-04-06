@@ -285,9 +285,4 @@ bool CPPCompile::IsCompilable(const FuncInfo& func)
 	return is_CPP_compilable(func.Profile());
 	}
 
-void CPPCompile::RegisterEvent(std::string ev_name)
-	{
-	body_events[body_name].emplace_back(std::move(ev_name));
-	}
-
 } // zeek::detail

@@ -5,6 +5,44 @@
 
 namespace zeek::detail {
 
+void CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
+	{
+	if ( ! attrs || attributes.HasKey(attrs) )
+		return;
+
+	attributes.AddKey(attrs);
+	AddInit(attrs);
+
+	auto a_rep = attributes.GetRep(attrs);
+	if ( a_rep != attrs.get() )
+		{
+		NoteInitDependency(attrs.get(), a_rep);
+		return;
+		}
+
+	for ( const auto& a : attrs->GetAttrs() )
+		{
+		const auto& e = a->GetExpr();
+		if ( e )
+			{
+			if ( IsSimpleInitExpr(e) )
+				{
+				// Make sure any dependencies it has get noted.
+				(void) GenExpr(e, GEN_VAL_PTR);
+				continue;
+				}
+
+			init_exprs.AddKey(e);
+			AddInit(e);
+			NoteInitDependency(attrs, e);
+
+			auto e_rep = init_exprs.GetRep(e);
+			if ( e_rep != e.get() )
+				NoteInitDependency(e.get(), e_rep);
+			}
+		}
+	}
+
 void CPPCompile::BuildAttrs(const AttributesPtr& attrs, std::string& attr_tags,
                             std::string& attr_vals)
 	{
@@ -132,44 +170,6 @@ const char* CPPCompile::AttrName(const AttrPtr& attr)
 
 	case NUM_ATTRS:	return "<busted";
 	}
-	}
-
-void CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
-	{
-	if ( ! attrs || attributes.HasKey(attrs) )
-		return;
-
-	attributes.AddKey(attrs);
-	AddInit(attrs);
-
-	auto a_rep = attributes.GetRep(attrs);
-	if ( a_rep != attrs.get() )
-		{
-		NoteInitDependency(attrs.get(), a_rep);
-		return;
-		}
-
-	for ( const auto& a : attrs->GetAttrs() )
-		{
-		const auto& e = a->GetExpr();
-		if ( e )
-			{
-			if ( IsSimpleInitExpr(e) )
-				{
-				// Make sure any dependencies it has get noted.
-				(void) GenExpr(e, GEN_VAL_PTR);
-				continue;
-				}
-
-			init_exprs.AddKey(e);
-			AddInit(e);
-			NoteInitDependency(attrs, e);
-
-			auto e_rep = init_exprs.GetRep(e);
-			if ( e_rep != e.get() )
-				NoteInitDependency(e.get(), e_rep);
-			}
-		}
 	}
 
 } // zeek::detail

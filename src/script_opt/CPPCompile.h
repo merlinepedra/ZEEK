@@ -15,11 +15,17 @@ namespace zeek::detail {
 class CPPCompile {
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs,
-			const char* gen_name, CPPHashManager& hm,
-			bool update);
+	           const char* gen_name, CPPHashManager& hm,
+	           bool update);
 	~CPPCompile();
 
 private:
+	// Start of methods related to driving the overall compilation
+	// process.
+	// See CPPDriver.cc for definitions.
+	//
+
+	// Main driver, invoked by constructor.
 	void Compile();
 
 	// Generate the beginning of the compiled code: run-time functions,
@@ -31,9 +37,17 @@ private:
 	// so subsequent compilations can reuse it.
 	void RegisterCompiledBody(const std::string& f);
 
+	// After compilation, generate the final code.  Most of this is
+	// run-time initialization of various dynamic values.
 	void GenEpilog();
 
+	// True if the given function (plus body and profile) is one 
+	// that should be compiled.
 	bool IsCompilable(const FuncInfo& func);
+	//
+	//
+	// End of methods related to script/C++ variables.
+
 
 	// Start of methods related to script variables and their C++
 	// counterparts.
@@ -55,8 +69,20 @@ private:
 	// to subsequent compilation runs.
 	void UpdateGlobalHashes();
 
+	// Register the given identifier as a BiF.  If is_var is true
+	// then the BiF is also used in a non-call context.
 	void AddBiF(const ID* b, bool is_var);
+
+	// Register the given global name.  "suffix" distinguishs particular 
+	// types of globals, such as the names of bifs, global (non-function)
+	// variables, or compiled Zeek functions.  If "track" is true then
+	// if we're compiling incrementally, and this is a new global not
+	// previously compiled, then we track its hash for future compilations.
 	bool AddGlobal(const std::string& g, const char* suffix, bool track);
+
+	// Tracks that the body we're currently compiling refers to the
+	// given event.
+	void RegisterEvent(std::string ev_name);
 
 	// The following match various forms of identifiers to the
 	// name used for their C++ equivalent.
@@ -86,29 +112,53 @@ private:
 	//
 	// End of methods related to script/C++ variables.
 
+
 	// Start of methods related to declaring compiled script functions,
 	// including related classes.
 	// See CPPDeclFunc.cc for definitions.
 	//
 
+	// Generates declarations (class, forward reference to C++ function)
+	// for the given script function.
 	void DeclareFunc(const FuncInfo& func);
+
+	// Similar, but for lambdas.
 	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
 
+	// Declares the CPPStmt subclass used for compiling the given
+	// function.  "ft" gives the functions type, "pf" its profile,
+	// "fname" its C++ name, "body" its AST, "l" if non-nil its
+	// corresponding lambda expression, and "flavor" whether it's
+	// a hook/event/function.
 	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
-                             const std::string& fname, const StmtPtr& body,
-                             const LambdaExpr* l, FunctionFlavor flavor);
-	void BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf,
-                         const std::string& fname, const StmtPtr& body,
-                         const LambdaExpr* l, const IDPList* lambda_ids);
+	                     const std::string& fname, const StmtPtr& body,
+	                     const LambdaExpr* l, FunctionFlavor flavor);
 
+	// Generates the declarations (and in-line definitions) associated
+	// with compiling a lambda.
+	void BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf,
+	                 const std::string& fname, const StmtPtr& body,
+	                 const LambdaExpr* l, const IDPList* lambda_ids);
+
+	// For a call to the C++ version of a function of type "ft" and
+	// with lambda captures lambda_ids (nil if not applicable), generates
+	// code that binds the Interpreter arguments (i.e., Frame offsets)
+	// to C++ function arguments, as well as passing in the captures.
 	std::string BindArgs(const FuncTypePtr& ft, const IDPList* lambda_ids);
 
+	// Generates the declaration for the parameters for a function with
+	// the given type, lambda captures (if non-nil), and profile.
 	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
 	                      const ProfileFunc* pf);
+
+	// Inspects the given profile to find the i'th parameter (starting
+	// at 0).  Returns nil if the profile indicates that that parameter
+	// is not used by the function.
 	const ID* FindParam(int i, const ProfileFunc* pf);
 	//
 	//
 	// End of methods related to declaring compiled script functions.
+
 
 	// Start of methods related to generating the bodies of compiled
 	// script functions.  Note that some of this sort of functionality is
@@ -116,19 +166,24 @@ private:
 	// See CPPGenFunc.cc for definitions.
 	//
 
+	// Driver functions for compiling the body of the given function
+	// or lambda.
 	void CompileFunc(const FuncInfo& func);
 	void CompileLambda(const LambdaExpr* l, const ProfileFunc* pf);
 
-	// Generate the body of the Invoke() method (which supplies the
+	// Generates the body of the Invoke() method (which supplies the
 	// "glue" between for calling the C++-generated code).
 	void GenInvokeBody(const std::string& fname, const TypePtr& t,
 	                   const std::string& args);
 
+	// Generates the code for the body of a script function with
+	// the given type, profile, C++ name, AST, lambda captures
+	// (if non-nil), and hook/event/function "flavor".
 	void DefineBody(const FuncTypePtr& ft, const ProfileFunc* pf,
-			const std::string& fname, const StmtPtr& body,
-			const IDPList* lambda_ids, FunctionFlavor flavor);
+	                const std::string& fname, const StmtPtr& body,
+	                const IDPList* lambda_ids, FunctionFlavor flavor);
 
-	// Declare any parameters that originate from a type signature of
+	// Declare parameters that originate from a type signature of
 	// "any" but were concretized in this declaration.
 	void TranslateAnyParams(const FuncTypePtr& ft, const ProfileFunc* pf);
 
@@ -150,29 +205,46 @@ private:
 	//
 	// End of methods related to generating compiled script bodies.
 
+
 	// Start of methods related to generating code for representing
 	// script constants as run-time values.
 	// See CPPConsts.cc for definitions.
 	//
 
+	// Returns an instantiation of a constant - either as a native
+	// C++ constant, or as a C++ variable that will be bound to
+	// a Zeek value at run-time initialization - that is needed
+	// by the given "parent" object (which acquires an initialization
+	// dependency, if a C++ variable is needed).
+	std::string BuildConstant(IntrusivePtr<Obj> parent, const ValPtr& vp)
+		{ return BuildConstant(parent.get(), vp); }
+	std::string BuildConstant(const Obj* parent, const ValPtr& vp);
+
+	// Called to create a constant appropriate for the given expression
+	// or, more directly, the given value.  The second method returns
+	// "true" if a C++ variable needed to be created to construct the
+	// constant at run-time initialization, false if can be instantiated
+	// directly as a C++ constant.
 	void AddConstant(const ConstExpr* c);
 	bool AddConstant(const ValPtr& v);
 
+	// Build particular types of C++ variables (with the given name)
+	// to hold constants initialized at run-time.
 	void AddStringConstant(const ValPtr& v, std::string& const_name);
 	void AddPatternConstant(const ValPtr& v, std::string& const_name);
 	void AddListConstant(const ValPtr& v, std::string& const_name);
 	void AddRecordConstant(const ValPtr& v, std::string& const_name);
 	void AddTableConstant(const ValPtr& v, std::string& const_name);
 	void AddVectorConstant(const ValPtr& v, std::string& const_name);
-
-	std::string BuildConstant(IntrusivePtr<Obj> parent, const ValPtr& vp)
-		{ return BuildConstant(parent.get(), vp); }
-	std::string BuildConstant(const Obj* parent, const ValPtr& vp);
 	//
 	//
 	// End of methods related to generating code for script constants.
 
+
 	// Start of methods related to generating code for AST Stmt's.
+	// For the most part, code generation is straightforward as
+	// it matches the Exec/DoExec methods of the corresponding
+	// Stmt subclasses.
 	// See CPPStmts.cc for definitions.
 	//
 
@@ -189,12 +261,13 @@ private:
 
 	void GenForStmt(const ForStmt* f);
 	void GenForOverTable(const ExprPtr& tbl, const IDPtr& value_var,
-                             const IDPList* loop_vars);
+	                     const IDPList* loop_vars);
 	void GenForOverVector(const ExprPtr& tbl, const IDPList* loop_vars);
 	void GenForOverString(const ExprPtr& str, const IDPList* loop_vars);
 	//
 	//
 	// End of methods related to generating code for AST Stmt's.
+
 
 	// Start of methods related to generating code for AST Expr's.
 	// See CPPExprs.cc for definitions.
@@ -232,6 +305,8 @@ private:
 	// as when expanding the arguments in a CallExpr.
 	std::string GenListExpr(const Expr* e, GenType gt, bool nested);
 
+	// Per-Expr-subclass code generation.  The resulting code generally
+	// reflects the corresponding Eval() or Fold() methods.
 	std::string GenExpr(const ExprPtr& e, GenType gt, bool top_level = false)
 		{ return GenExpr(e.get(), gt, top_level); }
 	std::string GenExpr(const Expr* e, GenType gt, bool top_level = false);
@@ -262,44 +337,50 @@ private:
 	std::string GenTableConstructorExpr(const Expr* e);
 	std::string GenVectorConstructorExpr(const Expr* e);
 
+	// Generate code for constants that can be expressed directly
+	// as C++ constants.
 	std::string GenVal(const ValPtr& v);
 
+	// Helper functions for particular Expr subclasses / flavors.
 	std::string GenUnary(const Expr* e, GenType gt,
-				const char* op, const char* vec_op = nullptr);
+	                     const char* op, const char* vec_op = nullptr);
 	std::string GenBinary(const Expr* e, GenType gt,
-				const char* op, const char* vec_op = nullptr);
+	                      const char* op, const char* vec_op = nullptr);
 	std::string GenBinarySet(const Expr* e, GenType gt, const char* op);
 	std::string GenBinaryString(const Expr* e, GenType gt, const char* op);
 	std::string GenBinaryPattern(const Expr* e, GenType gt, const char* op);
 	std::string GenBinaryAddr(const Expr* e, GenType gt, const char* op);
 	std::string GenBinarySubNet(const Expr* e, GenType gt, const char* op);
 	std::string GenEQ(const Expr* e, GenType gt,
-				const char* op, const char* vec_op);
+	                  const char* op, const char* vec_op);
 
 	std::string GenAssign(const ExprPtr& lhs, const ExprPtr& rhs,
-				const std::string& rhs_native,
-				const std::string& rhs_val_ptr,
-				GenType gt, bool top_level);
+	                      const std::string& rhs_native,
+	                      const std::string& rhs_val_ptr,
+	                      GenType gt, bool top_level);
 	std::string GenDirectAssign(const ExprPtr& lhs,
-				const std::string& rhs_native,
-				const std::string& rhs_val_ptr,
-				GenType gt, bool top_level);
+	                            const std::string& rhs_native,
+	                            const std::string& rhs_val_ptr,
+	                            GenType gt, bool top_level);
 	std::string GenIndexAssign(const ExprPtr& lhs, const ExprPtr& rhs,
-				const std::string& rhs_val_ptr,
-				GenType gt, bool top_level);
+	                           const std::string& rhs_val_ptr,
+	                           GenType gt, bool top_level);
 	std::string GenFieldAssign(const ExprPtr& lhs, const ExprPtr& rhs,
-				const std::string& rhs_val_ptr,
-				GenType gt, bool top_level);
+	                           const std::string& rhs_val_ptr,
+	                           GenType gt, bool top_level);
 	std::string GenListAssign(const ExprPtr& lhs, const ExprPtr& rhs);
 
+	// Support for element-by-element vector operations.
 	std::string GenVectorOp(const Expr* e, std::string op,
-				const char* vec_op);
+	                        const char* vec_op);
 	std::string GenVectorOp(const Expr* e, std::string op1,
-				std::string op2, const char* vec_op);
+	                        std::string op2, const char* vec_op);
 
 	// If "all_deep" is true, it means make all of the captures
 	// deep copies, not just the ones that were explicitly marked
-	// as deep copies.
+	// as deep copies.  That functionality is used to supporting
+	// Clone() methods; it's not needed when creating a new lambda
+	// instance.
 	std::string GenLambdaClone(const LambdaExpr* l, bool all_deep);
 
 	// Returns an initializer list for a vector of integers.
@@ -319,6 +400,7 @@ private:
 	//
 	//
 	// End of methods related to generating code for AST Expr's.
+
 
 	// Start of methods related to managing script types.
 	// See CPPTypes.cc for definitions.
@@ -358,47 +440,77 @@ private:
 	// The following assumes we're populating a type_decl_list called "tl".
 	std::string GenTypeDecl(const TypeDecl* td);
 
+	// Returns the name of a C++ variable that will hold a TypePtr
+	// of the appropriate flavor.  't' does not need to be a type
+	// representative.
 	std::string GenTypeName(const Type* t);
 	std::string GenTypeName(const TypePtr& t)
 		{ return GenTypeName(t.get()); }
 
+	// Returns the "representative" for a given type, used to ensure
+	// that we re-use the C++ variable corresponding to a type and
+	// don't instantiate redundant instances.
 	const Type* TypeRep(const Type* t)	{ return pfs.TypeRep(t); }
 	const Type* TypeRep(const TypePtr& t)	{ return TypeRep(t.get()); }
 
+	// Low-level C++ representations for types, of various flavors.
 	const char* TypeTagName(TypeTag tag) const;
 	const char* TypeName(const TypePtr& t);
 	const char* FullTypeName(const TypePtr& t);
 	const char* TypeType(const TypePtr& t);
 
+	// Track the given type (with support methods for onces that
+	// are complicated), recursively including its sub-types, and
+	// creating initializations (and dependencies) for constructing
+	// C++ variables representing the types.
 	void RegisterType(const TypePtr& t);
 	void RegisterListType(const TypePtr& t);
 	void RegisterTableType(const TypePtr& t);
 	void RegisterRecordType(const TypePtr& t);
 	void RegisterFuncType(const TypePtr& t);
 
+	// Access to a type's underlying values.
 	const char* NativeAccessor(const TypePtr& t);
+
+	// The name for a type that should be used in declaring
+	// an IntrusivePtr to such a type.
 	const char* IntrusiveVal(const TypePtr& t);
 	//
 	//
 	// End of methods related to managing script types.
 
+
 	// Start of methods related to managing script type attributes.
+	// Attributes arise mainly in the context of constructing types.
 	// See CPPAttrs.cc for definitions.
 	//
 
+	// Tracks a use of the given set of attributes, including
+	// initialization dependencies and the generation of any
+	// associated expressions.
+	void RegisterAttributes(const AttributesPtr& attrs);
+
+	// Populates the 2nd and 3rd arguments with C++ representations
+	// of the tags and (optional) values/expressions associated with
+	// the set of attributes.
 	void BuildAttrs(const AttributesPtr& attrs, std::string& attr_tags,
 	                std::string& attr_vals);
 
+	// Generates code to create the given attributes at run-time.
 	void GenAttrs(const AttributesPtr& attrs);
 	std::string GenAttrExpr(const ExprPtr& e);
 
+	// Returns the name of the C++ variable that will hold the given
+	// attributes at run-time.
 	std::string AttrsName(const AttributesPtr& attrs);
-	const char* AttrName(const AttrPtr& attr);
 
-	void RegisterAttributes(const AttributesPtr& attrs);
+	// Returns a string representation of the name associated with
+	// different attributes (e.g., "ATTR_DEFAULT").
+	const char* AttrName(const AttrPtr& attr);
 	//
 	//
 	// End of methods related to managing script type attributes.
+
 
 	// Start of methods related to run-time initialization.
 	// See CPPInits.cc for definitions.
@@ -438,7 +550,7 @@ private:
 	// Versions with "lhs" and "rhs" arguments provide an initialization
 	// of the form "lhs = rhs;", as a convenience.
 	void AddInit(const IntrusivePtr<Obj>& o,
-			const std::string& lhs, const std::string& rhs)
+	const std::string& lhs, const std::string& rhs)
 		{ AddInit(o.get(), lhs + " = " + rhs + ";"); }
 	void AddInit(const Obj* o,
 			const std::string& lhs, const std::string& rhs)
@@ -458,7 +570,7 @@ private:
 	// Records the fact that the initialization of object o1 depends
 	// on that of object o2.
 	void NoteInitDependency(const IntrusivePtr<Obj>& o1,
-				const IntrusivePtr<Obj>& o2)
+	                        const IntrusivePtr<Obj>& o2)
 		{ NoteInitDependency(o1.get(), o2.get()); }
 	void NoteInitDependency(const IntrusivePtr<Obj>& o1, const Obj* o2)
 		{ NoteInitDependency(o1.get(), o2); }
@@ -502,13 +614,20 @@ private:
 	//
 	// End of methods related to run-time initialization.
 
+
 	// Start of methods related to low-level code generation.
 	// See CPPEmit.cc for definitions.
 	//
 
+	// Used to create (indented) C++ {...} code blocks.  "needs_semi"
+	// controls whether to terminate the block with a ';' (such as
+	// for class definitions.
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);
 
+	// Various ways of generating code.  The multi-argument methods
+	// assume that the first argument is a printf-style format
+	// (but one that can only have %s specifiers).
 	void Emit(const std::string& str) const
 		{
 		Indent();
@@ -524,7 +643,7 @@ private:
 		}
 
 	void Emit(const std::string& fmt, const std::string& arg1,
-			const std::string& arg2) const
+	          const std::string& arg2) const
 		{
 		Indent();
 		fprintf(write_file, fmt.c_str(), arg1.c_str(), arg2.c_str());
@@ -532,41 +651,42 @@ private:
 		}
 
 	void Emit(const std::string& fmt, const std::string& arg1,
-			const std::string& arg2, const std::string& arg3) const
+	          const std::string& arg2, const std::string& arg3) const
 		{
 		Indent();
 		fprintf(write_file, fmt.c_str(), arg1.c_str(), arg2.c_str(),
-			arg3.c_str());
+		        arg3.c_str());
 		NL();
 		}
 
 	void Emit(const std::string& fmt, const std::string& arg1,
-			const std::string& arg2, const std::string& arg3,
-			const std::string& arg4) const
+	          const std::string& arg2, const std::string& arg3,
+	          const std::string& arg4) const
 		{
 		Indent();
 		fprintf(write_file, fmt.c_str(), arg1.c_str(), arg2.c_str(),
-			arg3.c_str(), arg4.c_str());
+		        arg3.c_str(), arg4.c_str());
 		NL();
 		}
 
+	// Returns an expression for constructing a Zeek String object
+	// corresponding to the given byte array.
 	std::string GenString(const char* b, int len) const;
 
+	// For the given byte array / string, returns a version expanded
+	// with escape sequences in order to represent it as a C++ string.
 	std::string CPPEscape(const char* b, int len) const;
 	std::string CPPEscape(const char* s) const
 		{ return CPPEscape(s, strlen(s)); }
 
-	void NL() const
-		{
-		fputc('\n', write_file);
-		}
+	void NL() const	{ fputc('\n', write_file); }
 
+	// Indents to the current indentation level.
 	void Indent() const;
 	//
 	//
 	// End of methods related to run-time initialization.
 
-	void RegisterEvent(std::string ev_name);
 
 	std::vector<FuncInfo>& funcs;
 	ProfileFuncs& pfs;

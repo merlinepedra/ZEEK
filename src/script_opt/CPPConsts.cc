@@ -7,6 +7,27 @@
 
 namespace zeek::detail {
 
+std::string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
+	{
+	if ( ! vp )
+		return "nullptr";
+
+	if ( AddConstant(vp) )
+		{
+		auto v = vp.get();
+		AddInit(parent);
+		NoteInitDependency(parent, v);
+
+		// Make sure the value pointer, which might be transient
+		// in construction, sticks around so we can track its
+		// value.
+		cv_indices.push_back(vp);
+
+		return const_vals[v];
+		}
+	else
+		return NativeToGT(GenVal(vp), vp->GetType(), GEN_VAL_PTR);
+	}
 
 void CPPCompile::AddConstant(const ConstExpr* c)
 	{
@@ -265,28 +286,5 @@ void CPPCompile::AddVectorConstant(const ValPtr& v, std::string& const_name)
 		AddInit(v, const_name + "->Append(" + v_i_c + ");");
 		}
 	}
-
-std::string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
-	{
-	if ( ! vp )
-		return "nullptr";
-
-	if ( AddConstant(vp) )
-		{
-		auto v = vp.get();
-		AddInit(parent);
-		NoteInitDependency(parent, v);
-
-		// Make sure the value pointer, which might be transient
-		// in construction, sticks around so we can track its
-		// value.
-		cv_indices.push_back(vp);
-
-		return const_vals[v];
-		}
-	else
-		return NativeToGT(GenVal(vp), vp->GetType(), GEN_VAL_PTR);
-	}
-
 
 } // zeek::detail
