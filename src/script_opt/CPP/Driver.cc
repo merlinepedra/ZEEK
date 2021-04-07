@@ -129,8 +129,21 @@ void CPPCompile::Compile()
 	for ( const auto& func : funcs )
 		DeclareFunc(func);
 
+	// We track lambdas by their internal names, because two different
+	// LambdaExpr's can wind up referring to the same underlying lambda
+	// if the bodies happen to be identical.  In that case, we don't
+	// want to generate the lambda twice.
+	std::unordered_set<std::string> lambda_names;
 	for ( const auto& l : pfs.Lambdas() )
+		{
+		const auto& n = l->Name();
+		if ( lambda_names.count(n) > 0 )
+			// Skip it.
+			continue;
+
 		DeclareLambda(l, pfs.ExprProf(l));
+		lambda_names.insert(n);
+		}
 
 	NL();
 
@@ -138,8 +151,16 @@ void CPPCompile::Compile()
 	for ( const auto& func : funcs )
 		CompileFunc(func);
 
+	lambda_names.clear();
 	for ( const auto& l : pfs.Lambdas() )
+		{
+		const auto& n = l->Name();
+		if ( lambda_names.count(n) > 0 )
+			continue;
+
 		CompileLambda(l, pfs.ExprProf(l));
+		lambda_names.insert(n);
+		}
 
 	for ( const auto& f : compiled_funcs )
 		RegisterCompiledBody(f);
