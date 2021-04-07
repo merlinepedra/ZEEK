@@ -9,6 +9,127 @@
 #include "zeek/script_opt/CPP/Tracker.h"
 #include "zeek/script_opt/CPP/HashMgr.h"
 
+// We structure the compiler for generating C++ versions of Zeek script
+// bodies as a single large class.  While we divide the compiler's
+// functionality into a number of groups (see below), these interact with
+// one another, and in particular with various member variables, enough
+// so that it's not clear there's benefit to further splitting the
+// functionality into multiple classes.  (Some splitting has already been
+// done for more self-contained functionality, resulting in the CPPTracker
+// and CPPHashManager classes.)
+//
+// Most aspects of translating to C++ have a straightforward nature.
+// We can turn many Zeek script statements directly into the C++ that's
+// used by the interpreter for the corresponding Exec()/DoExec() methods.
+// This often holds for Zeek expressions, too, though some of them require
+// considerations (e.g., error handling) that require introducing helper
+// functions to maintain the property that a Zeek script expression translates
+// to a C++ expression.  That property (i.e., not needing to turn Zeek
+// expressions into multiple C++ statements) simplifies code generation
+// considerably.  It also means that the compiler should *not* run on
+// transformed ASTs such as produced by the Reducer class.  We instead
+// seek to let the C++ compiler (meaning clang or g++, for example)
+// find optimization opportunities, including inlining.
+//
+// For some Zeek scripting types, we use their natural C++ counterparts,
+// such as "bro_uint_t" for "count" values.  In the source code these
+// are referred to as "native" types.  Other types, like tables, keep
+// their interpreter-equivalent type (e.g., TableVal).  These are dealt
+// with almost entirely using IntrusivePtr's.  The few exceptions (i.e.,
+// direct uses of "new") are in contexts where the memory management
+// is clearly already addressed.
+//
+// The user specifies generation of C++ using "-O gen-C++", which produces
+// C++ code for all of the loaded functions/hooks/event handlers.  Thus,
+// for example, "zeek -b -O gen-C++ foo.zeek" will generate C++ code for
+// all of the scripts loaded in "bare" mode, plus those for foo.zeek; and
+// without the "-b" for all of the default scripts plus those in foo.zeek.
+//
+// One of the design goals employed is to support "incremental" compilation,
+// i.e., compiling *additional* Zeek scripts at a later point after an
+// initial compilation.  This comes in two forms.
+//
+// "-O update-C++" produces C++ code that extends that already compiled,
+// in a manner where subsequent compilations can leverage both the original
+// and the newly added.  Such compilations *must* be done in a consistent
+// context (for example, any types extended in the original are extended in
+// the same manner - plus then perhaps further extensions - in the updated
+// code).
+//
+// "-O add-C++" instead produces C++ code that (1) will not be leveraged in
+// any subsequent compilations, and (2) can be inconsistent with other
+// "-O add-C++" code added in the future.  The main use of this feature is
+// to support compiling polyglot versions of Zeek scripts used to run
+// the test suite.
+//
+// Zeek invocations specifying "-O use-C++" will activate any code compiled
+// into the zeek binary; otherwise, the code lies dormant.  "-O force-C++"
+// does the same but generates warnings for script functions not found in
+// compiled in.  This is useful for debugging the compiled code, to ensure
+// that it's indeed being run.
+//
+// "-O report-C++" reports on which compiled functions will/won't be used
+// (including ones that are available but not relevant to the scripts loaded
+// on the command line).
+//
+// We partition the methods of the compiler into a number of groups,
+// the definitions of each having their own source file:
+//
+//	Driver		Drives the overall compilation process.
+//
+//	Vars		Management of C++ variables relating to local/global
+//			script variables.
+//
+//	DeclFunc	Generating declarations of C++ subclasses and
+//			functions.
+//
+//	GenFunc		Generating the bodies of script functions.
+//
+//	Consts		Dealing with Zeek script constants.  Depending
+//			on their type, these are represented either
+//			directly in C++, or using C++ variables that
+//			are constructed at run-time.
+//
+//	Stmts		Generating code for Zeek statements.
+//
+//	Exprs		Generating code for Zeek expressions.
+//
+//	Types		Management of (1) C++ types used in generated code,
+//			and (2) C++ variables that hold Zeek script types,
+//			generated at run-time.
+//
+//	Attrs		Management of Zeek type attributes, some of which
+//			must be generated at run-time.
+//
+//	Inits		Management of initializing the run-time
+//			variables needed by the compiled code.
+//
+//	Emit		Low-level code generation.
+//
+// Of these, Inits is probably the most subtle.  It turns out to be
+// very tricky ensuring that we create run-time variables in the
+// proper order.  For example, a global might need a record type to be
+// defined; one of the record's fields is a table; that table contains
+// another record; one of that other record's fields is the original
+// record (recursion); another field has an &default expression that
+// requires the compiler to generate a helper function to construct
+// the expression dynamically; and that helper function might in turn
+// refer to other types that require initialization.
+//
+// To deal with these dependencies, for every run-time object the compiler
+// maintains (1) all of the other run-time objects on which its initialization
+// depends, and (2) the C++ statements needed to initialize it, once those
+// other objects have been initialized.  It then beings initialization with
+// objects that have no dependencies, marks those as done (essentially), finds
+// objects that now can be initialized and emits their initializations,
+// marks those as done, etc.
+//
+// Below in declaring the CPPCompiler class, we group methods in accordance
+// with those listed above.  We also locate member variables with the group
+// most relevant for their usage.  However, keep in mind that many member
+// variables are used by multiple groups, which is why we haven't created
+// distinct per-group classes.
+
 
 namespace zeek::detail {
 
@@ -22,7 +143,7 @@ public:
 private:
 	// Start of methods related to driving the overall compilation
 	// process.
-	// See CPPDriver.cc for definitions.
+	// See Driver.cc for definitions.
 	//
 
 	// Main driver, invoked by constructor.
@@ -86,7 +207,7 @@ private:
 
 	// Start of methods related to script variables and their C++
 	// counterparts.
-	// See CPPVars.cc for definitions.
+	// See Vars.cc for definitions.
 	//
 
 	// Returns true if the current compilation context has collisions
@@ -162,7 +283,7 @@ private:
 
 	// Start of methods related to declaring compiled script functions,
 	// including related classes.
-	// See CPPDeclFunc.cc for definitions.
+	// See DeclFunc.cc for definitions.
 	//
 
 	// Generates declarations (class, forward reference to C++ function)
@@ -221,7 +342,7 @@ private:
 	// Start of methods related to generating the bodies of compiled
 	// script functions.  Note that some of this sort of functionality is
 	// instead in CPPDeclFunc.cc, due to the presence of inlined methods.
-	// See CPPGenFunc.cc for definitions.
+	// See GenFunc.cc for definitions.
 	//
 
 	// Driver functions for compiling the body of the given function
@@ -291,7 +412,7 @@ private:
 
 	// Start of methods related to generating code for representing
 	// script constants as run-time values.
-	// See CPPConsts.cc for definitions.
+	// See Consts.cc for definitions.
 	//
 
 	// Returns an instantiation of a constant - either as a native
@@ -352,7 +473,7 @@ private:
 	// For the most part, code generation is straightforward as
 	// it matches the Exec/DoExec methods of the corresponding
 	// Stmt subclasses.
-	// See CPPStmts.cc for definitions.
+	// See Stmts.cc for definitions.
 	//
 
 	void GenStmt(const StmtPtr& s)	{ GenStmt(s.get()); }
@@ -381,7 +502,7 @@ private:
 
 
 	// Start of methods related to generating code for AST Expr's.
-	// See CPPExprs.cc for definitions.
+	// See Exprs.cc for definitions.
 	//
 
 	// These methods are all oriented around returning strings
@@ -548,7 +669,7 @@ private:
 
 
 	// Start of methods related to managing script types.
-	// See CPPTypes.cc for definitions.
+	// See Types.cc for definitions.
 	//
 
 	// "Native" types are those Zeek scripting types that we support
@@ -634,7 +755,7 @@ private:
 
 	// Start of methods related to managing script type attributes.
 	// Attributes arise mainly in the context of constructing types.
-	// See CPPAttrs.cc for definitions.
+	// See Attrs.cc for definitions.
 	//
 
 	// Tracks a use of the given set of attributes, including
@@ -668,7 +789,7 @@ private:
 
 
 	// Start of methods related to run-time initialization.
-	// See CPPInits.cc for definitions.
+	// See Inits.cc for definitions.
 	//
 
 	// Generates code to construct a CallExpr that can be used to
@@ -787,7 +908,7 @@ private:
 
 
 	// Start of methods related to low-level code generation.
-	// See CPPEmit.cc for definitions.
+	// See Emit.cc for definitions.
 	//
 
 	// Used to create (indented) C++ {...} code blocks.  "needs_semi"

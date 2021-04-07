@@ -1,5 +1,7 @@
 #! /bin/sh
 
+echo $1
+
 base=/Users/vern/warehouse/zeek-cpp
 test=$base/testing/btest
 so=$base/src/script_opt/CPP
