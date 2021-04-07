@@ -478,6 +478,12 @@ std::string CPPCompile::GenSizeExpr(const Expr* e, GenType gt)
 		// no-op
 		;
 
+	else if ( it == TYPE_INTERNAL_INT )
+		gen = std::string("iabs__CPP(") + gen + ")";
+
+	else if ( it == TYPE_INTERNAL_DOUBLE )
+		gen = std::string("fabs__CPP(") + gen + ")";
+
 	else if ( it == TYPE_INTERNAL_INT || it == TYPE_INTERNAL_DOUBLE )
 		{
 		auto cast = (it == TYPE_INTERNAL_INT) ? "bro_int_t" : "double";
@@ -761,15 +767,20 @@ std::string CPPCompile::GenBinary(const Expr* e, GenType gt,
 	if ( t->IsSet() )
 		return GenBinarySet(e, gt, op);
 
+	// The following is only used for internal int/uint/double
+	// operations.  For those, it holds the prefix we use to
+	// distinguish different instances of inlined functions
+	// employed to support an operation.
+	std::string flavor;
+
 	switch ( t->InternalType() ) {
-	case TYPE_INTERNAL_STRING:
-		return GenBinaryString(e, gt, op);
+	case TYPE_INTERNAL_INT:		flavor = "i"; break;
+	case TYPE_INTERNAL_UNSIGNED:	flavor = "u"; break;
+	case TYPE_INTERNAL_DOUBLE:	flavor = "f"; break;
 
-	case TYPE_INTERNAL_ADDR:
-		return GenBinaryAddr(e, gt, op);
-
-	case TYPE_INTERNAL_SUBNET:
-		return GenBinarySubNet(e, gt, op);
+	case TYPE_INTERNAL_STRING:	return GenBinaryString(e, gt, op);
+	case TYPE_INTERNAL_ADDR:	return GenBinaryAddr(e, gt, op);
+	case TYPE_INTERNAL_SUBNET:	return GenBinarySubNet(e, gt, op);
 
 	default:
 		if ( t->Tag() == TYPE_PATTERN )
@@ -783,10 +794,10 @@ std::string CPPCompile::GenBinary(const Expr* e, GenType gt,
 	std::string gen;
 
 	if ( e->Tag() == EXPR_DIVIDE )
-		gen = std::string("div__CPP(") + g1 + ", " + g2 + ")";
+		gen = flavor + "div__CPP(" + g1 + ", " + g2 + ")";
 
 	else if ( e->Tag() == EXPR_MOD )
-		gen = std::string("mod__CPP(") + g1 + ", " + g2 + ")";
+		gen = flavor + "mod__CPP(" + g1 + ", " + g2 + ")";
 
 	else
 		gen = std::string("(") + g1 + ")" + op + "(" + g2 + ")";

@@ -147,47 +147,47 @@ extern ValPtr schedule__CPP(double dt, EventHandlerPtr event,
                             std::vector<ValPtr> args);
 
 // Simple helper functions for supporting absolute value.
-inline bro_uint_t abs__CPP(bro_int_t v)
+inline bro_uint_t iabs__CPP(bro_int_t v)
 	{
 	return v < 0 ? -v : v;
 	}
 
-inline double abs__CPP(double v)
+inline double fabs__CPP(double v)
 	{
 	return v < 0.0 ? -v : v;
 	}
 
 // The following operations are provided using functions to support
 // error checking/reporting.
-inline bro_int_t div__CPP(bro_int_t v1, bro_int_t v2)
+inline bro_int_t idiv__CPP(bro_int_t v1, bro_int_t v2)
 	{
 	if ( v2 == 0 )
 		reporter->CPPRuntimeError("division by zero");
 	return v1 / v2;
 	}
 
-inline bro_int_t mod__CPP(bro_int_t v1, bro_int_t v2)
+inline bro_int_t imod__CPP(bro_int_t v1, bro_int_t v2)
 	{
 	if ( v2 == 0 )
 		reporter->CPPRuntimeError("modulo by zero");
 	return v1 % v2;
 	}
 
-inline bro_uint_t div__CPP(bro_uint_t v1, bro_uint_t v2)
+inline bro_uint_t udiv__CPP(bro_uint_t v1, bro_uint_t v2)
 	{
 	if ( v2 == 0 )
 		reporter->CPPRuntimeError("division by zero");
 	return v1 / v2;
 	}
 
-inline bro_uint_t mod__CPP(bro_uint_t v1, bro_uint_t v2)
+inline bro_uint_t umod__CPP(bro_uint_t v1, bro_uint_t v2)
 	{
 	if ( v2 == 0 )
 		reporter->CPPRuntimeError("modulo by zero");
 	return v1 % v2;
 	}
 
-inline double div__CPP(double v1, double v2)
+inline double fdiv__CPP(double v1, double v2)
 	{
 	if ( v2 == 0.0 )
 		reporter->CPPRuntimeError("division by zero");
