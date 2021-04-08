@@ -94,11 +94,35 @@ std::string CPPCompile::InitExprName(const ExprPtr& e)
 
 void CPPCompile::GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v)
 	{
-	if ( v->GetType()->Tag() == TYPE_FUNC )
+	const auto& t = v->GetType();
+
+	if ( t->Tag() == TYPE_FUNC )
+		// This should get initialized by recognizing hash of
+		// the function's body.
 		return;
 
+	std::string init_val;
+	if ( t->Tag() == TYPE_OPAQUE )
+		{
+		// We can only generate these by reproducing the expression
+		// (presumably a function call) used to create the value.
+		// That isn't fully sound, since if the global's value
+		// was redef'd in terms of its original value (e.g.,
+		// "redef x = f(x)"), then we'll wind up with a broken
+		// expression.  It's difficult to detect that in full
+		// generality, so um Don't Do That.  (Note that this
+		// only affects execution of compiled code where the
+		// original scripts are replaced by load-stubs.  If
+		// the scripts are available, then the HasVal() test
+		// we generate will mean we don't wind up using this
+		// expression anyway.)
+		init_val = GenExpr(g->GetInitExpr(), GEN_VAL_PTR, false);
+		}
+	else
+		init_val = BuildConstant(g, v);
+
 	AddInit(g, std::string("if ( ! ") + gl + "->HasVal() )");
-	AddInit(g, std::string("\t") + gl + "->SetVal(" + BuildConstant(g, v) + ");");
+	AddInit(g, std::string("\t") + gl + "->SetVal(" + init_val + ");");
 	}
 
 void CPPCompile::GenFuncVarInits()
