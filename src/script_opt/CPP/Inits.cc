@@ -130,32 +130,41 @@ void CPPCompile::GenFuncVarInits()
 	for ( const auto& fv_init : func_vars )
 		{
 		auto& fv = fv_init.first;
-		auto f = fv->AsFunc();
 		auto& const_name = fv_init.second;
 
-		const auto& bodies = f->GetBodies();
-		ASSERT(bodies.size() == 1);
-
-		const auto body = bodies[0].stmts.get();
-		ASSERT(body_names.count(body) > 0);
-
-		auto& body_name = body_names[body];
-		ASSERT(body_hashes.count(body_name) > 0);
-
-		NoteInitDependency(fv, body);
-
-		const auto& h = body_hashes[body_name];
+		auto f = fv->AsFunc();
 		const auto& fn = f->Name();
-
 		const auto& ft = f->GetType();
-		auto ftr = TypeRep(ft);
-		NoteInitDependency(fv, ftr);
 
-		auto init = std::string("lookup_func__CPP(\"") + fn + "\", " +
-		            Fmt(h) + ", " + GenTypeName(ft) + ")";
+		NoteInitDependency(fv, TypeRep(ft));
 
-		ValPtr fvp{NewRef{}, fv};
-		AddInit(fvp, const_name, init);
+		const auto& bodies = f->GetBodies();
+
+		std::string hashes = "{";
+
+		for ( auto b : bodies )
+			{
+			auto body = b.stmts.get();
+
+			ASSERT(body_names.count(body) > 0);
+
+			auto& body_name = body_names[body];
+			ASSERT(body_hashes.count(body_name) > 0);
+
+			NoteInitDependency(fv, body);
+
+			if ( hashes.size() > 1 )
+				hashes += ", ";
+
+			hashes += Fmt(body_hashes[body_name]);
+			}
+
+		hashes += "}";
+
+		auto init = std::string("lookup_func__CPP(\"") + fn +
+			    "\", " + hashes + ", " + GenTypeName(ft) + ")";
+
+		AddInit(fv, const_name, init);
 		}
 	}
 

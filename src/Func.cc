@@ -305,23 +305,33 @@ ScriptFunc::ScriptFunc(const IDPtr& arg_id, StmtPtr arg_body,
 		Body b;
 		b.stmts = AddInits(std::move(arg_body), aggr_inits);
 		current_body = b.stmts;
-		b.priority = priority;
+		current_priority = b.priority = priority;
 		bodies.push_back(b);
 		}
 	}
 
-ScriptFunc::ScriptFunc(std::string _name, FuncTypePtr ft, StmtPtr body)
+ScriptFunc::ScriptFunc(std::string _name, FuncTypePtr ft,
+	               std::vector<StmtPtr> bs, std::vector<int> priorities)
 	{
 	name = std::move(_name);
 	frame_size = ft->ParamList()->GetTypes().size();
 	type = std::move(ft);
 
-	Body b;
-	b.stmts = std::move(body);
-	current_body = b.stmts;
-	b.priority = 0;
+	auto n = bs.size();
+	ASSERT(n == priorities.size());
 
-	bodies.push_back(b);
+	for ( auto i = 0; i < n; ++i )
+		{
+		Body b;
+		b.stmts = std::move(bs[i]);
+		b.priority = priorities[i];
+		bodies.push_back(b);
+		}
+
+	sort(bodies.begin(), bodies.end());
+
+	current_body = bodies[0].stmts;
+	current_priority = bodies[0].priority;
 	}
 
 ScriptFunc::~ScriptFunc()
@@ -556,9 +566,8 @@ void ScriptFunc::AddBody(StmtPtr new_body,
 
 	Body b;
 	b.stmts = new_body;
-	b.priority = priority;
-
 	current_body = new_body;
+	current_priority = b.priority = priority;
 
 	bodies.push_back(b);
 	sort(bodies.begin(), bodies.end());
@@ -572,6 +581,7 @@ void ScriptFunc::ReplaceBody(const StmtPtr& old_body, StmtPtr new_body)
 		if ( body.stmts.get() == old_body.get() )
 			{
 			body.stmts = new_body;
+			current_priority = body.priority;
 			found_it = true;
 			}
 

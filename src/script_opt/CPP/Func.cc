@@ -20,7 +20,7 @@ void CPPFunc::Describe(ODesc* d) const
 
 CPPLambdaFunc::CPPLambdaFunc(std::string _name, FuncTypePtr ft,
 				CPPStmtPtr _l_body)
-: ScriptFunc(std::move(_name), std::move(ft), _l_body)
+: ScriptFunc(std::move(_name), std::move(ft), {_l_body}, {0})
 	{
 	l_body = std::move(_l_body);
 	}

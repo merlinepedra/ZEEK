@@ -189,6 +189,7 @@ void CPPCompile::GenProlog()
 void CPPCompile::RegisterCompiledBody(const std::string& f)
 	{
 	auto h = body_hashes[f];
+	auto p = body_priorities[f];
 
 	// Build up an initializer of the events relevant to the function.
 	std::string events;
@@ -213,8 +214,8 @@ void CPPCompile::RegisterCompiledBody(const std::string& f)
 		h = MergeHashes(h, hash_string(cf_locs[f].c_str()));
 
 	auto init = std::string("register_body__CPP(make_intrusive<") +
-			f + "_cl>(\"" + f + "\"), " + Fmt(h) +
-			", " + events + ");";
+			f + "_cl>(\"" + f + "\"), " + Fmt(p) + ", " +
+			Fmt(h) + ", " + events + ");";
 
 	AddInit(names_to_bodies[f], init);
 

@@ -299,7 +299,8 @@ private:
 	// corresponding lambda expression, and "flavor" whether it's
 	// a hook/event/function.
 	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
-	                     const std::string& fname, const StmtPtr& body,
+	                     const std::string& fname,
+	                     const StmtPtr& body, int priority,
 	                     const LambdaExpr* l, FunctionFlavor flavor);
 
 	// Generates the declarations (and in-line definitions) associated
@@ -396,6 +397,9 @@ private:
 
 	// Maps function names to hashes of bodies.
 	std::unordered_map<std::string, hash_type> body_hashes;
+
+	// Maps function names to priorities, for hooks & event handlers.
+	std::unordered_map<std::string, int> body_priorities;
 
 	// Maps function names to events relevant to them.
 	std::unordered_map<std::string, std::vector<std::string>> body_events;

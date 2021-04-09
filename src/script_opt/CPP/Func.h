@@ -73,6 +73,7 @@ protected:
 
 struct CompiledScript {
 	CPPStmtPtr body; 
+	int priority;
 	std::vector<std::string> events;
 };
 

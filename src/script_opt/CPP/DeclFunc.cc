@@ -18,8 +18,10 @@ void CPPCompile::DeclareFunc(const FuncInfo& func)
 	auto pf = func.Profile();
 	auto f = func.Func();
 	auto body = func.Body();
+	auto priority = func.Priority();
 
-	DeclareSubclass(f->GetType(), pf, fname, body, nullptr, f->Flavor());
+	DeclareSubclass(f->GetType(), pf, fname, body, priority, nullptr,
+	                f->Flavor());
 	}
 
 void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
@@ -34,12 +36,13 @@ void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	for ( auto id : ids )
 		lambda_names[id] = LocalName(id);
 
-	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, l,
+	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, 0, l,
 	                FUNC_FLAVOR_FUNCTION);
 	}
 
 void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
-                                 const std::string& fname, const StmtPtr& body,
+                                 const std::string& fname,
+                                 const StmtPtr& body, int priority,
                                  const LambdaExpr* l, FunctionFlavor flavor)
 	{
 	const auto& yt = ft->Yield();
@@ -124,6 +127,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 	EndBlock(true);
 
 	body_hashes[fname] = pf->HashVal();
+	body_priorities[fname] = priority;
 	body_names.emplace(body.get(), fname);
 	names_to_bodies.emplace(std::move(fname), body.get());
 	}

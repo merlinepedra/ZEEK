@@ -102,8 +102,10 @@ void optimize_func(ScriptFunc* f, ProfileFunc* pf, ScopePtr scope_ptr,
 	}
 
 
-FuncInfo::FuncInfo(ScriptFuncPtr _func, ScopePtr _scope, StmtPtr _body)
-		: func(std::move(_func)), scope(std::move(_scope)), body(std::move(_body))
+FuncInfo::FuncInfo(ScriptFuncPtr _func, ScopePtr _scope, StmtPtr _body,
+                   int _priority)
+		: func(std::move(_func)), scope(std::move(_scope)),
+		  body(std::move(_body)), priority(_priority)
 	{}
 
 void FuncInfo::SetProfile(std::unique_ptr<ProfileFunc> _pf)
@@ -115,7 +117,8 @@ void analyze_func(ScriptFuncPtr f)
 	     *analysis_options.only_func != f->Name() )
 		return;
 
-	funcs.emplace_back(f, ScopePtr{NewRef{}, f->GetScope()}, f->CurrentBody());
+	funcs.emplace_back(f, ScopePtr{NewRef{}, f->GetScope()},
+	                   f->CurrentBody(), f->CurrentPriority());
 	}
 
 static void check_env_opt(const char* opt, bool& opt_flag)

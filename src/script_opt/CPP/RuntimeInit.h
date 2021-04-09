@@ -21,11 +21,11 @@ typedef void (*CPP_init_func)();
 extern std::vector<CPP_init_func> CPP_init_funcs;
 
 
-// Registers the given compiled function body as associated
-// with the given hash.  "events" is a list of event handlers
-// relevant for the function body, which should be registered if
-// the function body is going to be used.
-extern void register_body__CPP(CPPStmtPtr body, hash_type hash,
+// Registers the given compiled function body as associated with the
+// given priority and hash.  "events" is a list of event handlers
+// relevant for the function body, which should be registered if the
+// function body is going to be used.
+extern void register_body__CPP(CPPStmtPtr body, int priority, hash_type hash,
                                std::vector<std::string> events);
 
 // Registers a lambda body as associated with the given hash.  Includes
@@ -46,7 +46,7 @@ extern Func* lookup_bif__CPP(const char* bif);
 // returns an associated FuncVal.  It's a fatal error for the hash
 // not to exist, because this function should only be called by compiled
 // code that has ensured its existence.
-extern FuncValPtr lookup_func__CPP(std::string name, hash_type h,
+extern FuncValPtr lookup_func__CPP(std::string name, std::vector<hash_type> h,
                                    const TypePtr& t);
 
 // Returns the record corresponding to the given name, as long as the

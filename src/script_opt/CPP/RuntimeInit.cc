@@ -28,10 +28,11 @@ static int flag_init_CPP()
 static int dummy = flag_init_CPP();
 
 
-void register_body__CPP(CPPStmtPtr body, hash_type hash,
+void register_body__CPP(CPPStmtPtr body, int priority, hash_type hash,
                         std::vector<std::string> events)
 	{
-	compiled_scripts[hash] = { std::move(body), std::move(events) };
+	compiled_scripts[hash] =
+	        { std::move(body), priority, std::move(events) };
 	}
 
 void register_lambda__CPP(CPPStmtPtr body, hash_type hash, const char* name,
@@ -56,7 +57,7 @@ void register_lambda__CPP(CPPStmtPtr body, hash_type hash, const char* name,
 	if ( ! has_captures )
 		// Note, no support for lambdas that themselves refer
 		// to events.
-		register_body__CPP(body, hash, {});
+		register_body__CPP(body, 0, hash, {});
 	}
 
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)
@@ -78,19 +79,35 @@ Func* lookup_bif__CPP(const char* bif)
 	return b ? b->GetVal()->AsFunc() : nullptr;
 	}
 
-FuncValPtr lookup_func__CPP(std::string name, hash_type h, const TypePtr& t)
+FuncValPtr lookup_func__CPP(std::string name, std::vector<hash_type> hashes,
+                            const TypePtr& t)
 	{
-	ASSERT(compiled_scripts.count(h) > 0);
-
-	const auto& f = compiled_scripts[h];
 	auto ft = cast_intrusive<FuncType>(t);
-	auto sf = make_intrusive<ScriptFunc>(std::move(name), std::move(ft), f.body);
 
-	for ( auto& e : f.events )
+	std::vector<StmtPtr> bodies;
+	std::vector<int> priorities;
+
+	for ( auto h : hashes )
 		{
-		auto eh = event_registry->Register(e);
-		eh->SetUsed();
+		ASSERT(compiled_scripts.count(h) > 0);
+
+		const auto& f = compiled_scripts[h];
+		bodies.push_back(f.body);
+		priorities.push_back(f.priority);
+
+		// This might register the same event more than once,
+		// if it's used in multiple bodies, but that's okay as
+		// the semantics for Register explicitly allow it.
+		for ( auto& e : f.events )
+			{
+			auto eh = event_registry->Register(e);
+			eh->SetUsed();
+			}
 		}
+
+	auto sf = make_intrusive<ScriptFunc>(std::move(name), std::move(ft),
+	                                     std::move(bodies),
+	                                     std::move(priorities));
 
 	return make_intrusive<FuncVal>(std::move(sf));
 	}

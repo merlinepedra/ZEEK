@@ -152,7 +152,8 @@ public:
 	        size_t frame_size, int priority);
 
 	// For compiled scripts.
-	ScriptFunc(std::string name, FuncTypePtr ft, StmtPtr body);
+	ScriptFunc(std::string name, FuncTypePtr ft,
+	           std::vector<StmtPtr> bodies, std::vector<int> priorities);
 
 	~ScriptFunc() override;
 
@@ -242,6 +243,7 @@ public:
 				detail::StmtPtr new_body);
 
 	StmtPtr CurrentBody() const		{ return current_body; }
+	int CurrentPriority() const		{ return current_priority; }
 
 	/**
 	 * Returns the function's frame size.
@@ -310,8 +312,11 @@ private:
 
 	OffsetMap* captures_offset_mapping = nullptr;
 
-	// The most recently added/updated body.
+	// The most recently added/updated body ...
 	StmtPtr current_body;
+
+	// ... and its priority.
+	int current_priority;
 };
 
 using built_in_func = BifReturnVal (*)(Frame* frame, const Args* args);
