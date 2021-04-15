@@ -1,5 +1,8 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+// Subclasses of Func and Stmt to support C++-generated code, along
+// with tracking of that code to enable hooking into it at run-time.
+
 #pragma once
 
 #include "zeek/Func.h"
@@ -9,10 +12,14 @@ namespace zeek {
 
 namespace detail {
 
+// A subclass of Func used for lambdas that the compiler creates for
+// complex initializations (expressions used in type attributes).
+// The usage is via derivation from this class, rather than direct
+// use of it.
+
 class CPPFunc : public Func {
 public:
 	bool IsPure() const override	{ return is_pure; }
-	// ValPtr Invoke(zeek::Args* args, Frame* parent) const override;
 
 	void Describe(ODesc* d) const override;
 
@@ -27,6 +34,9 @@ protected:
 	std::string name;
 	bool is_pure;
 };
+
+
+// A subclass of Stmt used to replace a function/event handler/hook body.
 
 class CPPStmt : public Stmt {
 public:
@@ -45,6 +55,8 @@ public:
 		}
 
 protected:
+	// This method being called means that the inliner is running
+	// on compiled code, which shouldn't happen.
 	StmtPtr Duplicate() override	{ ASSERT(0); return ThisPtr(); }
 
 	TraversalCode Traverse(TraversalCallback* cb) const override
@@ -55,6 +67,12 @@ protected:
 
 using CPPStmtPtr = IntrusivePtr<CPPStmt>;
 
+
+// For script-level lambdas, a ScriptFunc subclass that knows how to
+// deal with its captures for serialization.  Different from CPPFunc in
+// that CPPFunc is for lambdas generated directly by the compiler,
+// rather than those explicitly present in scripts.
+
 class CPPLambdaFunc : public ScriptFunc {
 public:
 	CPPLambdaFunc(std::string name, FuncTypePtr ft, CPPStmtPtr l_body);
@@ -62,6 +80,7 @@ public:
 	bool CopySemantics() const override	{ return true; }
 
 protected:
+	// Methods related to sending lambdas via Broker.
 	broker::expected<broker::data> SerializeClosure() const override;
 	void SetCaptures(Frame* f) override;
 
@@ -71,18 +90,17 @@ protected:
 };
 
 
+// Information associated with a given compiled script body: its
+// Stmt subclass, priority, and any events that should be registered
+// upon instantiating the body.
 struct CompiledScript {
 	CPPStmtPtr body; 
 	int priority;
 	std::vector<std::string> events;
 };
 
+// Maps hashes to compiled information.
 extern std::unordered_map<hash_type, CompiledScript> compiled_scripts;
-
-struct CompiledItemPair { int index; int scope; };
-using VarMapper = std::unordered_map<hash_type, CompiledItemPair>;
-
-extern VarMapper compiled_items;
 
 } // namespace detail
 

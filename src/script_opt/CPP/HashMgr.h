@@ -112,4 +112,11 @@ protected:
 	FILE* hf_w = nullptr;
 };
 
+// Maps hashes to indices into C++ globals (like "types_N__CPP"), and
+// namespace scopes.
+struct CompiledItemPair { int index; int scope; };
+using VarMapper = std::unordered_map<hash_type, CompiledItemPair>;
+
+extern VarMapper compiled_items;
+
 } // zeek::detail

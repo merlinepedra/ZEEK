@@ -6,6 +6,7 @@
 
 namespace zeek::detail {
 
+VarMapper compiled_items;
 
 CPPHashManager::CPPHashManager(const char* hash_name_base, bool _append)
 	{

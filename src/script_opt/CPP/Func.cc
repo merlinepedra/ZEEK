@@ -10,7 +10,6 @@
 namespace zeek::detail {
 
 std::unordered_map<hash_type, CompiledScript> compiled_scripts;
-VarMapper compiled_items;
 
 void CPPFunc::Describe(ODesc* d) const
 	{
@@ -43,7 +42,7 @@ broker::expected<broker::data> CPPLambdaFunc::SerializeClosure() const
 
 		TypeTag tag = val->GetType()->Tag();
 		broker::vector val_tuple {std::move(*expected),
-				static_cast<broker::integer>(tag)};
+		                          static_cast<broker::integer>(tag)};
 		body.emplace_back(std::move(val_tuple));
 		}
 
