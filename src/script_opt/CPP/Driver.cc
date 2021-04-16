@@ -269,31 +269,28 @@ void CPPCompile::GenEpilog()
 			types.LogIfNew(t, addl_tag, hm.HashFile());
 		}
 
-	NL();
-	Emit("void init__CPP()");
-
-	StartBlock();
-
-	// If any script/BiF functions are used for initializing globals,
-	// the code generated from that will expect the presence of a
-	// frame pointer, even if nil.
-	Emit("Frame* f__CPP = nullptr;");
-
-	NL();
-
-	for ( const auto& i : pre_inits )
-		Emit(i);
-
-	NL();
+	GenPreInits();
 
 	std::unordered_set<const Obj*> to_do;
 	for ( const auto& oi : obj_inits )
 		to_do.insert(oi.first);
 
 	CheckInitConsistency(to_do);
-	GenDependentInits(to_do);
+	auto nc = GenDependentInits(to_do);
+
+	NL();
+	Emit("void init__CPP()");
+
+	StartBlock();
+
+	Emit("pre_init__CPP();");
+
+	NL();
+	for ( auto i = 1; i <= nc; ++i )
+		Emit("init_%s__CPP();", Fmt(i));
 
 	// Populate mappings for dynamic offsets.
+	NL();
 	InitializeFieldMappings();
 	InitializeEnumMappings();
 

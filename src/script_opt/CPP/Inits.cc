@@ -253,6 +253,17 @@ void CPPCompile::GenPreInit(const Type* t)
 	pre_inits.emplace_back(GenTypeName(t) + " = " + pre_init + ";");
 	}
 
+void CPPCompile::GenPreInits()
+	{
+	NL();
+	Emit("void pre_init__CPP()");
+
+	StartBlock();
+	for ( const auto& i : pre_inits )
+		Emit(i);
+	EndBlock();
+	}
+
 void CPPCompile::AddInit(const Obj* o, const std::string& init)
 	{
 	obj_inits[o].emplace_back(init);
@@ -297,8 +308,10 @@ void CPPCompile::CheckInitConsistency(std::unordered_set<const Obj*>& to_do)
 		}
 	}
 
-void CPPCompile::GenDependentInits(std::unordered_set<const Obj*>& to_do)
+int CPPCompile::GenDependentInits(std::unordered_set<const Obj*>& to_do)
 	{
+	int n = 0;
+
 	// The basic approach is fairly brute force: find elements of
 	// to_do that don't have any pending dependencies; generate those;
 	// and remove them from the to_do list, freeing up other to_do entries
@@ -306,7 +319,7 @@ void CPPCompile::GenDependentInits(std::unordered_set<const Obj*>& to_do)
 	// are no more to-do items.
 	while ( to_do.size() > 0 )
 		{
-		std::unordered_set<const Obj*> done;
+		std::unordered_set<const Obj*> cohort;
 
 		for ( const auto& o : to_do )
 			{
@@ -327,22 +340,55 @@ void CPPCompile::GenDependentInits(std::unordered_set<const Obj*>& to_do)
 			if ( has_pending_dep )
 				continue;
 
-			for ( const auto& i : obj_inits.find(o)->second )
-				Emit("%s", i);
-
-			done.insert(o);
+			cohort.insert(o);
 			}
 
-		ASSERT(done.size() > 0);
+		ASSERT(cohort.size() > 0);
 
-		for ( const auto& o : done )
+		GenInitCohort(++n, cohort);
+
+		for ( const auto& o : cohort )
 			{
 			ASSERT(to_do.count(o) > 0);
 			to_do.erase(o);
 			}
-
-		NL();
 		}
+
+	return n;
+	}
+
+void CPPCompile::GenInitCohort(int nc, std::unordered_set<const Obj*>& cohort)
+	{
+	NL();
+	Emit("void init_%s__CPP()", Fmt(nc));
+	StartBlock();
+
+	// If any script/BiF functions are used for initializing globals,
+	// the code generated from that will expect the presence of a
+	// frame pointer, even if nil.
+	Emit("Frame* f__CPP = nullptr;");
+
+	// The following is just for making the output readable/pretty:
+	// add space between initializations for distinct objects, taking
+	// into account that some objects have empty initializations.
+	bool did_an_init = false;
+
+	for ( auto o : cohort )
+		{
+		if ( did_an_init )
+			{
+			NL();
+			did_an_init = false;
+			}
+
+		for ( const auto& i : obj_inits.find(o)->second )
+			{
+			Emit("%s", i);
+			did_an_init = true;
+			}
+		}
+
+	EndBlock();
 	}
 
 void CPPCompile::InitializeFieldMappings()

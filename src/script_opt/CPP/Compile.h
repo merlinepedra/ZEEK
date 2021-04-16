@@ -833,6 +833,9 @@ private:
 	// versions that we'll later populate.
 	void GenPreInit(const Type* t);
 
+	// Generates a function that executes the pre-initializations.
+	void GenPreInits();
+
 	// The following all track that for a given object, code associated
 	// with initializing it.  Multiple calls for the same object append
 	// additional lines of code (the order of the calls is preserved).
@@ -886,8 +889,13 @@ private:
 	void CheckInitConsistency(std::unordered_set<const Obj*>& to_do);
 
 	// Generate initializations for the items in the "to_do" set,
-	// in accordance with their dependencies.
-	void GenDependentInits(std::unordered_set<const Obj*>& to_do);
+	// in accordance with their dependencies.  Returns 'n', the
+	// number of initialization functions generated.  They should
+	// be called in order, from 1 to n.
+	int GenDependentInits(std::unordered_set<const Obj*>& to_do);
+
+	// Generates a function for initializing the nc'th cohort.
+	void GenInitCohort(int nc, std::unordered_set<const Obj*>& cohort);
 
 	// Initialize the mappings for record field offsets for field
 	// accesses into regions of records that can be extensible (and
