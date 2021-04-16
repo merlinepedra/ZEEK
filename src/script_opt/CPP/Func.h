@@ -111,6 +111,10 @@ extern std::unordered_map<hash_type, CompiledScript> compiled_scripts;
 // Maps hashes to standalone script initialization callbacks.
 extern std::unordered_map<hash_type, void (*)()> standalone_callbacks;
 
+// Standalone callbacks marked for activation by calls to the
+// load_CPP() BiF.
+extern std::vector<void (*)()> standalone_activations;
+
 } // namespace detail
 
 } // namespace zeek

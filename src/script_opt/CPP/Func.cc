@@ -11,6 +11,7 @@ namespace zeek::detail {
 
 std::unordered_map<hash_type, CompiledScript> compiled_scripts;
 std::unordered_map<hash_type, void (*)()> standalone_callbacks;
+std::vector<void (*)()> standalone_activations;
 
 void CPPFunc::Describe(ODesc* d) const
 	{

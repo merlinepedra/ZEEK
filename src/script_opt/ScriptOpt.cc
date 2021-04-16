@@ -306,6 +306,11 @@ void analyze_scripts()
 			else if ( analysis_options.force_use_CPP )
 				reporter->Warning("no C++ available for %s", f.Func()->Name());
 			}
+
+		// Now that we've loaded all of the compiled scripts
+		// relevant for the AST, activate standalone ones.
+		for ( auto cb : standalone_activations )
+			(*cb)();
 		}
 
 	if ( generating_CPP )
