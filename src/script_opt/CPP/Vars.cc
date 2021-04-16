@@ -110,9 +110,6 @@ void CPPCompile::CreateGlobal(const ID* g)
 		AddInit(g, globals[gn],
 		        std::string("lookup_global__CPP(\"") + gn + "\", " +
 		        GenTypeName(t) + ")");
-
-		if ( g->HasVal() )
-			GenGlobalInit(g, globals[gn], g->GetVal());
 		}
 
 	if ( is_bif )

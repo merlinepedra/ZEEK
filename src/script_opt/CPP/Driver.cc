@@ -114,6 +114,21 @@ void CPPCompile::Compile()
 	for ( auto& g : pfs.AllGlobals() )
 		CreateGlobal(g);
 
+	// Now that the globals are created, register their attributes,
+	// if any, and generate their initialization for use in standalone
+	// scripts.  We can't do these in CreateGlobal() because at that
+	// point it's possible that some of the globals refer to other
+	// globals not-yet-created.
+	for ( auto& g : pfs.AllGlobals() )
+		{
+		RegisterAttributes(g->GetAttrs());
+		if ( g->HasVal() )
+			{
+			auto gn = std::string(g->Name());
+			GenGlobalInit(g, globals[gn], g->GetVal());
+			}
+		}
+
 	for ( const auto& e : pfs.Events() )
 		if ( AddGlobal(e, "gl", false) )
 			Emit("EventHandlerPtr %s_ev;", globals[std::string(e)]);

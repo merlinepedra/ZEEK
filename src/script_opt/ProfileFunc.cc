@@ -405,6 +405,10 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 			if ( i_e->Tag() == EXPR_LAMBDA )
 				lambdas.insert(i_e->AsLambdaExpr());
 			}
+
+		auto& attrs = g->GetAttrs();
+		if ( attrs )
+			TrackAttrs(attrs.get());
 		}
 
 	constants.insert(pf->Constants().begin(), pf->Constants().end());
