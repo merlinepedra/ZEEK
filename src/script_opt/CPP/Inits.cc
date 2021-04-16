@@ -111,9 +111,9 @@ void CPPCompile::GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v)
 		// "redef x = f(x)"), then we'll wind up with a broken
 		// expression.  It's difficult to detect that in full
 		// generality, so um Don't Do That.  (Note that this
-		// only affects execution of compiled code where the
-		// original scripts are replaced by load-stubs.  If
-		// the scripts are available, then the HasVal() test
+		// only affects execution of standalone compiled code,
+		// where the original scripts are replaced by load-stubs.
+		// If the scripts are available, then the HasVal() test
 		// we generate will mean we don't wind up using this
 		// expression anyway.)
 		init_val = GenExpr(g->GetInitExpr(), GEN_VAL_PTR, false);
@@ -121,8 +121,21 @@ void CPPCompile::GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v)
 	else
 		init_val = BuildConstant(g, v);
 
+	auto& attrs = g->GetAttrs();
+
 	AddInit(g, std::string("if ( ! ") + gl + "->HasVal() )");
-	AddInit(g, std::string("\t") + gl + "->SetVal(" + init_val + ");");
+
+	if ( attrs )
+		{
+		RegisterAttributes(attrs);
+
+		AddInit(g, "\t{");
+		AddInit(g, "\t" + gl + "->SetVal(" + init_val + ");");
+		AddInit(g, "\t" + gl + "->SetAttrs(" + AttrsName(attrs) + ");");
+		AddInit(g, "\t}");
+		}
+	else
+		AddInit(g, "\t" + gl + "->SetVal(" + init_val + ");");
 	}
 
 void CPPCompile::GenFuncVarInits()
