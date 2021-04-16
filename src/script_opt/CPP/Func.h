@@ -44,6 +44,11 @@ public:
 
 	const std::string& Name()	{ return name; }
 
+	// Sets/returns a hash associated with this statement.  A value
+	// of 0 means "not set".
+	hash_type GetHash() const	{ return hash; }
+	void SetHash(hash_type h)	{ hash = h; }
+
 	// The following only get defined by lambda bodies.
 	virtual void SetLambdaCaptures(Frame* f)	{ }
 	virtual std::vector<ValPtr> SerializeLambdaCaptures() const
@@ -63,6 +68,7 @@ protected:
 		{ return TC_CONTINUE; }
 
 	std::string name;
+	hash_type hash = 0ULL;
 };
 
 using CPPStmtPtr = IntrusivePtr<CPPStmt>;
@@ -101,6 +107,9 @@ struct CompiledScript {
 
 // Maps hashes to compiled information.
 extern std::unordered_map<hash_type, CompiledScript> compiled_scripts;
+
+// Maps hashes to standalone script initialization callbacks.
+extern std::unordered_map<hash_type, void (*)()> standalone_callbacks;
 
 } // namespace detail
 

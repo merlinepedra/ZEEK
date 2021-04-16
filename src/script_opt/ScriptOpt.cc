@@ -146,9 +146,15 @@ void analyze_scripts()
 		check_env_opt("ZEEK_ADD_CPP", analysis_options.add_CPP);
 		check_env_opt("ZEEK_UPDATE_CPP", analysis_options.update_CPP);
 		check_env_opt("ZEEK_GEN_CPP", analysis_options.gen_CPP);
+		check_env_opt("ZEEK_GEN_STANDALONE_CPP",
+		              analysis_options.gen_standalone_CPP);
 		check_env_opt("ZEEK_REPORT_CPP", analysis_options.report_CPP);
 		check_env_opt("ZEEK_USE_CPP", analysis_options.use_CPP);
-		check_env_opt("ZEEK_FORCE_USE_CPP", analysis_options.force_use_CPP);
+		check_env_opt("ZEEK_FORCE_USE_CPP",
+		              analysis_options.force_use_CPP);
+
+		if ( analysis_options.gen_standalone_CPP )
+			analysis_options.gen_CPP = true;
 
 		if ( analysis_options.force_use_CPP )
 			analysis_options.use_CPP = true;
@@ -285,8 +291,11 @@ void analyze_scripts()
 
 			if ( s != compiled_scripts.end() )
 				{
-				f.Func()->ReplaceBody(f.Body(), s->second.body);
-				f.SetBody(s->second.body);
+				auto b = s->second.body;
+				b->SetHash(hash);
+				f.Func()->ReplaceBody(f.Body(), b);
+				f.SetBody(b);
+
 				for ( auto& e : s->second.events )
 					{
 					auto h = event_registry->Register(e);
@@ -320,8 +329,9 @@ void analyze_scripts()
 			}
 
 		CPPCompile cpp(funcs, *pfs, gen_name.c_str(), *hm,
-				analysis_options.gen_CPP ||
-				analysis_options.update_CPP);
+			       analysis_options.gen_CPP ||
+			       analysis_options.update_CPP,
+			       analysis_options.gen_standalone_CPP);
 
 		exit(0);
 		}

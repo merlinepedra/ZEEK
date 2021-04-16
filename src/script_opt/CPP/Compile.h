@@ -137,7 +137,7 @@ class CPPCompile {
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs,
 	           const char* gen_name, CPPHashManager& hm,
-	           bool update);
+	           bool update, bool standalone);
 	~CPPCompile();
 
 private:
@@ -196,6 +196,16 @@ private:
 	// If true, then we're updating the C++ base (i.e., generating
 	// code meant for use by subsequently generated code).
 	bool update = false;
+
+	// If true, the generated code should run "standalone".
+	bool standalone = false;
+
+	// Hash over the functions in this compilation.  This is only
+	// needed for "seatbelts", to ensure that we can produce a
+	// unique hash relating to this compilation (*and* its
+	// compilation time, which is why these are "seatbelts" and
+	// likely not important to make distinct.
+	hash_type total_hash = 0;
 
 	// Working directory in which we're compiling.  Used to quasi-locate
 	// error messages when doing test-suite "add-C++" crunches.
@@ -890,6 +900,14 @@ private:
 
 	// Generate the initialization hook for this set of compiled code.
 	void GenInitHook();
+
+	// Generates code to activate standalone code.
+	void GenStandaloneActivation();
+
+	// Generates code to register the initialization for standalone
+	// use, and prints to stdout a Zeek script that can load all of
+	// what we compiled.
+	void GenLoad();
 
 	// A list of pre-initializations (those potentially required by
 	// other initializations, and that themselves have no dependencies).

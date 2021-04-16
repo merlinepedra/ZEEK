@@ -385,16 +385,99 @@ void CPPCompile::InitializeEnumMappings()
 
 void CPPCompile::GenInitHook()
 	{
+	NL();
+
+	if ( standalone )
+		GenStandaloneActivation();
+
 	Emit("int hook_in_init()");
 
 	StartBlock();
+
 	Emit("CPP_init_funcs.push_back(init__CPP);");
+
+	if ( standalone )
+		GenLoad();
+
         Emit("return 0;");
 	EndBlock();
 
 	// Trigger the activation of the hook at run-time.
 	NL();
 	Emit("static int dummy = hook_in_init();\n");
+	}
+
+void CPPCompile::GenStandaloneActivation()
+	{
+	Emit("void standalone_init__CPP()");
+	StartBlock();
+
+	// For events and hooks, we need to add each compiled body *unless*
+	// it's already there (which could be the case if the standalone
+	// code wasn't run standalone but instead with the original scripts).
+	// For events, we also register them in order to activate the
+	// associated scripts.
+
+	// First, build up a list of per-hook/event handler bodies.
+	std::unordered_map<const Func*, std::vector<hash_type>> func_bodies;
+
+	for ( const auto& func : funcs )
+		{
+		auto f = func.Func();
+
+		if ( f->Flavor() == FUNC_FLAVOR_FUNCTION )
+			// No need to explicitly add bodies.
+			continue;
+
+		auto fname = BodyName(func);
+		auto bname = Canonicalize(fname.c_str()) + "_zf";
+
+		if ( compiled_funcs.count(bname) == 0 )
+			// We didn't wind up compiling it.
+			continue;
+
+		ASSERT(body_hashes.count(bname) > 0);
+		func_bodies[f].push_back(body_hashes[bname]);
+		}
+
+	for ( auto& fb : func_bodies )
+		{
+		auto f = fb.first;
+		const auto fn = f->Name();
+		const auto& ft = f->GetType();
+
+		std::string hashes;
+		for ( auto h : fb.second )
+			{
+			if ( hashes.size() > 0 )
+				hashes += ", ";
+
+			hashes += Fmt(h);
+			}
+
+		hashes = "{" + hashes + "}";
+
+		Emit("activate_bodies__CPP(\"%s\", %s, %s);",
+		     fn, GenTypeName(ft), hashes);
+		}
+
+	EndBlock();
+	NL();
+	}
+
+void CPPCompile::GenLoad()
+	{
+	// First, generate a hash unique to this compilation.
+	auto t = util::current_time();
+	auto th = std::hash<double>{}(t);
+
+	total_hash = MergeHashes(total_hash, th);
+
+	Emit("register_scripts__CPP(%s, standalone_init__CPP);", Fmt(total_hash));
+
+	// Spit out the placeholder script.
+	printf("global init_CPP_%llu = load_CPP(%llu);\n",
+	       total_hash, total_hash);
 	}
 
 } // zeek::detail

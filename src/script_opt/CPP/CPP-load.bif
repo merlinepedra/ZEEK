@@ -4,7 +4,8 @@
 
 %%{ // C segment
 
-#include "zeek/script_opt/CPP/RuntimeInit.h"
+#include "zeek/Reporter.h"
+#include "zeek/script_opt/CPP/Func.h"
 
 %%}
 
@@ -16,7 +17,14 @@
 ##
 function load_CPP%(h: count%): bool
 	%{
-	printf("loading %llu\n", h);
+	auto cb = detail::standalone_callbacks.find(h);
 
+	if ( cb == detail::standalone_callbacks.end() )
+		{
+		reporter->Error("load of non-existing C++ code (%llu)", h);
+		return zeek::val_mgr->False();
+		}
+
+	cb->second();
 	return zeek::val_mgr->True();
 	%}

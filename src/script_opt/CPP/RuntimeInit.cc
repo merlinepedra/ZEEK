@@ -31,8 +31,7 @@ static int dummy = flag_init_CPP();
 void register_body__CPP(CPPStmtPtr body, int priority, hash_type hash,
                         std::vector<std::string> events)
 	{
-	compiled_scripts[hash] =
-	        { std::move(body), priority, std::move(events) };
+	compiled_scripts[hash] = { std::move(body), priority, std::move(events) };
 	}
 
 void register_lambda__CPP(CPPStmtPtr body, hash_type hash, const char* name,
@@ -58,6 +57,72 @@ void register_lambda__CPP(CPPStmtPtr body, hash_type hash, const char* name,
 		// Note, no support for lambdas that themselves refer
 		// to events.
 		register_body__CPP(body, 0, hash, {});
+	}
+
+void register_scripts__CPP(hash_type h, void (*callback)())
+	{
+	ASSERT(standalone_callbacks.count(h) == 0);
+	standalone_callbacks[h] = callback;
+	}
+
+void activate_bodies__CPP(const char* fn, TypePtr t,
+                          std::vector<hash_type> hashes)
+	{
+	auto ft = cast_intrusive<FuncType>(t);
+	auto fg = lookup_ID(fn, GLOBAL_MODULE_NAME, false, false, false);
+
+	if ( ! fg )
+		{
+		fg = install_ID(fn, GLOBAL_MODULE_NAME, true, false);
+		fg->SetType(ft);
+		}
+
+	auto f = fg->GetVal()->AsFunc();
+	const auto& bodies = f->GetBodies();
+
+	// Track hashes of compiled bodies already associated with f.
+	std::unordered_set<hash_type> existing_CPP_bodies;
+	for ( auto& b : bodies )
+		{
+		auto s = b.stmts;
+		if ( s->Tag() != STMT_CPP )
+			continue;
+
+		const auto& cpp_s = cast_intrusive<CPPStmt>(s);
+		existing_CPP_bodies.insert(cpp_s->GetHash());
+		}
+
+	// Events we need to register.
+	std::unordered_set<std::string> events;
+
+	if ( ft->Flavor() == FUNC_FLAVOR_EVENT )
+		events.insert(fn);
+
+	std::vector<detail::IDPtr> no_inits;	// empty initialization vector
+	int num_params = ft->Params()->NumFields();
+
+	for ( auto h : hashes )
+		{
+		if ( existing_CPP_bodies.count(h) > 0 )
+			// We're presumably running with the original script,
+			// and have already incorporated this compiled body
+			// into f.
+			continue;
+
+		// Add in the new body.
+		ASSERT(compiled_scripts.count(h) > 0);
+		auto cs = compiled_scripts[h];
+
+		f->AddBody(cs.body, no_inits, num_params, cs.priority);
+
+		events.insert(cs.events.begin(), cs.events.end());
+		}
+
+	for ( const auto& e : events )
+		{
+		auto eh = event_registry->Register(e);
+		eh->SetUsed();
+		}
 	}
 
 IDPtr lookup_global__CPP(const char* g, const TypePtr& t)

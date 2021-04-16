@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "zeek/script_opt/CPP/Func.h"
+#include "zeek/script_opt/CPP/HashMgr.h"
 
 namespace zeek::detail {
 

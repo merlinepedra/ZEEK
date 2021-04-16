@@ -36,6 +36,10 @@ struct AnalyOpt {
 	// If true, generate C++;
 	bool gen_CPP = false;
 
+	// If true, the C++ should be standalone (not require the presence
+	// of the corresponding script, and not activated by default).
+	bool gen_standalone_CPP = false;
+
 	// If true, generate C++ for those script bodies that don't already
 	// have generated code, in a form that enables later compiles to
 	// take advantage of the newly-added elements.  Only use for generating

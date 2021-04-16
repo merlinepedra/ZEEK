@@ -20,7 +20,6 @@ typedef void (*CPP_init_func)();
 // Tracks the initialization hooks for different compilation runs.
 extern std::vector<CPP_init_func> CPP_init_funcs;
 
-
 // Registers the given compiled function body as associated with the
 // given priority and hash.  "events" is a list of event handlers
 // relevant for the function body, which should be registered if the
@@ -34,6 +33,16 @@ extern void register_body__CPP(CPPStmtPtr body, int priority, hash_type hash,
 extern void register_lambda__CPP(CPPStmtPtr body, hash_type hash,
                                  const char* name, TypePtr t,
                                  bool has_captures);
+
+// Registers a callback for activating a set of scripts associated with
+// the given hash.
+extern void register_scripts__CPP(hash_type h, void (*callback)());
+
+// Activates the event handler/hook with the given name (which is created
+// if it doesn't exist) and type, using (at least) the bodies associated
+// with the given hashes.
+extern void activate_bodies__CPP(const char* fn, TypePtr t,
+                                 std::vector<hash_type> hashes);
 
 // Looks for a global with the given name.  If not present, creates it
 // with the given type.

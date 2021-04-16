@@ -11,8 +11,9 @@ namespace zeek::detail {
 
 
 CPPCompile::CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& _pfs,
-		const char* gen_name, CPPHashManager& _hm, bool _update)
-: funcs(_funcs), pfs(_pfs), hm(_hm), update(_update)
+                       const char* gen_name, CPPHashManager& _hm,
+                       bool _update, bool _standalone)
+: funcs(_funcs), pfs(_pfs), hm(_hm), update(_update), standalone(_standalone)
 	{
 	auto mode = hm.IsAppend() ? "a" : "w";
 

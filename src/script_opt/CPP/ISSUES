@@ -8,6 +8,8 @@ conditional code:
 		- rewrite scripts to use run-time conditionals
 			(in base scripts, it's almost all regarding clusters)
 
+lambdas: not supported if they refer to events that are otherwise not registered
+
 type switches:
 	- easy to support by some sort of hash on the type
 

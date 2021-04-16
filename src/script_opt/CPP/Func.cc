@@ -10,6 +10,7 @@
 namespace zeek::detail {
 
 std::unordered_map<hash_type, CompiledScript> compiled_scripts;
+std::unordered_map<hash_type, void (*)()> standalone_callbacks;
 
 void CPPFunc::Describe(ODesc* d) const
 	{

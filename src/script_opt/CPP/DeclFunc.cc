@@ -126,10 +126,14 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf,
 
 	EndBlock(true);
 
-	body_hashes[fname] = pf->HashVal();
+	auto h = pf->HashVal();
+
+	body_hashes[fname] = h;
 	body_priorities[fname] = priority;
 	body_names.emplace(body.get(), fname);
 	names_to_bodies.emplace(std::move(fname), body.get());
+
+	total_hash = MergeHashes(total_hash, h);
 	}
 
 void CPPCompile::BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf,

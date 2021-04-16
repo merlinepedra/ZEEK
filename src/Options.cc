@@ -162,6 +162,7 @@ static void set_analysis_option(const char* opt, Options& opts)
 		fprintf(stderr, "    dump-xform	dump transformed scripts to stdout; implies xform\n");
 		fprintf(stderr, "    force-use-C++	use available C++ script bodies, warning about missing ones\n");
 		fprintf(stderr, "    gen-C++	generate C++ script bodies\n");
+		fprintf(stderr, "    gen-standalone-C++	generate \"standalone\" C++ script bodies\n");
 		fprintf(stderr, "    help	print this list\n");
 		fprintf(stderr, "    inline	inline function calls\n");
 		fprintf(stderr, "    recursive	report on recursive functions and exit\n");
@@ -182,6 +183,8 @@ static void set_analysis_option(const char* opt, Options& opts)
 		a_o.force_use_CPP = true;
 	else if ( util::streq(opt, "gen-C++") )
 		a_o.gen_CPP = true;
+	else if ( util::streq(opt, "gen-standalone-C++") )
+		a_o.gen_standalone_CPP = true;
 	else if ( util::streq(opt, "inline") )
 		a_o.inliner = true;
 	else if ( util::streq(opt, "recursive") )
