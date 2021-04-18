@@ -1701,6 +1701,9 @@ static bool is_init_compat(const Type& t1, const Type& t2)
 	return false;
 	}
 
+// Track which types we're in the process of analyzing.
+static std::unordered_set<const Type*> analyzed_types;
+
 bool same_type(const Type& arg_t1, const Type& arg_t2,
                bool is_init, bool match_record_field_names)
 	{

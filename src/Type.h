@@ -165,6 +165,8 @@ constexpr int DOES_NOT_MATCH_INDEX = 0;
 constexpr int MATCHES_INDEX_SCALAR = 1;
 constexpr int MATCHES_INDEX_VECTOR = 2;
 
+extern void init__CPP();
+
 class Type : public Obj {
 public:
 	static inline const TypePtr nil;
@@ -747,11 +749,14 @@ public:
 
 	const EnumValPtr& GetEnumVal(bro_int_t i);
 
+	// Only for use by C++-generated code.  Non-protected because we
+	// don't know in advance the names of the functions that will
+	// access it.
+	void AddNameInternal(const std::string& full_name, bro_int_t val);
+
 protected:
 	void AddNameInternal(const std::string& module_name,
-			const char* name, bro_int_t val, bool is_export);
-
-	void AddNameInternal(const std::string& full_name, bro_int_t val);
+	                     const char* name, bro_int_t val, bool is_export);
 
 	void CheckAndAddName(const std::string& module_name,
 	                     const char* name, bro_int_t val, bool is_export,

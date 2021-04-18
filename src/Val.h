@@ -450,10 +450,11 @@ public:
 	// Returns a masked port number
 	static uint32_t Mask(uint32_t port_num, TransportProto port_type);
 
-protected:
-	friend class ValManager;
+	// Only meant for use by ValManager and compiled-to-C++ script
+	// functions.
 	PortVal(uint32_t p);
 
+protected:
 	void ValDescribe(ODesc* d) const override;
 	ValPtr DoClone(CloneState* state) override;
 
@@ -1460,6 +1461,8 @@ protected:
 	friend class Val;
 	friend class EnumType;
 
+	friend EnumValPtr make_enum__CPP(TypePtr t, int i);
+
 	template<class T, class... Ts>
 	friend IntrusivePtr<T> make_intrusive(Ts&&... args);
 
@@ -1578,6 +1581,11 @@ public:
 
 	ValPtr ValAt(unsigned int index) const	{ return At(index); }
 
+	bool Has(unsigned int index) const
+		// Version to use once std::optional implementation is merged.
+		// { return index < vector_val->size() && vector_val[index]; }
+		{ return At(index) != nullptr; }
+
 	/**
 	 * Returns the given element in a given underlying representation.
 	 * Enables efficient vector access.  Caller must ensure that the
@@ -1585,12 +1593,16 @@ public:
 	 * @param index  The position in the vector of the element to return.
 	 * @return  The element's underlying value.
 	 */
+	bro_int_t IntAt(unsigned int index) const
+		{ return (*vector_val)[index].int_val; }
 	bro_uint_t CountAt(unsigned int index) const
 		{ return (*vector_val)[index].uint_val; }
-	const RecordVal* RecordValAt(unsigned int index) const
-		{ return (*vector_val)[index].record_val; }
 	bool BoolAt(unsigned int index) const
 		{ return static_cast<bool>((*vector_val)[index].uint_val); }
+	double DoubleAt(unsigned int index) const
+		{ return (*vector_val)[index].double_val; }
+	const RecordVal* RecordValAt(unsigned int index) const
+		{ return (*vector_val)[index].record_val; }
 	const StringVal* StringValAt(unsigned int index) const
 		{ return (*vector_val)[index].string_val; }
 	const String* StringAt(unsigned int index) const

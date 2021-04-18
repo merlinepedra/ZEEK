@@ -124,6 +124,9 @@ set(BIF_SRCS
     # it's needed before parsing the packet protocol scripts, which happen
     # very near to the start of parsing.
     packet_analysis/packet_analysis.bif
+    # The C++ loading BIF is treated like other top-level BIFs to give
+    # us flexibility regarding when it's called.
+    script_opt/CPP/CPP-load.bif
 )
 
 foreach (bift ${BIF_SRCS})
@@ -326,6 +329,27 @@ set(MAIN_SRCS
     plugin/TaggedComponent.h
     plugin/Manager.cc
     plugin/Plugin.cc
+
+    script_opt/CPP/Attrs.cc
+    script_opt/CPP/Consts.cc
+    script_opt/CPP/DeclFunc.cc
+    script_opt/CPP/Driver.cc
+    script_opt/CPP/Emit.cc
+    script_opt/CPP/Exprs.cc
+    script_opt/CPP/Func.cc
+    script_opt/CPP/GenFunc.cc
+    script_opt/CPP/HashMgr.cc
+    script_opt/CPP/Inits.cc
+    script_opt/CPP/RuntimeInit.cc
+    script_opt/CPP/RuntimeOps.cc
+    script_opt/CPP/RuntimeVec.cc
+    script_opt/CPP/Stmts.cc
+    script_opt/CPP/Tracker.cc
+    script_opt/CPP/Types.cc
+    script_opt/CPP/Util.cc
+    script_opt/CPP/Vars.cc
+
+    script_opt/CPP/CPP-gen.cc
 
     script_opt/DefItem.cc
     script_opt/DefSetsMgr.cc
