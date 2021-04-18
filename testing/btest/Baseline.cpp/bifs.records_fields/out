@@ -27,7 +27,7 @@ F
 [d] = [type_name=string, log=T, value=Bar, default_val=<uninitialized>],
 [b] = [type_name=string, log=F, value=Foo, default_val=Foo],
 [c] = [type_name=double, log=F, value=<uninitialized>, default_val=<uninitialized>],
-[e] = [type_name=any, log=F, value=, default_val=<uninitialized>]
+[e] = [type_name=any, log=F, value=mystring, default_val=<uninitialized>]
 }
 {
 

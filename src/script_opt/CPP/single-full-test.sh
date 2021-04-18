@@ -8,6 +8,8 @@ so=$base/src/script_opt/CPP
 build=$base/build
 gen=CPP-gen-addl.h
 
+echo >$gen
+
 ./non-embedded-build >$build/errs 2>&1 || echo non-embedded build failed
 
 export -n ZEEK_USE_CPP
