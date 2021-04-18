@@ -122,10 +122,11 @@ void CPPCompile::Compile()
 	for ( auto& g : pfs.AllGlobals() )
 		{
 		RegisterAttributes(g->GetAttrs());
-		auto gn = std::string(g->Name());
-
 		if ( g->HasVal() )
+			{
+			auto gn = std::string(g->Name());
 			GenGlobalInit(g, globals[gn], g->GetVal());
+			}
 		}
 
 	for ( const auto& e : pfs.Events() )

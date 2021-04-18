@@ -434,5 +434,4 @@ protected:
 	bool full_record_hashes;
 };
 
-
 } // namespace zeek::detail
