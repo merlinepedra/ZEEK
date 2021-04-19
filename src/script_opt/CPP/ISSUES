@@ -9,6 +9,12 @@ conditional code:
 			(in base scripts, it's almost all regarding clusters)
 
 lambdas: not supported if they refer to events that are otherwise not registered
+	(not all that hard to fix)
+
+standalone code won't execute global statements
+
+standalone code needs to deal with field_mapping initializations the
+same as enum_mapping
 
 type switches:
 	- easy to support by some sort of hash on the type
@@ -17,7 +23,6 @@ when's:
 	- need to understand "return when" semantics
 
 slow compilation:
-	- try splitting initialization routine into a bunch of subroutines
 	- analyze whether there's a bunch of unneeded stuff (e.g. orphan types)
 
 efficiency:
