@@ -134,8 +134,8 @@ namespace zeek::detail {
 class CPPCompile {
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs,
-	           const char* gen_name, CPPHashManager& hm,
-	           bool update, bool standalone);
+	           const std::string& gen_name, const std::string& addl_name,
+	           CPPHashManager& _hm, bool _update, bool _standalone);
 	~CPPCompile();
 
 private:
@@ -1009,6 +1009,9 @@ private:
 
 	// File to which we're generating code.
 	FILE* write_file;
+
+	// Name of file holding potential "additional" code.
+	std::string addl_name;
 
 	// Indentation level.
 	int block_level = 0;
