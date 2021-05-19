@@ -3,6 +3,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "prio_queue.hpp"
 
 #include "zeek/PriorityQueue.h"
 #include "zeek/iosource/IOSource.h"
@@ -109,9 +110,9 @@ public:
 
 	double Time() const		{ return t ? t : 1; }	// 1 > 0
 
-	virtual int Size() const = 0;
-	virtual int PeakSize() const = 0;
-	virtual uint64_t CumulativeNum() const = 0;
+	virtual std::size_t Size() const = 0;
+	virtual std::size_t PeakSize() const = 0;
+	virtual std::size_t CumulativeNum() const = 0;
 
 	double LastTimestamp() const	{ return last_timestamp; }
 
@@ -156,19 +157,42 @@ public:
 	void Add(Timer* timer) override;
 	void Expire() override;
 
-	int Size() const override { return q->Size(); }
-	int PeakSize() const override { return q->PeakSize(); }
-	uint64_t CumulativeNum() const override { return q->CumulativeNum(); }
+	std::size_t Size() const override { return q->size(); }
+	std::size_t PeakSize() const override { return max_size; }
+	std::size_t CumulativeNum() const override { return cumulative; }
 	double GetNextTimeout() override;
 
 protected:
 	int DoAdvance(double t, int max_expire) override;
 	void Remove(Timer* timer) override;
 
-	Timer* Remove()			{ return (Timer*) q->Remove(); }
-	Timer* Top()			{ return (Timer*) q->Top(); }
+private:
 
-	PriorityQueue* q;
+	Timer* Remove()
+		{
+		if ( q->empty() )
+			return nullptr;
+
+		auto t = Top();
+		q->pop();
+		return t;
+		}
+
+	Timer* Top()
+		{
+		if ( q->empty() )
+			return nullptr;
+
+		auto e = q->top();
+		Timer* t = static_cast<Timer*>(e.second);
+		return t;
+		}
+
+	using TimerPQ = rollbear::prio_queue<8, double, PQ_Element*>;
+	TimerPQ* q;
+
+	std::size_t max_size = 0;
+	std::size_t cumulative = 0;
 };
 
 extern TimerMgr* timer_mgr;

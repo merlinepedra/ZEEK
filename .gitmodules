@@ -46,3 +46,6 @@
 [submodule "auxil/package-manager"]
 	path = auxil/package-manager
 	url = https://github.com/zeek/package-manager
+[submodule "auxil/prio_queue"]
+	path = auxil/prio_queue
+	url = https://github.com/rollbear/prio_queue.git

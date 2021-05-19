@@ -22,12 +22,23 @@ public:
 	void SetOffset(int off)	{ offset = off; }
 
 	void MinimizeTime()	{ time = -HUGE_VAL; }
+	void Ignore() { ignore = true; }
+	bool Ignored() const { return ignore; }
 
 protected:
 	PQ_Element() = default;
 	double time = 0.0;
 	int offset = -1;
+	bool ignore = false;
 };
+
+class PQ_Comparer {
+public:
+	bool operator()(const PQ_Element* l, const PQ_Element* r) const noexcept
+		{
+		return l->Time() < r->Time();
+		}
+	};
 
 class PriorityQueue {
 public:

@@ -443,13 +443,14 @@ find_package(FTS)
 if ( FTS_FOUND )
     list(APPEND OPTLIBS ${FTS_LIBRARY})
     include_directories(BEFORE ${FTS_INCLUDE_DIR})
-endif ()
+endif()
 
 # Any headers that are possibly bundled in the Zeek source-tree and that are supposed
 # to have priority over any pre-existing/system-wide headers need to appear early in
 # compiler search path.
 include_directories(BEFORE ${broker_includes} ${CAF_INCLUDE_DIRS})
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/auxil/highwayhash)
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/auxil/prio_queue)
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/auxil/paraglob/include)
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/auxil/rapidjson/include)
 
