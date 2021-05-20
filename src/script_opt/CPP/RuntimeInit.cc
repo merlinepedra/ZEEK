@@ -13,8 +13,13 @@ vector<CPP_init_func> CPP_init_funcs;
 // Calls all of the initialization hooks, in the order they were added.
 void init_CPPs()
 	{
-	for ( auto f : CPP_init_funcs )
-		f();
+	static bool need_init = true;
+
+	if ( need_init )
+		for ( auto f : CPP_init_funcs )
+			f();
+
+	need_init = false;
 	}
 
 // This is a trick used to register the presence of compiled code.
@@ -29,6 +34,19 @@ static int flag_init_CPP()
 
 static int dummy = flag_init_CPP();
 
+
+void register_type__CPP(TypePtr t, const std::string& name)
+	{
+	if ( t->GetName().size() > 0 )
+		// Already registered.
+		return;
+
+	t->SetName(name);
+
+	auto id = install_ID(name.c_str(), GLOBAL_MODULE_NAME, true, false);
+	id->SetType(t);
+	id->MakeType();
+	}
 
 void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash,
                         vector<string> events)
@@ -78,7 +96,19 @@ void activate_bodies__CPP(const char* fn, TypePtr t, vector<p_hash_type> hashes)
 		fg->SetType(ft);
 		}
 
-	auto f = fg->GetVal()->AsFunc();
+	auto v = fg->GetVal();
+	if ( ! v )
+		{ // Create it.
+		std::vector<StmtPtr> no_bodies;
+		std::vector<int> no_priorities;
+		auto sf = make_intrusive<ScriptFunc>(fn, ft, no_bodies,
+		                                     no_priorities);
+
+		v = make_intrusive<FuncVal>(move(sf));
+		fg->SetVal(v);
+		}
+
+	auto f = v->AsFunc();
 	const auto& bodies = f->GetBodies();
 
 	// Track hashes of compiled bodies already associated with f.

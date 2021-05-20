@@ -316,7 +316,7 @@ private:
 	StmtPtr current_body;
 
 	// ... and its priority.
-	int current_priority;
+	int current_priority = 0;
 };
 
 using built_in_func = BifReturnVal (*)(Frame* frame, const Args* args);

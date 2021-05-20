@@ -332,8 +332,11 @@ ScriptFunc::ScriptFunc(std::string _name, FuncTypePtr ft,
 
 	sort(bodies.begin(), bodies.end());
 
-	current_body = bodies[0].stmts;
-	current_priority = bodies[0].priority;
+	if ( bodies.size() > 0 )
+		{
+		current_body = bodies[0].stmts;
+		current_priority = bodies[0].priority;
+		}
 	}
 
 ScriptFunc::~ScriptFunc()

@@ -20,6 +20,9 @@ typedef void (*CPP_init_func)();
 // Tracks the initialization hooks for different compilation runs.
 extern std::vector<CPP_init_func> CPP_init_funcs;
 
+// Registers the given global type, if not already present.
+extern void register_type__CPP(TypePtr t, const std::string& name);
+
 // Registers the given compiled function body as associated with the
 // given priority and hash.  "events" is a list of event handlers
 // relevant for the function body, which should be registered if the

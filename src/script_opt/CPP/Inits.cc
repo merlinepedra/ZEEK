@@ -497,11 +497,6 @@ void CPPCompile::GenStandaloneActivation()
 	for ( const auto& func : funcs )
 		{
 		auto f = func.Func();
-
-		if ( f->Flavor() == FUNC_FLAVOR_FUNCTION )
-			// No need to explicitly add bodies.
-			continue;
-
 		auto fname = BodyName(func);
 		auto bname = Canonicalize(fname.c_str()) + "_zf";
 
