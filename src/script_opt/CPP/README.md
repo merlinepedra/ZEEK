@@ -94,10 +94,13 @@ the `target.zeek` script.  You can avoid this by replacing the first step with:
 
 1. `./src/zeek -O gen-standalone-C++ target.zeek >target-stand-in.zeek`
 
-and then continuing the next three steps.  This option prints to _stdout_ a 
+(and then building as in the 2nd step above).
+This option prints to _stdout_ a 
 (very short) "stand-in" Zeek script that you can load using
 `target-stand-in.zeek` to activate the compiled `target.zeek`
-without needing to include `target.zeek` in the invocation.
+without needing to include `target.zeek` in the invocation (nor
+the `-O use-C++` option).  After loading the stand-in script,
+you can still access types and functions declared in `target.zeek`.
 
 Note: the implementation differences between `gen-C++` and `gen-standalone-C++`
 wound up being modest enough that it might make sense to just always provide
