@@ -582,15 +582,22 @@ void ScriptFunc::ReplaceBody(const StmtPtr& old_body, StmtPtr new_body)
 	{
 	bool found_it = false;
 
-	for ( auto& body : bodies )
-		if ( body.stmts.get() == old_body.get() )
+	for ( auto body = bodies.begin(); body != bodies.end(); ++body )
+		if ( body->stmts.get() == old_body.get() )
 			{
-			body.stmts = new_body;
-			current_priority = body.priority;
+			if ( new_body )
+				{
+				body->stmts = new_body;
+				current_priority = body->priority;
+				}
+			else
+				bodies.erase(body);
+
 			found_it = true;
+			break;
 			}
 
-	ASSERT(found_it);
+	// ASSERT(found_it);
 	current_body = new_body;
 	}
 
