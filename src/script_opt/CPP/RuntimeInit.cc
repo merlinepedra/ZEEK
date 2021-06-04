@@ -9,6 +9,7 @@ namespace zeek::detail {
 using namespace std;
 
 vector<CPP_init_func> CPP_init_funcs;
+vector<CPP_init_func> CPP_activation_funcs;
 
 // Calls all of the initialization hooks, in the order they were added.
 void init_CPPs()
@@ -17,6 +18,18 @@ void init_CPPs()
 
 	if ( need_init )
 		for ( auto f : CPP_init_funcs )
+			f();
+
+	need_init = false;
+	}
+
+// Calls all of the registered activation hooks for standalone code.
+void activate__CPPs()
+	{
+	static bool need_init = true;
+
+	if ( need_init )
+		for ( auto f : CPP_activation_funcs )
 			f();
 
 	need_init = false;
@@ -145,6 +158,7 @@ void activate_bodies__CPP(const char* fn, TypePtr t, vector<p_hash_type> hashes)
 		auto cs = compiled_scripts[h];
 
 		f->AddBody(cs.body, no_inits, num_params, cs.priority);
+		added_bodies[fn].insert(h);
 
 		events.insert(cs.events.begin(), cs.events.end());
 		}

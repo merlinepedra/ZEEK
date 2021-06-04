@@ -863,6 +863,12 @@ private:
 	void AddInit(const IntrusivePtr<Obj>& o)	{ AddInit(o.get()); }
 	void AddInit(const Obj* o);
 
+	// This is akin to an initialization, but done separately
+	// (upon "activation") so it can include initializations that
+	// rely on parsing having finished (in particular, BiFs having
+	// been registered).  Only used when generating  standalone code.
+	void AddActivation(std::string a)	{ activations.emplace_back(a); }
+
 	// Records the fact that the initialization of object o1 depends
 	// on that of object o2.
 	void NoteInitDependency(const IntrusivePtr<Obj>& o1,
@@ -926,6 +932,10 @@ private:
 	// A list of pre-initializations (those potentially required by
 	// other initializations, and that themselves have no dependencies).
 	std::vector<std::string> pre_inits;
+
+	// A list of "activations" (essentially, post-initializations).
+	// See AddActivation() above.
+	std::vector<std::string> activations;
 
 	// Expressions for which we need to generate initialization-time
 	// code.  Currently, these are only expressions appearing in
