@@ -14,6 +14,7 @@
 #include "zeek/script_opt/UseDefs.h"
 #include "zeek/script_opt/CPP/Compile.h"
 #include "zeek/script_opt/CPP/Func.h"
+#include "zeek/script_opt/ZAM/Compile.h"
 
 
 namespace zeek::detail {
@@ -151,6 +152,22 @@ void optimize_func(ScriptFunc* f, std::shared_ptr<ProfileFunc> pf,
 	if ( new_frame_size > f->FrameSize() )
 		f->SetFrameSize(new_frame_size);
 
+	if ( analysis_options.gen_ZAM_code )
+		{
+		ZAM = new ZAMCompiler(f, pf, scope, new_body, ud, rc);
+
+		new_body = ZAM->CompileBody();
+
+		if ( reporter->Errors() > 0 )
+			return;
+
+		if ( analysis_options.only_func || analysis_options.dump_ZAM )
+			ZAM->Dump();
+
+		f->ReplaceBody(body, new_body);
+		body = new_body;
+		}
+
 	pop_scope();
 	}
 
@@ -219,6 +236,13 @@ void analyze_scripts()
 		check_env_opt("ZEEK_INLINE", analysis_options.inliner);
 		check_env_opt("ZEEK_OPT", analysis_options.optimize_AST);
 		check_env_opt("ZEEK_XFORM", analysis_options.activate);
+		check_env_opt("ZEEK_ZAM", analysis_options.gen_ZAM);
+		check_env_opt("ZEEK_COMPILE_ALL", analysis_options.compile_all);
+		check_env_opt("ZEEK_ZAM_CODE", analysis_options.gen_ZAM_code);
+		check_env_opt("ZEEK_NO_ZAM_OPT", analysis_options.no_ZAM_opt);
+		check_env_opt("ZEEK_DUMP_ZAM", analysis_options.dump_ZAM);
+		check_env_opt("ZEEK_PROFILE", analysis_options.profile_ZAM);
+
 		check_env_opt("ZEEK_ADD_CPP", analysis_options.add_CPP);
 		check_env_opt("ZEEK_UPDATE_CPP", analysis_options.update_CPP);
 		check_env_opt("ZEEK_GEN_CPP", analysis_options.gen_CPP);
@@ -275,8 +299,19 @@ void analyze_scripts()
 				analysis_options.only_func = zo;
 			}
 
+		if ( analysis_options.gen_ZAM )
+			{
+			analysis_options.gen_ZAM_code = true;
+			analysis_options.inliner = true;
+			analysis_options.optimize_AST = true;
+			}
+
+		if ( analysis_options.dump_ZAM )
+			analysis_options.gen_ZAM_code = true;
+
 		if ( analysis_options.only_func ||
 		     analysis_options.optimize_AST ||
+		     analysis_options.gen_ZAM_code ||
 		     analysis_options.usage_issues > 0 )
 			analysis_options.activate = true;
 
