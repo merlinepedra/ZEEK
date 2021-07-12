@@ -288,7 +288,7 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc,
 	int pc = start_pc;
 	int end_pc = ninst;
 
-#include "ZAM-OpsEvalMacros.h"
+#include "ZAM-EvalMacros.h"
 
 	// Return value, or nil if none.
 	const ZVal* ret_u;
@@ -343,7 +343,7 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc,
 		case OP_NOP:
 			break;
 
-#include "ZAM-OpsEvalDefs.h"
+#include "ZAM-EvalDefs.h"
 		default:
 			reporter->InternalError("bad ZAM opcode");
 		}

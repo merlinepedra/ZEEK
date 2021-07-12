@@ -750,8 +750,7 @@ eval	auto lv = frame[z.v2].any_val->AsListVal();
 ########## Constructors ##########
 
 # Table construction requires atypical evaluation of list elements
-# using information from their expression specifics.  We punt those
-# back to the interpreter.
+# using information from their expression specifics.
 direct-unary-op Table-Constructor ConstructTable
 
 macro ConstructTableOrSetPre()

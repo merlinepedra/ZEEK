@@ -101,7 +101,7 @@ private:
 	const ZAMStmt CompileFieldLHSAssignExpr(const FieldLHSAssignExpr* e);
 	const ZAMStmt CompileScheduleExpr(const ScheduleExpr* e);
 
-#include "zeek/ZAM-MethodDecl.h"
+#include "zeek/ZAM-MethodDecls.h"
 
 	const ZAMStmt ConstructTable(const NameExpr* n, const Expr* e);
 	const ZAMStmt ConstructSet(const NameExpr* n, const Expr* e);

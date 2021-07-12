@@ -355,7 +355,7 @@ void ZAMCompiler::Init()
 	}
 
 
-#include "ZAM-OpsMethodsDefs.h"
+#include "ZAM-MethodDefs.h"
 
 bro_uint_t ZAMCompiler::ConstArgsMask(const ExprPList& args, int nargs) const
 	{

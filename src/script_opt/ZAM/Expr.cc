@@ -106,7 +106,7 @@ const ZAMStmt ZAMCompiler::CompileAssignExpr(const AssignExpr* e)
 		return CompileAssignToIndex(lhs, rhs->AsIndexExpr());
 
 	switch ( rhs->Tag() ) {
-#include "ZAM-GenDirectDefs.h"
+#include "ZAM-DirectDefs.h"
 
 	default:
 		break;

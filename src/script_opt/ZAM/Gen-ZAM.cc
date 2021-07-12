@@ -94,7 +94,7 @@ unordered_map<ZAM_OperandType, pair<const char*, const char*>>
 	{ ZAM_OT_VAR, { "const NameExpr*", "n" } },
 
 	// The following gets special treatment.
-	{ ZAM_OT_FIELD, { "const NameExpr*", "n" } },
+	{ ZAM_OT_ASSIGN_FIELD, { "const NameExpr*", "n" } },
 };
 
 ArgsManager::ArgsManager(const vector<ZAM_OperandType>& ot, ZAM_InstClass zc)
@@ -120,7 +120,7 @@ ArgsManager::ArgsManager(const vector<ZAM_OperandType>& ot, ZAM_InstClass zc)
 		auto& arg_i = ot_to_args[ot_i];
 		Arg arg = { arg_i.second, arg_i.first, arg_i.second, false };
 
-		if ( ot_i == ZAM_OT_FIELD )
+		if ( ot_i == ZAM_OT_ASSIGN_FIELD )
 			{
 			arg.is_field = true;
 
@@ -208,7 +208,6 @@ void ArgsManager::Differentiate()
 ZAM_OpTemplate::ZAM_OpTemplate(ZAMGen* _g, string _base_name)
 : g(_g), base_name(move(_base_name))
 	{
-	orig_name = base_name;
 	transform(base_name.begin(), base_name.end(), base_name.begin(),
 	          dash_to_under);
 
@@ -276,7 +275,7 @@ void ZAM_OpTemplate::Parse(const string& attr, const string& line, const Words& 
 				ZAM_OperandType ot = ZAM_OT_NONE;
 				switch ( *types ) {
 				case 'C':	ot = ZAM_OT_CONSTANT; break;
-				case 'F':	ot = ZAM_OT_FIELD; break;
+				case 'F':	ot = ZAM_OT_ASSIGN_FIELD; break;
 				case 'H':	ot = ZAM_OT_EVENT_HANDLER; break;
 				case 'L':	ot = ZAM_OT_LIST; break;
 				case 'O':	ot = ZAM_OT_AUX; break;
@@ -421,7 +420,7 @@ unordered_map<ZAM_OperandType, char> ZAM_OpTemplate::ot_to_char = {
 	{ ZAM_OT_AUX, 'O' },
 	{ ZAM_OT_CONSTANT, 'C' },
 	{ ZAM_OT_EVENT_HANDLER, 'H' },
-	{ ZAM_OT_FIELD, 'F' },
+	{ ZAM_OT_ASSIGN_FIELD, 'F' },
 	{ ZAM_OT_INT, 'i' },
 	{ ZAM_OT_LIST, 'L' },
 	{ ZAM_OT_NONE, 'X' },
@@ -441,7 +440,7 @@ void ZAM_OpTemplate::InstantiateOp(const vector<ZAM_OperandType>& ot, bool do_ve
 	if ( do_vec )
 		InstantiateOp(method, ot, ZIC_VEC);
 
-	if ( IsConditional() )
+	if ( IsConditionalOp() )
 		InstantiateOp(method, ot, ZIC_COND);
 	}
 
@@ -507,7 +506,7 @@ void ZAM_OpTemplate::InstantiateMethodCore(const vector<ZAM_OperandType>& ot,
 
 	assert(ot.size() > 0);
 
-	string full_suffix = "_" + OpString(ot) + suffix;
+	string full_suffix = "_" + OpSuffix(ot) + suffix;
 
 	Emit("ZInstI z;");
 
@@ -571,7 +570,7 @@ void ZAM_OpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot,
 		eval = regex_replace(eval, regex("\\$1"), op1);
 		}
 
-	InstantiateEval(Eval, OpString(ot) + suffix, eval, zc);
+	InstantiateEval(Eval, OpSuffix(ot) + suffix, eval, zc);
 	}
 
 void ZAM_OpTemplate::InstantiateEval(EmitTarget et, const string& op_suffix,
@@ -593,7 +592,7 @@ void ZAM_OpTemplate::InstantiateAssignOp(const vector<ZAM_OperandType>& ot,
 	{
 	// First, create a generic version of the operand, which the
 	// ZAM compiler uses to find specific-flavored versions.
-	auto op_string = "_" + OpString(ot);
+	auto op_string = "_" + OpSuffix(ot);
 	auto generic_op = g->GenOpCode(this, op_string);
 	auto flavor_ind = "assignment_flavor[" + generic_op + "]";
 
@@ -684,7 +683,7 @@ void ZAM_OpTemplate::GenAssignOpCore(const vector<ZAM_OperandType>& ot,
 		return;
 		}
 
-	auto lhs_field = (ot[0] == ZAM_OT_FIELD);
+	auto lhs_field = (ot[0] == ZAM_OT_ASSIGN_FIELD);
 	auto rhs_field = lhs_field && ot.size() > 2 && (ot[2] == ZAM_OT_INT);
 	auto constant_op = (ot[1] == ZAM_OT_CONSTANT);
 
@@ -779,7 +778,7 @@ void ZAM_OpTemplate::GenAssignOpCore(const vector<ZAM_OperandType>& ot,
 
 string ZAM_OpTemplate::MethodName(const vector<ZAM_OperandType>& ot) const
 	{
-	return base_name + OpString(ot);
+	return base_name + OpSuffix(ot);
 	}
 
 string ZAM_OpTemplate::MethodDeclare(const vector<ZAM_OperandType>& ot,
@@ -789,7 +788,7 @@ string ZAM_OpTemplate::MethodDeclare(const vector<ZAM_OperandType>& ot,
 	return args.Decls();
 	}
 
-string ZAM_OpTemplate::OpString(const vector<ZAM_OperandType>& ot) const
+string ZAM_OpTemplate::OpSuffix(const vector<ZAM_OperandType>& ot) const
 	{
 	string os;
 	for ( auto& o : ot )
@@ -1259,7 +1258,7 @@ void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
 	if ( zc == ZIC_FIELD )
 		ot.emplace_back(ZAM_OT_INT);
 
-	auto ot_str = OpString(ot);
+	auto ot_str = OpSuffix(ot);
 
 	// Some of these might not wind up being used, but no harm in
 	// initializing them in case they are.
@@ -1335,7 +1334,7 @@ void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
 		{
 		auto is_def = eval_set.count(et) == 0;
 		string eval = is_def ? GetEval() : eval_set[et];
-		auto lhs_et = IsConditional() ? ZAM_EXPR_TYPE_INT : et;
+		auto lhs_et = IsConditionalOp() ? ZAM_EXPR_TYPE_INT : et;
 		eval_instances.emplace_back(lhs_et, et, et, eval, is_def);
 		}
 
@@ -1381,7 +1380,7 @@ void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
 			else
 				rhs = "^[^;\n]*";
 
-			auto replacement = Repl(has_target);
+			auto replacement = VecEvalRE(has_target);
 
 			eval = regex_replace(eval, regex(rhs), replacement);
 			}
@@ -1418,7 +1417,7 @@ void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
 			       "{ pc = " + branch_target + "; continue; }";
 			}
 
-		else if ( ! is_none && (ei.is_def || IsConditional()) )
+		else if ( ! is_none && (ei.is_def || IsConditionalOp()) )
 			{
 			eval = lhs_ei + " = " + eval;
 
@@ -1506,7 +1505,7 @@ void ZAM_UnaryExprOpTemplate::BuildInstruction(const vector<ZAM_OperandType>& ot
 	auto constant_op = ot[1] == ZAM_OT_CONSTANT;
 	string type_src = constant_op ? "c" : "n2";
 
-	if ( ot[0] == ZAM_OT_FIELD )
+	if ( ot[0] == ZAM_OT_ASSIGN_FIELD )
 		{
 		type_src = constant_op ? "n" : "n1";
 		Emit("auto " + type_src + " = flhs->GetOp1()->AsNameExpr();");
@@ -1579,7 +1578,7 @@ void ZAM_AssignOpTemplate::Instantiate()
 	InstantiateOp(ots, false);
 
 	// ... and for assignments to fields, additional field versions.
-	if ( ots[0] == ZAM_OT_FIELD )
+	if ( ots[0] == ZAM_OT_ASSIGN_FIELD )
 		{
 		ots.push_back(ZAM_OT_INT);
 		InstantiateOp(ots, false);
@@ -1751,7 +1750,7 @@ void ZAM_InternalBinaryOpTemplate::InstantiateEval(const vector<ZAM_OperandType>
 			}
 		}
 
-	ZAM_OpTemplate::InstantiateEval(Eval, OpString(ot) + suffix, eval, zc);
+	ZAM_OpTemplate::InstantiateEval(Eval, OpSuffix(ot) + suffix, eval, zc);
 	}
 
 
@@ -1843,6 +1842,93 @@ void ZAM_InternalOpTemplate::Parse(const string& attr, const string& line,
 	}
 
 
+bool TemplateInput::ScanLine(string& line)
+	{
+	if ( put_back.size() > 0 )
+		{
+		line = put_back;
+		put_back.clear();
+		return true;
+		}
+
+	char buf[8192];
+
+	// Read lines, discarding comments.
+	do {
+		if ( ! fgets(buf, sizeof buf, f) )
+			return false;
+		++loc.line_num;
+	} while ( buf[0] == '#' );
+
+	line = buf;
+	return true;
+	}
+
+vector<string> TemplateInput::SplitIntoWords(const string& line) const
+	{
+	vector<string> words;
+
+	for ( auto start = line.c_str(); *start && *start != '\n'; )
+		{
+		auto end = start + 1;
+		while ( *end && ! isspace(*end) )
+			++end;
+
+		words.emplace_back(string(start, end - start));
+
+		start = end;
+		while ( *start && isspace(*start) )
+			++start;
+		}
+
+	return words;
+	}
+
+string TemplateInput::SkipWords(const string& line, int n) const
+	{
+	auto s = line.c_str();
+
+	for ( int i = 0; i < n; ++i )
+		{
+		// Find end of current word.
+		while ( *s && *s != '\n' )
+			{
+			if ( isspace(*s) )
+				break;
+			++s;
+			}
+
+		if ( *s == '\n' )
+			break;
+
+		// Find start of next word.
+		while ( *s && isspace(*s) )
+			++s;
+		}
+
+	return string(s);
+	}
+
+void TemplateInput::Gripe(const char* msg, const string& input)
+	{
+	auto input_s = input.c_str();
+	int n = strlen(input_s);
+
+	fprintf(stderr, "%s, line %d: %s - %s",
+	        loc.file_name, loc.line_num, msg, input_s);
+	if ( n == 0 || input_s[n-1] != '\n' )
+		fprintf(stderr, "\n");
+
+	exit(1);
+	}
+
+void TemplateInput::Gripe(const char* msg, const InputLoc& l)
+	{
+	fprintf(stderr, "%s, line %d: %s\n", l.file_name, l.line_num, msg);
+	exit(1);
+	}
+
+
 ZAMGen::ZAMGen(int argc, char** argv)
 	{
 	auto prog_name = argv[0];
@@ -1877,6 +1963,102 @@ ZAMGen::ZAMGen(int argc, char** argv)
 	CloseEmitTargets();
 	}
 
+void ZAMGen::ReadMacro(const string& line)
+	{
+	vector<string> mac;
+	mac.emplace_back(SkipWords(line, 1));
+
+	string s;
+	while ( ScanLine(s) )
+		{
+		if ( s.size() <= 1 || ! isspace(s.c_str()[0]) )
+			{
+			PutBack(s);
+			break;
+			}
+
+		mac.push_back(s);
+		}
+
+	macros.emplace_back(move(mac));
+	}
+
+void ZAMGen::GenMacros()
+	{
+	for ( auto& m : macros )
+		{
+		for ( auto i = 0U; i < m.size(); ++i )
+			{
+			auto ms = m[i];
+			if ( i == 0 )
+				ms = "#define " + ms;
+
+			if ( i < m.size() - 1 )
+				ms = regex_replace(ms, regex("\n"), " \\\n");
+
+			Emit(EvalMacros, ms);
+			}
+
+		Emit(EvalMacros, "\n");
+		}
+	}
+
+string ZAMGen::GenOpCode(const ZAM_OpTemplate* ot, const string& suffix,
+                         ZAM_InstClass zc)
+	{
+	auto op = "OP_" + ot->CanonicalName() + suffix;
+
+	static unordered_set<string> known_opcodes;
+
+	if ( known_opcodes.count(op) > 0 )
+		return op;
+
+	known_opcodes.insert(op);
+
+	IndentUp();
+
+	Emit(OpDef, op + ",");
+
+	auto op_comment = ",\t// " + op;
+	auto op1_always_read = (zc == ZIC_FIELD || zc == ZIC_COND);
+	auto flavor = op1_always_read ? "OP1_READ" : ot->GetOp1Flavor();
+	Emit(Op1Flavor, flavor + op_comment);
+
+	auto se = ot->HasSideEffects() ? "true" : "false";
+	Emit(OpSideEffects, se + op_comment);
+
+	auto name = ot->BaseName();
+	transform(name.begin(), name.end(), name.begin(), ::tolower);
+	name += suffix;
+	transform(name.begin(), name.end(), name.begin(), under_to_dash);
+	Emit(OpName, "case " + op + ":\treturn \"" + name + "\";");
+
+	IndentDown();
+
+	return op;
+	}
+
+void ZAMGen::Emit(EmitTarget et, const string& s)
+	{
+	assert(et != None);
+
+	if ( gen_files.count(et) == 0 )
+		{
+		fprintf(stderr, "bad generation file type\n");
+		exit(1);
+		}
+
+	FILE* f = gen_files[et];
+
+	for ( auto i = indent_level; i > 0; --i )
+		fputs("\t", f);
+
+	fputs(s.c_str(), f);
+
+	if ( s.back() != '\n' && ! no_NL )
+		fputs("\n", f);
+	}
+
 void ZAMGen::InitEmitTargets()
 	{
 	static const unordered_map<EmitTarget, const char*> gen_file_names = {
@@ -1888,11 +2070,11 @@ void ZAMGen::InitEmitTargets()
 		{ C2FieldDef, "ZAM-GenFieldsDefsC2.h" },
 		{ C3Def, "ZAM-GenExprsDefsC3.h" },
 		{ Cond, "ZAM-Conds.h" },
-		{ DirectDef, "ZAM-GenDirectDefs.h" },
-		{ Eval, "ZAM-OpsEvalDefs.h" },
-		{ EvalMacros, "ZAM-OpsEvalMacros.h" },
-		{ MethodDecl, "ZAM-MethodDecl.h" },
-		{ MethodDef, "ZAM-OpsMethodsDefs.h" },
+		{ DirectDef, "ZAM-DirectDefs.h" },
+		{ Eval, "ZAM-EvalDefs.h" },
+		{ EvalMacros, "ZAM-EvalMacros.h" },
+		{ MethodDecl, "ZAM-MethodDecls.h" },
+		{ MethodDef, "ZAM-MethodDefs.h" },
 		{ Op1Flavor, "ZAM-Op1FlavorsDefs.h" },
 		{ OpDef, "ZAM-OpsDefs.h" },
 		{ OpName, "ZAM-OpsNamesDefs.h" },
@@ -1929,20 +2111,20 @@ void ZAMGen::InitEmitTargets()
 	InitSwitch(VFieldDef, "V field assignment");
 	}
 
-void ZAMGen::CloseEmitTargets()
-	{
-	FinishSwitches();
-
-	for ( auto& gf : gen_files )
-		fclose(gf.second);
-	}
-
 void ZAMGen::InitSwitch(EmitTarget et, string desc)
 	{
 	Emit(et, "{");
         Emit(et, "switch ( rhs->Tag() ) {");
 
 	switch_targets[et] = desc;
+	}
+
+void ZAMGen::CloseEmitTargets()
+	{
+	FinishSwitches();
+
+	for ( auto& gf : gen_files )
+		fclose(gf.second);
 	}
 
 void ZAMGen::FinishSwitches()
@@ -2038,189 +2220,6 @@ bool ZAMGen::ParseTemplate()
 	templates.emplace_back(move(t));
 
 	return true;
-	}
-
-void ZAMGen::Emit(EmitTarget et, const string& s)
-	{
-	assert(et != None);
-
-	if ( gen_files.count(et) == 0 )
-		{
-		fprintf(stderr, "bad generation file type\n");
-		exit(1);
-		}
-
-	FILE* f = gen_files[et];
-
-	for ( auto i = indent_level; i > 0; --i )
-		fputs("\t", f);
-
-	fputs(s.c_str(), f);
-
-	if ( s.back() != '\n' && ! no_NL )
-		fputs("\n", f);
-	}
-
-void ZAMGen::ReadMacro(const string& line)
-	{
-	vector<string> mac;
-	mac.emplace_back(SkipWords(line, 1));
-
-	string s;
-	while ( ScanLine(s) )
-		{
-		if ( s.size() <= 1 || ! isspace(s.c_str()[0]) )
-			{
-			PutBack(s);
-			break;
-			}
-
-		mac.push_back(s);
-		}
-
-	macros.emplace_back(move(mac));
-	}
-
-void ZAMGen::GenMacros()
-	{
-	for ( auto& m : macros )
-		{
-		for ( auto i = 0U; i < m.size(); ++i )
-			{
-			auto ms = m[i];
-			if ( i == 0 )
-				ms = "#define " + ms;
-
-			if ( i < m.size() - 1 )
-				ms = regex_replace(ms, regex("\n"), " \\\n");
-
-			Emit(EvalMacros, ms);
-			}
-
-		Emit(EvalMacros, "\n");
-		}
-	}
-
-string ZAMGen::GenOpCode(const ZAM_OpTemplate* ot, const string& suffix,
-                         ZAM_InstClass zc)
-	{
-	auto op = "OP_" + ot->CanonicalName() + suffix;
-
-	static unordered_set<string> known_opcodes;
-
-	if ( known_opcodes.count(op) > 0 )
-		return op;
-
-	known_opcodes.insert(op);
-
-	IndentUp();
-
-	Emit(OpDef, op + ",");
-
-	auto op_comment = ",\t// " + op;
-	auto op1_always_read = (zc == ZIC_FIELD || zc == ZIC_COND);
-	auto flavor = op1_always_read ? "OP1_READ" : ot->GetOp1Flavor();
-	Emit(Op1Flavor, flavor + op_comment);
-
-	auto se = ot->HasSideEffects() ? "true" : "false";
-	Emit(OpSideEffects, se + op_comment);
-
-	auto name = ot->BaseName();
-	transform(name.begin(), name.end(), name.begin(), ::tolower);
-	name += suffix;
-	transform(name.begin(), name.end(), name.begin(), under_to_dash);
-	Emit(OpName, "case " + op + ":\treturn \"" + name + "\";");
-
-	IndentDown();
-
-	return op;
-	}
-
-
-bool TemplateInput::ScanLine(string& line)
-	{
-	if ( put_back.size() > 0 )
-		{
-		line = put_back;
-		put_back.clear();
-		return true;
-		}
-
-	char buf[8192];
-
-	// Read lines, discarding comments.
-	do {
-		if ( ! fgets(buf, sizeof buf, f) )
-			return false;
-		++loc.line_num;
-	} while ( buf[0] == '#' );
-
-	line = buf;
-	return true;
-	}
-
-vector<string> TemplateInput::SplitIntoWords(const string& line) const
-	{
-	vector<string> words;
-
-	for ( auto start = line.c_str(); *start && *start != '\n'; )
-		{
-		auto end = start + 1;
-		while ( *end && ! isspace(*end) )
-			++end;
-
-		words.emplace_back(string(start, end - start));
-
-		start = end;
-		while ( *start && isspace(*start) )
-			++start;
-		}
-
-	return words;
-	}
-
-string TemplateInput::SkipWords(const string& line, int n) const
-	{
-	auto s = line.c_str();
-
-	for ( int i = 0; i < n; ++i )
-		{
-		// Find end of current word.
-		while ( *s && *s != '\n' )
-			{
-			if ( isspace(*s) )
-				break;
-			++s;
-			}
-
-		if ( *s == '\n' )
-			break;
-
-		// Find start of next word.
-		while ( *s && isspace(*s) )
-			++s;
-		}
-
-	return string(s);
-	}
-
-void TemplateInput::Gripe(const char* msg, const string& input)
-	{
-	auto input_s = input.c_str();
-	int n = strlen(input_s);
-
-	fprintf(stderr, "%s, line %d: %s - %s",
-	        loc.file_name, loc.line_num, msg, input_s);
-	if ( n == 0 || input_s[n-1] != '\n' )
-		fprintf(stderr, "\n");
-
-	exit(1);
-	}
-
-void TemplateInput::Gripe(const char* msg, const InputLoc& l)
-	{
-	fprintf(stderr, "%s, line %d: %s\n", l.file_name, l.line_num, msg);
-	exit(1);
 	}
 
 

@@ -200,7 +200,7 @@ install(FILES ${PRELOAD_SCRIPT} DESTINATION ${ZEEK_SCRIPT_INSTALL_PATH}/builtin-
 install(FILES ${LOAD_SCRIPT} DESTINATION ${ZEEK_SCRIPT_INSTALL_PATH}/builtin-plugins/)
 
 ########################################################################
-## bro target
+## zeek target
 
 find_package (Threads)
 
@@ -234,7 +234,7 @@ endmacro(COLLECT_HEADERS _var)
 cmake_policy(POP)
 
 # define a command that's used to run the make_dbg_constants.py script
-# building the bro binary depends on the outputs of this script
+# building the zeek binary depends on the outputs of this script
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/DebugCmdConstants.h
                           ${CMAKE_CURRENT_BINARY_DIR}/DebugCmdInfoConstants.cc
                    COMMAND ${PYTHON_EXECUTABLE}
@@ -250,12 +250,13 @@ set(_gen_zeek_script_cpp ${CMAKE_CURRENT_BINARY_DIR}/../CPP-gen.cc)
 add_custom_command(OUTPUT ${_gen_zeek_script_cpp}
 		    COMMAND ${CMAKE_COMMAND} -E touch ${_gen_zeek_script_cpp})
 
-# define a command that's used to run the gen-compiler-templates.sh script
-# building the bro binary depends on the outputs of this script
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ZAM-MethodDecl.h
-                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-AssignFlavorsDefs.h
+# define a command that's used to run the ZAM instruction generator;
+# building the zeek binary depends on the outputs of this script
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ZAM-AssignFlavorsDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-Conds.h
-                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-GenDirectDefs.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-DirectDefs.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-EvalDefs.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-EvalMacros.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-GenExprsDefsC1.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-GenExprsDefsC2.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-GenExprsDefsC3.h
@@ -263,12 +264,11 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ZAM-MethodDecl.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-GenFieldsDefsC1.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-GenFieldsDefsC2.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-GenFieldsDefsV.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-MethodDecls.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-MethodDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-Op1FlavorsDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpSideEffects.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpsDefs.h
-                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpsEvalDefs.h
-                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpsEvalMacros.h
-                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpsMethodsDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpsNamesDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-SubDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-Vec1EvalDefs.h
@@ -514,7 +514,7 @@ set(zeek_SRCS
     ${FLEX_Scanner_INPUT}
     ${BISON_Parser_INPUT}
     ${CMAKE_CURRENT_BINARY_DIR}/DebugCmdConstants.h
-    ${CMAKE_CURRENT_BINARY_DIR}/ZAM-MethodDecl.h
+    ${CMAKE_CURRENT_BINARY_DIR}/ZAM-MethodDecls.h
     ${THIRD_PARTY_SRCS}
     ${HH_SRCS}
     ${MAIN_SRCS}
