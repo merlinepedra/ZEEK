@@ -1278,6 +1278,7 @@ void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
 
 	auto ot = ot_orig;
 	if ( zc == ZIC_FIELD )
+		// Make room for the offset.
 		ot.emplace_back(ZAM_OT_INT);
 
 	auto ot_str = OpSuffix(ot);
@@ -1432,8 +1433,7 @@ void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
 			eval = regex_replace(eval, regex("\\$\\$"), lhs_ei);
 
 		else if ( zc == ZIC_COND )
-			{
-			// Aesthetics: get rid of trailing newlines.
+			{ // Aesthetics: get rid of trailing newlines.
 			eval = regex_replace(eval, regex("\n"), "");
 			eval = "if ( ! (" + eval + ") ) " +
 			       "{ pc = " + branch_target + "; continue; }";
@@ -1547,6 +1547,8 @@ void ZAM_UnaryExprOpTemplate::BuildInstruction(const vector<ZAM_OperandType>& ot
 	BuildInstructionCore(params, suffix, zc);
 
 	if ( IsAssignOp() && IsFieldOp() )
+		// These can't take the type from the LHS variable, since
+		// that's the enclosing record and not the field within it.
 		Emit("z.t = t;");
 	}
 
@@ -1875,7 +1877,8 @@ bool TemplateInput::ScanLine(string& line)
 
 	char buf[8192];
 
-	// Read lines, discarding comments.
+	// Read lines, discarding comments, which have to start at the
+	// beginning of a line.
 	do {
 		if ( ! fgets(buf, sizeof buf, f) )
 			return false;
@@ -2033,22 +2036,29 @@ string ZAMGen::GenOpCode(const ZAM_OpTemplate* ot, const string& suffix,
 	static unordered_set<string> known_opcodes;
 
 	if ( known_opcodes.count(op) > 0 )
+		// We've already done this one, don't re-define its auxiliary
+		// information.
 		return op;
 
 	known_opcodes.insert(op);
 
 	IndentUp();
 
+	// Generate the enum defining the opcode ...
 	Emit(OpDef, op + ",");
 
+	// ... the "flavor" of how it treats its first operand ...
 	auto op_comment = ",\t// " + op;
 	auto op1_always_read = (zc == ZIC_FIELD || zc == ZIC_COND);
 	auto flavor = op1_always_read ? "OP1_READ" : ot->GetOp1Flavor();
 	Emit(Op1Flavor, flavor + op_comment);
 
+	// ... whether it has side effects ...
 	auto se = ot->HasSideEffects() ? "true" : "false";
 	Emit(OpSideEffects, se + op_comment);
 
+	// ... and the switch case that maps the enum to a string
+	// representation.
 	auto name = ot->BaseName();
 	transform(name.begin(), name.end(), name.begin(), ::tolower);
 	name += suffix;
@@ -2083,6 +2093,7 @@ void ZAMGen::Emit(EmitTarget et, const string& s)
 
 void ZAMGen::InitEmitTargets()
 	{
+	// Maps an EmitTarget enum to its corresponding filename.
 	static const unordered_map<EmitTarget, const char*> gen_file_names = {
 		{ None, nullptr },
 		{ AssignFlavor, "ZAM-AssignFlavorsDefs.h" },
@@ -2213,7 +2224,7 @@ bool ZAMGen::ParseTemplate()
 		t = make_unique<ZAM_OpTemplate>(this, op_name);
 	else if ( op == "unary-op" )
 		t = make_unique<ZAM_UnaryOpTemplate>(this, op_name);
-	else if ( op == "direct-unary-op" )
+	else if ( op == "direct-unary-op" && ! args_mismatch )
 		t = make_unique<ZAM_DirectUnaryOpTemplate>(this, op_name, words[2]);
 	else if ( op == "assign-op" )
 		t = make_unique<ZAM_AssignOpTemplate>(this, op_name);
