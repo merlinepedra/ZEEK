@@ -437,6 +437,10 @@ protected:
 	                     const string& eval, const string& accessor,
 	                     bool is_managed);
 
+	// The same, but for when there's an explicit assignment value.
+	void GenAssignOpValCore(const string& eval, const string& accessor,
+	                        bool is_managed);
+
 	// Returns the name of the method associated with the particular
 	// list of operand types.
 	string MethodName(const vector<ZAM_OperandType>& ot) const;
