@@ -577,6 +577,51 @@ private:
 	string direct;
 };
 
+// A helper class for the ZAM_ExprOpTemplate class (which follows).
+// This class tracks a single instance of creating an evaluation for
+// an AST expression.
+class EvalInstance {
+public:
+	// Initialized using the types of the LHS (result) and the
+	// first and second operand.  Often all three types are the
+	// same, but they can differ for some particular expressions,
+	// and for relationals.  "eval" provides the C++ evaluation code.
+	// "is_def" is true if this instance is for the default catch-all
+	// where the operand types don't match any of the explicitly
+	// specified evaluations;
+	EvalInstance(ZAM_ExprType lhs_et, ZAM_ExprType op1_et,
+		     ZAM_ExprType op2_et, string eval, bool is_def);
+
+	// Returns the accessor to use for assigning to the LHS.  "is_ptr"
+	// indicates whether the value to which we're applying the
+	// accessor is a pointer, rather than a ZVal.
+	string LHSAccessor(bool is_ptr = false) const;
+
+	// Same but for access to the first or second operand.
+	string Op1Accessor(bool is_ptr = false) const
+		{ return Accessor(op1_et, is_ptr); }
+	string Op2Accessor(bool is_ptr = false) const
+		{ return Accessor(op2_et, is_ptr); }
+
+	// Provides an accessor for an operand of the given type.
+	string Accessor(ZAM_ExprType et, bool is_ptr = false) const;
+
+	// Returns the "marker" use to make unique the opcode for this
+	// flavor of expression-evaluation instruction.
+	string OpMarker() const;
+
+	const string& Eval() const	{ return eval; }
+	ZAM_ExprType LHS_ET() const	{ return lhs_et; }
+	bool IsDefault() const		{ return is_def; }
+
+private:
+	ZAM_ExprType lhs_et;
+	ZAM_ExprType op1_et;
+	ZAM_ExprType op2_et;
+	string eval;
+	bool is_def;
+};
+
 // A subclass for AST "Expr" nodes in reduced form.
 class ZAM_ExprOpTemplate : public ZAM_OpTemplate {
 public:

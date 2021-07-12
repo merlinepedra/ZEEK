@@ -1222,67 +1222,50 @@ void ZAM_ExprOpTemplate::GenMethodTest(ZAM_ExprType et1, ZAM_ExprType et2,
 	EmitUp("z = GenInst(" + op + ", " + params + ");");
 	}
 
-class EvalInstance {
-public:
-	EvalInstance(ZAM_ExprType _lhs_et, ZAM_ExprType _op1_et,
-		     ZAM_ExprType _op2_et, string _eval, bool _is_def)
-		{
-		lhs_et = _lhs_et;
-		op1_et = _op1_et;
-		op2_et = _op2_et;
-		eval = move(_eval);
-		is_def = _is_def;
-		}
 
-	string LHSAccessor(bool is_ptr = false) const
-		{
-		if ( lhs_et == ZAM_EXPR_TYPE_NONE ||
-		     lhs_et == ZAM_EXPR_TYPE_DEFAULT)
-			return "";
+EvalInstance::EvalInstance(ZAM_ExprType _lhs_et, ZAM_ExprType _op1_et,
+         	           ZAM_ExprType _op2_et, string _eval, bool _is_def)
+	{
+	lhs_et = _lhs_et;
+	op1_et = _op1_et;
+	op2_et = _op2_et;
+	eval = move(_eval);
+	is_def = _is_def;
+	}
 
-		string deref = is_ptr ? "->" : ".";
-		string acc = find_type_accessor(lhs_et);
+string EvalInstance::LHSAccessor(bool is_ptr) const
+	{
+	if ( lhs_et == ZAM_EXPR_TYPE_NONE || lhs_et == ZAM_EXPR_TYPE_DEFAULT)
+		return "";
 
-		return deref + acc;
-		}
-	string Op1Accessor(bool is_ptr = false) const
-		{ return Accessor(op1_et, is_ptr); }
-	string Op2Accessor(bool is_ptr = false) const
-		{ return Accessor(op2_et, is_ptr); }
+	string deref = is_ptr ? "->" : ".";
+	string acc = find_type_accessor(lhs_et);
 
-	string Accessor(ZAM_ExprType et, bool is_ptr = false) const
-		{
-		if ( et == ZAM_EXPR_TYPE_NONE ||
-		     et == ZAM_EXPR_TYPE_DEFAULT)
-			return "";
+	return deref + acc;
+	}
 
-		string deref = is_ptr ? "->" : ".";
-		return deref + "As" + find_type_info(et).accessor + "()";
-		}
+string EvalInstance::Accessor(ZAM_ExprType et, bool is_ptr) const
+	{
+	if ( et == ZAM_EXPR_TYPE_NONE ||
+	     et == ZAM_EXPR_TYPE_DEFAULT)
+		return "";
 
-	string OpMarker() const
-		{
-		if ( op1_et == ZAM_EXPR_TYPE_DEFAULT ||
-		     op1_et == ZAM_EXPR_TYPE_NONE )
-			return "";
-		else if ( op1_et == op2_et )
-			return "_" + find_type_info(op1_et).suffix;
-		else
-			return "_" + find_type_info(op1_et).suffix +
-			       find_type_info(op2_et).suffix;
-		}
+	string deref = is_ptr ? "->" : ".";
+	return deref + "As" + find_type_info(et).accessor + "()";
+	}
 
-	const string& Eval() const	{ return eval; }
-	ZAM_ExprType LHS_ET() const	{ return lhs_et; }
-	bool IsDefault() const		{ return is_def; }
+string EvalInstance::OpMarker() const
+	{
+	if ( op1_et == ZAM_EXPR_TYPE_DEFAULT || op1_et == ZAM_EXPR_TYPE_NONE )
+		return "";
 
-private:
-	ZAM_ExprType lhs_et;
-	ZAM_ExprType op1_et;
-	ZAM_ExprType op2_et;
-	string eval;
-	bool is_def;
-};
+	if ( op1_et == op2_et )
+		return "_" + find_type_info(op1_et).suffix;
+
+	return "_" + find_type_info(op1_et).suffix +
+	       find_type_info(op2_et).suffix;
+	}
+
 
 void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
                                          const string& suffix, ZAM_InstClass zc)
