@@ -418,16 +418,21 @@ string ZAM_OpTemplate::GatherEval()
 
 int ZAM_OpTemplate::ExtractTypeParam(const string& arg)
 	{
+	if ( arg == "$$" )
+		return 1;
+
 	auto param_str = arg.c_str();
 	if ( *param_str != '$' )
 		g->Gripe("bad set-type parameter, should be $n", arg);
 
 	int param = atoi(&param_str[1]);
 
-	if ( param <= 0 || param > 3 )
-		g->Gripe("bad set-type parameter, should be $1/$2/$3", arg);
+	if ( param <= 0 || param > 2 )
+		g->Gripe("bad set-type parameter, should be $1 or $2", arg);
 
-	return param;
+	// Convert operand to underlying instruction element, i.e., add
+	// one to account for the $$ assignment slot.
+	return param + 1;
 	}
 
 // Maps an operand type to a character mnemonic used to distinguish
