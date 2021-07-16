@@ -2110,13 +2110,13 @@ macro LogWriteNoResPost()
 	(void) log_mgr->Write(id->AsEnumVal(), columns->AsRecordVal());
 
 internal-op Log-Write
-side-effects
+side-effects OP_LOG_WRITE_VV OP_VV
 type VVV
 eval	LogWritePre(frame[z.v2].ToVal(log_ID_enum_type), v3)
 	LogWriteResPost()
 
 internal-op Log-WriteC
-side-effects
+side-effects OP_LOG_WRITEC_V OP_V
 type VV
 eval	LogWritePre(z.aux->constants[0], v2)
 	LogWriteResPost()
@@ -2137,7 +2137,7 @@ eval	LogWritePre(z.aux->constants[0], v1)
 	LogWriteNoResPost()
 
 internal-op Broker-Flush-Logs
-side-effects
+side-effects OP_BROKER_FLUSH_LOGS_X OP_X
 type V
 eval	frame[z.v1].uint_val = broker_mgr->FlushLogBuffers();
 

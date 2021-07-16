@@ -394,6 +394,9 @@ protected:
 	void InstantiateOp(const string& m, const vector<ZAM_OperandType>& ot,
 	                   ZAM_InstClass zc);
 
+	// Generates the "assignment-less" version of the given op-code.
+	void GenAssignmentlessVersion(string op);
+
 	// Generates the method 'm' for an operation, where "suffix" is
 	// a (potentially empty) string differentiating the method from
 	// others for that operation, and "ot" and "zc" are the same

@@ -481,7 +481,24 @@ void ZAM_OpTemplate::InstantiateOp(const string& method,
 	if ( IsAssignOp() )
 		InstantiateAssignOp(ot, suffix);
 	else
+		{
 		InstantiateEval(ot, suffix, zc);
+
+		if ( HasAssignmentLess() )
+			{
+			auto op_string = "_" + OpSuffix(ot);
+			auto op = g->GenOpCode(this, op_string);
+			GenAssignmentlessVersion(op);
+			}
+		}
+	}
+
+void ZAM_OpTemplate::GenAssignmentlessVersion(string op)
+	{
+	EmitTo(AssignFlavor);
+	Emit("assignmentless_op[" + op + "] = " + AssignmentLessOp() + ";");
+	Emit("assignmentless_op_type[" + op + "] = " +
+	     AssignmentLessOpType() + ";");
 	}
 
 void ZAM_OpTemplate::InstantiateMethod(const string& m, const string& suffix,
@@ -634,12 +651,7 @@ void ZAM_OpTemplate::InstantiateAssignOp(const vector<ZAM_OperandType>& ot,
 			Emit(flavor_ind + "[" + ti.tag + "] = " + op + ";");
 
 			if ( HasAssignmentLess() )
-				{
-				Emit("assignmentless_op[" + op + "] = " +
-				     AssignmentLessOp() + ";");
-				Emit("assignmentless_op_type[" + op + "] = " +
-				     AssignmentLessOpType() + ";");
-				}
+				GenAssignmentlessVersion(op);
 			}
 
 		EmitTo(Eval);
