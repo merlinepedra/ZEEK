@@ -130,11 +130,9 @@ public:
 	int Priority() const			{ return priority; }
 	const ProfileFunc* Profile() const	{ return pf.get(); }
 	std::shared_ptr<ProfileFunc> ProfilePtr() const	{ return pf; }
-	const std::string& SaveFile() const	{ return save_file; }
 
 	void SetBody(StmtPtr new_body)	{ body = std::move(new_body); }
 	void SetProfile(std::shared_ptr<ProfileFunc> _pf);
-	void SetSaveFile(std::string _sf)	{ save_file = std::move(_sf); }
 
 	// The following provide a way of marking FuncInfo's as
 	// should-be-skipped for script optimization, generally because
@@ -149,10 +147,6 @@ protected:
 	StmtPtr body;
 	std::shared_ptr<ProfileFunc> pf;
 	int priority;
-
-	// If we're saving this function in a file, this is the name
-	// of the file to use.
-	std::string save_file;
 
 	// Whether to skip optimizing this function.
 	bool skip = false;
