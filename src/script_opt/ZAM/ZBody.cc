@@ -28,7 +28,7 @@ using std::vector;
 
 static bool did_init = false;
 
-// Count of how often each top of ZOP executed, and how much CPU it
+// Count of how often each type of ZOP executed, and how much CPU it
 // cumulatively took.
 int ZOP_count[OP_NOP+1];
 double ZOP_CPU[OP_NOP+1];
@@ -52,7 +52,7 @@ void report_ZOP_profile()
 	for ( int i = 1; i <= OP_NOP; ++i )
 		if ( ZOP_count[i] > 0 )
 			printf("%s\t%d\t%.06f\n", ZOP_name(ZOp(i)),
-				ZOP_count[i], ZOP_CPU[i]);
+			       ZOP_count[i], ZOP_CPU[i]);
 
 	for ( auto& e : expr_CPU )
 		printf("expr CPU %.06f %s\n", e.second, obj_desc(e.first).c_str());

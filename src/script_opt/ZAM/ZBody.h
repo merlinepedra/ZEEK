@@ -23,8 +23,8 @@ public:
 	// These are the counterparts to CaseMapI and CaseMapsI in ZAM.h,
 	// but now concretized to use instruction numbers rather than pointers
 	// to instructions.
-	template<class T> using CaseMap = std::map<T, int>;
-	template<class T> using CaseMaps = std::vector<CaseMap<T>>;
+	template<typename T> using CaseMap = std::map<T, int>;
+	template<typename T> using CaseMaps = std::vector<CaseMap<T>>;
 
 	ZBody(const char* _func_name, FrameReMap& _frame_denizens,
 	      std::vector<int>& _managed_slots,
