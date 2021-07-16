@@ -355,6 +355,18 @@ private:
 	// Optimizing the low-level compiled instructions.
 	void OptimizeInsts();
 
+	// The following are used for switch statements, mapping the
+	// switch value (which can be any atomic type) to a branch target.
+	// We have vectors of them because functions can contain multiple
+	// switches.
+	template<typename T> using CaseMapI = std::map<T, InstLabel>;
+	template<typename T> using CaseMapsI = std::vector<CaseMapI<T>>;
+
+        // Tracks which instructions can be branched to via the given
+	// set of switches.
+	template<typename T>
+	void TallySwitchTargets(CaseMapsI<T> switches);
+
 	// Remove code that can't be reached.  True if some removal happened.
 	bool RemoveDeadCode();
 
@@ -366,16 +378,17 @@ private:
 	bool PruneUnused();
 
 	// For the current state of inst1, compute lifetimes of frame
-	// denizens in terms of first-instruction-to-last-instruction
-	// (including consideration for loops).
+	// denizens (variable(s) using a given frame slot) in terms of
+	// first-instruction-to-last-instruction during which they're
+	// relevant, including consideration for loops.
 	void ComputeFrameLifetimes();
 
 	// Given final frame lifetime information, remaps frame members
 	// with non-overlapping lifetimes to share slots.
 	void ReMapFrame();
 
-	// Given final frame lifetime information, remaps slots in
-	// the interpreter frame.
+	// Given final frame lifetime information, remaps slots in the
+	// interpreter frame.  (No longer strictly necessary.)
 	void ReMapInterpreterFrame();
 
 	// Computes the remapping for a variable currently in the given slot,
@@ -513,13 +526,6 @@ private:
 	// Whether so far we've generated a load of a global.  Used
 	// in SyncGlobals() to avoid work if we haven't done so.
 	bool did_global_load = false;
-
-	// The following are used for switch statements, mapping the
-	// switch value (which can be any atomic type) to a branch target.
-	// We have vectors of them because functions can contain multiple
-	// switches.
-	template<class T> using CaseMapI = std::map<T, InstLabel>;
-	template<class T> using CaseMapsI = std::vector<CaseMapI<T>>;
 
 	CaseMapsI<bro_int_t> int_casesI;
 	CaseMapsI<bro_uint_t> uint_casesI;

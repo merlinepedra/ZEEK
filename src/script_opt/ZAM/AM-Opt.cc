@@ -1,8 +1,8 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-// ZAM the logic associated with optimization of the low-level Abstract
-// Machine, i.e., code improvement that's done after the compiler has
-// generated an initial, complete intermediary function body.
+// Logic associated with optimization of the low-level Abstract Machine,
+// i.e., code improvement that's done after the compiler has generated
+// an initial, complete intermediary function body.
 
 #include "zeek/input.h"
 #include "zeek/Reporter.h"
@@ -75,15 +75,10 @@ void ZAMCompiler::OptimizeInsts()
 			++(i->target2->num_labels);
 		}
 
-#define TALLY_SWITCH_TARGETS(switches) \
-	for ( auto& targs : switches ) \
-		for ( auto& targ : targs ) \
-			++(targ.second->num_labels);
-
-	TALLY_SWITCH_TARGETS(int_casesI);
-	TALLY_SWITCH_TARGETS(uint_casesI);
-	TALLY_SWITCH_TARGETS(double_casesI);
-	TALLY_SWITCH_TARGETS(str_casesI);
+	TallySwitchTargets(int_casesI);
+	TallySwitchTargets(uint_casesI);
+	TallySwitchTargets(double_casesI);
+	TallySwitchTargets(str_casesI);
 
 	bool something_changed;
 
@@ -108,20 +103,59 @@ void ZAMCompiler::OptimizeInsts()
 	ReMapInterpreterFrame();
 	}
 
+template<typename T>
+void ZAMCompiler::TallySwitchTargets(CaseMapsI<T> switches)
+	{
+	for ( auto& targs : switches )
+		for ( auto& targ : targs )
+			++(targ.second->num_labels);
+	}
+
 bool ZAMCompiler::RemoveDeadCode()
 	{
+	if ( insts1.size() == 0 )
+		return false;
+
 	bool did_removal = false;
 
-	for ( int i = 0; i < int(insts1.size()) - 1; ++i )
+	for ( unsigned int i = 0; i < insts1.size() - 1; ++i )
 		{
 		auto i0 = insts1[i];
-		auto i1 = insts1[i+1];
+		if ( ! i0->live )
+			continue;
 
-		if ( i0->live && i1->live && i0->DoesNotContinue() &&
-		     i0->target != i1 && i1->num_labels == 0 )
+		// Find first live instruction after i0.
+		auto j = i + 1;
+
+		bool saw_i0_target = false;
+
+		while ( j < insts1.size() && ! insts1[j]->live )
 			{
-			did_removal = true;
+			if ( i0->target == insts1[j] )
+				saw_i0_target = true;
+			++j;
+			}
+
+		if ( j >= insts1.size() )
+			// i0 does not have a successor
+			break;
+
+		auto i1 = insts1[j];
+
+		if ( i0->DoesNotContinue() && ! saw_i0_target &&
+		     i0->target != i1 && i1->num_labels == 0 )
+			{ // i1 can't be reached
 			KillInst(i1);
+			did_removal = true;
+			}
+
+		if ( i0->op == OP_SYNC_GLOBALS_X &&
+		     i1->op == OP_SYNC_GLOBALS_X )
+			{
+			// i0 is redundant with i1.  We get rid of i0 in
+			// case i1 is branched to.
+			KillInst(i0);
+			did_removal = true;
 			}
 		}
 
@@ -135,12 +169,9 @@ bool ZAMCompiler::CollapseGoTos()
 	for ( unsigned int i = 0; i < insts1.size(); ++i )
 		{
 		auto i0 = insts1[i];
-
-		if ( ! i0->live )
-			continue;
-
 		auto t = i0->target;
-		if ( ! t )
+
+		if ( ! i0->live || ! t )
 			continue;
 
 		// Note, we don't bother optimizing target2 if present,
@@ -247,44 +278,22 @@ bool ZAMCompiler::PruneUnused()
 			continue;
 			}
 
-		// Transform the instruction into its flavor that doesn't
-		// make an assignment.
-		switch ( inst->op ) {
-		case OP_LOG_WRITE_VVV:
-			inst->op = OP_LOG_WRITE_VV;
-			inst->op_type = OP_VV;
-			inst->v1 = inst->v2;
-			inst->v2 = inst->v3;
-			break;
+		// If we get here then there's a dead assignment but we
+		// can't remove the instruction entirely because it has
+		// side effects.  Transform the instruction into its flavor
+		// that doesn't make an assignment.
+		if ( assignmentless_op.count(inst->op) == 0 )
+			reporter->InternalError("inconsistency in re-flavoring instruction with side effects");
 
-		case OP_LOG_WRITEC_VV:
-			inst->op = OP_LOG_WRITEC_V;
-			inst->op_type = OP_V;
-			inst->v1 = inst->v2;
-			break;
+		inst->op_type = assignmentless_op_type[inst->op];
+		inst->op = assignmentless_op[inst->op];
 
-		case OP_BROKER_FLUSH_LOGS_V:
-			inst->op = OP_BROKER_FLUSH_LOGS_X;
-			inst->op_type = OP_X;
-			break;
+		inst->v1 = inst->v2;
+		inst->v2 = inst->v3;
+		inst->v3 = inst->v4;
 
-		default:
-			if ( assignmentless_op.count(inst->op) > 0 )
-				{
-				inst->op_type = assignmentless_op_type[inst->op];
-				inst->op = assignmentless_op[inst->op];
-
-				inst->v1 = inst->v2;
-				inst->v2 = inst->v3;
-				inst->v3 = inst->v4;
-				}
-			else
-				reporter->InternalError("inconsistency in re-flavoring instruction with side effects");
-		}
-
-		// While we didn't prune the instruction,
-		// we did prune the assignment, so we'll
-		// want to reassess variable lifetimes.
+		// While we didn't prune the instruction, we did prune the
+		// assignment, so we'll want to reassess variable lifetimes.
 		did_prune = true;
 		}
 
@@ -293,7 +302,7 @@ bool ZAMCompiler::PruneUnused()
 
 void ZAMCompiler::ComputeFrameLifetimes()
 	{
-	// Start analysis from scratch, since we can do this repeatedly.
+	// Start analysis from scratch, since we might do this repeatedly.
 	inst_beginnings.clear();
 	inst_endings.clear();
 
@@ -463,6 +472,7 @@ void ZAMCompiler::ReMapFrame()
 		}
 
 #if 0
+	// Low-level debugging code.
 	printf("%s frame remapping:\n", func->Name());
 
 	for ( unsigned int i = 0; i < shared_frame_denizens.size(); ++i )
@@ -480,8 +490,7 @@ void ZAMCompiler::ReMapFrame()
 #endif
 
 	// Update the globals we track, where we prune globals that
-	// didn't wind up being used.  (This can happen because they're
-	// only used in interpreted expressions.)
+	// didn't wind up being used.
 	std::vector<GlobalInfo> used_globals;
 	std::vector<int> remapped_globals;
 
@@ -543,9 +552,9 @@ void ZAMCompiler::ReMapFrame()
 			ASSERT(remapped_globals[g] >= 0);
 			inst->v1 = remapped_globals[g];
 
-			// We *don't* want to UpdateSlots below as
-			// that's based on interpreting v1 as slots
-			// rather than an index into globals
+			// We *don't* want to UpdateSlots below as that's
+			// based on interpreting v1 as slots rather than an
+			// index into globals
 			continue;
 			}
 
@@ -585,9 +594,9 @@ void ZAMCompiler::ReMapFrame()
 			ASSERT(remapped_globals[g] >= 0);
 			inst->v2 = remapped_globals[g];
 
-			// We *don't* want to UpdateSlots below as
-			// that's based on interpreting v2 as slots
-			// rather than an index into globals.
+			// We *don't* want to UpdateSlots below as that's
+			// based on interpreting v2 as slots rather than an
+			// index into globals.
 			continue;
 			}
 
@@ -602,9 +611,8 @@ void ZAMCompiler::ReMapFrame()
 
 void ZAMCompiler::ReMapInterpreterFrame()
 	{
-	// First, track function parameters.  We could elide this
-	// if we decide to alter the calling sequence for compiled
-	// functions.
+	// First, track function parameters.  We could elide this if we
+	// decide to alter the calling sequence for compiled functions.
 	auto args = scope->OrderedVars();
 	int nparam = func->GetType()->Params()->NumFields();
 	int next_interp_slot = 0;
@@ -647,19 +655,15 @@ void ZAMCompiler::ReMapVar(ID* id, int slot, int inst)
 		auto& s = shared_frame_denizens[i];
 
 		// Note that the following test is <= rather than <.
-		// This is because assignment in instructions happens
-		// after using any variables to compute the value
-		// to assign.  ZAM instructions are careful to
-		// allow operands and assignment destinations to
-		// refer to the same slot.
+		// This is because assignment in instructions happens after
+		// using any variables to compute the value to assign.
+		// ZAM instructions are careful to allow operands and
+		// assignment destinations to refer to the same slot.
 
 		if ( s.scope_end <= inst && s.is_managed == is_managed )
-			{
-			// It's compatible.
-
+			{ // It's compatible.
 			if ( s.scope_end == inst )
-				{
-				// It ends right on the money.
+				{ // It ends right on the money.
 				apt_slot = i;
 				break;
 				}
@@ -699,11 +703,10 @@ void ZAMCompiler::CheckSlotAssignment(int slot, const ZInstI* inst)
 	{
 	ASSERT(slot >= 0 && slot < frame_denizens.size());
 
-	// We construct temporaries such that their values are never
-	// used earlier than their definitions in loop bodies.  For
-	// other denizens, however, they can be, so in those cases
-	// we expand the lifetime beginning to the start of any loop
-	// region.
+	// We construct temporaries such that their values are never used
+	// earlier than their definitions in loop bodies.  For other
+	// denizens, however, they can be, so in those cases we expand the
+	// lifetime beginning to the start of any loop region.
 	if ( ! reducer->IsTemporary(frame_denizens[slot]) )
 		inst = BeginningOfLoop(inst, 1);
 
@@ -750,10 +753,9 @@ void ZAMCompiler::CheckSlotUse(int slot, const ZInstI* inst)
 		}
 
 	// See comment above about temporaries not having their values
-	// extend around loop bodies.  HOWEVER if a temporary is
-	// defined at a lower loop depth than that for this instruction,
-	// then we extend its lifetime to the end of this instruction's
-	// loop.
+	// extend around loop bodies.  HOWEVER if a temporary is defined
+	// at a lower loop depth than that for this instruction, then we
+	// extend its lifetime to the end of this instruction's loop.
 	if ( reducer->IsTemporary(frame_denizens[slot]) )
 		{
 		ASSERT(denizen_beginning.count(slot) > 0);
@@ -786,16 +788,15 @@ void ZAMCompiler::ExtendLifetime(int slot, const ZInstI* inst)
 		     old_inst->inst_num >= inst->inst_num )
 			return;
 
-		// We expect to only be extending the slot's lifetime ...
+		// We expect to only be increasing the slot's lifetime ...
 		// *unless* we're inside a nested loop, in which case 
 		// the slot might have already been extended to the
 		// end of the outer loop.
 		ASSERT(old_inst->inst_num <= inst->inst_num ||
-			inst->loop_depth > 1);
+		       inst->loop_depth > 1);
 
 		if ( old_inst->inst_num < inst->inst_num )
-			{
-			// Extend.
+			{ // Extend.
 			inst_endings[old_inst].erase(frame_denizens[slot]);
 
 			if ( inst_endings.count(inst) == 0 )
@@ -833,8 +834,8 @@ const ZInstI* ZAMCompiler::BeginningOfLoop(const ZInstI* inst, int depth) const
 	if ( i == inst->inst_num )
 		return inst;
 
-	// We moved backwards to just beyond a loop that inst
-	// is part of.  Move to that loop's (live) beginning.
+	// We moved backwards to just beyond a loop that inst is part of.
+	// Move to that loop's (live) beginning.
 	++i;
 	while ( i != inst->inst_num && ! insts1[i]->live )
 		++i;
@@ -852,8 +853,8 @@ const ZInstI* ZAMCompiler::EndOfLoop(const ZInstI* inst, int depth) const
 	if ( i == inst->inst_num )
 		return inst;
 
-	// We moved forwards to just beyond a loop that inst
-	// is part of.  Move to that loop's (live) end.
+	// We moved forwards to just beyond a loop that inst is part of.
+	// Move to that loop's (live) end.
 	--i;
 	while ( i != inst->inst_num && ! insts1[i]->live )
 		--i;
