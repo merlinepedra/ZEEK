@@ -45,6 +45,10 @@ public:
 
 	ValPtr Exec(Frame* f, StmtFlowType& flow) override;
 
+	// Older code exists for save files, but let's see if we can
+	// avoid having to support them, as they're a fairly elaborate
+	// production.
+	//
 	// void SaveTo(FILE* f, int interp_frame_size) const;
 
 	void Dump() const;
@@ -78,6 +82,7 @@ private:
 	FrameReMap frame_denizens;
 	int frame_size;
 
+	// A list of frame slots that correspond to managed values.
 	std::vector<int> managed_slots;
 
 	// Number of iteration loops, for recursive functions.
@@ -106,6 +111,7 @@ private:
 
 // This is a statement that resumes execution into a code block in a
 // ZBody.  Used for deferred execution for "when" statements.
+
 class ZAMResumption : public Stmt {
 public:
 	ZAMResumption(ZBody* _am, int _xfer_pc)
@@ -129,6 +135,7 @@ protected:
 };
 
 
+// Prints the execution profile.
 extern void report_ZOP_profile();
 
 } // namespace zeek::detail

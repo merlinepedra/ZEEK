@@ -33,9 +33,6 @@ static bool did_init = false;
 int ZOP_count[OP_NOP+1];
 double ZOP_CPU[OP_NOP+1];
 
-// Per-interpreted-expression.
-std::unordered_map<const Expr*, double> expr_CPU;
-
 
 // The dynamic state of a global.  Used to construct an array indexed in
 // parallel with the globals[] array, which tracks the associated static
@@ -53,9 +50,6 @@ void report_ZOP_profile()
 		if ( ZOP_count[i] > 0 )
 			printf("%s\t%d\t%.06f\n", ZOP_name(ZOp(i)),
 			       ZOP_count[i], ZOP_CPU[i]);
-
-	for ( auto& e : expr_CPU )
-		printf("expr CPU %.06f %s\n", e.second, obj_desc(e.first).c_str());
 	}
 
 
@@ -99,7 +93,7 @@ static bool copy_vec_elem(VectorVal* vv, int ind, ZVal zv, const TypePtr& t)
 // to get at a shareable VectorType.
 static void vec_exec(ZOp op, VectorVal*& v1, VectorVal* v2, const ZInst& z);
 
-// Binary ones *can* have managed types (strings).
+// Binary operations *can* have managed types (strings).
 static void vec_exec(ZOp op, TypePtr t, VectorVal*& v1, VectorVal* v2,
                      const VectorVal* v3, const ZInst& z);
 
@@ -139,13 +133,10 @@ double curr_CPU_time()
 
 
 ZBody::ZBody(const char* _func_name, FrameReMap& _frame_denizens,
-		vector<int>& _managed_slots,
-		vector<GlobalInfo>& _globals,
-		int _num_iters, bool non_recursive,
-		CaseMaps<bro_int_t>& _int_cases, 
-		CaseMaps<bro_uint_t>& _uint_cases,
-		CaseMaps<double>& _double_cases, 
-		CaseMaps<std::string>& _str_cases)
+             vector<int>& _managed_slots, vector<GlobalInfo>& _globals,
+             int _num_iters, bool non_recursive,
+             CaseMaps<bro_int_t>& _int_cases, CaseMaps<bro_uint_t>& _uint_cases,
+             CaseMaps<double>& _double_cases, CaseMaps<std::string>& _str_cases)
 : Stmt(STMT_ZAM)
 	{
 	func_name = _func_name;
@@ -185,7 +176,7 @@ ZBody::ZBody(const char* _func_name, FrameReMap& _frame_denizens,
 		{
 		auto log_ID_type = lookup_ID("ID", "Log");
 		ASSERT(log_ID_type);
-		log_ID_enum_type = {NewRef{}, log_ID_type->GetType()->AsEnumType()};
+		log_ID_enum_type = log_ID_type->GetType<EnumType>();
 
 		any_base_type = base_type(TYPE_ANY);
 
@@ -237,9 +228,7 @@ void ZBody::SetInsts(vector<ZInstI*>& instsI)
 		auto& iI = *instsI[i];
 		insts_copy[i] = iI;
 		if ( iI.stmt )
-			insts_copy[i].loc =
-				iI.stmt->Original()->GetLocationInfo();
-
+			insts_copy[i].loc = iI.stmt->Original()->GetLocationInfo();
 		}
 
 	insts = insts_copy;
@@ -280,15 +269,12 @@ ValPtr ZBody::Exec(Frame* f, StmtFlowType& flow)
 	return val;
 	}
 
-ValPtr ZBody::DoExec(Frame* f, int start_pc,
-				StmtFlowType& flow)
+ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 	{
-	auto global_state = num_globals > 0 ? new GlobalState[num_globals] :
-						nullptr;
+	auto global_state = num_globals > 0 ?
+	                    new GlobalState[num_globals] : nullptr;
 	int pc = start_pc;
 	int end_pc = ninst;
-
-#include "ZAM-EvalMacros.h"
 
 	// Return value, or nil if none.
 	const ZVal* ret_u;
@@ -343,7 +329,9 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc,
 		case OP_NOP:
 			break;
 
+#include "ZAM-EvalMacros.h"
 #include "ZAM-EvalDefs.h"
+
 		default:
 			reporter->InternalError("bad ZAM opcode");
 		}
@@ -403,13 +391,13 @@ void ZBody::ProfileExecution() const
 	for ( auto i = 0U; i < inst_count->size(); ++i )
 		{
 		printf("%s %d %d %.06f ", func_name, i,
-			(*inst_count)[i], (*inst_CPU)[i]);
+		       (*inst_count)[i], (*inst_CPU)[i]);
 		insts[i].Dump(i, &frame_denizens);
 		}
 	}
 
 bool ZBody::CheckAnyType(const TypePtr& any_type, const TypePtr& expected_type,
-			const Location* loc) const
+                         const Location* loc) const
 	{
 	if ( IsAny(expected_type) )
 		return true;
@@ -430,7 +418,7 @@ bool ZBody::CheckAnyType(const TypePtr& any_type, const TypePtr& expected_type,
 
 		char buf[8192];
 		snprintf(buf, sizeof buf, "run-time type clash (%s/%s)",
-			type_name(at), type_name(et));
+		         type_name(at), type_name(et));
 
 		reporter->RuntimeError(loc, "%s", buf);
 		return false;
@@ -491,7 +479,7 @@ ValPtr ZAMResumption::Exec(Frame* f, StmtFlowType& flow)
 
 void ZAMResumption::StmtDescribe(ODesc* d) const
 	{
-	d->Add("resumption of compiled code");
+	d->Add("<resumption of compiled code>");
 	}
 
 TraversalCode ZAMResumption::Traverse(TraversalCallback* cb) const
@@ -507,11 +495,10 @@ TraversalCode ZAMResumption::Traverse(TraversalCallback* cb) const
 // Unary vector operation of v1 <vec-op> v2.
 static void vec_exec(ZOp op, VectorVal*& v1, VectorVal* v2, const ZInst& z)
 	{
-	// We could speed this up further still by gen'ing up an
-	// instance of the loop inside each switch case (in which
-	// case we might as well move the whole kit-and-caboodle
-	// into the Exec method).  But that seems like a lot of
-	// code bloat for only a very modest gain.
+	// We could speed this up further still by gen'ing up an instance
+	// of the loop inside each switch case (in which case we might as
+	// well move the whole kit-and-caboodle into the Exec method).  But
+	// that seems like a lot of code bloat for only a very modest gain.
 
 	auto& vec2 = *v2->RawVec();
 	auto n = vec2.size();
