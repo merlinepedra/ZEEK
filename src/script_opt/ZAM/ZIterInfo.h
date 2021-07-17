@@ -28,7 +28,7 @@ public:
 	// Their types.
 	std::vector<TypePtr> loop_var_types;
 
-	// Type associated with the "value" entry, for "k, v in aggr"
+	// Type associated with the "value" entry, for "k, value in aggr"
 	// iteration.
 	TypePtr value_var_type = nullptr;
 
