@@ -5,6 +5,7 @@
 #include "zeek/IPAddr.h"
 #include "zeek/Reporter.h"
 #include "zeek/ZeekString.h"
+#include "zeek/script_opt/ProfileFunc.h"
 #include "zeek/script_opt/ZAM/Compile.h"
 
 namespace zeek::detail {
@@ -90,7 +91,7 @@ const ZAMStmt ZAMCompiler::CompilePrint(const PrintStmt* ps)
 	auto& l = ps->ExprListPtr();
 
 	if ( l->Exprs().length() == 1 )
-		{
+		{ // special-case the common situation of printing just 1 item
 		auto e0 = l->Exprs()[0];
 		if ( e0->Tag() == EXPR_NAME )
 			return Print1V(e0->AsNameExpr());
@@ -158,6 +159,7 @@ const ZAMStmt ZAMCompiler::CompileSwitch(const SwitchStmt* sw)
 
 	auto t = e->GetType()->Tag();
 
+	// Need to track a new set of contexts for "break" statements.
 	PushBreaks();
 
 	auto& cases = *sw->Cases();
@@ -171,12 +173,14 @@ const ZAMStmt ZAMCompiler::CompileSwitch(const SwitchStmt* sw)
 const ZAMStmt ZAMCompiler::ValueSwitch(const SwitchStmt* sw, const NameExpr* v,
                                        const ConstExpr* c)
 	{
-	int slot = v ? FrameSlot(v) : 0;
+	int slot = v ? FrameSlot(v) : -1;
 
 	if ( c )
 		// Weird to have a constant switch expression, enough
 		// so that it doesn't seem worth optimizing.
 		slot = TempForConst(c);
+
+	ASSERT(slot >= 0);
 
 	// Figure out which jump table we're using.
 	auto t = v ? v->GetType() : c->GetType();
@@ -502,6 +506,217 @@ const ZAMStmt ZAMCompiler::CompileFor(const ForStmt* f)
 		reporter->InternalError("bad \"for\" loop-over value when compiling");
 	}
 
+const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
+	{
+	auto loop_vars = f->LoopVars();
+	auto value_var = f->ValueVar();
+	auto body = f->LoopBody();
+
+	auto ii = new ZAMIterInfo();
+
+	// Check whether the loop variables are actually used in the body.
+	// This is motivated by an idiom where there's both loop_vars and
+	// a value_var, but the script only actually needs the value_var;
+	// and also some weird cases where the script is managing a
+	// separate iteration process manually.
+	ProfileFunc body_pf(body);
+
+	int num_unused = 0;
+
+	for ( int i = 0; i < loop_vars->length(); ++i )
+		{
+		auto id = (*loop_vars)[i];
+
+		if ( body_pf.Locals().count(id) == 0 )
+			++num_unused;
+
+		ii->loop_vars.push_back(FrameSlot(id));
+		ii->loop_var_types.push_back(id->GetType());
+		}
+
+	bool no_loop_vars = (num_unused == loop_vars->length());
+
+	if ( value_var && body_pf.Locals().count(value_var.get()) == 0 )
+		// This is more clearly a coding botch - someone left in
+		// an unnecessary value_var variable.  But might as
+		// well not do the work.
+		value_var = nullptr;
+
+	auto aux = new ZInstAux(0);
+	aux->iter_info = ii;
+
+	auto info = NewSlot(false);	// false <- ZAMIterInfo isn't managed
+
+	ZInstI z;
+
+	if ( non_recursive )
+		{
+		z = ZInstI(OP_INIT_TABLE_LOOP_VV, info, FrameSlot(val));
+		z.op_type = OP_VV;
+		}
+	else
+		{
+		z = ZInstI(OP_INIT_TABLE_LOOP_RECURSIVE_VVV, info,
+		           FrameSlot(val), num_iters++);
+		z.op_type = OP_VVV_I3;
+		}
+
+	z.SetType(value_var ? value_var->GetType() : nullptr);
+	z.aux = aux;
+
+	auto init_end = AddInst(z);
+	auto iter_head = StartingBlock();
+
+	if ( value_var )
+		{
+		ZOp op = no_loop_vars ? OP_NEXT_TABLE_ITER_VAL_VAR_NO_VARS_VVV :
+		                        OP_NEXT_TABLE_ITER_VAL_VAR_VVV;
+		z = ZInstI(op, FrameSlot(value_var), info, 0);
+		z.CheckIfManaged(value_var->GetType());
+		z.op_type = OP_VVV_I3;
+		}
+	else
+		{
+		ZOp op = no_loop_vars ? OP_NEXT_TABLE_ITER_NO_VARS_VV :
+		                        OP_NEXT_TABLE_ITER_VV;
+		z = ZInstI(op, info, 0);
+		z.op_type = OP_VV_I2;
+		}
+
+	z.aux = aux;	// so ZOpt.cc can get to it
+
+	return FinishLoop(iter_head, z, body, info, true);
+	}
+
+const ZAMStmt ZAMCompiler::LoopOverVector(const ForStmt* f, const NameExpr* val)
+	{
+	auto loop_vars = f->LoopVars();
+	auto loop_var = (*loop_vars)[0];
+
+	auto ii = new ZAMIterInfo();
+	ii->vec_type = cast_intrusive<VectorType>(val->GetType());
+	ii->yield_type = ii->vec_type->Yield();
+
+	auto info = NewSlot(false);
+
+	ZInstI z;
+
+	if ( non_recursive )
+		{
+		z = ZInstI(OP_INIT_VECTOR_LOOP_VV, info, FrameSlot(val));
+		z.op_type = OP_VV;
+		}
+	else
+		{
+		z = ZInstI(OP_INIT_VECTOR_LOOP_RECURSIVE_VVV, info,
+		           FrameSlot(val), num_iters++);
+		z.op_type = OP_VVV_I3;
+		}
+
+	z.aux = new ZInstAux(0);
+	z.aux->iter_info = ii;
+
+	auto init_end = AddInst(z);
+
+	auto iter_head = StartingBlock();
+
+	z = ZInstI(OP_NEXT_VECTOR_ITER_VVV, FrameSlot(loop_var), info, 0);
+	z.op_type = OP_VVV_I3;
+
+	return FinishLoop(iter_head, z, f->LoopBody(), info, false);
+	}
+
+const ZAMStmt ZAMCompiler::LoopOverString(const ForStmt* f, const Expr* e)
+	{
+	auto n = e->Tag() == EXPR_NAME ? e->AsNameExpr() : nullptr;
+	auto c = e->Tag() == EXPR_CONST ? e->AsConstExpr() : nullptr;
+	auto loop_vars = f->LoopVars();
+	auto loop_var = (*loop_vars)[0];
+
+	auto info = NewSlot(false);
+
+	ZInstI z;
+
+	if ( non_recursive )
+		{
+		if ( n )
+			{
+			z = ZInstI(OP_INIT_STRING_LOOP_VV, info, FrameSlot(n));
+			z.op_type = OP_VV;
+			}
+		else
+			{
+			z = ZInstI(OP_INIT_STRING_LOOP_VC, info, c);
+			z.op_type = OP_VC;
+			}
+		}
+	else
+		{
+		if ( n )
+			{
+			z = ZInstI(OP_INIT_STRING_LOOP_RECURSIVE_VVV, info,
+				   FrameSlot(n), num_iters++);
+			z.op_type = OP_VVV_I3;
+			}
+		else
+			{
+			z = ZInstI(OP_INIT_STRING_LOOP_RECURSIVE_VVC, info,
+				   num_iters++, c);
+			z.op_type = OP_VVC_I2;
+			}
+		}
+
+	z.aux = new ZInstAux(0);
+	z.aux->iter_info = new ZAMIterInfo();
+
+	auto init_end = AddInst(z);
+
+	auto iter_head = StartingBlock();
+
+	z = ZInstI(OP_NEXT_STRING_ITER_VVV, FrameSlot(loop_var), info, 0);
+	z.CheckIfManaged(loop_var->GetType());
+	z.op_type = OP_VVV_I3;
+
+	return FinishLoop(iter_head, z, f->LoopBody(), info, false);
+	}
+
+const ZAMStmt ZAMCompiler::Loop(const Stmt* body)
+	{
+	PushNexts();
+	PushBreaks();
+
+	auto head = StartingBlock();
+	(void) CompileStmt(body);
+	auto tail = GoTo(GoToTarget(head));
+
+	ResolveNexts(GoToTarget(head));
+	ResolveBreaks(GoToTargetBeyond(tail));
+
+	return tail;
+	}
+
+const ZAMStmt ZAMCompiler::FinishLoop(const ZAMStmt iter_head, ZInstI iter_stmt,
+                                      const Stmt* body, int info_slot,
+                                      bool is_table)
+	{
+	auto loop_iter = AddInst(iter_stmt);
+	auto body_end = CompileStmt(body);
+
+	auto op = is_table ? OP_END_TABLE_LOOP_V : OP_END_LOOP_V;
+	auto loop_end = GoTo(GoToTarget(iter_head));
+	auto final_stmt = AddInst(ZInstI(op, info_slot));
+
+	if ( iter_stmt.op_type == OP_VVV_I3 )
+		SetV3(loop_iter, GoToTarget(final_stmt));
+	else
+		SetV2(loop_iter, GoToTarget(final_stmt));
+
+	ResolveNexts(GoToTarget(iter_head));
+	ResolveBreaks(GoToTarget(final_stmt));
+
+	return final_stmt;
+	}
+
 const ZAMStmt ZAMCompiler::CompileReturn(const ReturnStmt* r)
 	{
 	auto e = r->StmtExpr();
@@ -571,6 +786,7 @@ const ZAMStmt ZAMCompiler::CompileCatchReturn(const CatchReturnStmt* cr)
 		return block_end;
 
 	SyncGlobals(block_last);
+
 	return top_main_inst;
 	}
 
@@ -625,7 +841,6 @@ const ZAMStmt ZAMCompiler::CompileWhen(const WhenStmt* ws)
 	auto timeout_body = ws->TimeoutBody();
 	auto is_return = ws->IsReturn();
 
-	// ### Flush locals on eval, and also on exit
 	ZInstI z;
 
 	if ( timeout )

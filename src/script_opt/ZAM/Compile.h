@@ -101,27 +101,12 @@ private:
 	const ZAMStmt CompileFieldLHSAssignExpr(const FieldLHSAssignExpr* e);
 	const ZAMStmt CompileScheduleExpr(const ScheduleExpr* e);
 
-#include "zeek/ZAM-MethodDecls.h"
-
-	const ZAMStmt ConstructTable(const NameExpr* n, const Expr* e);
-	const ZAMStmt ConstructSet(const NameExpr* n, const Expr* e);
-	const ZAMStmt ConstructRecord(const NameExpr* n, const Expr* e);
-	const ZAMStmt ConstructVector(const NameExpr* n, const Expr* e);
-
-	const ZAMStmt ArithCoerce(const NameExpr* n, const Expr* e);
-	const ZAMStmt RecordCoerce(const NameExpr* n, const Expr* e);
-	const ZAMStmt TableCoerce(const NameExpr* n, const Expr* e);
-	const ZAMStmt VectorCoerce(const NameExpr* n, const Expr* e);
-
-	const ZAMStmt Is(const NameExpr* n, const Expr* e);
-
 	const ZAMStmt IfElse(const Expr* e, const Stmt* s1, const Stmt* s2);
 	const ZAMStmt While(const Stmt* cond_stmt, const Expr* cond,
 	                    const Stmt* body);
 
 	// Second argument is which instruction slot holds the branch target.
 	const ZAMStmt GenCond(const Expr* e, int& branch_v);
-	const ZAMStmt Loop(const Stmt* body);
 
 	const ZAMStmt Call(const ExprStmt* e);
 	const ZAMStmt AssignToCall(const ExprStmt* e);
@@ -170,6 +155,22 @@ private:
 	const ZAMStmt FinishLoop(const ZAMStmt iter_head, ZInstI iter_stmt,
 	                         const Stmt* body, int info_slot, bool is_table);
 
+	const ZAMStmt Loop(const Stmt* body);
+
+
+#include "zeek/ZAM-MethodDecls.h"
+
+	const ZAMStmt ConstructTable(const NameExpr* n, const Expr* e);
+	const ZAMStmt ConstructSet(const NameExpr* n, const Expr* e);
+	const ZAMStmt ConstructRecord(const NameExpr* n, const Expr* e);
+	const ZAMStmt ConstructVector(const NameExpr* n, const Expr* e);
+
+	const ZAMStmt ArithCoerce(const NameExpr* n, const Expr* e);
+	const ZAMStmt RecordCoerce(const NameExpr* n, const Expr* e);
+	const ZAMStmt TableCoerce(const NameExpr* n, const Expr* e);
+	const ZAMStmt VectorCoerce(const NameExpr* n, const Expr* e);
+
+	const ZAMStmt Is(const NameExpr* n, const Expr* e);
 
 	const ZAMStmt CompileInExpr(const NameExpr* n1, const NameExpr* n2,
 	                            const NameExpr* n3)
