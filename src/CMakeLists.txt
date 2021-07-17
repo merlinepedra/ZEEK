@@ -426,12 +426,15 @@ set(MAIN_SRCS
     script_opt/UseDefs.cc
 
     script_opt/ZAM/AM-Opt.cc
+    script_opt/ZAM/Branches.cc
     script_opt/ZAM/BuiltIn.cc
     script_opt/ZAM/Compile.cc
     script_opt/ZAM/Expr.cc
     script_opt/ZAM/Inst-Gen.cc
+    script_opt/ZAM/Low-Level.cc
     script_opt/ZAM/Stmt.cc
     script_opt/ZAM/Support.cc
+    script_opt/ZAM/Vars.cc
     script_opt/ZAM/ZBody.cc
     script_opt/ZAM/ZInst.cc
     script_opt/ZAM/ZOp.cc

@@ -45,7 +45,12 @@ protected:
 // Class that holds values that only have meaning to the ZAM compiler,
 // but that needs to be held (opaquely, via a pointer) by external
 // objects.
-class OpaqueVals;
+class OpaqueVals {
+public:
+	OpaqueVals(ZInstAux* _aux)	{ aux = _aux; }
+
+	ZInstAux* aux;
+};
 
 class ZAMCompiler {
 public:
@@ -218,96 +223,6 @@ private:
 	// of arguments that should be present.
 	bro_uint_t ConstArgsMask(const ExprPList& args, int nargs) const;
 
-
-	// Returns a handle to state associated with building
-	// up a list of values.
-	OpaqueVals* BuildVals(const ListExprPtr&);
-
-	// "stride" is how many slots each element of l will consume.
-	ZInstAux* InternalBuildVals(const ListExpr* l, int stride = 1);
-
-	// Returns how many values were added.
-	int InternalAddVal(ZInstAux* zi, int i, Expr* e);
-
-
-	typedef std::vector<ZAMStmt> GoToSet;
-	typedef std::vector<GoToSet> GoToSets;
-
-	void PushGoTos(GoToSets& gotos);
-	void ResolveGoTos(GoToSets& gotos, const InstLabel l);
-
-	ZAMStmt GenGoTo(GoToSet& v);
-	ZAMStmt GoToStub();
-	ZAMStmt GoTo(const InstLabel l);
-	InstLabel GoToTarget(const ZAMStmt s);
-	InstLabel GoToTargetBeyond(const ZAMStmt s);
-	ZAMStmt PrevStmt(const ZAMStmt s);
-	void SetV(ZAMStmt s, const InstLabel l, int v)
-		{
-		if ( v == 1 )
-			SetV1(s, l);
-		else if ( v == 2 )
-			SetV2(s, l);
-		else if ( v == 3 )
-			SetV3(s, l);
-		else
-			SetV4(s, l);
-		}
-
-	void SetTarget(ZInstI* inst, const InstLabel l, int slot);
-	void SetV1(ZAMStmt s, const InstLabel l);
-	void SetV2(ZAMStmt s, const InstLabel l);
-	void SetV3(ZAMStmt s, const InstLabel l);
-	void SetV4(ZAMStmt s, const InstLabel l);
-	void SetGoTo(ZAMStmt s, const InstLabel targ)
-		{ SetV1(s, targ); }
-
-
-	const ZAMStmt StartingBlock();
-	const ZAMStmt FinishBlock(const ZAMStmt start);
-
-	bool NullStmtOK() const;
-
-	const ZAMStmt AddInst(const ZInstI& inst);
-
-	const ZAMStmt EmptyStmt();
-	const ZAMStmt ErrorStmt();
-	const ZAMStmt LastInst();
-
-	// Returns the last (interpreter) statement in the body.
-	const Stmt* LastStmt(const Stmt* s) const;
-
-	// Returns the most recent added instruction *other* than those
-	// added for bookkeeping (like dirtying globals);
-	ZInstI* TopMainInst()	{ return insts1[top_main_inst]; }
-
-	bool IsUnused(const IDPtr& id, const Stmt* where) const;
-
-	// Called to synchronize any globals that have been modified
-	// prior to switching to execution out of the current function
-	// body (for a call or a return).  The argument is a statement
-	// used to find use-defs.  A nil value corresponds to "running
-	// off the end" (no explicit return).
-	void SyncGlobals(const Stmt* s = nullptr);
-
-	void LoadParam(ID* id);
-	const ZAMStmt LoadGlobal(ID* id);
-
-	int AddToFrame(ID*);
-
-	int FrameSlot(const IDPtr& id)		{ return FrameSlot(id.get()); }
-	int FrameSlot(const ID* id);
-	int FrameSlotIfName(const Expr* e)
-		{
-		auto n = e->Tag() == EXPR_NAME ? e->AsNameExpr() : nullptr;
-		return n ? FrameSlot(n->Id()) : 0;
-		}
-
-	int FrameSlot(const NameExpr* id)
-		{ return FrameSlot(id->AsNameExpr()->Id()); }
-	int Frame1Slot(const NameExpr* id, ZOp op)
-		{ return Frame1Slot(id->AsNameExpr()->Id(), op); }
-
 	int ConvertToInt(const Expr* e)
 		{
 		if ( e->Tag() == EXPR_NAME )
@@ -323,6 +238,117 @@ private:
 		else
 			return e->AsConstExpr()->Value()->AsCount();
 		}
+
+
+	typedef std::vector<ZAMStmt> GoToSet;
+	typedef std::vector<GoToSet> GoToSets;
+
+	void PushGoTos(GoToSets& gotos);
+	void ResolveGoTos(GoToSets& gotos, const InstLabel l);
+
+	ZAMStmt GenGoTo(GoToSet& v);
+	ZAMStmt GoToStub();
+	ZAMStmt GoTo(const InstLabel l);
+	InstLabel GoToTarget(const ZAMStmt s);
+	InstLabel GoToTargetBeyond(const ZAMStmt s);
+
+	void SetTarget(ZInstI* inst, const InstLabel l, int slot);
+
+	// Given a GoTo target, find its live equivalent (first instruction
+	// at that location or beyond that's live).
+	ZInstI* FindLiveTarget(ZInstI* goto_target);
+
+	// Given an instruction that has a slot associated with the
+	// given target, updates the slot to correspond with the current
+	// (final) location of the target.
+	void RetargetBranch(ZInstI* inst, ZInstI* target, int target_slot);
+
+	void SetV(ZAMStmt s, const InstLabel l, int v)
+		{
+		if ( v == 1 )
+			SetV1(s, l);
+		else if ( v == 2 )
+			SetV2(s, l);
+		else if ( v == 3 )
+			SetV3(s, l);
+		else
+			SetV4(s, l);
+		}
+
+	void SetV1(ZAMStmt s, const InstLabel l);
+	void SetV2(ZAMStmt s, const InstLabel l);
+	void SetV3(ZAMStmt s, const InstLabel l);
+	void SetV4(ZAMStmt s, const InstLabel l);
+	void SetGoTo(ZAMStmt s, const InstLabel targ)
+		{ SetV1(s, targ); }
+
+
+	const ZAMStmt StartingBlock();
+	const ZAMStmt FinishBlock(const ZAMStmt start);
+
+	bool NullStmtOK() const;
+
+	const ZAMStmt EmptyStmt();
+	const ZAMStmt ErrorStmt();
+	const ZAMStmt LastInst();
+
+	// Returns a handle to state associated with building
+	// up a list of values.
+	OpaqueVals* BuildVals(const ListExprPtr&);
+
+	// "stride" is how many slots each element of l will consume.
+	ZInstAux* InternalBuildVals(const ListExpr* l, int stride = 1);
+
+	// Returns how many values were added.
+	int InternalAddVal(ZInstAux* zi, int i, Expr* e);
+
+	const ZAMStmt AddInst(const ZInstI& inst);
+
+	// Returns the statement just before the given one.
+	ZAMStmt PrevStmt(const ZAMStmt s);
+
+	// Returns the last (interpreter) statement in the body.
+	const Stmt* LastStmt(const Stmt* s) const;
+
+	// Returns the most recent added instruction *other* than those
+	// added for bookkeeping (like dirtying globals);
+	ZInstI* TopMainInst()	{ return insts1[top_main_inst]; }
+
+
+	void DumpIntCases(int i) const;
+	void DumpUIntCases(int i) const;
+	void DumpDoubleCases(int i) const;
+	void DumpStrCases(int i) const;
+
+
+	bool IsUnused(const IDPtr& id, const Stmt* where) const;
+
+	// Called to synchronize any globals that have been modified
+	// prior to switching to execution out of the current function
+	// body (for a call or a return).  The argument is a statement
+	// used to find use-defs.  A nil value corresponds to "running
+	// off the end" (no explicit return).
+	void SyncGlobals(const Stmt* s = nullptr);
+
+	void LoadParam(ID* id);
+	const ZAMStmt LoadGlobal(ID* id);
+
+	int AddToFrame(ID*);
+
+	void SyncGlobals(const std::unordered_set<const ID*>& g, const Stmt* s);
+
+	int FrameSlot(const IDPtr& id)		{ return FrameSlot(id.get()); }
+	int FrameSlot(const ID* id);
+	int FrameSlotIfName(const Expr* e)
+		{
+		auto n = e->Tag() == EXPR_NAME ? e->AsNameExpr() : nullptr;
+		return n ? FrameSlot(n->Id()) : 0;
+		}
+
+	int FrameSlot(const NameExpr* id)
+		{ return FrameSlot(id->AsNameExpr()->Id()); }
+	int Frame1Slot(const NameExpr* id, ZOp op)
+		{ return Frame1Slot(id->AsNameExpr()->Id(), op); }
 
 	int Frame1Slot(const ID* id, ZOp op)
 		{ return Frame1Slot(id, op1_flavor[op]); }
@@ -341,8 +367,6 @@ private:
 	int NewSlot(bool is_managed);
 
 	int TempForConst(const ConstExpr* c);
-
-	void SyncGlobals(const std::unordered_set<const ID*>& g, const Stmt* s);
 
 	////////////////////////////////////////////////////////////
 	// The following methods relate to optimizing the low-level
@@ -430,15 +454,6 @@ private:
 	// Mark a statement as unnecessary and remove its influence on
 	// other statements.
 	void KillInst(ZInstI* i);
-
-	// Given a GoTo target, find its live equivalent (first instruction
-	// at that location or beyond that's live).
-	ZInstI* FindLiveTarget(ZInstI* goto_target);
-
-	// Given an instruction that has a slot associated with the
-	// given target, updates the slot to correspond with the current
-	// (final) location of the target.
-	void RetargetBranch(ZInstI* inst, ZInstI* target, int target_slot);
 
 	// The first of these is used as we compile down to ZInstI's.
 	// The second is the final intermediary code.  They're separate
@@ -534,11 +549,6 @@ private:
 	// and prefixes.
 	CaseMapsI<std::string> str_casesI;
 
-	void DumpIntCases(int i) const;
-	void DumpUIntCases(int i) const;
-	void DumpDoubleCases(int i) const;
-	void DumpStrCases(int i) const;
-
 	std::vector<int> managed_slotsI;
 
 	int frame_sizeI;
@@ -557,6 +567,7 @@ private:
 	// it should be followed by Dirty-Global for the given slot.
 	int mark_dirty = -1;
 };
+
 
 // Invokes after compiling all of the function bodies.
 class FuncInfo;
