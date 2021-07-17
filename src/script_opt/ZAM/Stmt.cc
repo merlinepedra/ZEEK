@@ -150,12 +150,257 @@ const ZAMStmt ZAMCompiler::CompileIf(const IfStmt* is)
 	return IfElse(e.get(), block1, block2);
 	}
 
+const ZAMStmt ZAMCompiler::IfElse(const Expr* e, const Stmt* s1, const Stmt* s2)
+	{
+	ZAMStmt cond_stmt = EmptyStmt();
+	int branch_v;
+
+	if ( e->Tag() == EXPR_NAME )
+		{
+		auto n = e->AsNameExpr();
+
+		ZOp op = (s1 && s2) ? OP_IF_ELSE_VV :
+		                      (s1 ? OP_IF_VV : OP_IF_NOT_VV);
+
+		ZInstI cond(op, FrameSlot(n), 0);
+		cond_stmt = AddInst(cond);
+		branch_v = 2;
+		}
+	else
+		cond_stmt = GenCond(e, branch_v);
+
+	if ( s1 )
+		{
+		auto s1_end = CompileStmt(s1);
+		if ( s2 )
+			{
+			auto branch_after_s1 = GoToStub();
+			auto s2_end = CompileStmt(s2);
+			SetV(cond_stmt, GoToTargetBeyond(branch_after_s1),
+			     branch_v);
+			SetGoTo(branch_after_s1, GoToTargetBeyond(s2_end));
+
+			return s2_end;
+			}
+
+		else
+			{
+			SetV(cond_stmt, GoToTargetBeyond(s1_end), branch_v);
+			return s1_end;
+			}
+		}
+
+	// Only the else clause is non-empty.
+	auto s2_end = CompileStmt(s2);
+
+	// For complex conditionals, we need to invert their sense since
+	// we're switching to "if ( ! cond ) s2".
+	auto z = insts1[cond_stmt.stmt_num];
+
+	switch ( z->op ) {
+	case OP_IF_ELSE_VV:
+	case OP_IF_VV:
+	case OP_IF_NOT_VV:
+		// These are generated correctly above, no need
+		// to fix up.
+		break;
+
+	case OP_HAS_FIELD_COND_VVV:
+		z->op = OP_NOT_HAS_FIELD_COND_VVV;
+		break;
+	case OP_NOT_HAS_FIELD_COND_VVV:
+		z->op = OP_HAS_FIELD_COND_VVV;
+		break;
+
+	case OP_VAL_IS_IN_TABLE_COND_VVV:
+		z->op = OP_VAL_IS_NOT_IN_TABLE_COND_VVV;
+		break;
+	case OP_VAL_IS_NOT_IN_TABLE_COND_VVV:
+		z->op = OP_VAL_IS_IN_TABLE_COND_VVV;
+		break;
+
+	case OP_CONST_IS_IN_TABLE_COND_VVC:
+		z->op = OP_CONST_IS_NOT_IN_TABLE_COND_VVC;
+		break;
+	case OP_CONST_IS_NOT_IN_TABLE_COND_VVC:
+		z->op = OP_CONST_IS_IN_TABLE_COND_VVC;
+		break;
+
+	case OP_VAL2_IS_IN_TABLE_COND_VVVV:
+		z->op = OP_VAL2_IS_NOT_IN_TABLE_COND_VVVV;
+		break;
+	case OP_VAL2_IS_NOT_IN_TABLE_COND_VVVV:
+		z->op = OP_VAL2_IS_IN_TABLE_COND_VVVV;
+		break;
+
+	case OP_VAL2_IS_IN_TABLE_COND_VVVC:
+		z->op = OP_VAL2_IS_NOT_IN_TABLE_COND_VVVC;
+		break;
+	case OP_VAL2_IS_NOT_IN_TABLE_COND_VVVC:
+		z->op = OP_VAL2_IS_IN_TABLE_COND_VVVC;
+		break;
+
+	case OP_VAL2_IS_IN_TABLE_COND_VVCV:
+		z->op = OP_VAL2_IS_NOT_IN_TABLE_COND_VVCV;
+		break;
+	case OP_VAL2_IS_NOT_IN_TABLE_COND_VVCV:
+		z->op = OP_VAL2_IS_IN_TABLE_COND_VVCV;
+		break;
+
+	default:
+		reporter->InternalError("inconsistency in ZAMCompiler::IfElse");
+	}
+
+	SetV(cond_stmt, GoToTargetBeyond(s2_end), branch_v);
+	return s2_end;
+	}
+
+const ZAMStmt ZAMCompiler::GenCond(const Expr* e, int& branch_v)
+	{
+	auto op1 = e->GetOp1();
+	auto op2 = e->GetOp2();
+
+	NameExpr* n1 = nullptr;
+	NameExpr* n2 = nullptr;
+	ConstExpr* c = nullptr;
+
+	if ( e->Tag() == EXPR_HAS_FIELD )
+		{
+		auto hf = e->AsHasFieldExpr();
+		auto z = GenInst(OP_HAS_FIELD_COND_VVV, op1->AsNameExpr(),
+		                 hf->Field());
+		z.op_type = OP_VVV_I2_I3;
+		branch_v = 3;
+		return AddInst(z);
+		}
+
+	if ( e->Tag() == EXPR_IN )
+		{
+		auto op1 = e->GetOp1();
+		auto op2 = e->GetOp2()->AsNameExpr();
+
+		// First, deal with the easy cases: it's a single index.
+		if ( op1->Tag() == EXPR_LIST )
+			{
+			auto& ind = op1->AsListExpr()->Exprs();
+			if ( ind.length() == 1 )
+				op1 = {NewRef{}, ind[0]};
+			}
+
+		if ( op1->Tag() == EXPR_NAME )
+			{
+			auto z = GenInst(OP_VAL_IS_IN_TABLE_COND_VVV,
+			                 op1->AsNameExpr(), op2, 0);
+			z.t = op1->GetType();
+			branch_v = 3;
+			return AddInst(z);
+			}
+
+		if ( op1->Tag() == EXPR_CONST )
+			{
+			auto z = GenInst(OP_CONST_IS_IN_TABLE_COND_VVC,
+			                 op2, op1->AsConstExpr(), 0);
+			z.t = op1->GetType();
+			branch_v = 2;
+			return AddInst(z);
+			}
+
+		// Now the harder case: 2 indexes.  (Any number here other
+		// than two should have been disallowed due to how we reduce
+		// conditional expressions.)
+
+		auto& ind = op1->AsListExpr()->Exprs();
+		ASSERT(ind.length() == 2);
+
+		auto ind0 = ind[0];
+		auto ind1 = ind[1];
+
+		auto name0 = ind0->Tag() == EXPR_NAME;
+		auto name1 = ind1->Tag() == EXPR_NAME;
+
+		auto n0 = name0 ? ind0->AsNameExpr() : nullptr;
+		auto n1 = name1 ? ind1->AsNameExpr() : nullptr;
+
+		auto c0 = name0 ? nullptr : ind0->AsConstExpr();
+		auto c1 = name1 ? nullptr : ind1->AsConstExpr();
+
+		ZInstI z;
+
+		if ( name0 && name1 )
+			{
+			z = GenInst(OP_VAL2_IS_IN_TABLE_COND_VVVV,
+			            n0, n1, op2, 0);
+			branch_v = 4;
+			z.t2 = n0->GetType();
+			}
+
+		else if ( name0 )
+			{
+			z = GenInst(OP_VAL2_IS_IN_TABLE_COND_VVVC,
+			            n0, op2, c1, 0);
+			branch_v = 3;
+			z.t2 = n0->GetType();
+			}
+
+		else if ( name1 )
+			{
+			z = GenInst(OP_VAL2_IS_IN_TABLE_COND_VVCV,
+			            n1, op2, c0, 0);
+			branch_v = 3;
+			z.t2 = n1->GetType();
+			}
+
+		else
+			{ // Both are constants, assign first to temporary.
+			auto slot = TempForConst(c0);
+
+			z = ZInstI(OP_VAL2_IS_IN_TABLE_COND_VVVC,
+			           slot, FrameSlot(op2), 0, c1);
+			z.op_type = OP_VVVC_I3;
+			branch_v = 3;
+			z.t2 = c0->GetType();
+			}
+
+		return AddInst(z);
+		}
+
+	if ( op1->Tag() == EXPR_NAME )
+		{
+		n1 = op1->AsNameExpr();
+
+		if ( op2->Tag() == EXPR_NAME )
+			n2 = op2->AsNameExpr();
+		else
+			c = op2->AsConstExpr();
+		}
+
+	else
+		{
+		c = op1->AsConstExpr();
+		n2 = op2->AsNameExpr();
+		}
+
+	if ( n1 && n2 )
+		branch_v = 3;
+	else
+		branch_v = 2;
+
+	switch ( e->Tag() ) {
+#include "ZAM-Conds.h"
+
+	default:
+		reporter->InternalError("bad expression type in ZAMCompiler::GenCond");
+	}
+
+	// Not reached.
+	}
+
 const ZAMStmt ZAMCompiler::CompileSwitch(const SwitchStmt* sw)
 	{
 	auto e = sw->StmtExpr();
 
-	const NameExpr* n = e->Tag() == EXPR_NAME ? e->AsNameExpr() : nullptr;
-	const ConstExpr* c = e->Tag() == EXPR_CONST ? e->AsConstExpr() : nullptr;
+	auto n = e->Tag() == EXPR_NAME ? e->AsNameExpr() : nullptr;
+	auto c = e->Tag() == EXPR_CONST ? e->AsConstExpr() : nullptr;
 
 	auto t = e->GetType()->Tag();
 
@@ -481,7 +726,45 @@ const ZAMStmt ZAMCompiler::CompileWhile(const WhileStmt* ws)
 		}
 
 	auto cond_pred = ws->CondPredStmt();
+
 	return While(cond_pred.get(), loop_condition.get(), ws->Body().get());
+	}
+
+const ZAMStmt ZAMCompiler::While(const Stmt* cond_stmt, const Expr* cond,
+                                 const Stmt* body)
+	{
+	auto head = StartingBlock();
+
+	if ( cond_stmt )
+		(void) CompileStmt(cond_stmt);
+
+	ZAMStmt cond_IF = EmptyStmt();
+	int branch_v;
+
+	if ( cond->Tag() == EXPR_NAME )
+		{
+		auto n = cond->AsNameExpr();
+		cond_IF = AddInst(ZInstI(OP_IF_VV, FrameSlot(n), 0));
+		branch_v = 2;
+		}
+	else
+		cond_IF = GenCond(cond, branch_v);
+
+	PushNexts();
+	PushBreaks();
+
+	if ( body && body->Tag() != STMT_NULL )
+		(void) CompileStmt(body);
+
+	auto tail = GoTo(GoToTarget(head));
+
+	auto beyond_tail = GoToTargetBeyond(tail);
+	SetV(cond_IF, beyond_tail, branch_v);
+
+	ResolveNexts(GoToTarget(head));
+	ResolveBreaks(beyond_tail);
+
+	return tail;
 	}
 
 const ZAMStmt ZAMCompiler::CompileFor(const ForStmt* f)
@@ -831,6 +1114,28 @@ const ZAMStmt ZAMCompiler::CompileInit(const InitStmt* is)
 		}
 
 	return last;
+	}
+
+const ZAMStmt ZAMCompiler::InitRecord(IDPtr id, RecordType* rt)
+	{
+	auto z = ZInstI(OP_INIT_RECORD_V, FrameSlot(id));
+	z.SetType({NewRef{}, rt});
+	return AddInst(z);
+	}
+
+const ZAMStmt ZAMCompiler::InitVector(IDPtr id, VectorType* vt)
+	{
+	auto z = ZInstI(OP_INIT_VECTOR_V, FrameSlot(id));
+	z.SetType({NewRef{}, vt});
+	return AddInst(z);
+	}
+
+const ZAMStmt ZAMCompiler::InitTable(IDPtr id, TableType* tt, Attributes* attrs)
+	{
+	auto z = ZInstI(OP_INIT_TABLE_V, FrameSlot(id));
+	z.SetType({NewRef{}, tt});
+	z.attrs = {NewRef{}, attrs};
+	return AddInst(z);
 	}
 
 const ZAMStmt ZAMCompiler::CompileWhen(const WhenStmt* ws)

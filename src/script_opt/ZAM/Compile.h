@@ -60,6 +60,8 @@ public:
 private:
 	void Init();
 
+#include "zeek/ZAM-MethodDecls.h"
+
 	const ZAMStmt CompileStmt(const StmtPtr& body)
 		{ return CompileStmt(body.get()); }
 	const ZAMStmt CompileStmt(const Stmt* body);
@@ -89,49 +91,18 @@ private:
 	const ZAMStmt CompileCatchReturn()
 		{ return GenGoTo(catches.back()); }
 
-	const ZAMStmt CompileExpr(const ExprPtr& e)
-		{ return CompileExpr(e.get()); }
-	const ZAMStmt CompileExpr(const Expr* body);
-
-	const ZAMStmt CompileIncrExpr(const IncrExpr* e);
-	const ZAMStmt CompileAppendToExpr(const AppendToExpr* e);
-	const ZAMStmt CompileAssignExpr(const AssignExpr* e);
-	const ZAMStmt CompileAssignToIndex(const NameExpr* lhs,
-	                                   const IndexExpr* rhs);
-	const ZAMStmt CompileFieldLHSAssignExpr(const FieldLHSAssignExpr* e);
-	const ZAMStmt CompileScheduleExpr(const ScheduleExpr* e);
-
 	const ZAMStmt IfElse(const Expr* e, const Stmt* s1, const Stmt* s2);
 	const ZAMStmt While(const Stmt* cond_stmt, const Expr* cond,
 	                    const Stmt* body);
-
-	// Second argument is which instruction slot holds the branch target.
-	const ZAMStmt GenCond(const Expr* e, int& branch_v);
-
-	const ZAMStmt Call(const ExprStmt* e);
-	const ZAMStmt AssignToCall(const ExprStmt* e);
-	const ZAMStmt DoCall(const CallExpr* c, const NameExpr* n);
-
-	const ZAMStmt AssignVecElems(const Expr* e);
-	const ZAMStmt AssignTableElem(const Expr* e);
-
-	const ZAMStmt AppendToField(const NameExpr* n1, const NameExpr* n2,
-	                            const ConstExpr* c, int offset);
 
 	const ZAMStmt InitRecord(IDPtr id, RecordType* rt);
 	const ZAMStmt InitVector(IDPtr id, VectorType* vt);
 	const ZAMStmt InitTable(IDPtr id, TableType* tt, Attributes* attrs);
 
-	const ZAMStmt CompileSchedule(const NameExpr* n,
-					const ConstExpr* c, int is_interval,
-					EventHandler* h, const ListExpr* l);
-
-	const ZAMStmt CompileEvent(EventHandler* h, const ListExpr* l);
-
 	const ZAMStmt ValueSwitch(const SwitchStmt* sw, const NameExpr* v,
-					const ConstExpr* c);
+	                          const ConstExpr* c);
 	const ZAMStmt TypeSwitch(const SwitchStmt* sw, const NameExpr* v,
-					const ConstExpr* c);
+	                         const ConstExpr* c);
 
 	void PushNexts()		{ PushGoTos(nexts); }
 	void PushBreaks()		{ PushGoTos(breaks); }
@@ -158,19 +129,21 @@ private:
 	const ZAMStmt Loop(const Stmt* body);
 
 
-#include "zeek/ZAM-MethodDecls.h"
+	const ZAMStmt CompileExpr(const ExprPtr& e)
+		{ return CompileExpr(e.get()); }
+	const ZAMStmt CompileExpr(const Expr* body);
 
-	const ZAMStmt ConstructTable(const NameExpr* n, const Expr* e);
-	const ZAMStmt ConstructSet(const NameExpr* n, const Expr* e);
-	const ZAMStmt ConstructRecord(const NameExpr* n, const Expr* e);
-	const ZAMStmt ConstructVector(const NameExpr* n, const Expr* e);
-
-	const ZAMStmt ArithCoerce(const NameExpr* n, const Expr* e);
-	const ZAMStmt RecordCoerce(const NameExpr* n, const Expr* e);
-	const ZAMStmt TableCoerce(const NameExpr* n, const Expr* e);
-	const ZAMStmt VectorCoerce(const NameExpr* n, const Expr* e);
-
-	const ZAMStmt Is(const NameExpr* n, const Expr* e);
+	const ZAMStmt CompileIncrExpr(const IncrExpr* e);
+	const ZAMStmt CompileAppendToExpr(const AppendToExpr* e);
+	const ZAMStmt CompileAssignExpr(const AssignExpr* e);
+	const ZAMStmt CompileAssignToIndex(const NameExpr* lhs,
+	                                   const IndexExpr* rhs);
+	const ZAMStmt CompileFieldLHSAssignExpr(const FieldLHSAssignExpr* e);
+	const ZAMStmt CompileScheduleExpr(const ScheduleExpr* e);
+	const ZAMStmt CompileSchedule(const NameExpr* n, const ConstExpr* c,
+	                              int is_interval, EventHandler* h,
+	                              const ListExpr* l);
+	const ZAMStmt CompileEvent(EventHandler* h, const ListExpr* l);
 
 	const ZAMStmt CompileInExpr(const NameExpr* n1, const NameExpr* n2,
 	                            const NameExpr* n3)
@@ -207,6 +180,31 @@ private:
 	                           const ListExpr* l);
 	const ZAMStmt CompileIndex(const NameExpr* n1, int n2_slot,
 	                           const TypePtr& n2_type, const ListExpr* l);
+
+	// Second argument is which instruction slot holds the branch target.
+	const ZAMStmt GenCond(const Expr* e, int& branch_v);
+
+	const ZAMStmt Call(const ExprStmt* e);
+	const ZAMStmt AssignToCall(const ExprStmt* e);
+	const ZAMStmt DoCall(const CallExpr* c, const NameExpr* n);
+
+	const ZAMStmt AssignVecElems(const Expr* e);
+	const ZAMStmt AssignTableElem(const Expr* e);
+
+	const ZAMStmt AppendToField(const NameExpr* n1, const NameExpr* n2,
+	                            const ConstExpr* c, int offset);
+
+	const ZAMStmt ConstructTable(const NameExpr* n, const Expr* e);
+	const ZAMStmt ConstructSet(const NameExpr* n, const Expr* e);
+	const ZAMStmt ConstructRecord(const NameExpr* n, const Expr* e);
+	const ZAMStmt ConstructVector(const NameExpr* n, const Expr* e);
+
+	const ZAMStmt ArithCoerce(const NameExpr* n, const Expr* e);
+	const ZAMStmt RecordCoerce(const NameExpr* n, const Expr* e);
+	const ZAMStmt TableCoerce(const NameExpr* n, const Expr* e);
+	const ZAMStmt VectorCoerce(const NameExpr* n, const Expr* e);
+
+	const ZAMStmt Is(const NameExpr* n, const Expr* e);
 
 
 #include "zeek/script_opt/ZAM/Inst-Gen.h"
