@@ -11,13 +11,12 @@ namespace zeek::detail {
 
 void ZInst::Dump(int inst_num, const FrameReMap* mappings) const
 	{
-	int n = NumFrameSlots();
 	// printf("v%d ", n);
 
-	auto id1 = VName(n, 1, inst_num, mappings);
-	auto id2 = VName(n, 2, inst_num, mappings);
-	auto id3 = VName(n, 3, inst_num, mappings);
-	auto id4 = VName(n, 4, inst_num, mappings);
+	auto id1 = VName(1, inst_num, mappings);
+	auto id2 = VName(2, inst_num, mappings);
+	auto id3 = VName(3, inst_num, mappings);
+	auto id4 = VName(4, inst_num, mappings);
 
 	Dump(id1, id2, id3, id4);
 	}
@@ -199,10 +198,9 @@ int ZInst::NumSlots() const
 	}
 	}
 
-string ZInst::VName(int max_n, int n, int inst_num,
-                    const FrameReMap* mappings) const
+string ZInst::VName(int n, int inst_num, const FrameReMap* mappings) const
 	{
-	if ( n > max_n )
+	if ( n > NumFrameSlots() )
 		return "";
 
 	int slot = n == 1 ? v1 : (n == 2 ? v2 : (n == 3 ? v3 : v4));
@@ -218,11 +216,10 @@ string ZInst::VName(int max_n, int n, int inst_num,
 	unsigned int i;
 	for ( i = 0; i < map.id_start.size(); ++i )
 		{
-		// If the slot is right at the boundary between
-		// two identifiers, then it matters whether this
-		// is slot 1 (starts right here) vs. slot > 1
-		// (ignore change right at the boundary and stick
-		// with older value).
+		// If the slot is right at the boundary between two
+		// identifiers, then it matters whether this is slot 1
+		// (starts right here) vs. slot > 1 (ignore change right
+		// at the boundary and stick with older value).
 		if ( (n == 1 && map.id_start[i] > inst_num) ||
 		     (n > 1 && map.id_start[i] >= inst_num) )
 			// Went too far.
@@ -290,18 +287,18 @@ void ZInstI::Dump(const FrameMap* frame_ids, const FrameReMap* remappings)
 	int n = NumFrameSlots();
 	// printf("v%d ", n);
 
-	auto id1 = VName(n, 1, frame_ids, remappings);
-	auto id2 = VName(n, 2, frame_ids, remappings);
-	auto id3 = VName(n, 3, frame_ids, remappings);
-	auto id4 = VName(n, 4, frame_ids, remappings);
+	auto id1 = VName(1, frame_ids, remappings);
+	auto id2 = VName(2, frame_ids, remappings);
+	auto id3 = VName(3, frame_ids, remappings);
+	auto id4 = VName(4, frame_ids, remappings);
 
 	ZInst::Dump(id1, id2, id3, id4);
 	}
 
-string ZInstI::VName(int max_n, int n, const FrameMap* frame_ids,
+string ZInstI::VName(int n, const FrameMap* frame_ids,
                      const FrameReMap* remappings) const
 	{
-	if ( n > max_n )
+	if ( n > NumFrameSlots() )
 		return "";
 
 	int slot = n == 1 ? v1 : (n == 2 ? v2 : (n == 3 ? v3 : v4));
@@ -320,11 +317,7 @@ string ZInstI::VName(int max_n, int n, const FrameMap* frame_ids,
 		unsigned int i;
 		for ( i = 0; i < map.id_start.size(); ++i )
 			{
-			// If the slot is right at the boundary between
-			// two identifiers, then it matters whether this
-			// is slot 1 (starts right here) vs. slot > 1
-			// (ignore change right at the boundary and stick
-			// with older value).
+			// See discussion for ZInst::VName.
 			if ( (n == 1 && map.id_start[i] > inst_num) ||
 			     (n > 1 && map.id_start[i] >= inst_num) )
 				// Went too far.
@@ -349,11 +342,11 @@ string ZInstI::VName(int max_n, int n, const FrameMap* frame_ids,
 bool ZInstI::DoesNotContinue() const
 	{
 	switch ( op ) {
-	case OP_RETURN_X:
-	case OP_RETURN_V:
-	case OP_RETURN_C:
 	case OP_GOTO_V:
 	case OP_HOOK_BREAK_X:
+	case OP_RETURN_C:
+	case OP_RETURN_V:
+	case OP_RETURN_X:
 		return true;
 
 	default:
@@ -405,7 +398,8 @@ bool ZInstI::AssignsToSlot1() const
 
 	// We use this ginormous set of cases rather than "default" so
 	// that when we add a new operand type, we have to consider
-	// its behavior here.
+	// its behavior here.  (Same for many of the other switch's
+	// used for ZInst/ZinstI.)
 	case OP_V:
 	case OP_VC:
 	case OP_VV_FRAME:
@@ -578,7 +572,7 @@ void ZInstI::UpdateSlots(std::vector<int>& slot_mapping)
 		break;
 	}
 
-	// Note, unlike for UsesSlots we do *not* include OP1_READ_WRITE
+	// Note, unlike for UsesSlots() we do *not* include OP1_READ_WRITE
 	// here, because such instructions will already have v1 remapped
 	// given it's an assignment target.
 	if ( op1_flavor[op] == OP1_READ && v1 >= 0 )
@@ -594,13 +588,12 @@ bool ZInstI::IsGlobalLoad() const
 	static std::unordered_set<ZOp> global_ops;
 
 	if ( global_ops.size() == 0 )
-		{
-		// Initialize the set.
+		{ // Initialize the set.
 		for ( int t = 0; t < NUM_TYPES; ++t )
 			{
 			TypeTag tag = TypeTag(t);
 			ZOp global_op_flavor =
-				AssignmentFlavor(OP_LOAD_GLOBAL_VV, tag, false);
+			        AssignmentFlavor(OP_LOAD_GLOBAL_VV, tag, false);
 
 			if ( global_op_flavor != OP_NOP )
 				global_ops.insert(global_op_flavor);

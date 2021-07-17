@@ -20,10 +20,11 @@ using AttributesPtr = IntrusivePtr<Attributes>;
 // Maps ZAM frame slots to associated identifiers.   
 typedef std::vector<ID*> FrameMap;
 
-// Maps ZAM frame slots to information for sharing across multiple identifiers.
+// Maps ZAM frame slots to information for sharing the slot across
+// multiple script variables.
 class FrameSharingInfo {
 public:
-	// The IDs sharing the slot.  IDs need to be non-const so we
+	// The variables sharing the slot.  ID's need to be non-const so we
 	// can manipulate them, for example by changing their interpreter
 	// frame offset.
 	std::vector<ID*> ids;
@@ -33,8 +34,8 @@ public:
 	// "ids" member variable may be empty.
 	std::vector<const char*> names;
 
-	// The ZAM instruction number where a given identifier starts its scope,
-	// parallel to "ids".
+	// The ZAM instruction number where a given identifier starts its
+	// scope, parallel to "ids".
 	std::vector<int> id_start;
 
 	// The current end of the frame slot's scope.  Gets updated as
@@ -65,11 +66,17 @@ public:
 
 	virtual ~ZInst()	{ }
 
+	// Methods for printing out the instruction for debugging/maintenance.
 	void Dump(int inst_num, const FrameReMap* mappings) const;
 	void Dump(const std::string& id1, const std::string& id2,
 	          const std::string& id3, const std::string& id4) const;
 
-	std::string VName(int max_n, int n, int inst_num,
+	// Returns the name to use in identifying one of the slots/integer
+	// values (designated by "n").  "inst_num" identifes the instruction
+	// by its number within a larger set.  "mappings" provides the
+	// mappings used to translate raw slots to the corresponding
+	// script variable(s).
+	std::string VName(int n, int inst_num,
 	                  const FrameReMap* mappings) const;
 
 	// Number of slots that refer to a frame element.  These always
@@ -100,12 +107,13 @@ public:
 	TypePtr t2 = nullptr;	// just a few ops need two types
 	const Expr* e = nullptr;	// only needed for "when" expressions
 	Func* func = nullptr;	// used for calls
-	EventHandler* event_handler = nullptr;
-	AttributesPtr attrs = nullptr;
+	EventHandler* event_handler = nullptr;	// used for referring to events
+	AttributesPtr attrs = nullptr;	// used for things like constructors
 
 	// Auxiliary information.  We could in principle use this to
 	// consolidate a bunch of the above, though at the cost of
-	// slightly slower access.
+	// slightly slower access.  Most instructions don't need "aux",
+	// which is why we bundle these separately.
 	ZInstAux* aux = nullptr;
 
 	// Location associated with this instruction, for error reporting.
@@ -117,9 +125,13 @@ public:
 };
 
 // A intermediary ZAM instruction, one that includes information/methods
-// needed for compiling.
+// needed for compiling.  Intermediate instructions use pointers to other
+// such instructions for branches, rather than concrete instruction
+// numbers.  This allows the AM optimizer to easily prune instructions.
 class ZInstI : public ZInst {
 public:
+	// These constructors can be used directly, but often instead
+	// they'll be generated via the use of Inst-Gen methods.
 	ZInstI(ZOp _op) : ZInst(_op, OP_X)
 		{
 		op = _op;
@@ -187,7 +199,10 @@ public:
 	// If "remappings" is non-nil, then it is used instead of frame_ids.
 	void Dump(const FrameMap* frame_ids, const FrameReMap* remappings) const;
 
-	std::string VName(int max_n, int n, const FrameMap* frame_ids,
+	// Note that this is *not* an override of the base class's VName
+	// but instead a method with similar functionality but somewhat
+	// different behavior (namely, being cognizant of frame_ids).
+	std::string VName(int n, const FrameMap* frame_ids,
 	                  const FrameReMap* remappings) const;
 
 	// True if this instruction definitely won't proceed to the one
@@ -195,8 +210,8 @@ public:
 	bool DoesNotContinue() const;
 
 	// True if this instruction always branches elsewhere.  Different
-	// from DoesNotContinue in that returns do not continue, but they
-	// are not branches.
+	// from DoesNotContinue() in that returns & hook breaks do not
+	// continue, but they are not branches.
 	bool IsUnconditionalBranch() const	{ return op == OP_GOTO_V; }
 
 	// True if this instruction is of the form "v1 = v2".
@@ -225,6 +240,8 @@ public:
 	// the ZAM frame.
 	bool IsGlobalLoad() const;
 
+	// The following is vestigial given - see the associated comments
+	// in Ops.in.
 	bool IsFrameStore() const
 		{ return op == OP_STORE_VAL_VV || op == OP_STORE_ANY_VAL_VV; }
 
@@ -289,6 +306,8 @@ private:
 // an instruction needs.
 class ZInstAux {
 public:
+	// if n is positive then it gives the size of parallel arrays
+	// tracking slots, constants, and types.
 	ZInstAux(int _n)
 		{
 		n = _n;
@@ -308,6 +327,7 @@ public:
 		delete iter_info;
 		}
 
+	// Returns the i'th element of the parallel arrays as a ValPtr.
 	ValPtr ToVal(const ZVal* frame, int i) const
 		{
 		if ( constants[i] )
@@ -316,6 +336,7 @@ public:
 			return frame[slots[i]].ToVal(types[i]);
 		}
 
+	// Returns the parallel arrays as a ListValPtr.
 	ListValPtr ToListVal(const ZVal* frame) const
 		{
 		auto lv = make_intrusive<ListVal>(TYPE_ANY);
@@ -325,6 +346,11 @@ public:
 		return lv;
 		}
 
+	// Converts the parallel arrays to a ListValPtr suitable for
+	// use as indices for indexing a table or set.  "offset" specifies
+	// which index we're looking for (there can be a bunch for
+	// constructors), and "width" the number of elements in a single
+	// index.
 	ListValPtr ToIndices(const ZVal* frame, int offset, int width) const
 		{
 		auto lv = make_intrusive<ListVal>(TYPE_ANY);
@@ -334,6 +360,7 @@ public:
 		return lv;
 		}
 
+	// Returns the parallel arrays converted to a vector of ValPtr's.
 	const val_vec& ToValVec(const ZVal* frame)
 		{
 		vv.clear();
@@ -341,12 +368,16 @@ public:
 		return vv;
 		}
 
+	// Populates the given vector of ValPtr's with the conversion
+	// of the parallel arrays.
 	void FillValVec(val_vec& vec, const ZVal* frame) const
 		{
 		for ( auto i = 0; i < n; ++i )
 			vec.push_back(ToVal(frame, i));
 		}
 
+	// When building up a ZInstAux, sets one element of the parallel
+	// arrays to a given frame slot and type.
 	void Add(int i, int slot, TypePtr t)
 		{
 		ints[i] = slot;
@@ -354,6 +385,7 @@ public:
 		types[i] = t;
 		}
 
+	// Same but for constants.
 	void Add(int i, ValPtr c)
 		{
 		ints[i] = -1;
@@ -361,13 +393,18 @@ public:
 		types[i] = nullptr;
 		}
 
+
+	// Member variables.  We could add accessors for manipulating
+	// these (and make the variables private), but for convenience we
+	// make them directly available.
+
 	// These are parallel arrays, used to build up lists of values.
 	// Each element is either an integer or a constant.  Usually the
 	// integer is a frame slot (in which case "slots" points to "ints";
 	// if not, it's nil).
 	//
 	// We track associated types, too, enabling us to use
-	// ZVal::ToVal to convert frame slots or constants to Val*'s.
+	// ZVal::ToVal to convert frame slots or constants to ValPtr's.
 
 	int n;	// size of arrays
 	int* slots = nullptr;	// either nil or points to ints
@@ -388,11 +425,12 @@ public:
 	// This is only used to return values stored elsewhere in this
 	// object - it's not set directly.
 	//
-	// If we cared about memory penny-pinching, we could make
-	// this a pointer and only instantiate as needed.  
+	// If we cared about memory penny-pinching, we could make this
+	// a pointer and only instantiate as needed.
 	val_vec vv;
 };
 
+// Returns a human-readable version of the given ZAM op-code.
 extern const char* ZOP_name(ZOp op);
 
 // Maps a generic operation to a specific one associated with the given type.
@@ -400,6 +438,9 @@ extern const char* ZOP_name(ZOp op);
 // flavor.  If true, this leads to an assertion failure.  If false, and
 // if there's no flavor for the type, then OP_NOP is returned.
 extern ZOp AssignmentFlavor(ZOp orig, TypeTag tag, bool strict=true);
+
+
+// The following all use initializations produced by Gen-ZAM.
 
 // Maps first operands, and then type tags, to operands.
 extern std::unordered_map<ZOp, std::unordered_map<TypeTag, ZOp>> assignment_flavor;

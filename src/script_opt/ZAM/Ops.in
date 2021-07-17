@@ -2008,6 +2008,11 @@ eval	if ( global_state[z.v2] != GS_UNLOADED )
 	auto t = z.aux->id_val->GetType();
 	v = new TypeVal(t, true);
 
+# The following are only needed if we need to sync local variables to the
+# interpreter's frame - currently not the case, but we leave the code here
+# in case future development (such as supporting "return when" statements)
+# needs this.
+
 internal-op Store-Val
 op1-read
 type VV

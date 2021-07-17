@@ -20,7 +20,7 @@ namespace zeek::detail {
 // Note, this is now not really needed, because we no longer use any
 // interpreter frame entries other than those for the function's arguments.
 // We keep the code in case that changes, for example when deciding to
-// compile functions that include "when" conditions.
+// compile functions that include "return when" conditions.
 std::unordered_map<const Func*, int> remapped_intrp_frame_sizes;
 
 void finalize_functions(const std::vector<FuncInfo>& funcs)
