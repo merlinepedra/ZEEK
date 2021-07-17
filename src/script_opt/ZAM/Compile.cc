@@ -1,9 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-// This file includes the ZAM methods associated with generating an
-// initial, complete intermediary ZAM body for a given function.
-// Optimization of that ZAM body, leading to ultimate code generation,
-// is factored out into Opt.cc.
+// Driver (and other high-level) methods for ZAM compilation.
 
 #include "zeek/CompHash.h"
 #include "zeek/RE.h"
@@ -245,19 +242,10 @@ StmtPtr ZAMCompiler::CompileBody()
 	ZBody::CaseMaps<double> double_cases;
 	ZBody::CaseMaps<std::string> str_cases;
 
-#define CONCRETIZE_SWITCH_TABLES(T, switchesI, switches) \
-	for ( auto& targs : switchesI ) \
-		{ \
-		ZBody::CaseMap<T> cm; \
-		for ( auto& targ : targs ) \
-			cm[targ.first] = targ.second->inst_num; \
-		switches.push_back(cm); \
-		}
-
-	CONCRETIZE_SWITCH_TABLES(bro_int_t, int_casesI, int_cases);
-	CONCRETIZE_SWITCH_TABLES(bro_uint_t, uint_casesI, uint_cases);
-	CONCRETIZE_SWITCH_TABLES(double, double_casesI, double_cases);
-	CONCRETIZE_SWITCH_TABLES(std::string, str_casesI, str_cases);
+	ConcretizeSwitchTables(int_casesI, int_cases);
+	ConcretizeSwitchTables(uint_casesI, uint_cases);
+	ConcretizeSwitchTables(double_casesI, double_cases);
+	ConcretizeSwitchTables(str_casesI, str_cases);
 
 	// Could erase insts1 here to recover memory, but it's handy
 	// for debugging.
@@ -346,6 +334,19 @@ void ZAMCompiler::Init()
 	non_recursive = non_recursive_funcs.count(func) > 0;
 	}
 
+template <typename T>
+void ZAMCompiler::ConcretizeSwitchTables(const CaseMapsI<T>& abstract_cases,
+			                 ZBody::CaseMaps<T>& concrete_cases)
+	{
+	for ( auto& targs : abstract_cases )
+		{
+		ZBody::CaseMap<T> cm;
+		for ( auto& targ : targs )
+			cm[targ.first] = targ.second->inst_num;
+		concrete_cases.push_back(cm);
+		}
+	}
+
 
 #include "ZAM-MethodDefs.h"
 
@@ -411,46 +412,32 @@ void ZAMCompiler::Dump()
 		inst->Dump(&frame_denizens, remappings);
 		}
 
-	for ( auto i = 0U; i < int_casesI.size(); ++i )
-		DumpIntCases(i);
-	for ( auto i = 0U; i < uint_casesI.size(); ++i )
-		DumpUIntCases(i);
-	for ( auto i = 0U; i < double_casesI.size(); ++i )
-		DumpDoubleCases(i);
-	for ( auto i = 0U; i < str_casesI.size(); ++i )
-		DumpStrCases(i);
+	DumpCases(int_casesI, "int");
+	DumpCases(uint_casesI, "uint");
+	DumpCases(double_casesI, "double");
+	DumpCases(str_casesI, "str");
 	}
 
-void ZAMCompiler::DumpIntCases(int i) const
+template <typename T>
+void ZAMCompiler::DumpCases(const T& cases, const char* type_name) const
 	{
-	printf("int switch table #%d:", i);
-	for ( auto& m : int_casesI[i] )
-		printf(" %lld->%d", m.first, m.second->inst_num);
-	printf("\n");
-	}
+	for ( auto i = 0U; i < cases.size(); ++i )
+		{
+		printf("%s switch table #%d:", type_name, i);
+		for ( auto& m : cases[i] )
+			{
+			std::string case_val;
+			if constexpr ( std::is_same_v<T, std::string> )
+				case_val = m.first;
+			else if constexpr ( std::is_same_v<T, bro_int_t> ||
+			                    std::is_same_v<T, bro_uint_t> ||
+			                    std::is_same_v<T, double> )
+				case_val = std::to_string(m.first);
 
-void ZAMCompiler::DumpUIntCases(int i) const
-	{
-	printf("uint switch table #%d:", i);
-	for ( auto& m : uint_casesI[i] )
-		printf(" %llu->%d", m.first, m.second->inst_num);
-	printf("\n");
-	}
-
-void ZAMCompiler::DumpDoubleCases(int i) const
-	{
-	printf("double switch table #%d:", i);
-	for ( auto& m : double_casesI[i] )
-		printf(" %lf->%d", m.first, m.second->inst_num);
-	printf("\n");
-	}
-
-void ZAMCompiler::DumpStrCases(int i) const
-	{
-	printf("str switch table #%d:", i);
-	for ( auto& m : str_casesI[i] )
-		printf(" %s->%d", m.first.c_str(), m.second->inst_num);
-	printf("\n");
+			printf(" %s->%d", case_val.c_str(), m.second->inst_num);
+			}
+		printf("\n");
+		}
 	}
 
 

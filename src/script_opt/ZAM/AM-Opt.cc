@@ -104,7 +104,7 @@ void ZAMCompiler::OptimizeInsts()
 	}
 
 template<typename T>
-void ZAMCompiler::TallySwitchTargets(CaseMapsI<T> switches)
+void ZAMCompiler::TallySwitchTargets(const CaseMapsI<T>& switches)
 	{
 	for ( auto& targs : switches )
 		for ( auto& targ : targs )

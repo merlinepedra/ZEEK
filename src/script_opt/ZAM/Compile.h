@@ -65,6 +65,22 @@ public:
 private:
 	void Init();
 
+	// The following are used for switch statements, mapping the
+	// switch value (which can be any atomic type) to a branch target.
+	// We have vectors of them because functions can contain multiple
+	// switches.
+	// See ZBody.h for their concrete counterparts, which we've
+	// already #include'd.
+	template<typename T> using CaseMapI = std::map<T, InstLabel>;
+	template<typename T> using CaseMapsI = std::vector<CaseMapI<T>>;
+
+	template <typename T>
+	void ConcretizeSwitchTables(const CaseMapsI<T>& abstract_cases,
+	                            ZBody::CaseMaps<T>& concrete_cases);
+
+	template <typename T>
+	void DumpCases(const T& cases, const char* type_name) const;
+
 #include "zeek/ZAM-MethodDecls.h"
 
 	const ZAMStmt CompileStmt(const StmtPtr& body)
@@ -315,12 +331,6 @@ private:
 	ZInstI* TopMainInst()	{ return insts1[top_main_inst]; }
 
 
-	void DumpIntCases(int i) const;
-	void DumpUIntCases(int i) const;
-	void DumpDoubleCases(int i) const;
-	void DumpStrCases(int i) const;
-
-
 	bool IsUnused(const IDPtr& id, const Stmt* where) const;
 
 	// Called to synchronize any globals that have been modified
@@ -378,17 +388,10 @@ private:
 	// Optimizing the low-level compiled instructions.
 	void OptimizeInsts();
 
-	// The following are used for switch statements, mapping the
-	// switch value (which can be any atomic type) to a branch target.
-	// We have vectors of them because functions can contain multiple
-	// switches.
-	template<typename T> using CaseMapI = std::map<T, InstLabel>;
-	template<typename T> using CaseMapsI = std::vector<CaseMapI<T>>;
-
         // Tracks which instructions can be branched to via the given
 	// set of switches.
 	template<typename T>
-	void TallySwitchTargets(CaseMapsI<T> switches);
+	void TallySwitchTargets(const CaseMapsI<T>& switches);
 
 	// Remove code that can't be reached.  True if some removal happened.
 	bool RemoveDeadCode();
