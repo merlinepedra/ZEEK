@@ -60,10 +60,47 @@ public:
 
 	StmtPtr CompileBody();
 
+	const FrameReMap& FrameDenizens() const
+		{ return shared_frame_denizens_final; }
+
+	const std::vector<int>& ManagedSlots() const
+		{ return managed_slotsI; }
+
+	const std::vector<GlobalInfo>& Globals() const
+		{ return  globalsI; }
+
+	int NumIters() const		{ return num_iters; }
+	bool NonRecursive() const	{ return non_recursive; }
+
+	template <typename T>
+	const CaseMaps<T>& GetCases() const
+		{
+		if constexpr ( std::is_same_v<T, bro_int_t> )
+			return int_cases;
+		else if constexpr ( std::is_same_v<T, bro_uint_t> )
+			return uint_cases;
+		else if constexpr ( std::is_same_v<T, double> )
+			return double_cases;
+		else if constexpr ( std::is_same_v<T, std::string> )
+			return str_cases;
+		}
+
 	void Dump();
 
 private:
 	void Init();
+	void InitGlobals();
+	void InitArgs();
+	void InitLocals();
+	void TrackMemoryManagement();
+
+	void ResolveHookBreaks();
+	void ComputeLoopLevels();
+	void AdjustBranches();
+	void RetargetBranches();
+	void RemapFrameDenizens(const std::vector<int>& inst1_to_inst2);
+	void CreateSharedFrameDenizens();
+	void ConcretizeSwitches();
 
 	// The following are used for switch statements, mapping the
 	// switch value (which can be any atomic type) to a branch target.
@@ -76,7 +113,7 @@ private:
 
 	template <typename T>
 	void ConcretizeSwitchTables(const CaseMapsI<T>& abstract_cases,
-	                            ZBody::CaseMaps<T>& concrete_cases);
+	                            CaseMaps<T>& concrete_cases);
 
 	template <typename T>
 	void DumpCases(const T& cases, const char* type_name) const;
@@ -544,6 +581,8 @@ private:
 	// in SyncGlobals() to avoid work if we haven't done so.
 	bool did_global_load = false;
 
+	// Intermediary switch tables (branching to ZInst's rather
+	// than concrete instruction offsets).
 	CaseMapsI<bro_int_t> int_casesI;
 	CaseMapsI<bro_uint_t> uint_casesI;
 	CaseMapsI<double> double_casesI;
@@ -551,6 +590,12 @@ private:
 	// Note, we use this not only for strings but for addresses
 	// and prefixes.
 	CaseMapsI<std::string> str_casesI;
+
+	// Same, but for the concretized versions.
+	CaseMaps<bro_int_t> int_cases;
+	CaseMaps<bro_uint_t> uint_cases;
+	CaseMaps<double> double_cases;
+	CaseMaps<std::string> str_cases;
 
 	std::vector<int> managed_slotsI;
 

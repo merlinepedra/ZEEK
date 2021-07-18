@@ -8,7 +8,7 @@
 #include "zeek/Traverse.h"
 #include "zeek/Reporter.h"
 #include "zeek/script_opt/ScriptOpt.h"
-#include "zeek/script_opt/ZAM/ZBody.h"
+#include "zeek/script_opt/ZAM/Compile.h"
 
 // Needed for managing the corresponding values.
 #include "zeek/File.h"
@@ -132,16 +132,12 @@ double curr_CPU_time()
 	}
 
 
-ZBody::ZBody(const char* _func_name, FrameReMap& _frame_denizens,
-             vector<int>& _managed_slots, vector<GlobalInfo>& _globals,
-             int _num_iters, bool non_recursive,
-             CaseMaps<bro_int_t>& _int_cases, CaseMaps<bro_uint_t>& _uint_cases,
-             CaseMaps<double>& _double_cases, CaseMaps<std::string>& _str_cases)
+ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 : Stmt(STMT_ZAM)
 	{
 	func_name = _func_name;
 
-	frame_denizens = _frame_denizens;
+	frame_denizens = zc->FrameDenizens();
 	frame_size = frame_denizens.size();
 
 	// Concretize the names of the frame denizens.
@@ -149,19 +145,19 @@ ZBody::ZBody(const char* _func_name, FrameReMap& _frame_denizens,
 		for ( auto i = 0U; i < f.ids.size(); ++i )
 			f.names.push_back(f.ids[i]->Name());
 
-	managed_slots = _managed_slots;
+	managed_slots = zc->ManagedSlots();
 
-	globals = _globals;
+	globals = zc->Globals();
 	num_globals = globals.size();
 
-	num_iters = _num_iters;
+	num_iters = zc->NumIters();
 
-	int_cases = _int_cases;
-	uint_cases = _uint_cases;
-	double_cases = _double_cases;
-	str_cases = _str_cases;
+	int_cases = zc->GetCases<bro_int_t>();
+	uint_cases = zc->GetCases<bro_uint_t>();
+	double_cases = zc->GetCases<double>();
+	str_cases = zc->GetCases<std::string>();
 
-	if ( non_recursive )
+	if ( zc->NonRecursive() )
 		{
 		fixed_frame = new ZVal[frame_size];
 

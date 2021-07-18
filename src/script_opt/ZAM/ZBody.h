@@ -18,22 +18,15 @@ public:
 	int slot;
 };
 
+// These are the counterparts to CaseMapI and CaseMapsI in ZAM.h,
+// but concretized to use instruction numbers rather than pointers
+// to instructions.
+template<typename T> using CaseMap = std::map<T, int>;
+template<typename T> using CaseMaps = std::vector<CaseMap<T>>;
+
 class ZBody : public Stmt {
 public:
-	// These are the counterparts to CaseMapI and CaseMapsI in ZAM.h,
-	// but now concretized to use instruction numbers rather than pointers
-	// to instructions.
-	template<typename T> using CaseMap = std::map<T, int>;
-	template<typename T> using CaseMaps = std::vector<CaseMap<T>>;
-
-	ZBody(const char* _func_name, FrameReMap& _frame_denizens,
-	      std::vector<int>& _managed_slots,
-	      std::vector<GlobalInfo>& _globals,
-	      int num_iters, bool non_recursive,
-	      CaseMaps<bro_int_t>& _int_cases,
-	      CaseMaps<bro_uint_t>& _uint_cases,
-	      CaseMaps<double>& _double_cases,
-	      CaseMaps<std::string>& _str_cases);
+	ZBody(const char* _func_name, const ZAMCompiler* zc);
 
 	~ZBody() override;
 

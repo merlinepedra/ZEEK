@@ -32,6 +32,96 @@ ZAMCompiler::ZAMCompiler(ScriptFunc* f, std::shared_ptr<ProfileFunc> _pf,
 	Init();
 	}
 
+void ZAMCompiler::Init()
+	{
+	InitGlobals();
+	InitArgs();
+	InitLocals();
+
+#if 0
+	// Complain about unused aggregates ... but not if we're inlining,
+	// as that can lead to optimizations where they wind up being unused
+	// but the original logic for using them was sound.
+	if ( ! analysis_options.inliner )
+		for ( auto a : pf->Inits() )
+			{
+			if ( pf->Locals().find(a) == pf->Locals().end() )
+				reporter->Warning("%s unused", a->Name());
+			}
+#endif
+
+	TrackMemoryManagement();
+
+	non_recursive = non_recursive_funcs.count(func) > 0;
+	}
+
+void ZAMCompiler::InitGlobals()
+	{
+	for ( auto g : pf->Globals() )
+		{
+		auto non_const_g = const_cast<ID*>(g);
+
+		GlobalInfo info;
+		info.id = {NewRef{}, non_const_g};
+		info.slot = AddToFrame(non_const_g);
+		global_id_to_info[non_const_g] = globalsI.size();
+		globalsI.push_back(info);
+		}
+	}
+
+void ZAMCompiler::InitArgs()
+	{
+	auto uds = ud->HasUsage(body.get()) ? ud->GetUsage(body.get()) :
+	                                      nullptr;
+
+	auto args = scope->OrderedVars();
+	int nparam = func->GetType()->Params()->NumFields();
+
+	push_existing_scope(scope);
+
+	for ( auto a : args )
+		{
+		if ( --nparam < 0 )
+			break;
+
+		auto arg_id = a.get();
+		if ( uds && uds->HasID(arg_id) )
+			LoadParam(arg_id);
+		else
+			{
+			// printf("param %s unused\n", obj_desc(arg_id.get()));
+			}
+		}
+
+	pop_scope();
+	}
+
+void ZAMCompiler::InitLocals()
+	{
+	// Assign slots for locals (which includes temporaries).
+	for ( auto l : pf->Locals() )
+		{
+		auto non_const_l = const_cast<ID*>(l);
+		// ### should check for unused variables.
+		// Don't add locals that were already added because they're
+		// parameters.
+		if ( ! HasFrameSlot(non_const_l) )
+			(void) AddToFrame(non_const_l);
+		}
+	}
+
+void ZAMCompiler::TrackMemoryManagement()
+	{
+	for ( auto& slot : frame_layout1 )
+		{
+		// Look for locals with values of types for which
+		// we do explicit memory management on (re)assignment.
+		auto t = slot.first->GetType();
+		if ( ZVal::IsManagedType(t) )
+			managed_slotsI.push_back(slot.second);
+		}
+	}
+
 StmtPtr ZAMCompiler::CompileBody()
 	{
 	curr_stmt = nullptr;
@@ -47,24 +137,7 @@ StmtPtr ZAMCompiler::CompileBody()
 	if ( LastStmt(body.get())->Tag() != STMT_RETURN )
 		SyncGlobals();
 
-	if ( breaks.size() > 0 )
-		{
-		ASSERT(breaks.size() == 1);
-
-		if ( func->Flavor() == FUNC_FLAVOR_HOOK )
-			{
-			// Rewrite the breaks.
-			for ( auto& b : breaks[0] )
-				{
-				auto& i = insts1[b.stmt_num];
-				delete i;
-				i = new ZInstI(OP_HOOK_BREAK_X);
-				}
-			}
-
-		else
-			reporter->Error("\"break\" used without an enclosing \"for\" or \"switch\"");
-		}
+	ResolveHookBreaks();
 
 	if ( nexts.size() > 0 )
 		reporter->Error("\"next\" used without an enclosing \"for\"");
@@ -85,6 +158,91 @@ StmtPtr ZAMCompiler::CompileBody()
 	for ( auto i = 0U; i < insts1.size(); ++i )
 		insts1[i]->inst_num = i;
 
+	ComputeLoopLevels();
+
+	if ( ! analysis_options.no_ZAM_opt )
+		OptimizeInsts();
+
+	AdjustBranches();
+
+	// Construct the final program with the dead code eliminated
+	// and branches resolved.
+
+	// Make sure we don't include the empty pending-instruction, if any.
+	if ( pending_inst )
+		pending_inst->live = false;
+
+	// Maps inst1 instructions to where they are in inst2.
+	// Dead instructions map to -1.
+	std::vector<int> inst1_to_inst2;
+
+	for ( auto i = 0U; i < insts1.size(); ++i )
+		{
+		if ( insts1[i]->live )
+			{
+			inst1_to_inst2.push_back(insts2.size());
+			insts2.push_back(insts1[i]);
+			}
+		else
+			inst1_to_inst2.push_back(-1);
+		}
+
+	// Re-concretize instruction numbers, and concretize GoTo's.
+	for ( auto i = 0U; i < insts2.size(); ++i )
+		insts2[i]->inst_num = i;
+
+	RetargetBranches();
+
+	// If we have remapped frame denizens, update them.  If not,
+	// create them.
+	if ( shared_frame_denizens.size() > 0 )
+		RemapFrameDenizens(inst1_to_inst2);
+
+	else
+		CreateSharedFrameDenizens();
+
+	delete pending_inst;
+
+	ConcretizeSwitches();
+
+	// Could erase insts1 here to recover memory, but it's handy
+	// for debugging.
+
+#if 0
+	if ( non_recursive )
+		func->UseStaticFrame();
+#endif
+
+	auto zb = make_intrusive<ZBody>(func->Name(), this);
+	zb->SetInsts(insts2);
+
+	return zb;
+	}
+
+void ZAMCompiler::ResolveHookBreaks()
+	{
+	if ( breaks.size() > 0 )
+		{
+		ASSERT(breaks.size() == 1);
+
+		if ( func->Flavor() == FUNC_FLAVOR_HOOK )
+			{
+			// Rewrite the breaks.
+			for ( auto& b : breaks[0] )
+				{
+				auto& i = insts1[b.stmt_num];
+				delete i;
+				i = new ZInstI(OP_HOOK_BREAK_X);
+				}
+			}
+
+		else
+			reporter->Error("\"break\" used without an enclosing \"for\" or \"switch\"");
+		}
+	}
+
+void ZAMCompiler::ComputeLoopLevels()
+	{
 	// Compute which instructions are inside loops.
 	for ( auto i = 0; i < int(insts1.size()); ++i )
 		{
@@ -126,10 +284,10 @@ StmtPtr ZAMCompiler::CompileBody()
 
 		ASSERT(! inst->target2 || inst->target2->inst_num > i);
 		}
+	}
 
-	if ( ! analysis_options.no_ZAM_opt )
-		OptimizeInsts();
-
+void ZAMCompiler::AdjustBranches()
+	{
 	// Move branches to dead code forward to their successor live code.
 	for ( auto i = 0U; i < insts1.size(); ++i )
 		{
@@ -147,200 +305,83 @@ StmtPtr ZAMCompiler::CompileBody()
 		if ( inst->target2 )
 			inst->target2 = FindLiveTarget(inst->target2);
 		}
+	}
 
-	// Construct the final program with the dead code eliminated
-	// and branches resolved.
-
-	// Make sure we don't include the empty pending-instruction, if any.
-	if ( pending_inst )
-		pending_inst->live = false;
-
-	// Maps inst1 instructions to where they are in inst2.
-	// Dead instructions map to -1.
-	std::vector<int> inst1_to_inst2;
-
-	for ( auto i = 0U; i < insts1.size(); ++i )
-		{
-		if ( insts1[i]->live )
-			{
-			inst1_to_inst2.push_back(insts2.size());
-			insts2.push_back(insts1[i]);
-			}
-		else
-			inst1_to_inst2.push_back(-1);
-		}
-
-	// Re-concretize instruction numbers, and concretize GoTo's.
-	for ( auto i = 0U; i < insts2.size(); ++i )
-		insts2[i]->inst_num = i;
-
+void ZAMCompiler::RetargetBranches()
+	{
 	for ( auto i = 0U; i < insts2.size(); ++i )
 		{
 		auto inst = insts2[i];
+		if ( ! inst->target )
+			continue;
 
-		if ( inst->target )
-			{
-			RetargetBranch(inst, inst->target, inst->target_slot);
+		RetargetBranch(inst, inst->target, inst->target_slot);
 
-			if ( inst->target2 )
-				RetargetBranch(inst, inst->target2,
-				               inst->target2_slot);
-			}
+		if ( inst->target2 )
+			RetargetBranch(inst, inst->target2, inst->target2_slot);
 		}
+	}
 
-	// If we have remapped frame denizens, update them.  If not,
-	// create them.
-	if ( shared_frame_denizens.size() > 0 )
-		{ // update
-		for ( auto i = 0U; i < shared_frame_denizens.size(); ++i )
+void ZAMCompiler::RemapFrameDenizens(const std::vector<int>& inst1_to_inst2)
+	{
+	for ( auto i = 0U; i < shared_frame_denizens.size(); ++i )
+		{
+		auto& info = shared_frame_denizens[i];
+
+		for ( auto& start : info.id_start )
 			{
-			auto& info = shared_frame_denizens[i];
+			// It can happen that the identifier's
+			// origination instruction was optimized
+			// away, if due to slot sharing it's of
+			// the form "slotX = slotX".  In that
+			// case, look forward for the next viable
+			// instruction.
+			while ( start < int(insts1.size()) &&
+				inst1_to_inst2[start] == -1 )
+				++start;
 
-			for ( auto& start : info.id_start )
-				{
-				// It can happen that the identifier's
-				// origination instruction was optimized
-				// away, if due to slot sharing it's of
-				// the form "slotX = slotX".  In that
-				// case, look forward for the next viable
-				// instruction.
-				while ( start < int(insts1.size()) &&
-				        inst1_to_inst2[start] == -1 )
-					++start;
-
-				ASSERT(start < insts1.size());
-				start = inst1_to_inst2[start];
-				}
-
-			shared_frame_denizens_final.push_back(info);
+			ASSERT(start < insts1.size());
+			start = inst1_to_inst2[start];
 			}
+
+		shared_frame_denizens_final.push_back(info);
 		}
+	}
 
-	else
-		{ // create
-		for ( auto i = 0U; i < frame_denizens.size(); ++i )
-			{
-			FrameSharingInfo info;
-			info.ids.push_back(frame_denizens[i]);
-			info.id_start.push_back(0);
-			info.scope_end = insts2.size();
+void ZAMCompiler::CreateSharedFrameDenizens()
+	{
+	for ( auto i = 0U; i < frame_denizens.size(); ++i )
+		{
+		FrameSharingInfo info;
+		info.ids.push_back(frame_denizens[i]);
+		info.id_start.push_back(0);
+		info.scope_end = insts2.size();
 
-			// The following doesn't matter since the value
-			// is only used during compiling, not during
-			// execution.
-			info.is_managed = false;
+		// The following doesn't matter since the value
+		// is only used during compiling, not during
+		// execution.
+		info.is_managed = false;
 
-			shared_frame_denizens_final.push_back(info);
-			}
+		shared_frame_denizens_final.push_back(info);
 		}
+	}
 
-	delete pending_inst;
-
+void ZAMCompiler::ConcretizeSwitches()
+	{
 	// Create concretized versions of any case tables.
-	ZBody::CaseMaps<bro_int_t> int_cases;
-	ZBody::CaseMaps<bro_uint_t> uint_cases;
-	ZBody::CaseMaps<double> double_cases;
-	ZBody::CaseMaps<std::string> str_cases;
-
 	ConcretizeSwitchTables(int_casesI, int_cases);
 	ConcretizeSwitchTables(uint_casesI, uint_cases);
 	ConcretizeSwitchTables(double_casesI, double_cases);
 	ConcretizeSwitchTables(str_casesI, str_cases);
-
-	// Could erase insts1 here to recover memory, but it's handy
-	// for debugging.
-
-#if 0
-	if ( non_recursive )
-		func->UseStaticFrame();
-#endif
-
-	auto zb = make_intrusive<ZBody>(func->Name(),
-	                    shared_frame_denizens_final, managed_slotsI,
-	                    globalsI, num_iters, non_recursive,
-			    int_cases, uint_cases, double_cases, str_cases);
-	zb->SetInsts(insts2);
-
-	return zb;
-	}
-
-void ZAMCompiler::Init()
-	{
-	auto uds = ud->HasUsage(body.get()) ? ud->GetUsage(body.get()) : nullptr;
-	auto args = scope->OrderedVars();
-	int nparam = func->GetType()->Params()->NumFields();
-
-	for ( auto g : pf->Globals() )
-		{
-		auto non_const_g = const_cast<ID*>(g);
-
-		GlobalInfo info;
-		info.id = {NewRef{}, non_const_g};
-		info.slot = AddToFrame(non_const_g);
-		global_id_to_info[non_const_g] = globalsI.size();
-		globalsI.push_back(info);
-		}
-
-	push_existing_scope(scope);
-
-	for ( auto a : args )
-		{
-		if ( --nparam < 0 )
-			break;
-
-		auto arg_id = a.get();
-		if ( uds && uds->HasID(arg_id) )
-			LoadParam(arg_id);
-		else
-			{
-			// printf("param %s unused\n", obj_desc(arg_id.get()));
-			}
-		}
-
-	pop_scope();
-
-	// Assign slots for locals (which includes temporaries).
-	for ( auto l : pf->Locals() )
-		{
-		auto non_const_l = const_cast<ID*>(l);
-		// ### should check for unused variables.
-		// Don't add locals that were already added because they're
-		// parameters.
-		if ( ! HasFrameSlot(non_const_l) )
-			(void) AddToFrame(non_const_l);
-		}
-
-#if 0
-	// Complain about unused aggregates ... but not if we're inlining,
-	// as that can lead to optimizations where they wind up being unused
-	// but the original logic for using them was sound.
-	if ( ! analysis_options.inliner )
-		for ( auto a : pf->Inits() )
-			{
-			if ( pf->Locals().find(a) == pf->Locals().end() )
-				reporter->Warning("%s unused", a->Name());
-			}
-#endif
-
-	for ( auto& slot : frame_layout1 )
-		{
-		// Look for locals with values of types for which
-		// we do explicit memory management on (re)assignment.
-		auto t = slot.first->GetType();
-		if ( ZVal::IsManagedType(t) )
-			managed_slotsI.push_back(slot.second);
-		}
-
-	non_recursive = non_recursive_funcs.count(func) > 0;
 	}
 
 template <typename T>
 void ZAMCompiler::ConcretizeSwitchTables(const CaseMapsI<T>& abstract_cases,
-			                 ZBody::CaseMaps<T>& concrete_cases)
+			                 CaseMaps<T>& concrete_cases)
 	{
 	for ( auto& targs : abstract_cases )
 		{
-		ZBody::CaseMap<T> cm;
+		CaseMap<T> cm;
 		for ( auto& targ : targs )
 			cm[targ.first] = targ.second->inst_num;
 		concrete_cases.push_back(cm);
