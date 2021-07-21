@@ -270,7 +270,6 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ZAM-AssignFlavorsDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpSideEffects.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpsDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-OpsNamesDefs.h
-                          ${CMAKE_CURRENT_BINARY_DIR}/ZAM-SubDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-Vec1EvalDefs.h
                           ${CMAKE_CURRENT_BINARY_DIR}/ZAM-Vec2EvalDefs.h
                    COMMAND ${CMAKE_CURRENT_BINARY_DIR}/Gen-ZAM
@@ -428,7 +427,7 @@ set(MAIN_SRCS
     script_opt/ZAM/AM-Opt.cc
     script_opt/ZAM/Branches.cc
     script_opt/ZAM/BuiltIn.cc
-    script_opt/ZAM/Compile.cc
+    script_opt/ZAM/Driver.cc
     script_opt/ZAM/Expr.cc
     script_opt/ZAM/Inst-Gen.cc
     script_opt/ZAM/Low-Level.cc

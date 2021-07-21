@@ -15,6 +15,12 @@ typedef std::vector<ValPtr> val_vec;
 // tracking "use" and "reaching" definitions, and for error messages.
 extern const Stmt* curr_stmt;
 
+// True if a function with the given profile can be compiled to ZAM.
+// If not, returns the reason in *reason, if non-nil.
+class ProfileFunc;
+extern bool is_ZAM_compilable(const ProfileFunc* pf,
+                              const char** reason = nullptr);
+
 // True if a given type is one that we treat internally as an "any" type.
 extern bool IsAny(const Type* t);
 

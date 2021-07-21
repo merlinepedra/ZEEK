@@ -2,10 +2,11 @@
 
 // Low-level support utilities/globals for ZAM compilation.
 
-#include "zeek/script_opt/ZAM/Support.h"
 #include "zeek/Reporter.h"
 #include "zeek/Desc.h"
 #include "zeek/ZeekString.h"
+#include "zeek/script_opt/ProfileFunc.h"
+#include "zeek/script_opt/ZAM/Support.h"
 
 namespace zeek::detail {
 
@@ -13,6 +14,25 @@ const Stmt* curr_stmt;
 TypePtr log_ID_enum_type;
 TypePtr any_base_type;
 bool ZAM_error = false;
+
+bool is_ZAM_compilable(const ProfileFunc* pf, const char** reason)
+	{
+	if ( pf->NumLambdas() > 0 )
+		{
+		if ( reason )
+			*reason = "use of lambda";
+		return false;
+		}
+
+	if ( pf->NumWhenStmts() > 0 )
+		{
+		if ( reason )
+			*reason = "use of \"when\"";
+		return false;
+		}
+
+	return true;
+	}
 
 bool IsAny(const Type* t)
 	{

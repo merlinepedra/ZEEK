@@ -24,6 +24,10 @@ struct AnalyOpt {
 	// Applies to both ZAM and C++.
 	std::optional<std::string> only_func;
 
+	// For a given compilation target, report functions that can't
+	// be compiled.
+	bool report_uncompilable = false;
+
 
 	////// Options relating to ZAM:
 
@@ -121,7 +125,11 @@ using ScriptFuncPtr = IntrusivePtr<ScriptFunc>;
 // Info we need for tracking an instance of a function.
 class FuncInfo {
 public:
-	FuncInfo(ScriptFuncPtr func, ScopePtr scope, StmtPtr body, int priority);
+	FuncInfo(ScriptFuncPtr _func, ScopePtr _scope, StmtPtr _body,
+	         int _priority)
+	: func(std::move(_func)), scope(std::move(_scope)),
+	  body(std::move(_body)), priority(_priority)
+		{}
 
 	ScriptFunc* Func() const		{ return func.get(); }
 	const ScriptFuncPtr& FuncPtr() const	{ return func; }
@@ -132,7 +140,9 @@ public:
 	std::shared_ptr<ProfileFunc> ProfilePtr() const	{ return pf; }
 
 	void SetBody(StmtPtr new_body)	{ body = std::move(new_body); }
-	void SetProfile(std::shared_ptr<ProfileFunc> _pf);
+	// void SetProfile(std::shared_ptr<ProfileFunc> _pf);
+	void SetProfile(std::shared_ptr<ProfileFunc> _pf)
+		{ pf = std::move(_pf); }
 
 	// The following provide a way of marking FuncInfo's as
 	// should-be-skipped for script optimization, generally because

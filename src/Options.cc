@@ -140,6 +140,37 @@ void usage(const char* prog, int code)
 	exit(code);
 	}
 
+static void print_analysis_help()
+	{
+	fprintf(stderr, "--optimize options when using ZAM:\n");
+	fprintf(stderr, "    ZAM	execute scripts using ZAM and all optimizations\n");
+	fprintf(stderr, "    help	print this list\n");
+	fprintf(stderr, "    report-uncompilable	print names of functions that can't be compiled\n");
+	fprintf(stderr, "\n  primarily for developers:\n");
+	fprintf(stderr, "    compile-all	*if* compiling, compile all scripts, even inlined ones\n");
+	fprintf(stderr, "    dump-uds	dump use-defs to stdout; implies xform\n");
+	fprintf(stderr, "    dump-xform	dump transformed scripts to stdout; implies xform\n");
+	fprintf(stderr, "    dump-ZAM	dump generated ZAM code; implies gen-ZAM-code\n");
+	fprintf(stderr, "    gen-ZAM-code	generate ZAM code (without turning on additional optimizations)\n");
+	fprintf(stderr, "    inline	inline function calls\n");
+	fprintf(stderr, "    no-ZAM-opt	omit low-level ZAM optimization\n");
+	fprintf(stderr, "    optimize-AST	optimize the (transformed) AST; implies xform\n");
+	fprintf(stderr, "    profile-ZAM	generate to stdout a ZAM execution profile\n");
+	fprintf(stderr, "    recursive	report on recursive functions and exit\n");
+	fprintf(stderr, "    xform	transform scripts to \"reduced\" form\n");
+
+	fprintf(stderr, "\n--optimize options when generating C++:\n");
+	fprintf(stderr, "    gen-C++	generate C++ script bodies\n");
+	fprintf(stderr, "    gen-standalone-C++	generate \"standalone\" C++ script bodies\n");
+	fprintf(stderr, "    help	print this list\n");
+	fprintf(stderr, "    report-C++	report available C++ script bodies and exit\n");
+	fprintf(stderr, "    report-uncompilable	print names of functions that can't be compiled\n");
+	fprintf(stderr, "    use-C++	use available C++ script bodies\n");
+	fprintf(stderr, "\n  experimental options for incremental compilation:\n");
+	fprintf(stderr, "    add-C++	generate private C++ for any missing script bodies\n");
+	fprintf(stderr, "    update-C++	generate reusable C++ for any missing script bodies\n");
+	}
+
 static void set_analysis_option(const char* opt, Options& opts)
 	{
 	auto& a_o = opts.analysis_options;
@@ -153,29 +184,7 @@ static void set_analysis_option(const char* opt, Options& opts)
 
 	if ( util::streq(opt, "help") )
 		{
-		fprintf(stderr, "--optimize options when using ZAM:\n");
-		fprintf(stderr, "    compile-all	*if* compiling, compile all scripts, even inlined ones\n");
-		fprintf(stderr, "    dump-uds	dump use-defs to stdout; implies xform\n");
-		fprintf(stderr, "    dump-xform	dump transformed scripts to stdout; implies xform\n");
-		fprintf(stderr, "    dump-ZAM	dump generated ZAM code; implies gen-ZAM-code\n");
-		fprintf(stderr, "    gen-ZAM-code	generate ZAM code (without turning on additional optimizations)\n");
-		fprintf(stderr, "    help	print this list\n");
-		fprintf(stderr, "    inline	inline function calls\n");
-		fprintf(stderr, "    no-ZAM-opt	omit low-level ZAM optimization\n");
-		fprintf(stderr, "    optimize-AST	optimize the (transformed) AST; implies xform\n");
-		fprintf(stderr, "    profile-ZAM	generate to stdout a ZAM execution profile\n");
-		fprintf(stderr, "    recursive	report on recursive functions and exit\n");
-		fprintf(stderr, "    xform	transform scripts to \"reduced\" form\n");
-		fprintf(stderr, "    ZAM	execute scripts using ZAM and all optimizations\n");
-
-		fprintf(stderr, "\n--optimize options when generating C++:\n");
-		fprintf(stderr, "    add-C++	generate private C++ for any missing script bodies\n");
-		fprintf(stderr, "    gen-C++	generate C++ script bodies\n");
-		fprintf(stderr, "    gen-standalone-C++	generate \"standalone\" C++ script bodies\n");
-		fprintf(stderr, "    help	print this list\n");
-		fprintf(stderr, "    report-C++	report available C++ script bodies and exit\n");
-		fprintf(stderr, "    update-C++	generate reusable C++ for any missing script bodies\n");
-		fprintf(stderr, "    use-C++	use available C++ script bodies\n");
+		print_analysis_help();
 		exit(0);
 		}
 
@@ -207,6 +216,8 @@ static void set_analysis_option(const char* opt, Options& opts)
 		a_o.inliner = a_o.report_recursive = true;
 	else if ( util::streq(opt, "report-C++") )
 		a_o.report_CPP = true;
+	else if ( util::streq(opt, "report-uncompilable") )
+		a_o.report_uncompilable = true;
 	else if ( util::streq(opt, "update-C++") )
 		a_o.update_CPP = true;
 	else if ( util::streq(opt, "use-C++") )
@@ -216,7 +227,9 @@ static void set_analysis_option(const char* opt, Options& opts)
 
 	else
 		{
-		fprintf(stderr,"zeek: unrecognized --optimize option: %s\n", opt);
+		fprintf(stderr,"zeek: unrecognized -O/--optimize option: %s\n\n",
+		        opt);
+		print_analysis_help();
 		exit(1);
 		}
 	}
