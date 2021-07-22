@@ -702,7 +702,7 @@ void ZAM_OpTemplate::GenAssignOpCore(const vector<ZAM_OperandType>& ot,
 		else
 			Emit("auto& f = frame[z.v1];");
 
-		Emit("zeek::Unref(f.AsAny());");
+		Emit("zeek::Unref(f.ManagedVal());");
 		Emit("f = ZVal(v.release());");
 		}
 
@@ -734,7 +734,7 @@ void ZAM_OpTemplate::GenAssignOpCore(const vector<ZAM_OperandType>& ot,
 		if ( is_managed )
 			{
 			Emit("zeek::Ref((*v)" + acc + ");");
-			Emit("zeek::Unref(f" + acc +");");
+			Emit("zeek::Unref(f.ManagedVal());");
 			}
 
 		Emit("f = *v;");
@@ -753,7 +753,7 @@ void ZAM_OpTemplate::GenAssignOpCore(const vector<ZAM_OperandType>& ot,
 			Emit("auto& f = r->RawField(" + slot + ");");
 
 			if ( is_managed )
-				Emit("zeek::Unref(f" + acc + ");");
+				Emit("zeek::Unref(f.ManagedVal());");
 
 			Emit("f = " + rhs + ";");
 			}
@@ -761,7 +761,7 @@ void ZAM_OpTemplate::GenAssignOpCore(const vector<ZAM_OperandType>& ot,
 		else
 			{
 			if ( is_managed )
-				Emit("zeek::Unref(frame[z.v1]" + acc + ");");
+				Emit("zeek::Unref(frame[z.v1].ManagedVal());");
 
 			Emit("frame[z.v1] = ZVal(" + rhs + acc + ");");
 			}
@@ -774,7 +774,6 @@ void ZAM_OpTemplate::GenAssignOpCore(const vector<ZAM_OperandType>& ot,
 void ZAM_OpTemplate::GenAssignOpValCore(const string& eval,
                                         const string& accessor, bool is_managed)
 	{
-	auto acc = ".As" + accessor + "()";
 	auto v = GetAssignVal();
 
 	Emit(eval);
@@ -805,15 +804,13 @@ void ZAM_OpTemplate::GenAssignOpValCore(const string& eval,
 	if ( IsInternalOp() )
 		rhs = v + val_accessor;
 	else
-		rhs = v + acc;
+		rhs = v + ".As" + accessor + "()";
 
 	if ( is_managed )
 		{
 		Emit("auto rhs = " + rhs + ";");
 		Emit("zeek::Ref(rhs);");
-
-		auto lhs_acc = "frame[z.v1]" + acc;
-		Emit("Unref(" + lhs_acc + ");");
+		Emit("Unref(frame[z.v1].ManagedVal());");
 		Emit("frame[z.v1] = ZVal(rhs);");
 		}
 	else
@@ -1434,7 +1431,7 @@ void ZAM_ExprOpTemplate::InstantiateEval(const vector<ZAM_OperandType>& ot_orig,
 			{
 			auto delim = zc == ZIC_VEC ? "->" : ".";
 			auto pre = "auto hold_lhs = " + lhs + delim +
-			           "ManagedValRef();\n\t";
+			           "ManagedVal();\n\t";
 			auto post = "\tUnref(hold_lhs);";
 			eval = pre + eval + post;
 			}
