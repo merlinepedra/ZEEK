@@ -1453,7 +1453,7 @@ void Dictionary::MakeRobustCookie(IterCookie* cookie)
 
 IterCookie* Dictionary::InitForIterationNonConst() //const
 	{
-	num_iterators++;
+	IncrIters();
 	return new IterCookie(const_cast<Dictionary*>(this));
 	}
 
@@ -1461,7 +1461,7 @@ void Dictionary::StopIterationNonConst(IterCookie* cookie) //const
 	{
 	ASSERT(num_iterators > 0);
 	if ( num_iterators > 0 )
-		num_iterators--;
+		DecrIters();
 	delete cookie;
 	}
 
@@ -1475,7 +1475,7 @@ void* Dictionary::NextEntryNonConst(detail::HashKey*& h, IterCookie*& c, bool re
 	if ( ! table )
 		{
 		if ( num_iterators > 0 )
-			num_iterators--;
+			DecrIters();
 		delete c;
 		c = nullptr;
 		return nullptr; //end of iteration.
@@ -1515,7 +1515,7 @@ void* Dictionary::NextEntryNonConst(detail::HashKey*& h, IterCookie*& c, bool re
 	if ( c->next >= capacity )
 		{//end.
 		if ( num_iterators > 0 )
-			num_iterators--;
+			DecrIters();
 		delete c;
 		c = nullptr;
 		return nullptr; //end of iteration.
@@ -1567,7 +1567,7 @@ DictIterator::DictIterator(const Dictionary* d, detail::DictEntry* begin, detail
 	// violate the constness guarantees of const-begin()/end() and cbegin()/cend(), but we're not modifying the
 	// actual data in the collection, just a counter in the wrapper of the collection.
 	dict = const_cast<Dictionary*>(d);
-	dict->num_iterators++;
+	dict->IncrIters();
 	}
 
 DictIterator::~DictIterator()
@@ -1575,7 +1575,7 @@ DictIterator::~DictIterator()
 	if ( dict )
 		{
 		assert(dict->num_iterators > 0);
-		dict->num_iterators--;
+		dict->DecrIters();
 		}
 	}
 
@@ -1599,13 +1599,13 @@ DictIterator::DictIterator(const DictIterator& that)
 	if ( dict )
 		{
 		assert(dict->num_iterators > 0);
-		dict->num_iterators--;
+		dict->DecrIters();
 		}
 
 	dict = that.dict;
 	curr = that.curr;
 	end = that.end;
-	dict->num_iterators++;
+	dict->IncrIters();
 	}
 
 DictIterator& DictIterator::operator=(const DictIterator& that)
@@ -1615,14 +1615,16 @@ DictIterator& DictIterator::operator=(const DictIterator& that)
 
 	if ( dict )
 		{
+		fprintf(stderr, "checking %llx iterators ...", this);
+		fprintf(stderr, " %d\n", this, dict->num_iterators);
 		assert(dict->num_iterators > 0);
-		dict->num_iterators--;
+		dict->DecrIters();
 		}
 
 	dict = that.dict;
 	curr = that.curr;
 	end = that.end;
-	dict->num_iterators++;
+	dict->IncrIters();
 
 	return *this;
 	}
@@ -1635,7 +1637,7 @@ DictIterator::DictIterator(DictIterator&& that)
 	if ( dict )
 		{
 		assert(dict->num_iterators > 0);
-		dict->num_iterators--;
+		dict->DecrIters();
 		}
 
 	dict = that.dict;
@@ -1653,7 +1655,7 @@ DictIterator& DictIterator::operator=(DictIterator&& that)
 	if ( dict )
 		{
 		assert(dict->num_iterators > 0);
-		dict->num_iterators--;
+		dict->DecrIters();
 		}
 
 	dict = that.dict;
@@ -1735,7 +1737,7 @@ RobustDictIterator::RobustDictIterator(Dictionary* d) : curr(nullptr), dict(d)
 	inserted = new std::vector<detail::DictEntry>();
 	visited = new std::vector<detail::DictEntry>();
 
-	dict->num_iterators++;
+	dict->IncrIters();
 	dict->iterators->push_back(this);
 
 	// Advance the iterator one step so that we're at the first element.
@@ -1759,7 +1761,7 @@ RobustDictIterator::RobustDictIterator(const RobustDictIterator& other) : curr(n
 			std::copy(other.visited->begin(), other.visited->end(), std::back_inserter(*visited));
 
 		dict = other.dict;
-		dict->num_iterators++;
+		dict->IncrIters();
 		dict->iterators->push_back(this);
 
 		curr = other.curr;
@@ -1796,7 +1798,7 @@ void RobustDictIterator::Complete()
 	if ( dict )
 		{
 		assert(dict->num_iterators > 0);
-		dict->num_iterators--;
+		dict->DecrIters();
 
 		dict->iterators->erase(std::remove(dict->iterators->begin(), dict->iterators->end(), this),
 		                       dict->iterators->end());
