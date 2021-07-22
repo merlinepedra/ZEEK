@@ -1615,8 +1615,6 @@ DictIterator& DictIterator::operator=(const DictIterator& that)
 
 	if ( dict )
 		{
-		fprintf(stderr, "checking %llx iterators ...", this);
-		fprintf(stderr, " %d\n", this, dict->num_iterators);
 		assert(dict->num_iterators > 0);
 		dict->DecrIters();
 		}
