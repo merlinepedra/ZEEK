@@ -305,6 +305,7 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 			local_table_iters =
 			    std::make_unique<TableIterVec>(table_iters.size());
 			*local_table_iters = table_iters;
+			tiv_ptr = &(*local_table_iters);
 			}
 		}
 

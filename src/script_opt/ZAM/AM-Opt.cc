@@ -391,20 +391,18 @@ void ZAMCompiler::ComputeFrameLifetimes()
 			break;
 
 		case OP_INIT_TABLE_LOOP_VV:
-		case OP_INIT_TABLE_LOOP_RECURSIVE_VV:
 		case OP_INIT_VECTOR_LOOP_VV:
 		case OP_INIT_STRING_LOOP_VV:
 			{
-			// For all of these, the scope of the aggregate
-			// being looped over is the entire loop, even
-			// if it doesn't directly appear in it, and not
-			// just the initializer.  For all three, the
-			// aggregate is in v2.
+			// For all of these, the scope of the aggregate being
+			// looped over is the entire loop, even if it doesn't
+			// directly appear in it, and not just the initializer.
+			// For all three, the aggregate is in v1.
 			ASSERT(i < insts1.size() - 1);
 			auto succ = insts1[i+1];
 			ASSERT(succ->live);
 			auto depth = succ->loop_depth;
-			ExtendLifetime(inst->v2, EndOfLoop(succ, depth));
+			ExtendLifetime(inst->v1, EndOfLoop(succ, depth));
 
 			// Important: we skip the usual UsesSlots analysis
 			// below since we've already set it, and don't want

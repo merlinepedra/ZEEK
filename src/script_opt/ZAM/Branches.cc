@@ -143,7 +143,7 @@ void ZAMCompiler::SetV2(ZAMStmt s, const InstLabel l)
 		ot = OP_VVC_I2;
 
 	else
-		ASSERT(ot == OP_VV_I2 || ot == OP_VVC_I2);
+		ASSERT(ot == OP_VV_I2 || ot == OP_VV_I1_I2 || ot == OP_VVC_I2);
 	}
 
 void ZAMCompiler::SetV3(ZAMStmt s, const InstLabel l)

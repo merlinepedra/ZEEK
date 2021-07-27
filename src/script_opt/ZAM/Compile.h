@@ -185,7 +185,7 @@ private:
 
 	const ZAMStmt FinishLoop(const ZAMStmt iter_head, ZInstI iter_stmt,
 	                         const Stmt* body, int iter_slot,
-	                         bool is_table, bool is_recursive = false);
+	                         bool is_table);
 
 	const ZAMStmt Loop(const Stmt* body);
 

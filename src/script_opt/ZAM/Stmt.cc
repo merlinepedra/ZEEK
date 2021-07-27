@@ -831,10 +831,7 @@ const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
 	auto iter_slot = table_iters.size();
 	table_iters.emplace_back(TableIterInfo());
 
-	auto op = non_recursive ? OP_INIT_TABLE_LOOP_VV :
-	                          OP_INIT_TABLE_LOOP_RECURSIVE_VV;
-
-	auto z = ZInstI(op, FrameSlot(val), iter_slot);
+	auto z = ZInstI(OP_INIT_TABLE_LOOP_VV, FrameSlot(val), iter_slot);
 	z.op_type = OP_VV_I2;
 	z.SetType(value_var ? value_var->GetType() : nullptr);
 	z.aux = aux;
@@ -860,7 +857,7 @@ const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
 
 	z.aux = aux;	// so ZOpt.cc can get to it
 
-	return FinishLoop(iter_head, z, body, iter_slot, true, ! non_recursive);
+	return FinishLoop(iter_head, z, body, iter_slot, true);
 	}
 
 const ZAMStmt ZAMCompiler::LoopOverVector(const ForStmt* f, const NameExpr* val)
@@ -931,23 +928,23 @@ const ZAMStmt ZAMCompiler::Loop(const Stmt* body)
 
 const ZAMStmt ZAMCompiler::FinishLoop(const ZAMStmt iter_head, ZInstI iter_stmt,
                                       const Stmt* body, int iter_slot,
-                                      bool is_table, bool is_recursive)
+                                      bool is_table)
 	{
 	auto loop_iter = AddInst(iter_stmt);
 	auto body_end = CompileStmt(body);
 
-	ZOp op;
-
-	if ( is_table )
-		op = is_recursive ? OP_END_TABLE_LOOP_V :
-		                    OP_END_TABLE_LOOP_RECURSIVE_V;
-	else
-		op = OP_NOP;	// no clean-up required
+	// We only need cleanup for looping over tables, but for now we
+	// need some sort of placeholder instruction (until the optimizer
+	// can elide it) to resolve loop exits.
+	ZOp op = is_table ? OP_END_TABLE_LOOP_V : OP_NOP;
 
 	auto loop_end = GoTo(GoToTarget(iter_head));
-	auto final_stmt = AddInst(ZInstI(op, iter_slot));
+	auto z = ZInstI(op, iter_slot);
+	z.op_type = is_table ? OP_V_I1 : OP_X;
+	auto final_stmt = AddInst(z);
 
-	if ( iter_stmt.op_type == OP_VVV_I3 )
+	auto ot = iter_stmt.op_type;
+	if ( ot == OP_VVV_I3 || ot == OP_VVV_I2_I3)
 		SetV3(loop_iter, GoToTarget(final_stmt));
 	else
 		SetV2(loop_iter, GoToTarget(final_stmt));

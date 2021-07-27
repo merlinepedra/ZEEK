@@ -1,6 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-// Information needed for ZAM loop iterations.
+// Classes to support ZAM for-loop iterations.
 
 #pragma once
 
@@ -9,6 +9,9 @@
 #include "zeek/script_opt/ZAM/ZInst.h"
 
 namespace zeek::detail {
+
+// Class for iterating over the elements of a table.  Requires some care
+// because the dictionary iterators need to be destructed when done.
 
 class TableIterInfo {
 public:
@@ -21,9 +24,13 @@ public:
 	// if we have any pending iterators we clear them.
 	~TableIterInfo()	{ Clear(); }
 
+	// Start looping over the elements of the given table.  "_aux"
+	// provides information about the index variables, their types,
+	// and the type of the value variable (if any).
 	void BeginLoop(const TableVal* _tv, ZInstAux* _aux)
 		{
 		tv = _tv;
+		aux = _aux;
 		auto tvd = tv->AsTable();
 		tbl_iter = tvd->begin();
 		tbl_end = tvd->end();
@@ -41,6 +48,8 @@ public:
 		++*tbl_iter;
 		}
 
+	// Performs the next iteration (assuming IsDoneIterating() returned
+	// false), assigning to the index variables.
 	void NextIter(ZVal* frame)
 		{
 		auto ind_lv = tv->RecreateIndex(*(*tbl_iter)->GetHashKey());
@@ -57,14 +66,17 @@ public:
 		IterFinished();
 		}
 
+	// For the current iteration, returns the corresponding value.
 	ZVal IterValue()
 		{
 		auto tev = (*tbl_iter)->GetValue<TableEntryVal*>();
 		return ZVal(tev->GetVal(), aux->value_var_type);
 		}
 
+	// Called upon finishing the iteration.
 	void EndIter()		{ Clear(); }
 
+	// Called to explicitly clear any iteration state.
 	void Clear()
 		{
 		tbl_iter = std::nullopt;
@@ -72,18 +84,20 @@ public:
 		}
 
 private:
-	ZInstAux* aux;
-
-	//// Dynamic information:
-
 	// The table we're looping over.  If we want to allow for the table
 	// going away before we're able to clear our iterators then we
 	// could change this to non-const and use Ref/Unref.
 	const TableVal* tv = nullptr;
 
+	// Associated auxiliary information.
+	ZInstAux* aux;
+
 	std::optional<DictIterator> tbl_iter;
 	std::optional<DictIterator> tbl_end;
 };
+
+// Class for simple step-wise iteration across an integer range.
+// Suitable for iterating over vectors or strings.
 
 class StepIterInfo {
 public:
@@ -92,6 +106,7 @@ public:
 	// that any use of the object starts with InitLoop().  That lets
 	// us use quasi-static objects for non-recursive functions.
 
+	// Initializes for looping over the elements of a raw vector.
 	void InitLoop(const std::vector<std::optional<ZVal>>* _vv)
 		{
 		vv = _vv;
@@ -99,6 +114,7 @@ public:
 		iter = 0;
 		}
 
+	// Initializes for looping over the elements of a raw string.
 	void InitLoop(const String* _s)
 		{
 		s = _s;

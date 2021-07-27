@@ -1628,13 +1628,7 @@ eval	auto v = frame[z.v1].any_val;
 internal-op Init-Table-Loop
 type VV
 op1-read
-eval	auto& ti = table_iters[z.v2];
-	ti.BeginLoop(frame[z.v1].table_val, z.aux);
-
-internal-op Init-Table-Loop-Recursive
-type VV
-op1-read
-eval	auto& ti = (*local_table_iters)[z.v2];
+eval	auto& ti = (*tiv_ptr)[z.v2];
 	ti.BeginLoop(frame[z.v1].table_val, z.aux);
 
 internal-op Next-Table-Iter
@@ -1646,7 +1640,7 @@ eval	NextTableIterPre(v1, v2)
 	ti.NextIter(frame);
 
 macro NextTableIterPre(iter, branch)
-	auto& ti = table_iters[z.iter];
+	auto& ti = (*tiv_ptr)[z.iter];
 	if ( ti.IsDoneIterating() )
 		BRANCH(branch)
 
@@ -1726,14 +1720,10 @@ eval	auto& si = step_iters[z.v2];
 	si.IterFinished();
 
 internal-op End-Table-Loop
-op1-read
+op1-internal
 type V
-eval    table_iters[z.v1].Clear();
+eval    (*tiv_ptr)[z.v1].Clear();
 
-internal-op End-Table-Loop-Recursive
-op1-read
-type V
-eval    (*local_table_iters)[z.v1].Clear();
 
 
 op When

@@ -95,6 +95,9 @@ public:
 	ZAMOpType op_type;
 
 	// Usually indices into frame, though sometimes hold integer constants.
+	// When an instruction has both frame slots and integer constants,
+	// the former always come first, even if conceptually in the operation
+	// the constant is an "earlier" operand.
 	int v1, v2, v3, v4;
 
 	ZVal c;	// constant associated with instruction, if any
