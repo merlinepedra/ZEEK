@@ -5,7 +5,6 @@
 #pragma once
 
 #include "zeek/Event.h"
-#include "zeek/script_opt/ReachingDefs.h"
 #include "zeek/script_opt/UseDefs.h"
 #include "zeek/script_opt/ZAM/ZBody.h"
 

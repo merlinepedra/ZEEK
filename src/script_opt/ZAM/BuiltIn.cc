@@ -3,8 +3,9 @@
 // ZAM methods associated with instructions that replace calls to
 // built-in functions.
 
-#include "zeek/script_opt/ZAM/Compile.h"
+#include "zeek/Func.h"
 #include "zeek/Reporter.h"
+#include "zeek/script_opt/ZAM/Compile.h"
 
 namespace zeek::detail {
 
