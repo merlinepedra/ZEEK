@@ -34,16 +34,6 @@ int ZOP_count[OP_NOP+1];
 double ZOP_CPU[OP_NOP+1];
 
 
-// The dynamic state of a global.  Used to construct an array indexed in
-// parallel with the globals[] array, which tracks the associated static
-// information.
-typedef enum {
-	GS_UNLOADED,	// global hasn't been loaded
-	GS_CLEAN,	// global has been loaded but not modified
-	GS_DIRTY,	// loaded-and-modified
-} GlobalState;
-
-
 void report_ZOP_profile()
 	{
 	for ( int i = 1; i <= OP_NOP; ++i )
@@ -161,6 +151,9 @@ ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 
 		for ( auto i = 0U; i < managed_slots.size(); ++i )
 			fixed_frame[managed_slots[i]].ClearManagedVal();
+
+		if ( num_globals > 0 )
+			global_state = new GlobalState[num_globals];
 		}
 
 	table_iters = zc->GetTableIters();
@@ -186,6 +179,7 @@ ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 ZBody::~ZBody()
 	{
 	delete[] fixed_frame;
+	delete[] global_state;
 	delete[] insts;
 	delete inst_count;
 	delete CPU_time;
@@ -257,8 +251,6 @@ ValPtr ZBody::Exec(Frame* f, StmtFlowType& flow)
 
 ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 	{
-	auto global_state = num_globals > 0 ?
-	                    new GlobalState[num_globals] : nullptr;
 	int pc = start_pc;
 	const int end_pc = ninst;
 
@@ -271,10 +263,6 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 #ifdef DEBUG
 	bool do_profile = analysis_options.profile_ZAM;
 #endif
-
-	// All globals start out unloaded.
-	for ( auto i = 0; i < num_globals; ++i )
-		global_state[i] = GS_UNLOADED;
 
 	ZVal* frame;
 	std::unique_ptr<TableIterVec> local_table_iters;
@@ -296,7 +284,14 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 			*local_table_iters = table_iters;
 			tiv_ptr = &(*local_table_iters);
 			}
+
+		if ( num_globals > 0 )
+			global_state = new GlobalState[num_globals];
 		}
+
+	// All globals start out unloaded.
+	for ( auto i = 0; i < num_globals; ++i )
+		global_state[i] = GS_UNLOADED;
 
 	flow = FLOW_RETURN;	// can be over-written by a Hook-Break
 
@@ -369,9 +364,8 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 			}
 
 		delete [] frame;
+		delete [] global_state;
 		}
-
-	delete [] global_state;
 
 	// Clear any error state.
 	ZAM_error = false;
