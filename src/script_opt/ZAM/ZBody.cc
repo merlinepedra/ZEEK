@@ -185,18 +185,7 @@ ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 
 ZBody::~ZBody()
 	{
-	if ( fixed_frame )
-		{
-		// Free slots with explicit memory management.
-		for ( auto i = 0U; i < managed_slots.size(); ++i )
-			{
-			auto& v = fixed_frame[managed_slots[i]];
-			ZVal::DeleteManagedType(v);
-			}
-
-		delete[] fixed_frame;
-		}
-
+	delete[] fixed_frame;
 	delete[] insts;
 	delete inst_count;
 	delete CPU_time;
@@ -358,10 +347,21 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 		// Make sure we don't have any dangling iterators.
 		for ( auto& ti : table_iters )
 			ti.Clear();
+
+		// Free slots for which we do explicit memory management,
+		// preparing them for reuse.
+		for ( auto i = 0U; i < managed_slots.size(); ++i )
+			{
+			auto& v = frame[managed_slots[i]];
+			ZVal::DeleteManagedType(v);
+			v.ClearManagedVal();
+			}
 		}
 	else
 		{
 		// Free those slots for which we do explicit memory management.
+		// No need to then clear them, as we're about to throw away
+		// the entire frame.
 		for ( auto i = 0U; i < managed_slots.size(); ++i )
 			{
 			auto& v = frame[managed_slots[i]];
