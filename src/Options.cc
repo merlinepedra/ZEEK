@@ -147,16 +147,16 @@ static void print_analysis_help()
 	fprintf(stderr, "    help	print this list\n");
 	fprintf(stderr, "    report-uncompilable	print names of functions that can't be compiled\n");
 	fprintf(stderr, "\n  primarily for developers:\n");
-	fprintf(stderr, "    compile-all	*if* compiling, compile all scripts, even inlined ones\n");
 	fprintf(stderr, "    dump-uds	dump use-defs to stdout; implies xform\n");
 	fprintf(stderr, "    dump-xform	dump transformed scripts to stdout; implies xform\n");
 	fprintf(stderr, "    dump-ZAM	dump generated ZAM code; implies gen-ZAM-code\n");
 	fprintf(stderr, "    gen-ZAM-code	generate ZAM code (without turning on additional optimizations)\n");
 	fprintf(stderr, "    inline	inline function calls\n");
 	fprintf(stderr, "    no-ZAM-opt	omit low-level ZAM optimization\n");
+	fprintf(stderr, "    optimize-all	optimize all scripts, even inlined ones\n");
 	fprintf(stderr, "    optimize-AST	optimize the (transformed) AST; implies xform\n");
 	fprintf(stderr, "    profile-ZAM	generate to stdout a ZAM execution profile\n");
-	fprintf(stderr, "    recursive	report on recursive functions and exit\n");
+	fprintf(stderr, "    report-recursive	report on recursive functions and exit\n");
 	fprintf(stderr, "    xform	transform scripts to \"reduced\" form\n");
 
 	fprintf(stderr, "\n--optimize options when generating C++:\n");
@@ -190,8 +190,6 @@ static void set_analysis_option(const char* opt, Options& opts)
 
 	if ( util::streq(opt, "add-C++") )
 		a_o.add_CPP = true;
-	else if ( util::streq(opt, "compile-all") )
-		a_o.activate = a_o.compile_all = true;
 	else if ( util::streq(opt, "dump-uds") )
 		a_o.activate = a_o.dump_uds = true;
 	else if ( util::streq(opt, "dump-xform") )
@@ -208,14 +206,16 @@ static void set_analysis_option(const char* opt, Options& opts)
 		a_o.inliner = true;
 	else if ( util::streq(opt, "no-ZAM-opt") )
 		a_o.activate = a_o.no_ZAM_opt = true;
+	else if ( util::streq(opt, "optimize-all") )
+		a_o.activate = a_o.compile_all = true;
 	else if ( util::streq(opt, "optimize-AST") )
 		a_o.activate = a_o.optimize_AST = true;
 	else if ( util::streq(opt, "profile-ZAM") )
 		a_o.activate = a_o.profile_ZAM = true;
-	else if ( util::streq(opt, "recursive") )
-		a_o.inliner = a_o.report_recursive = true;
 	else if ( util::streq(opt, "report-C++") )
 		a_o.report_CPP = true;
+	else if ( util::streq(opt, "report-recursive") )
+		a_o.inliner = a_o.report_recursive = true;
 	else if ( util::streq(opt, "report-uncompilable") )
 		a_o.report_uncompilable = true;
 	else if ( util::streq(opt, "update-C++") )

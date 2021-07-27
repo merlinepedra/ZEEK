@@ -117,7 +117,8 @@ static void optimize_func(ScriptFunc* f, std::shared_ptr<ProfileFunc> pf,
 	if ( ! is_ZAM_compilable(pf.get(), &reason) )
 		{
 		if ( analysis_options.report_uncompilable )
-			printf("Skipping analysis due to %s\n", reason);
+			printf("Skipping compilation of %s due to %s\n",
+			       f->Name(), reason);
 		return;
 		}
 
