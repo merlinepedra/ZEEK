@@ -1627,26 +1627,15 @@ eval	auto v = frame[z.v1].any_val;
 
 internal-op Init-Table-Loop
 type VV
-eval	auto ii = z.aux->iter_info;
-	InitTableLoopPost()
-
-macro InitTableLoopPost()
-	auto tv = frame[z.v2].table_val;
-	auto tvd = tv->AsTable();
-	ii->tv = tv;
-	ii->tbl_iter = tvd->begin();
-	ii->tbl_end = tvd->end();
-	ii->value_var_type = z.t;
-	frame[z.v1].iter_info = ii;
+op1-read
+eval	auto& ti = table_iters[z.v2];
+	ti.BeginLoop(frame[z.v1].table_val, z.aux);
 
 internal-op Init-Table-Loop-Recursive
-type VVV
-eval	auto ii = z.aux->iter_info;
-	auto& nii = (*iters)[z.v3];
-	nii.loop_vars = ii->loop_vars;
-	nii.loop_var_types = ii->loop_var_types;
-	ii = &nii;
-	InitTableLoopPost()
+type VV
+op1-read
+eval	auto& ti = (*local_table_iters)[z.v2];
+	ti.BeginLoop(frame[z.v1].table_val, z.aux);
 
 internal-op Next-Table-Iter
 op1-read
@@ -1654,22 +1643,11 @@ op1-read
 # v2 = branch target if loop done
 type VV
 eval	NextTableIterPre(v1, v2)
-	auto ind_lv = ii->tv->RecreateIndex(*current_tev->GetHashKey());
-	for ( int i = 0; i < ind_lv->Length(); ++i )
-		{
-		ValPtr ind_lv_p = ind_lv->Idx(i);
-		auto t = ii->loop_var_types[i];
-		auto& var = frame[ii->loop_vars[i]];
-		if ( ZVal::IsManagedType(t) )
-			ZVal::DeleteManagedType(var);
-		var = BuildVal(ind_lv_p, ii->loop_var_types[i]);
-		}
-	++current_tev;
+	ti.NextIter(frame);
 
 macro NextTableIterPre(iter, branch)
-	auto ii = frame[z.iter].iter_info;
-	auto& current_tev = *ii->tbl_iter;
-	if ( current_tev == *ii->tbl_end )
+	auto& ti = table_iters[z.iter];
+	if ( ti.IsDoneIterating() )
 		BRANCH(branch)
 
 internal-op Next-Table-Iter-No-Vars
@@ -1678,7 +1656,7 @@ op1-read
 # v2 = branch target if loop done
 type VV
 eval	NextTableIterPre(v1, v2)
-	++current_tev;
+	ti.IterFinished();
 
 internal-op Next-Table-Iter-Val-Var
 # v1 = slot of the "ValueVar"
@@ -1686,25 +1664,8 @@ internal-op Next-Table-Iter-Val-Var
 # v3 = branch target if loop done
 type VVV
 eval	NextTableIterPre(v2, v3)
-	auto ind_lv = ii->tv->RecreateIndex(*current_tev->GetHashKey());
-	NextTableIterPost()
-	for ( int i = 0; i < ind_lv->Length(); i++ )
-		{
-		ValPtr ind_lv_p = ind_lv->Idx(i);
-		auto ind = ii->loop_vars[i];
-		auto loop_var_t = ii->loop_var_types[i];
-		if ( ZVal::IsManagedType(loop_var_t) )
-			ZVal::DeleteManagedType(frame[ind]);
-		frame[ind] = BuildVal(ind_lv_p, loop_var_t);
-		}
-
-macro NextTableIterPost()
-	auto tev = current_tev->GetValue<TableEntryVal*>();
-	auto val_var_t = ii->value_var_type;
-	if ( z.is_managed )
-		ZVal::DeleteManagedType(frame[z.v1]);
-	frame[z.v1] = BuildVal(tev->GetVal(), val_var_t);
-	++current_tev;
+	frame[z.v1] = ti.IterValue();
+	ti.NextIter(frame);
 
 internal-op Next-Table-Iter-Val-Var-No-Vars
 # v1 = slot of the "ValueVar"
@@ -1712,99 +1673,67 @@ internal-op Next-Table-Iter-Val-Var-No-Vars
 # v3 = branch target if loop done
 type VVV
 eval	NextTableIterPre(v2, v3)
-	NextTableIterPost()
+	frame[z.v1] = ti.IterValue();
+	ti.IterFinished();
+
 
 internal-op Init-Vector-Loop
 type VV
-eval	auto ii = z.aux->iter_info;
-	InitVectorPost()
-
-macro InitVectorPost()
-	ii->vv = frame[z.v2].vector_val->RawVec();
-	ii->n = ii->vv->size();
-	ii->iter = 0;
-	frame[z.v1].iter_info = ii;
-
-internal-op Init-Vector-Loop-Recursive
-type VVV
-eval	auto ii = z.aux->iter_info;
-	auto& nii = (*iters)[z.v3];
-	nii.vec_type = ii->vec_type;
-	nii.yield_type = ii->yield_type;
-	ii = &nii;
-	InitVectorPost()
+op1-read
+eval	auto& vv = frame[z.v1].vector_val->RawVec();
+	step_iters[z.v2].InitLoop(vv);
 
 internal-op Next-Vector-Iter
 # v1 = iteration variable
 # v2 = iteration info
 # v3 = branch target if loop done
 type VVV
-eval	auto ii = frame[z.v2].iter_info;
-	if ( ii->iter >= ii->n )
+eval	auto& si = step_iters[z.v2];
+	if ( si.IsDoneIterating() )
 		BRANCH(v3)
-	const auto& vv = *ii->vv;
-	if ( ! vv[ii->iter] )
-		{
-		++ii->iter;
-		--pc;
+	const auto& vv = *si.vv;
+	if ( ! vv[si.iter] )
+		{ // Account for vector hole.  Re-execute for next position.
+		si.IterFinished();
+		--pc;	// so we then increment to here again
 		break;
 		}
-	frame[z.v1].uint_val = ii->iter;
-	++ii->iter;
+	frame[z.v1].uint_val = si.iter;
+	si.IterFinished();
+
 
 internal-op Init-String-Loop
 type VV
-eval	auto ii = z.aux->iter_info;
-	InitStringLoopPost(frame[z.v2])
-
-macro InitStringLoopPost(val)
-	ii->s = val.string_val->AsString();
-	ii->iter = 0;
-	ii->n = ii->s->Len();
-	frame[z.v1].iter_info = ii;
+op1-read
+eval	step_iters[z.v2].InitLoop(frame[z.v1].string_val->AsString());
 
 internal-op Init-String-Loop
 type VC
-eval	auto ii = z.aux->iter_info;
-	InitStringLoopPost(z.c)
-
-internal-op Init-String-Loop-Recursive
-type VVV
-eval	auto ii = &(*iters)[z.v3];
-	InitStringLoopPost(frame[z.v2])
-
-internal-op Init-String-Loop-Recursive
-type VVC
-eval	auto ii = &(*iters)[z.v2];
-	InitStringLoopPost(z.c)
+eval	step_iters[z.v2].InitLoop(z.c.string_val->AsString());
 
 internal-op Next-String-Iter
 # v1 = iteration variable
 # v2 = iteration info
 # v3 = branch target if loop done
 type VVV
-eval	auto ii = frame[z.v2].iter_info;
-	auto sval = ii->s;
-	if ( ii->iter >= ii->n )
+eval	auto& si = step_iters[z.v2];
+	if ( si.IsDoneIterating() )
 		BRANCH(v3)
-	auto bytes = (const char*) sval->Bytes() + ii->iter;
+	auto bytes = (const char*) si.s->Bytes() + si.iter;
 	auto sv = new StringVal(1, bytes);
 	Unref(frame[z.v1].string_val);
 	frame[z.v1].string_val = sv;
-	++ii->iter;
-
-internal-op End-Loop
-op1-read
-type V
-eval	auto& ii = frame[z.v1].iter_info;
-	ii->vv = nullptr;	// not strictly needed
+	si.IterFinished();
 
 internal-op End-Table-Loop
 op1-read
 type V
-eval	auto& ii = frame[z.v1].iter_info;
-	ii->tbl_iter = std::nullopt;
-	ii->tbl_end = std::nullopt;
+eval    table_iters[z.v1].Clear();
+
+internal-op End-Table-Loop-Recursive
+op1-read
+type V
+eval    (*local_table_iters)[z.v1].Clear();
 
 
 op When

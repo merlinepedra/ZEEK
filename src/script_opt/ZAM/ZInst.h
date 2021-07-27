@@ -6,7 +6,6 @@
 
 #include "zeek/script_opt/ZAM/Support.h"
 #include "zeek/script_opt/ZAM/ZOp.h"
-#include "zeek/script_opt/ZAM/ZIterInfo.h"
 
 namespace zeek::detail {
 
@@ -324,7 +323,6 @@ public:
 		delete [] ints;
 		delete [] constants;
 		delete [] types;
-		delete iter_info;
 		}
 
 	// Returns the i'th element of the parallel arrays as a ValPtr.
@@ -412,15 +410,25 @@ public:
 	ValPtr* constants = nullptr;
 	TypePtr* types = nullptr;
 
+	// Used for manipulating globals and accessing function names.
+	ID* id_val = nullptr;
+
 	// The following is only used for OP_CONSTRUCT_KNOWN_RECORD_V,
 	// to map elements in slots/constants/types to record field offsets.
 	std::vector<int> map;
 
-	// If non-nil, then iteration information for a loop.
-	ZAMIterInfo* iter_info = nullptr;
+	///// The following three apply to looping over the elements of tables.
 
-	// Used for manipulating globals and accessing function names.
-	ID* id_val = nullptr;
+	// Frame slots of iteration variables, such as "[v1, v2, v3] in aggr".
+	std::vector<int> loop_vars;
+
+	// Their types.
+	std::vector<TypePtr> loop_var_types;
+
+	// Type associated with the "value" entry, for "k, value in aggr"
+	// iteration.
+	TypePtr value_var_type;
+
 
 	// This is only used to return values stored elsewhere in this
 	// object - it's not set directly.

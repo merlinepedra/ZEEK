@@ -150,8 +150,6 @@ ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 	globals = zc->Globals();
 	num_globals = globals.size();
 
-	num_iters = zc->NumIters();
-
 	int_cases = zc->GetCases<bro_int_t>();
 	uint_cases = zc->GetCases<bro_uint_t>();
 	double_cases = zc->GetCases<double>();
@@ -164,6 +162,9 @@ ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 		for ( auto i = 0U; i < managed_slots.size(); ++i )
 			fixed_frame[managed_slots[i]].ClearManagedVal();
 		}
+
+	table_iters = zc->GetTableIters();
+	num_step_iters = zc->NumStepIters();
 
 	// It's a little weird doing this in the constructor, but unless
 	// we add a general "initialize for ZAM" function, this is as good
@@ -270,13 +271,13 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 	auto global_state = num_globals > 0 ?
 	                    new GlobalState[num_globals] : nullptr;
 	int pc = start_pc;
-	int end_pc = ninst;
+	const int end_pc = ninst;
 
 	// Return value, or nil if none.
 	const ZVal* ret_u;
 
 	// Type of the return value.  If nil, then we don't have a value.
-	TypePtr ret_type = nullptr;
+	TypePtr ret_type;
 
 #ifdef DEBUG
 	bool do_profile = analysis_options.profile_ZAM;
@@ -287,7 +288,8 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 		global_state[i] = GS_UNLOADED;
 
 	ZVal* frame;
-	vector<ZAMIterInfo>* iters = nullptr;
+	std::unique_ptr<TableIterVec> local_table_iters;
+	std::vector<StepIterInfo> step_iters(num_step_iters);
 
 	if ( fixed_frame )
 		frame = fixed_frame;
@@ -298,8 +300,12 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 		for ( auto s : managed_slots )
 			frame[s].ClearManagedVal();
 
-		if ( num_iters > 0 )
-			iters = new vector<ZAMIterInfo>(num_iters);
+		if ( table_iters.size() > 0 )
+			{
+			local_table_iters =
+			    std::make_unique<TableIterVec>(table_iters.size());
+			*local_table_iters = table_iters;
+			}
 		}
 
 	flow = FLOW_RETURN;	// can be over-written by a Hook-Break
@@ -346,7 +352,13 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 
 	auto result = ret_type ? ret_u->ToVal(ret_type) : nullptr;
 
-	if ( ! fixed_frame )
+	if ( fixed_frame )
+		{
+		// Make sure we don't have any dangling iterators.
+		for ( auto& ti : table_iters )
+			ti.Clear();
+		}
+	else
 		{
 		// Free those slots for which we do explicit memory management.
 		for ( auto i = 0U; i < managed_slots.size(); ++i )
@@ -356,8 +368,6 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 			}
 
 		delete [] frame;
-
-		delete iters;
 		}
 
 	delete [] global_state;

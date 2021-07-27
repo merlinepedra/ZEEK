@@ -795,8 +795,6 @@ const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
 	auto value_var = f->ValueVar();
 	auto body = f->LoopBody();
 
-	auto ii = new ZAMIterInfo();
-
 	// Check whether the loop variables are actually used in the body.
 	// This is motivated by an idiom where there's both loop_vars and
 	// a value_var, but the script only actually needs the value_var;
@@ -806,6 +804,8 @@ const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
 
 	int num_unused = 0;
 
+	auto aux = new ZInstAux(0);
+
 	for ( int i = 0; i < loop_vars->length(); ++i )
 		{
 		auto id = (*loop_vars)[i];
@@ -813,8 +813,8 @@ const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
 		if ( body_pf.Locals().count(id) == 0 )
 			++num_unused;
 
-		ii->loop_vars.push_back(FrameSlot(id));
-		ii->loop_var_types.push_back(id->GetType());
+		aux->loop_vars.push_back(FrameSlot(id));
+		aux->loop_var_types.push_back(id->GetType());
 		}
 
 	bool no_loop_vars = (num_unused == loop_vars->length());
@@ -825,25 +825,17 @@ const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
 		// well not do the work.
 		value_var = nullptr;
 
-	auto aux = new ZInstAux(0);
-	aux->iter_info = ii;
+	if ( value_var )
+		aux->value_var_type = value_var->GetType();
 
-	auto info = NewSlot(false);	// false <- ZAMIterInfo isn't managed
+	auto iter_slot = table_iters.size();
+	table_iters.emplace_back(TableIterInfo());
 
-	ZInstI z;
+	auto op = non_recursive ? OP_INIT_TABLE_LOOP_VV :
+	                          OP_INIT_TABLE_LOOP_RECURSIVE_VV;
 
-	if ( non_recursive )
-		{
-		z = ZInstI(OP_INIT_TABLE_LOOP_VV, info, FrameSlot(val));
-		z.op_type = OP_VV;
-		}
-	else
-		{
-		z = ZInstI(OP_INIT_TABLE_LOOP_RECURSIVE_VVV, info,
-		           FrameSlot(val), num_iters++);
-		z.op_type = OP_VVV_I3;
-		}
-
+	auto z = ZInstI(op, FrameSlot(val), iter_slot);
+	z.op_type = OP_VV_I2;
 	z.SetType(value_var ? value_var->GetType() : nullptr);
 	z.aux = aux;
 
@@ -854,21 +846,21 @@ const ZAMStmt ZAMCompiler::LoopOverTable(const ForStmt* f, const NameExpr* val)
 		{
 		ZOp op = no_loop_vars ? OP_NEXT_TABLE_ITER_VAL_VAR_NO_VARS_VVV :
 		                        OP_NEXT_TABLE_ITER_VAL_VAR_VVV;
-		z = ZInstI(op, FrameSlot(value_var), info, 0);
+		z = ZInstI(op, FrameSlot(value_var), iter_slot, 0);
 		z.CheckIfManaged(value_var->GetType());
-		z.op_type = OP_VVV_I3;
+		z.op_type = OP_VVV_I2_I3;
 		}
 	else
 		{
 		ZOp op = no_loop_vars ? OP_NEXT_TABLE_ITER_NO_VARS_VV :
 		                        OP_NEXT_TABLE_ITER_VV;
-		z = ZInstI(op, info, 0);
-		z.op_type = OP_VV_I2;
+		z = ZInstI(op, iter_slot, 0);
+		z.op_type = OP_VV_I1_I2;
 		}
 
 	z.aux = aux;	// so ZOpt.cc can get to it
 
-	return FinishLoop(iter_head, z, body, info, true);
+	return FinishLoop(iter_head, z, body, iter_slot, true, ! non_recursive);
 	}
 
 const ZAMStmt ZAMCompiler::LoopOverVector(const ForStmt* f, const NameExpr* val)
@@ -876,37 +868,18 @@ const ZAMStmt ZAMCompiler::LoopOverVector(const ForStmt* f, const NameExpr* val)
 	auto loop_vars = f->LoopVars();
 	auto loop_var = (*loop_vars)[0];
 
-	auto ii = new ZAMIterInfo();
-	ii->vec_type = cast_intrusive<VectorType>(val->GetType());
-	ii->yield_type = ii->vec_type->Yield();
+	int iter_slot = num_step_iters++;
 
-	auto info = NewSlot(false);
-
-	ZInstI z;
-
-	if ( non_recursive )
-		{
-		z = ZInstI(OP_INIT_VECTOR_LOOP_VV, info, FrameSlot(val));
-		z.op_type = OP_VV;
-		}
-	else
-		{
-		z = ZInstI(OP_INIT_VECTOR_LOOP_RECURSIVE_VVV, info,
-		           FrameSlot(val), num_iters++);
-		z.op_type = OP_VVV_I3;
-		}
-
-	z.aux = new ZInstAux(0);
-	z.aux->iter_info = ii;
+	auto z = ZInstI(OP_INIT_VECTOR_LOOP_VV, FrameSlot(val), iter_slot);
+	z.op_type = OP_VV_I2;
 
 	auto init_end = AddInst(z);
-
 	auto iter_head = StartingBlock();
 
-	z = ZInstI(OP_NEXT_VECTOR_ITER_VVV, FrameSlot(loop_var), info, 0);
-	z.op_type = OP_VVV_I3;
+	z = ZInstI(OP_NEXT_VECTOR_ITER_VVV, FrameSlot(loop_var), iter_slot, 0);
+	z.op_type = OP_VVV_I2_I3;
 
-	return FinishLoop(iter_head, z, f->LoopBody(), info, false);
+	return FinishLoop(iter_head, z, f->LoopBody(), iter_slot, false);
 	}
 
 const ZAMStmt ZAMCompiler::LoopOverString(const ForStmt* f, const Expr* e)
@@ -916,51 +889,29 @@ const ZAMStmt ZAMCompiler::LoopOverString(const ForStmt* f, const Expr* e)
 	auto loop_vars = f->LoopVars();
 	auto loop_var = (*loop_vars)[0];
 
-	auto info = NewSlot(false);
+	int iter_slot = num_step_iters++;
 
 	ZInstI z;
 
-	if ( non_recursive )
+	if ( n )
 		{
-		if ( n )
-			{
-			z = ZInstI(OP_INIT_STRING_LOOP_VV, info, FrameSlot(n));
-			z.op_type = OP_VV;
-			}
-		else
-			{
-			z = ZInstI(OP_INIT_STRING_LOOP_VC, info, c);
-			z.op_type = OP_VC;
-			}
+		z = ZInstI(OP_INIT_STRING_LOOP_VV, FrameSlot(n), iter_slot);
+		z.op_type = OP_VV_I2;
 		}
 	else
 		{
-		if ( n )
-			{
-			z = ZInstI(OP_INIT_STRING_LOOP_RECURSIVE_VVV, info,
-				   FrameSlot(n), num_iters++);
-			z.op_type = OP_VVV_I3;
-			}
-		else
-			{
-			z = ZInstI(OP_INIT_STRING_LOOP_RECURSIVE_VVC, info,
-				   num_iters++, c);
-			z.op_type = OP_VVC_I2;
-			}
+		z = ZInstI(OP_INIT_STRING_LOOP_VC, iter_slot, c);
+		z.op_type = OP_VC_I1;
 		}
 
-	z.aux = new ZInstAux(0);
-	z.aux->iter_info = new ZAMIterInfo();
-
 	auto init_end = AddInst(z);
-
 	auto iter_head = StartingBlock();
 
-	z = ZInstI(OP_NEXT_STRING_ITER_VVV, FrameSlot(loop_var), info, 0);
-	z.CheckIfManaged(loop_var->GetType());
-	z.op_type = OP_VVV_I3;
+	z = ZInstI(OP_NEXT_STRING_ITER_VVV, FrameSlot(loop_var), iter_slot, 0);
+	z.is_managed = true;
+	z.op_type = OP_VVV_I2_I3;
 
-	return FinishLoop(iter_head, z, f->LoopBody(), info, false);
+	return FinishLoop(iter_head, z, f->LoopBody(), iter_slot, false);
 	}
 
 const ZAMStmt ZAMCompiler::Loop(const Stmt* body)
@@ -979,15 +930,22 @@ const ZAMStmt ZAMCompiler::Loop(const Stmt* body)
 	}
 
 const ZAMStmt ZAMCompiler::FinishLoop(const ZAMStmt iter_head, ZInstI iter_stmt,
-                                      const Stmt* body, int info_slot,
-                                      bool is_table)
+                                      const Stmt* body, int iter_slot,
+                                      bool is_table, bool is_recursive)
 	{
 	auto loop_iter = AddInst(iter_stmt);
 	auto body_end = CompileStmt(body);
 
-	auto op = is_table ? OP_END_TABLE_LOOP_V : OP_END_LOOP_V;
+	ZOp op;
+
+	if ( is_table )
+		op = is_recursive ? OP_END_TABLE_LOOP_V :
+		                    OP_END_TABLE_LOOP_RECURSIVE_V;
+	else
+		op = OP_NOP;	// no clean-up required
+
 	auto loop_end = GoTo(GoToTarget(iter_head));
-	auto final_stmt = AddInst(ZInstI(op, info_slot));
+	auto final_stmt = AddInst(ZInstI(op, iter_slot));
 
 	if ( iter_stmt.op_type == OP_VVV_I3 )
 		SetV3(loop_iter, GoToTarget(final_stmt));

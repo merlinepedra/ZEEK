@@ -69,8 +69,10 @@ public:
 	const std::vector<GlobalInfo>& Globals() const
 		{ return  globalsI; }
 
-	int NumIters() const		{ return num_iters; }
 	bool NonRecursive() const	{ return non_recursive; }
+
+	const TableIterVec& GetTableIters() const	{ return table_iters; }
+	int NumStepIters() const	{ return num_step_iters; }
 
 	template <typename T>
 	const CaseMaps<T>& GetCases() const
@@ -182,7 +184,8 @@ private:
 	const ZAMStmt LoopOverString(const ForStmt* f, const Expr* e);
 
 	const ZAMStmt FinishLoop(const ZAMStmt iter_head, ZInstI iter_stmt,
-	                         const Stmt* body, int info_slot, bool is_table);
+	                         const Stmt* body, int iter_slot,
+	                         bool is_table, bool is_recursive = false);
 
 	const ZAMStmt Loop(const Stmt* body);
 
@@ -601,9 +604,8 @@ private:
 
 	int frame_sizeI;
 
-	// Number of iteration loops in the body.  Used to size the
-	// vector of ZAMIterInfo's used for recursive functions.
-	int num_iters = 0;
+	TableIterVec table_iters;
+	int num_step_iters = 0;
 
 	bool non_recursive = false;
 

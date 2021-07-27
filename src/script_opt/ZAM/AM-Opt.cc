@@ -324,10 +324,10 @@ void ZAMCompiler::ComputeFrameLifetimes()
 		case OP_NEXT_TABLE_ITER_VAL_VAR_VVV:
 			{
 			// These assign to an arbitrary long list of variables.
-			auto iter_vars = inst->aux->iter_info;
+			auto& iter_vars = inst->aux->loop_vars;
 			auto depth = inst->loop_depth;
 
-			for ( auto v : iter_vars->loop_vars )
+			for ( auto v : iter_vars )
 				{
 				CheckSlotAssignment(v, inst);
 
@@ -354,7 +354,6 @@ void ZAMCompiler::ComputeFrameLifetimes()
 		case OP_NEXT_TABLE_ITER_NO_VARS_VV:
 		case OP_NEXT_TABLE_ITER_VAL_VAR_NO_VARS_VVV:
 			{
-			auto iter_vars = inst->aux->iter_info;
 			auto depth = inst->loop_depth;
 
 			if ( inst->op == OP_NEXT_TABLE_ITER_VAL_VAR_NO_VARS_VVV )
@@ -392,11 +391,9 @@ void ZAMCompiler::ComputeFrameLifetimes()
 			break;
 
 		case OP_INIT_TABLE_LOOP_VV:
-		case OP_INIT_TABLE_LOOP_RECURSIVE_VVV:
+		case OP_INIT_TABLE_LOOP_RECURSIVE_VV:
 		case OP_INIT_VECTOR_LOOP_VV:
-		case OP_INIT_VECTOR_LOOP_RECURSIVE_VVV:
 		case OP_INIT_STRING_LOOP_VV:
-		case OP_INIT_STRING_LOOP_RECURSIVE_VVV:
 			{
 			// For all of these, the scope of the aggregate
 			// being looped over is the entire loop, even
@@ -535,8 +532,8 @@ void ZAMCompiler::ReMapFrame()
 		case OP_NEXT_TABLE_ITER_VAL_VAR_VVV:
 			{
 			// Rewrite iteration variables.
-			auto iter_vars = inst->aux->iter_info;
-			for ( auto& v : iter_vars->loop_vars )
+			auto& iter_vars = inst->aux->loop_vars;
+			for ( auto& v : iter_vars )
 				{
 				ASSERT(v >= 0 && v < n1_slots);
 				v = frame1_to_frame2[v];
@@ -882,8 +879,8 @@ bool ZAMCompiler::VarIsAssigned(int slot, const ZInstI* i) const
 	if ( i->op == OP_NEXT_TABLE_ITER_VAL_VAR_VVV ||
 	     i->op == OP_NEXT_TABLE_ITER_VV )
 		{
-		auto iter_vars = i->aux->iter_info;
-		for ( auto v : iter_vars->loop_vars )
+		auto& iter_vars = i->aux->loop_vars;
+		for ( auto v : iter_vars )
 			if ( v == slot )
 				return true;
 

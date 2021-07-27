@@ -4,8 +4,8 @@
 
 #pragma once
 
+#include "zeek/script_opt/ZAM/IterInfo.h"
 #include "zeek/script_opt/ZAM/Support.h"
-#include "zeek/script_opt/ZAM/ZInst.h"
 
 namespace zeek::detail {
 
@@ -23,6 +23,8 @@ public:
 // to instructions.
 template<typename T> using CaseMap = std::map<T, int>;
 template<typename T> using CaseMaps = std::vector<CaseMap<T>>;
+
+using TableIterVec = std::vector<TableIterInfo>;
 
 class ZBody : public Stmt {
 public:
@@ -78,12 +80,19 @@ private:
 	// A list of frame slots that correspond to managed values.
 	std::vector<int> managed_slots;
 
-	// Number of iteration loops, for recursive functions.
-	int num_iters;
-
 	// This is non-nil if the function is (asserted to be) non-recursive,
 	// in which case we pre-allocate this.
 	ZVal* fixed_frame = nullptr;
+
+	// Pre-allocated table iteration values.  For recursive invocations,
+	// these are copied into a local stack variable, but for non-recursive
+	// functions they can be used directly.
+	TableIterVec table_iters;
+
+	// Number of StepIterInfo's required by the function.  These we
+	// always create using a local stack variable, since they don't
+	// require any overhead or cleanup.
+	int num_step_iters;
 
 	std::vector<GlobalInfo> globals;
 	int num_globals;
