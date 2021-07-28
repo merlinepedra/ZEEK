@@ -1,1 +1,1 @@
-think about optimizing out NOP instructions, now that they're loop terminals
+get rid of target2

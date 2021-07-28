@@ -118,6 +118,7 @@ private:
 
 	template <typename T>
 	void DumpCases(const T& cases, const char* type_name) const;
+	void DumpInsts1(const FrameReMap* remappings);
 
 #include "zeek/ZAM-MethodDecls.h"
 
@@ -315,8 +316,8 @@ private:
 
 	// Given an instruction that has a slot associated with the
 	// given target, updates the slot to correspond with the current
-	// (final) location of the target.
-	void RetargetBranch(ZInstI* inst, ZInstI* target, int target_slot);
+	// instruction number of the target.
+	void ConcretizeBranch(ZInstI* inst, ZInstI* target, int target_slot);
 
 	void SetV(ZAMStmt s, const InstLabel l, int v)
 		{
@@ -435,14 +436,14 @@ private:
 	// Remove code that can't be reached.  True if some removal happened.
 	bool RemoveDeadCode();
 
-	// Collapse chains of gotos.  True if some collapsing happened.
+	// Collapse chains of gotos.  True if some something changed.
 	bool CollapseGoTos();
 
 	// Prune statements that are unnecessary.  True if something got
 	// pruned.
 	bool PruneUnused();
 
-	// For the current state of inst1, compute lifetimes of frame
+	// For the current state of insts1, compute lifetimes of frame
 	// denizens (variable(s) using a given frame slot) in terms of
 	// first-instruction-to-last-instruction during which they're
 	// relevant, including consideration for loops.
@@ -493,9 +494,38 @@ private:
 	// True if any statement other than a frame sync uses the given slot.
 	bool VarIsUsed(int slot) const;
 
-	// Mark a statement as unnecessary and remove its influence on
-	// other statements.
-	void KillInst(ZInstI* i);
+	// Find the first non-dead instruction after i (inclusive).
+	// If follow_gotos is true, then if that instruction is
+	// an unconditional branch, continues the process until
+	// a different instruction is found (and report if there
+	// are infinite loops).
+	//
+	// First form returns nil if there's nothing live after i.
+	// Second form returns insts1.size() in that case.
+	ZInstI* FirstLiveInst(ZInstI* i, bool follow_gotos = false);
+	int FirstLiveInst(int i, bool follow_gotos = false);
+
+	// Same, but not including i.
+	ZInstI* NextLiveInst(ZInstI* i, bool follow_gotos = false)
+		{
+		if ( i->inst_num == insts1.size() - 1 )
+			return nullptr;
+		return FirstLiveInst(insts1[i->inst_num + 1], follow_gotos);
+		}
+	int NextLiveInst(int i, bool follow_gotos = false)
+		{ return FirstLiveInst(i + 1, follow_gotos); }
+
+	// Mark an instruction as unnecessary and remove its influence on
+	// other statements.  The instruction is indicated as an offset
+	// into insts1; any labels associated with it are transferred
+	// to its next live successor, if any.
+	void KillInst(ZInstI* i)	{ KillInst(i->inst_num); }
+	void KillInst(int i);
+
+	// The same, but kills any successor instructions until finding
+	// one that's labeled.
+	void KillInsts(ZInstI* i)	{ KillInsts(i->inst_num); }
+	void KillInsts(int i);
 
 	// The first of these is used as we compile down to ZInstI's.
 	// The second is the final intermediary code.  They're separate
@@ -558,7 +588,7 @@ private:
 	AssociatedLocals inst_beginnings;
 
 	// ... and which frame denizens had their last usage at the
-	// given instruction.  (These are inst1 instructions, prior to
+	// given instruction.  (These are insts1 instructions, prior to
 	// removing dead instructions, compressing the frames, etc.)
 	AssociatedLocals inst_endings;
 

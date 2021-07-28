@@ -281,8 +281,7 @@ string ZInst::ConstDump() const
 	}
 
 
-void ZInstI::Dump(const FrameMap* frame_ids, const FrameReMap* remappings)
-			const
+void ZInstI::Dump(const FrameMap* frame_ids, const FrameReMap* remappings) const
 	{
 	int n = NumFrameSlots();
 	// printf("v%d ", n);

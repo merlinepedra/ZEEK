@@ -315,10 +315,10 @@ void ZAMCompiler::RetargetBranches()
 		if ( ! inst->target )
 			continue;
 
-		RetargetBranch(inst, inst->target, inst->target_slot);
+		ConcretizeBranch(inst, inst->target, inst->target_slot);
 
 		if ( inst->target2 )
-			RetargetBranch(inst, inst->target2, inst->target2_slot);
+			ConcretizeBranch(inst, inst->target2, inst->target2_slot);
 		}
 	}
 
@@ -397,14 +397,14 @@ void ZAMCompiler::Dump()
 	bool remapped_frame = ! analysis_options.no_ZAM_opt;
 
 	if ( remapped_frame )
-		printf("Original frame:\n");
+		printf("Original frame for %s:\n", func->Name());
 
 	for ( auto elem : frame_layout1 )
 		printf("frame[%d] = %s\n", elem.second, elem.first->Name());
 
 	if ( remapped_frame )
 		{
-		printf("Final frame:\n");
+		printf("Final frame for %s:\n", func->Name());
 
 		for ( auto i = 0U; i < shared_frame_denizens.size(); ++i )
 			{
@@ -416,35 +416,37 @@ void ZAMCompiler::Dump()
 		}
 
 	if ( insts2.size() > 0 )
-		printf("Pre-removal of dead code:\n");
+		printf("Pre-removal of dead code for %s:\n", func->Name());
 
 	auto remappings = remapped_frame ? &shared_frame_denizens : nullptr;
 
-	for ( auto i = 0U; i < insts1.size(); ++i )
-		{
-		auto& inst = insts1[i];
-		auto depth = inst->loop_depth;
-		printf("%d%s%s: ", i, inst->live ? "" : " (dead)",
-		       depth ? util::fmt(" (loop %d)", depth) : "");
-		inst->Dump(&frame_denizens, remappings);
-		}
+	DumpInsts1(remappings);
 
 	if ( insts2.size() > 0 )
-		printf("Final intermediary code:\n");
+		printf("Final intermediary code for %s:\n", func->Name());
 
 	remappings = remapped_frame ? &shared_frame_denizens_final : nullptr;
 
 	for ( auto i = 0U; i < insts2.size(); ++i )
 		{
 		auto& inst = insts2[i];
-		auto depth = inst->loop_depth;
-		printf("%d%s%s: ", i, inst->live ? "" : " (dead)",
-		       depth ? util::fmt(" (loop %d)", depth) : "");
+		std::string liveness, depth;
+
+		if ( inst->live )
+			liveness = util::fmt("(labels %d)", inst->num_labels);
+		else
+			liveness = "(dead)";
+
+		if ( inst->loop_depth )
+			depth = util::fmt(" (loop %d)", inst->loop_depth);
+
+		printf("%d %s%s: ", i, liveness.c_str(), depth.c_str());
+
 		inst->Dump(&frame_denizens, remappings);
 		}
 
 	if ( insts2.size() > 0 )
-		printf("Final code:\n");
+		printf("Final code for %s:\n", func->Name());
 
 	for ( auto i = 0U; i < insts2.size(); ++i )
 		{
@@ -478,6 +480,33 @@ void ZAMCompiler::DumpCases(const T& cases, const char* type_name) const
 			printf(" %s->%d", case_val.c_str(), m.second->inst_num);
 			}
 		printf("\n");
+		}
+	}
+
+void ZAMCompiler::DumpInsts1(const FrameReMap* remappings)
+	{
+	for ( auto i = 0U; i < insts1.size(); ++i )
+		{
+		auto& inst = insts1[i];
+
+		if ( inst->target )
+			// To get meaningful branch information in the dump,
+			// we need to concretize the branch slots
+                        ConcretizeBranch(inst, inst->target, inst->target_slot);
+
+		std::string liveness, depth;
+
+		if ( inst->live )
+			liveness = util::fmt("(labels %d)", inst->num_labels);
+		else
+			liveness = "(dead)";
+
+		if ( inst->loop_depth )
+			depth = util::fmt(" (loop %d)", inst->loop_depth);
+
+		printf("%d %s%s: ", i, liveness.c_str(), depth.c_str());
+
+		inst->Dump(&frame_denizens, remappings);
 		}
 	}
 

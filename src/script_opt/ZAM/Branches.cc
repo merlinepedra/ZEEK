@@ -73,6 +73,7 @@ void ZAMCompiler::SetTarget(ZInstI* inst, const InstLabel l, int slot)
 	{
 	if ( inst->target )
 		{
+		ASSERT(0);
 		ASSERT(! inst->target2);
 		inst->target2 = l;
 		inst->target2_slot = slot;
@@ -101,12 +102,20 @@ ZInstI* ZAMCompiler::FindLiveTarget(ZInstI* goto_target)
 		return insts1[idx];
 	}
 
-void ZAMCompiler::RetargetBranch(ZInstI* inst, ZInstI* target, int target_slot)
+void ZAMCompiler::ConcretizeBranch(ZInstI* inst, ZInstI* target,
+                                   int target_slot)
 	{
 	int t;	// instruction number of target
 
 	if ( target == pending_inst )
-		t = insts2.size();
+		{
+		if ( insts2.size() == 0 )
+			// We're doing this in the context of concretizing
+			// intermediary instructions for dumping them out.
+			t = insts1.size();
+		else
+			t = insts2.size();
+		}
 	else
 		t = target->inst_num;
 

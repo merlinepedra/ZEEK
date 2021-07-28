@@ -64,6 +64,10 @@ void finalize_functions(const std::vector<FuncInfo>& funcs)
 	}
 
 
+// The following is for activating detailed dumping for debugging
+// optimizer problems.
+static bool dump_intermediaries = false;
+
 void ZAMCompiler::OptimizeInsts()
 	{
 	// Do accounting for targeted statements.
@@ -80,6 +84,17 @@ void ZAMCompiler::OptimizeInsts()
 	TallySwitchTargets(double_casesI);
 	TallySwitchTargets(str_casesI);
 
+	for ( unsigned int i = 0; i < insts1.size(); ++i )
+		if ( insts1[i]->op == OP_NOP )
+			// We can always get rid of these.
+			KillInst(i);
+
+	if ( analysis_options.dump_ZAM )
+		{
+		printf("Original ZAM code for %s:\n", func->Name());
+		DumpInsts1(nullptr);
+		}
+
 	bool something_changed;
 
 	do
@@ -87,15 +102,39 @@ void ZAMCompiler::OptimizeInsts()
 		something_changed = false;
 
 		while ( RemoveDeadCode() )
+			{
 			something_changed = true;
 
+			if ( dump_intermediaries )
+				{
+				printf("Removed some dead code:\n");
+				DumpInsts1(nullptr);
+				}
+			}
+
 		while ( CollapseGoTos() )
+			{
 			something_changed = true;
+
+			if ( dump_intermediaries )
+				{
+				printf("Did some collapsing:\n");
+				DumpInsts1(nullptr);
+				}
+			}
 
 		ComputeFrameLifetimes();
 
 		if ( PruneUnused() )
+			{
 			something_changed = true;
+
+			if ( dump_intermediaries )
+				{
+				printf("Did some pruning:\n");
+				DumpInsts1(nullptr);
+				}
+			}
 		}
 	while ( something_changed );
 
@@ -124,36 +163,54 @@ bool ZAMCompiler::RemoveDeadCode()
 		if ( ! i0->live )
 			continue;
 
-		// Find first live instruction after i0.
-		auto j = i + 1;
+		auto i1 = NextLiveInst(i0);
 
-		bool saw_i0_target = false;
+		// Look for degenerate branches.
+		auto t = i0->target;
 
-		while ( j < insts1.size() && ! insts1[j]->live )
+		if ( t == pending_inst && ! i1 )
 			{
-			if ( i0->target == insts1[j] )
-				saw_i0_target = true;
-			++j;
-			}
-
-		if ( j >= insts1.size() )
-			// i0 does not have a successor
-			break;
-
-		auto i1 = insts1[j];
-
-		if ( i0->DoesNotContinue() && ! saw_i0_target &&
-		     i0->target != i1 && i1->num_labels == 0 )
-			{ // i1 can't be reached
-			KillInst(i1);
+			// This is a branch-to-end, and that's where we'll
+			// wind up anyway.
+			KillInst(i0);
 			did_removal = true;
+			continue;
 			}
 
-		if ( i0->op == OP_SYNC_GLOBALS_X &&
-		     i1->op == OP_SYNC_GLOBALS_X )
+		if ( t && t->inst_num > i0->inst_num &&
+		     (! i1 || t->inst_num <= i1->inst_num) )
 			{
-			// i0 is redundant with i1.  We get rid of i0 in
-			// case i1 is branched to.
+			// This is effectively a branch to the next
+			// instruction.  Even if i0 is conditional, there's
+			// no point executing it because regardless of the
+			// outcome of the conditional, we go to the next
+			// successive live instruction (and we don't have
+			// conditionals with side effects).
+			KillInst(i0);
+			did_removal = true;
+			continue;
+			}
+
+		if ( i0->DoesNotContinue() && i1 && i1->num_labels == 0 )
+			{
+			// i1 can't be reached - nor anything unlabeled
+			// after it.
+			KillInsts(i1);
+			did_removal = true;
+			continue;
+			}
+
+		if ( i0->op != OP_SYNC_GLOBALS_X )
+			// No more cases to check.
+			continue;
+
+		// Look for i0 being a redundant sync-global.  Here we
+		// want to follow branch chains to the successor, so
+		// we recompute i1.
+		i1 = NextLiveInst(i0, true);
+		if ( i1 && i1->op == OP_SYNC_GLOBALS_X )
+			{
+			// i0 is redundant with i1.
 			KillInst(i0);
 			did_removal = true;
 			}
@@ -164,68 +221,43 @@ bool ZAMCompiler::RemoveDeadCode()
 
 bool ZAMCompiler::CollapseGoTos()
 	{
-	bool did_collapse = false;
+	bool did_change = false;
 
 	for ( unsigned int i = 0; i < insts1.size(); ++i )
 		{
 		auto i0 = insts1[i];
-		auto t = i0->target;
+		auto orig_t = i0->target;
 
-		if ( ! i0->live || ! t )
+		if ( ! i0->live || ! orig_t || orig_t == pending_inst )
 			continue;
 
-		// Note, we don't bother optimizing target2 if present,
-		// as those are very rare.
+		// Resolve branch chains.  We both do a version that
+		// follows branches (to jump to the end of any chains),
+		// and one that does (so we can do num_labels bookkeeping
+		// for our initial target).
+		auto first_branch = FirstLiveInst(orig_t, false);
+		if ( ! first_branch )
+			// We're jump-to-end, so there's no possibility of
+			// a chain.
+			continue;
 
-		if ( t->IsUnconditionalBranch() )
-			{ // Collapse branch-to-branch.
-			did_collapse = true;
-			do
-				{
-				ASSERT(t->live);
+		auto t = FirstLiveInst(orig_t, true);
 
-				--t->num_labels;
-				t = t->target;
-				i0->target = t;
-				++t->num_labels;
-				}
-			while ( t->IsUnconditionalBranch() );
-			}
+		if ( ! t )
+			t = pending_inst;
 
-		// Collapse branch-to-next-statement, taking into
-		// account dead code.
-		unsigned int j = i + 1;
-
-		bool branches_into_dead = false;
-		while ( j < insts1.size() && ! insts1[j]->live )
+		if ( t != orig_t )
 			{
-			if ( t == insts1[j] )
-				branches_into_dead = true;
-			++j;
-			}
-
-		// j now points to the first live instruction after i.
-		if ( branches_into_dead ||
-		     (j < insts1.size() && t == insts1[j]) ||
-		     (j == insts1.size() && t == pending_inst) )
-			{ // i0 is branch-to-next-statement
-			if ( t != pending_inst )
-				--t->num_labels;
-
-			if ( i0->IsUnconditionalBranch() )
-				// no point in keeping the branch
-				i0->live = false;
-
-			else if ( j < insts1.size() )
-				{
-				// Update i0 to target the live instruction.
-				i0->target = insts1[j];
-				++i0->target->num_labels;
-				}
+			// Update branch.
+			if ( first_branch->live )
+				--first_branch->num_labels;
+			i0->target = t;
+			++t->num_labels;
+			did_change = true;
 			}
 		}
 
-	return did_collapse;
+	return did_change;
 	}
 
 bool ZAMCompiler::PruneUnused()
@@ -237,18 +269,21 @@ bool ZAMCompiler::PruneUnused()
 		auto inst = insts1[i];
 
 		if ( ! inst->live )
+			{
+			ASSERT(inst->num_labels == 0);
 			continue;
+			}
 
 		if ( inst->IsFrameStore() && ! VarIsAssigned(inst->v1) )
 			{
 			did_prune = true;
-			KillInst(inst);
+			KillInst(i);
 			}
 
 		if ( inst->IsLoad() && ! VarIsUsed(inst->v1) )
 			{
 			did_prune = true;
-			KillInst(inst);
+			KillInst(i);
 			}
 
 		if ( ! inst->AssignsToSlot1() )
@@ -256,6 +291,7 @@ bool ZAMCompiler::PruneUnused()
 
 		int slot = inst->v1;
 		if ( denizen_ending.count(slot) > 0 )
+			// Variable is used, keep assignment.
 			continue;
 
 		if ( frame_denizens[slot]->IsGlobal() )
@@ -274,7 +310,7 @@ bool ZAMCompiler::PruneUnused()
 			{
 			did_prune = true;
 			// We don't use this assignment.
-			KillInst(inst);
+			KillInst(i);
 			continue;
 			}
 
@@ -352,12 +388,12 @@ void ZAMCompiler::ComputeFrameLifetimes()
 			break;
 
 		case OP_NEXT_TABLE_ITER_NO_VARS_VV:
+			break;
+
 		case OP_NEXT_TABLE_ITER_VAL_VAR_NO_VARS_VVV:
 			{
 			auto depth = inst->loop_depth;
-
-			if ( inst->op == OP_NEXT_TABLE_ITER_VAL_VAR_NO_VARS_VVV )
-				ExtendLifetime(inst->v1, EndOfLoop(inst, depth));
+			ExtendLifetime(inst->v1, EndOfLoop(inst, depth));
 			}
 			break;
 
@@ -598,7 +634,7 @@ void ZAMCompiler::ReMapFrame()
 		inst->UpdateSlots(frame1_to_frame2);
 
 		if ( inst->IsDirectAssignment() && inst->v1 == inst->v2 )
-			KillInst(inst);
+			KillInst(i);
 		}
 
 	frame_sizeI = shared_frame_denizens.size();
@@ -919,13 +955,116 @@ bool ZAMCompiler::VarIsUsed(int slot) const
 	return false;
 	}
 
-void ZAMCompiler::KillInst(ZInstI* i)
+ZInstI* ZAMCompiler::FirstLiveInst(ZInstI* i, bool follow_gotos)
 	{
-	i->live = false;
-	if ( i->target )
-		--(i->target->num_labels);
-	if ( i->target2 )
-		--(i->target2->num_labels);
+	if ( i == pending_inst )
+		return nullptr;
+
+	auto n = FirstLiveInst(i->inst_num, follow_gotos);
+	if ( n < insts1.size() )
+		return insts1[n];
+	else
+		return nullptr;
+	}
+
+int ZAMCompiler::FirstLiveInst(int i, bool follow_gotos)
+	{
+	int num_inspected = 0;
+	while ( i < insts1.size() )
+		{
+		auto i0 = insts1[i];
+		if ( i0->live )
+			{
+			if ( follow_gotos && i0->IsUnconditionalBranch() )
+				{
+				if ( ++num_inspected > insts1.size() )
+					{
+					reporter->Error("%s contains an infinite loop", func->Name());
+					return i;
+					}
+
+				i = i0->target->inst_num;
+				continue;
+				}
+
+			return i;
+			}
+
+		++i;
+		++num_inspected;
+		}
+
+	return i;
+	}
+
+void ZAMCompiler::KillInst(int i)
+	{
+	auto inst = insts1[i];
+
+	ASSERT(inst->live);
+
+	inst->live = false;
+	auto t = inst->target;
+	if ( t )
+		{
+		if ( t->live )
+			{
+			--(t->num_labels);
+			ASSERT(t->num_labels >= 0);
+			}
+		else
+			ASSERT(t->num_labels == 0);
+		}
+
+	ASSERT(! inst->target2);
+
+	int num_labels = inst->num_labels;
+	// We're about to transfer its labels.
+	inst->num_labels = 0;
+
+	if ( inst->IsUnconditionalBranch() )
+		{
+		// No direct flow after this point.  It had better not
+		// have labels, unless it's a branch-to-end.
+		ASSERT(num_labels == 0 || ! FirstLiveInst(t, true));
+		return;
+		}
+
+	if ( num_labels == 0 )
+		// No labels to propagate.
+		return;
+
+	for ( auto j = i + 1; j < insts1.size(); ++j )
+		{
+		auto succ = insts1[j];
+		if ( succ->live )
+			{
+			succ->num_labels += num_labels;
+			break;
+			}
+		}
+	}
+
+void ZAMCompiler::KillInsts(int i)
+	{
+	auto inst = insts1[i];
+
+	ASSERT(inst->num_labels == 0);
+
+	KillInst(i);
+
+	for ( auto j = i + 1; j < insts1.size(); ++j )
+		{
+		auto succ = insts1[j];
+		if ( succ->live )
+			{
+			if ( succ->num_labels == 0 )
+				KillInst(j);
+			else
+				// Found viable succeeding code.
+				break;
+			}
+		}
 	}
 
 } // zeek::detail

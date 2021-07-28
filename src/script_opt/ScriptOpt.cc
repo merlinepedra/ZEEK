@@ -41,10 +41,8 @@ static std::string hash_dir;	// for storing hashes of previous compilations
 
 void analyze_func(ScriptFuncPtr f)
 	{
-	if ( analysis_options.only_func &&
-	     *analysis_options.only_func != f->Name() )
-		return;
-
+	// Even if we're doing --optimize-only, we still track all functions
+	// here because the inliner will need the full list.
 	funcs.emplace_back(f, f->GetScope(), f->CurrentBody(),
 	                   f->CurrentPriority());
 	}
@@ -418,7 +416,19 @@ static void generate_CPP(std::unique_ptr<ProfileFuncs>& pfs)
 	auto hm = std::make_unique<CPPHashManager>(hash_name.c_str(),
 	                                           analysis_options.add_CPP);
 
-	if ( ! analysis_options.gen_CPP )
+	if ( analysis_options.gen_CPP )
+		{
+		if ( analysis_options.only_func )
+			{ // deactivate all functions except the target one
+			for ( auto& func : funcs )
+				{
+				auto fn = func.Func()->Name();
+				if ( *analysis_options.only_func != fn )
+					func.SetSkip(true);
+				}
+			}
+		}
+	else
 		{ // doing add-C++ instead, so look for previous compilations
 		for ( auto& func : funcs )
 			{
@@ -556,9 +566,15 @@ static void analyze_scripts_for_ZAM(std::unique_ptr<ProfileFuncs>& pfs)
 		{
 		auto func = f.Func();
 
-		if ( ! analysis_options.compile_all &&
-		     inl && inl->WasInlined(func) &&
-		     func_used_indirectly.count(func) == 0 )
+		if ( analysis_options.only_func )
+			{
+			if ( *analysis_options.only_func != func->Name() )
+				continue;
+			}
+
+		else if ( ! analysis_options.compile_all &&
+		          inl && inl->WasInlined(func) &&
+		          func_used_indirectly.count(func) == 0 )
 			// No need to compile as it won't be called directly.
 			continue;
 
