@@ -71,18 +71,8 @@ InstLabel ZAMCompiler::GoToTargetBeyond(const ZAMStmt s)
 
 void ZAMCompiler::SetTarget(ZInstI* inst, const InstLabel l, int slot)
 	{
-	if ( inst->target )
-		{
-		ASSERT(0);
-		ASSERT(! inst->target2);
-		inst->target2 = l;
-		inst->target2_slot = slot;
-		}
-	else
-		{
-		inst->target = l;
-		inst->target_slot = slot;
-		}
+	inst->target = l;
+	inst->target_slot = slot;
 	}
 
 ZInstI* ZAMCompiler::FindLiveTarget(ZInstI* goto_target)

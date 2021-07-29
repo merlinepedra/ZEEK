@@ -281,8 +281,6 @@ void ZAMCompiler::ComputeLoopLevels()
 				++j;
 				}
 			}
-
-		ASSERT(! inst->target2 || inst->target2->inst_num > i);
 		}
 	}
 
@@ -301,9 +299,6 @@ void ZAMCompiler::AdjustBranches()
 			continue;
 
 		inst->target = FindLiveTarget(t);
-
-		if ( inst->target2 )
-			inst->target2 = FindLiveTarget(inst->target2);
 		}
 	}
 
@@ -316,9 +311,6 @@ void ZAMCompiler::RetargetBranches()
 			continue;
 
 		ConcretizeBranch(inst, inst->target, inst->target_slot);
-
-		if ( inst->target2 )
-			ConcretizeBranch(inst, inst->target2, inst->target2_slot);
 		}
 	}
 

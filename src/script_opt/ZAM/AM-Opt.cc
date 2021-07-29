@@ -75,8 +75,6 @@ void ZAMCompiler::OptimizeInsts()
 		{
 		if ( i->target && i->target->live )
 			++(i->target->num_labels);
-		if ( i->target2 && i->target2->live )
-			++(i->target2->num_labels);
 		}
 
 	TallySwitchTargets(int_casesI);
@@ -1015,8 +1013,6 @@ void ZAMCompiler::KillInst(int i)
 		else
 			ASSERT(t->num_labels == 0);
 		}
-
-	ASSERT(! inst->target2);
 
 	int num_labels = inst->num_labels;
 	// We're about to transfer its labels.
