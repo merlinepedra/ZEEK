@@ -1024,10 +1024,17 @@ void ZAMCompiler::KillInst(int i)
 
 	if ( inst->IsUnconditionalBranch() )
 		{
-		// No direct flow after this point.  It had better not
-		// have labels, unless it's a branch-to-end.
-		ASSERT(num_labels == 0 || ! FirstLiveInst(t, true));
-		return;
+		// No direct flow after this point ... unless we're
+		// branching to the next immediate live instruction.
+		auto after_inst = NextLiveInst(inst, true);
+		auto live_target = FirstLiveInst(t, true);
+
+		if ( after_inst != live_target )
+			{
+			// No flow after inst.  Don't propagate its labels.
+			// Given that, it had better not have any!
+			ASSERT(num_labels == 0);
+			}
 		}
 
 	if ( num_labels == 0 )

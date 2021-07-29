@@ -112,10 +112,9 @@ private:
 	std::vector<GlobalInfo> globals;
 	int num_globals;
 
-	// Parallel array that points to either a static region, or, for
-	// recursive functions, a dynamic region that tracks the state
-	// of each global used during execution.
-	GlobalState* global_state = nullptr;
+	// Static version of region that tracks the state of each global
+	// used during execution.  Not used for recursive functions.
+	GlobalState* fixed_global_state = nullptr;
 
 	// The following are only maintained if we're doing profiling.
 	//

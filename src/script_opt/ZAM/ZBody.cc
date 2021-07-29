@@ -153,7 +153,7 @@ ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 			fixed_frame[managed_slots[i]].ClearManagedVal();
 
 		if ( num_globals > 0 )
-			global_state = new GlobalState[num_globals];
+			fixed_global_state = new GlobalState[num_globals];
 		}
 
 	table_iters = zc->GetTableIters();
@@ -179,7 +179,7 @@ ZBody::ZBody(const char* _func_name, const ZAMCompiler* zc)
 ZBody::~ZBody()
 	{
 	delete[] fixed_frame;
-	delete[] global_state;
+	delete[] fixed_global_state;
 	delete[] insts;
 	delete inst_count;
 	delete CPU_time;
@@ -265,11 +265,15 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 #endif
 
 	ZVal* frame;
+	GlobalState* global_state;
 	std::unique_ptr<TableIterVec> local_table_iters;
 	std::vector<StepIterInfo> step_iters(num_step_iters);
 
 	if ( fixed_frame )
+		{
 		frame = fixed_frame;
+		global_state = fixed_global_state;
+		}
 	else
 		{
 		frame = new ZVal[frame_size];
@@ -287,6 +291,8 @@ ValPtr ZBody::DoExec(Frame* f, int start_pc, StmtFlowType& flow)
 
 		if ( num_globals > 0 )
 			global_state = new GlobalState[num_globals];
+		else
+			global_state = nullptr;
 		}
 
 	// All globals start out unloaded.
