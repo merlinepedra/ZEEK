@@ -38,6 +38,7 @@ static ZAMCompiler* ZAM = nullptr;
 static bool generating_CPP = false;
 static std::string hash_dir;	// for storing hashes of previous compilations
 
+static ScriptFuncPtr global_stmts;
 
 void analyze_func(ScriptFuncPtr f)
 	{
@@ -61,10 +62,10 @@ const FuncInfo* analyze_global_stmts(Stmt* stmts)
 	auto sc = current_scope();
 	std::vector<IDPtr> empty_inits;
 	StmtPtr stmts_p{NewRef{}, stmts};
-	auto sf = make_intrusive<ScriptFunc>(id, stmts_p, empty_inits,
-	                                     sc->Length(), 0);
+	global_stmts = make_intrusive<ScriptFunc>(id, stmts_p, empty_inits,
+	                                          sc->Length(), 0);
 
-	funcs.emplace_back(sf, sc, stmts_p, 0);
+	funcs.emplace_back(global_stmts, sc, stmts_p, 0);
 
 	return &funcs.back();
 	}
@@ -530,6 +531,9 @@ static void analyze_scripts_for_ZAM(std::unique_ptr<ProfileFuncs>& pfs)
 	// inlined.  We don't bother populating this if we're not inlining,
 	// since it won't be consulted in that case.
 	std::unordered_set<Func*> func_used_indirectly;
+
+	if ( global_stmts )
+		func_used_indirectly.insert(global_stmts.get());
 
 	if ( inl )
 		{
