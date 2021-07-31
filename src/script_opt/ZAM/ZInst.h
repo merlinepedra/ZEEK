@@ -409,8 +409,13 @@ public:
 	ValPtr* constants = nullptr;
 	TypePtr* types = nullptr;
 
-	// Used for manipulating globals and accessing function names.
+	// Used for accessing function names.
 	ID* id_val = nullptr;
+
+	// Whether the instruction can lead to globals changing.
+	// Currently only needed by the optimizer, but convenient
+	// to store here.
+	bool can_change_globals = false;
 
 	// The following is only used for OP_CONSTRUCT_KNOWN_RECORD_V,
 	// to map elements in slots/constants/types to record field offsets.

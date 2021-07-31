@@ -262,6 +262,39 @@ bool ZAMCompiler::PruneUnused()
 			KillInst(i);
 			}
 
+		if ( inst->IsGlobalLoad() )
+			{
+			// Any straight-line load of the same global
+			// is redundant.
+			for ( unsigned int j = i + 1; j < insts1.size(); ++j )
+				{
+				auto i1 = insts1[j];
+
+				if ( ! i1->live )
+					continue;
+
+				if ( i1->DoesNotContinue() )
+					// End of straight-line block.
+					break;
+
+				if ( i1->num_labels > 0 )
+					// Inbound branch ends block.
+					break;
+
+				if ( i1->aux && i1->aux->can_change_globals )
+					break;
+
+				if ( ! i1->IsGlobalLoad() )
+					continue;
+
+				if ( i1->v2 == inst->v2 )
+					{ // Same global
+					did_prune = true;
+					KillInst(i1);
+					}
+				}
+			}
+
 		if ( ! inst->AssignsToSlot1() )
 			continue;
 

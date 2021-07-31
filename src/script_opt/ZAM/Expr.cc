@@ -997,11 +997,13 @@ const ZAMStmt ZAMCompiler::DoCall(const CallExpr* c, const NameExpr* n)
 		z.aux = aux;
 		}
 
+	if ( ! z.aux )
+		z.aux = new ZInstAux(0);
+
+	z.aux->can_change_globals = true;
+
 	if ( ! indirect || func_id->IsGlobal() )
 		{
-		if ( ! z.aux )
-			z.aux = new ZInstAux(0);
-
 		z.aux->id_val = func_id;
 
 		if ( ! indirect )
