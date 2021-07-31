@@ -134,9 +134,6 @@ StmtPtr ZAMCompiler::CompileBody()
 	if ( reporter->Errors() > 0 )
 		return nullptr;
 
-	if ( LastStmt(body.get())->Tag() != STMT_RETURN )
-		SyncGlobals();
-
 	ResolveHookBreaks();
 
 	if ( nexts.size() > 0 )

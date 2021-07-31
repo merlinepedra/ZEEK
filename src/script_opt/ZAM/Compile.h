@@ -66,7 +66,7 @@ public:
 		{ return managed_slotsI; }
 
 	const std::vector<GlobalInfo>& Globals() const
-		{ return  globalsI; }
+		{ return globalsI; }
 
 	bool NonRecursive() const	{ return non_recursive; }
 
@@ -367,25 +367,16 @@ private:
 	const Stmt* LastStmt(const Stmt* s) const;
 
 	// Returns the most recent added instruction *other* than those
-	// added for bookkeeping (like dirtying globals);
+	// added for bookkeeping.
 	ZInstI* TopMainInst()	{ return insts1[top_main_inst]; }
 
 
 	bool IsUnused(const IDPtr& id, const Stmt* where) const;
 
-	// Called to synchronize any globals that have been modified
-	// prior to switching to execution out of the current function
-	// body (for a call or a return).  The argument is a statement
-	// used to find use-defs.  A nil value corresponds to "running
-	// off the end" (no explicit return).
-	void SyncGlobals(const Stmt* s = nullptr);
-
 	void LoadParam(ID* id);
 	const ZAMStmt LoadGlobal(ID* id);
 
 	int AddToFrame(ID*);
-
-	void SyncGlobals(const std::unordered_set<const ID*>& g, const Stmt* s);
 
 	int FrameSlot(const IDPtr& id)		{ return FrameSlot(id.get()); }
 	int FrameSlot(const ID* id);
@@ -606,13 +597,6 @@ private:
 	std::vector<GlobalInfo> globalsI;
 	std::unordered_map<const ID*, int> global_id_to_info;	// inverse
 
-	// Which globals are potentially ever modified.
-	std::unordered_set<const ID*> modified_globals;
-
-	// Whether so far we've generated a load of a global.  Used
-	// in SyncGlobals() to avoid work if we haven't done so.
-	bool did_global_load = false;
-
 	// Intermediary switch tables (branching to ZInst's rather
 	// than concrete instruction offsets).
 	CaseMapsI<bro_int_t> int_casesI;
@@ -643,8 +627,8 @@ private:
 
 	// Used for communication between Frame1Slot and a subsequent
 	// AddInst.  If >= 0, then upon adding the next instruction,
-	// it should be followed by Dirty-Global for the given slot.
-	int mark_dirty = -1;
+	// it should be followed by Store-Global for the given slot.
+	int pending_global_store = -1;
 };
 
 

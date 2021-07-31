@@ -959,20 +959,6 @@ const ZAMStmt ZAMCompiler::CompileReturn(const ReturnStmt* r)
 	{
 	auto e = r->StmtExpr();
 
-	// We could consider only doing this sync for "true" returns
-	// and not for catch-return's.  To make that work, however,
-	// would require propagating the "dirty" status of globals
-	// modified inside an inlined function.  These changes aren't
-	// visible because RDs don't propagate across return's, even
-	// inlined ones.  See the comment in for STMT_RETURN's in
-	// RD_Decorate::PostStmt for why we can't simply propagate
-	// RDs in this case.
-	//
-	// In addition, by sync'ing here rather than deferring we
-	// provide opportunities to double-up the frame slot used
-	// by the global.
-	SyncGlobals(r);
-
 	if ( retvars.size() == 0 )
 		{ // a "true" return
 		if ( e )
@@ -1022,8 +1008,6 @@ const ZAMStmt ZAMCompiler::CompileCatchReturn(const CatchReturnStmt* cr)
 
 	if ( block_last->Tag() == STMT_RETURN )
 		return block_end;
-
-	SyncGlobals(block_last);
 
 	return top_main_inst;
 	}

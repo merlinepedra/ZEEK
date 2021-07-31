@@ -138,16 +138,17 @@ const ZAMStmt ZAMCompiler::AddInst(const ZInstI& inst)
 
 	top_main_inst = insts1.size() - 1;
 
-	if ( mark_dirty < 0 )
+	if ( pending_global_store < 0 )
 		return ZAMStmt(top_main_inst);
 
-	auto dirty_global_slot = mark_dirty;
-	mark_dirty = -1;
+	auto global_slot = pending_global_store;
+	pending_global_store = -1;
 
-	auto dirty_inst = ZInstI(OP_DIRTY_GLOBAL_V, dirty_global_slot);
-	dirty_inst.op_type = OP_V_I1;
+	auto store_inst = ZInstI(OP_STORE_GLOBAL_V, global_slot);
+	store_inst.op_type = OP_V_I1;
+	store_inst.t = globalsI[global_slot].id->GetType();
 
-	return AddInst(dirty_inst);
+	return AddInst(store_inst);
 	}
 
 const Stmt* ZAMCompiler::LastStmt(const Stmt* s) const

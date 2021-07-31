@@ -195,22 +195,6 @@ bool ZAMCompiler::RemoveDeadCode()
 			// after it.
 			KillInsts(i1);
 			did_removal = true;
-			continue;
-			}
-
-		if ( i0->op != OP_SYNC_GLOBALS_X )
-			// No more cases to check.
-			continue;
-
-		// Look for i0 being a redundant sync-global.  Here we
-		// want to follow branch chains to the successor, so
-		// we recompute i1.
-		i1 = NextLiveInst(i0, true);
-		if ( i1 && i1->op == OP_SYNC_GLOBALS_X )
-			{
-			// i0 is redundant with i1.
-			KillInst(i0);
-			did_removal = true;
 			}
 		}
 
@@ -272,12 +256,6 @@ bool ZAMCompiler::PruneUnused()
 			continue;
 			}
 
-		if ( inst->IsFrameStore() && ! VarIsAssigned(inst->v1) )
-			{
-			did_prune = true;
-			KillInst(i);
-			}
-
 		if ( inst->IsLoad() && ! VarIsUsed(inst->v1) )
 			{
 			did_prune = true;
@@ -295,10 +273,7 @@ bool ZAMCompiler::PruneUnused()
 		if ( frame_denizens[slot]->IsGlobal() )
 			{
 			// Extend the global's range to the end of the
-			// function.  Strictly speaking, we could extend
-			// it only to a SYNC_GLOBALS that it's guaranteed
-			// to reach, but that's tricky to confidently compute
-			// and will only rarely provide much benefit.
+			// function.
 			denizen_ending[slot] = insts1.back();
 			continue;
 			}
@@ -409,21 +384,6 @@ void ZAMCompiler::ComputeFrameLifetimes()
 			               EndOfLoop(inst, inst->loop_depth));
 			break;
 
-		case OP_SYNC_GLOBALS_X:
-			{
-			// Extend the lifetime of any modified globals.
-			for ( auto g : modified_globals )
-				{
-				int gs = frame_layout1[g];
-				if ( denizen_beginning.count(gs) == 0 )
-					// Global hasn't been loaded yet.
-					continue;
-
-				ExtendLifetime(gs, EndOfLoop(inst, 1));
-				}
-			}
-			break;
-
 		case OP_INIT_TABLE_LOOP_VV:
 		case OP_INIT_VECTOR_LOOP_VV:
 		case OP_INIT_STRING_LOOP_VV:
@@ -442,6 +402,14 @@ void ZAMCompiler::ComputeFrameLifetimes()
 			// below since we've already set it, and don't want
 			// to perturb ExtendLifetime's consistency check.
 			continue;
+			}
+
+		case OP_STORE_GLOBAL_V:
+			{
+			// Use of the global goes to here.
+			auto slot = frame_layout1[globalsI[inst->v1].id.get()];
+			ExtendLifetime(slot, EndOfLoop(inst, 1));
+			break;
 			}
 
 		default:
@@ -573,20 +541,6 @@ void ZAMCompiler::ReMapFrame()
 			}
 			break;
 
-		case OP_DIRTY_GLOBAL_V:
-			{
-			// Slot v1 of this is an index into globals[]
-			// rather than a frame.
-			int g = inst->v1;
-			ASSERT(remapped_globals[g] >= 0);
-			inst->v1 = remapped_globals[g];
-
-			// We *don't* want to UpdateSlots below as that's
-			// based on interpreting v1 as slots rather than an
-			// index into globals
-			continue;
-			}
-
 		default:
 			// Update slots in auxiliary information.
 			auto aux = inst->aux;
@@ -626,6 +580,16 @@ void ZAMCompiler::ReMapFrame()
 			// We *don't* want to UpdateSlots below as that's
 			// based on interpreting v2 as slots rather than an
 			// index into globals.
+			continue;
+			}
+
+		if ( inst->IsGlobalStore() )
+			{ // Slot v1 of these is the index into globals[].
+			int g = inst->v1;
+			ASSERT(remapped_globals[g] >= 0);
+			inst->v1 = remapped_globals[g];
+
+			// We don't have any other slots to update.
 			continue;
 			}
 

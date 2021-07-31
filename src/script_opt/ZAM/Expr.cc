@@ -874,8 +874,6 @@ const ZAMStmt ZAMCompiler::AssignToCall(const ExprStmt* e)
 
 const ZAMStmt ZAMCompiler::DoCall(const CallExpr* c, const NameExpr* n)
 	{
-	SyncGlobals(curr_stmt);
-
 	auto func = c->Func()->AsNameExpr();
 	auto func_id = func->Id();
 	auto& args = c->Args()->Exprs();
@@ -1016,8 +1014,10 @@ const ZAMStmt ZAMCompiler::DoCall(const CallExpr* c, const NameExpr* n)
 		if ( id->IsGlobal() )
 			{
 			AddInst(z);
-			z = ZInstI(OP_DIRTY_GLOBAL_V, global_id_to_info[id]);
+			auto global_slot = global_id_to_info[id];
+			z = ZInstI(OP_STORE_GLOBAL_V, global_slot);
 			z.op_type = OP_V_I1;
+			z.t = globalsI[global_slot].id->GetType();
 			}
 		}
 

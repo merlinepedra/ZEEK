@@ -1856,25 +1856,6 @@ eval	auto tt = cast_intrusive<TableType>(z.t);
 # Internal
 ########################################
 
-op Sync-Globals
-type X
-eval	for ( auto i = 0; i < num_globals; ++i )
-		{
-		if ( global_state[i] == GS_DIRTY )
-			{
-			auto id = globals[i].id;
-			auto slot = globals[i].slot;
-			auto v = frame[slot].ToVal(id->GetType());
-			id->SetVal(v);
-			}
-		global_state[i] = GS_UNLOADED;
-		}
-
-op Dirty-Global
-op1-internal
-type V
-eval	global_state[z.v1] = GS_DIRTY;
-
 # These two are only needed for type-based switch statements.  Could think
 # about replacing them using CoerceFromAnyExpr.
 op Assign-Any
@@ -1905,10 +1886,7 @@ eval	auto v = f->GetElement(z.v2);
 internal-assignment-op Load-Global
 type VV
 assign-val v
-eval	if ( global_state[z.v2] != GS_UNLOADED )
-		break;
-	global_state[z.v2] = GS_CLEAN;
-	auto v = z.aux->id_val->GetVal();
+eval	auto v = z.aux->id_val->GetVal();
 	if ( ! v )
 		{
 		ZAM_run_time_error(z.loc, "value used but not set", z.aux->id_val);
@@ -1919,10 +1897,7 @@ eval	if ( global_state[z.v2] != GS_UNLOADED )
 # fit the usual template.
 internal-op Load-Global-Type
 type VV
-eval	if ( global_state[z.v2] != GS_UNLOADED )
-		break;
-	global_state[z.v2] = GS_CLEAN;
-	auto& v = frame[z.v1].type_val;
+eval	auto& v = frame[z.v1].type_val;
 	Unref(v);
 	auto t = z.aux->id_val->GetType();
 	v = new TypeVal(t, true);
@@ -1932,17 +1907,11 @@ eval	if ( global_state[z.v2] != GS_UNLOADED )
 # in case future development (such as supporting "return when" statements)
 # needs this.
 
-internal-op Store-Val
-op1-read
-type VV
-eval	auto val = frame[z.v1].ToVal(z.t);
-	f->SetElement(z.v2, val);
-
-### This now should work as just an ordinary Store-Val.
-internal-op Store-Any-Val
-op1-read
-type VV
-eval	f->SetElement(z.v2, {NewRef{}, frame[z.v1].any_val});
+internal-op Store-Global
+op1-internal
+type V
+eval	auto& g = globals[z.v1];
+	g.id->SetVal(frame[g.slot].ToVal(z.t));
 
 internal-op Copy-To
 type VC

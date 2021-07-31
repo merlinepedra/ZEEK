@@ -783,6 +783,9 @@ SetupResult setup(int argc, char** argv, Options* zopts)
 			}
 		}
 
+	if ( options.parse_only )
+		exit(reporter->Errors() != 0);
+
 	auto init_stmts = stmts ? analyze_global_stmts(stmts) : nullptr;
 
 	analyze_scripts();
@@ -790,9 +793,6 @@ SetupResult setup(int argc, char** argv, Options* zopts)
 	if ( analysis_options.report_recursive )
 		// This option is report-and-exit.
 		exit(0);
-
-	if ( options.parse_only )
-		exit(reporter->Errors() != 0);
 
 	if ( dns_type != DNS_PRIME )
 		run_state::detail::init_run(options.interface, options.pcap_file, options.pcap_output_file, options.use_watchdog);

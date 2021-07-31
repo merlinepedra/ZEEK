@@ -242,17 +242,17 @@ public:
 	// the ZAM frame.
 	bool IsGlobalLoad() const;
 
-	// The following is vestigial given - see the associated comments
-	// in Ops.in.
-	bool IsFrameStore() const
-		{ return op == OP_STORE_VAL_VV || op == OP_STORE_ANY_VAL_VV; }
-
+	// True if the instruction corresponds to some sort of load,
+	// either from the interpreter frame or of a global.
 	bool IsLoad() const
 		{
-		if ( op_type == OP_VV_FRAME )
-			return ! IsFrameStore();
-		else
-			return IsGlobalLoad();
+		return op_type == OP_VV_FRAME || IsGlobalLoad();
+		}
+
+	// True if the instruction corresponds to storing a global.
+	bool IsGlobalStore() const
+		{
+		return op == OP_STORE_GLOBAL_V;
 		}
 
 	void CheckIfManaged(const TypePtr& t)

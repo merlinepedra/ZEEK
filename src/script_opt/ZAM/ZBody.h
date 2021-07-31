@@ -9,23 +9,12 @@
 
 namespace zeek::detail {
 
-// Static information about globals used in a function.  There's a parallel
-// array "global_state" that dynamically tracks whether a global is loaded,
-// clean, or dirty.
+// Static information about globals used in a function.
 class GlobalInfo {
 public:
 	IDPtr id;
 	int slot;
 };
-
-// The dynamic state of a global.  Used to construct an array indexed in
-// parallel with the globals[] array, which tracks the associated static
-// information.
-typedef enum {
-	GS_UNLOADED,	// global hasn't been loaded
-	GS_CLEAN,	// global has been loaded but not modified
-	GS_DIRTY,	// loaded-and-modified
-} GlobalState;
 
 
 // These are the counterparts to CaseMapI and CaseMapsI in ZAM.h,
@@ -111,10 +100,6 @@ private:
 
 	std::vector<GlobalInfo> globals;
 	int num_globals;
-
-	// Static version of region that tracks the state of each global
-	// used during execution.  Not used for recursive functions.
-	GlobalState* fixed_global_state = nullptr;
 
 	// The following are only maintained if we're doing profiling.
 	//
