@@ -20,7 +20,6 @@ public:
 
 	StmtPtr Reduce(StmtPtr s);
 
-	const DefSetsMgr* GetDefSetsMgr() const		{ return mgr; }
 	void SetDefSetsMgr(const DefSetsMgr* _mgr)	{ mgr = _mgr; }
 
 	ExprPtr GenTemporaryExpr(const TypePtr& t, ExprPtr rhs);

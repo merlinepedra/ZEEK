@@ -1,1 +1,1 @@
-get rid of target2
+optimize out straight-line reloads of globals
