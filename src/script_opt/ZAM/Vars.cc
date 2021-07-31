@@ -61,6 +61,7 @@ const ZAMStmt ZAMCompiler::LoadGlobal(ID* id)
 	z.SetType(id->GetType());
 	z.op_type = OP_VV_I2;
 
+	// We use the id_val for reporting used-but-not-set errors.
 	z.aux = new ZInstAux(0);
 	z.aux->id_val = id;
 

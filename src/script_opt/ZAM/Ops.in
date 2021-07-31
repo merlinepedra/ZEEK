@@ -1886,7 +1886,7 @@ eval	auto v = f->GetElement(z.v2);
 internal-assignment-op Load-Global
 type VV
 assign-val v
-eval	auto v = z.aux->id_val->GetVal();
+eval	auto v = globals[z.v2].id->GetVal();
 	if ( ! v )
 		{
 		ZAM_run_time_error(z.loc, "value used but not set", z.aux->id_val);
@@ -1899,19 +1899,15 @@ internal-op Load-Global-Type
 type VV
 eval	auto& v = frame[z.v1].type_val;
 	Unref(v);
-	auto t = z.aux->id_val->GetType();
+	auto t = globals[z.v2].id->GetType();
 	v = new TypeVal(t, true);
-
-# The following are only needed if we need to sync local variables to the
-# interpreter's frame - currently not the case, but we leave the code here
-# in case future development (such as supporting "return when" statements)
-# needs this.
 
 internal-op Store-Global
 op1-internal
 type V
 eval	auto& g = globals[z.v1];
 	g.id->SetVal(frame[g.slot].ToVal(z.t));
+
 
 internal-op Copy-To
 type VC
