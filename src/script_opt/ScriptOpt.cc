@@ -76,13 +76,6 @@ static bool optimize_AST(ScriptFunc* f, std::shared_ptr<ProfileFunc>& pf,
 	{
 	pf = std::make_shared<ProfileFunc>(f, body, true);
 
-	RD_Decorate reduced_rds(pf, f, scope, body);
-
-	if ( reporter->Errors() > 0 )
-		return false;
-
-	rc->SetDefSetsMgr(reduced_rds.GetDefSetsMgr());
-
 	auto new_body = rc->Reduce(body);
 
 	if ( reporter->Errors() > 0 )
