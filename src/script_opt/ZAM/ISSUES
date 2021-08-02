@@ -1,1 +1,1 @@
-optimize out straight-line reloads of globals
+look for unnecessary reaching-defs
