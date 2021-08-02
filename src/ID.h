@@ -7,11 +7,11 @@
 #include <string_view>
 #include <vector>
 
-#include "zeek/IntrusivePtr.h"
 #include "zeek/Obj.h"
 #include "zeek/Attr.h"
 #include "zeek/Notifier.h"
 #include "zeek/TraverseTypes.h"
+#include "zeek/IDOptInfo.h"
 
 namespace zeek {
 
@@ -112,10 +112,6 @@ public:
 
 	const AttrPtr& GetAttr(AttrTag t) const;
 
-	void AddInitExpr(ExprPtr init_expr);
-	const std::vector<ExprPtr>& GetInitExprs() const
-		{ return init_exprs; }
-
 	bool IsDeprecated() const;
 
 	void MakeDeprecated(ExprPtr deprecation);
@@ -144,6 +140,9 @@ public:
 	void AddOptionHandler(FuncPtr callback, int priority);
 	std::vector<Func*> GetOptionHandlers() const;
 
+	IDOptInfo& GetOptInfo()				{ return opt_info; }
+	const IDOptInfo& GetOptInfo() const		{ return opt_info; }
+
 protected:
 	void EvalFunc(ExprPtr ef, ExprPtr ev);
 
@@ -161,14 +160,12 @@ protected:
 	ValPtr val;
 	AttributesPtr attrs;
 
-	// Expressions used to initialize the identifier, for use by
-	// the scripts-to-C++ compiler.  We need to track all of them
-	// because it's possible that a global value gets created using
-	// one of the earlier instances rather than the last one.
-	std::vector<ExprPtr> init_exprs;
-
 	// contains list of functions that are called when an option changes
 	std::multimap<int, FuncPtr> option_handlers;
+
+	// Information managed by script optimization.  We package this
+	// up into a separate object for purposes of modularity.
+	IDOptInfo opt_info;
 
 };
 
