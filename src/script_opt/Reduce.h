@@ -12,7 +12,6 @@ namespace zeek::detail {
 
 class Expr;
 class TempVar;
-class ProfileFunc;
 
 class Reducer {
 public:
