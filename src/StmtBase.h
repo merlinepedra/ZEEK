@@ -48,6 +48,8 @@ class Reducer;
 class Stmt;
 using StmtPtr = IntrusivePtr<Stmt>;
 
+class StmtOptInfo;
+
 class Stmt : public Obj {
 public:
 	StmtTag Tag() const	{ return tag; }
@@ -160,6 +162,10 @@ public:
 			return Obj::GetLocationInfo();
 		}
 
+	// Access/set the number associated with this statement.
+	StmtOptInfo* GetOptInfo() const		{ return opt_info; }
+	void SetOptInfo(StmtOptInfo* oi)	{ opt_info = oi; }
+
 protected:
 	explicit Stmt(StmtTag arg_tag);
 
@@ -182,6 +188,10 @@ protected:
 	// derived, if any.  Used as an aid for generating meaningful
 	// and correctly-localized error messages.
 	StmtPtr original = nullptr;
+
+	// Information associated with the Stmt for purposes of
+	// script optimization.
+	StmtOptInfo* opt_info = nullptr;
 };
 
 } // namespace detail
