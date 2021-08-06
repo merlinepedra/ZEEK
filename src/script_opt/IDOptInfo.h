@@ -18,12 +18,11 @@ using ExprPtr = IntrusivePtr<Expr>;
 
 #define NO_DEF -1
 
-class IDUsageRegion {
+class IDDefRegion {
 public:
-	IDUsageRegion(const Stmt* s,
-	              bool maybe, bool definitely, int single_def);
-	IDUsageRegion(int stmt_num, int level,
-	              bool maybe, bool definitely, int single_def);
+	IDDefRegion(const Stmt* s, bool maybe, bool definitely, int single_def);
+	IDDefRegion(int stmt_num, int level,
+	            bool maybe, bool definitely, int single_def);
 
 	void Init(bool maybe, bool definitely, int single_def)
 		{
@@ -95,11 +94,11 @@ private:
 
 	// Find the region that applies *prior* to executing the
 	// given statement.
-	IDUsageRegion& FindRegion(int stmt_num)
+	IDDefRegion& FindRegion(int stmt_num)
 		{ return usage_regions[FindRegionIndex(stmt_num)]; }
 	int FindRegionIndex(int stmt_num);
 
-	IDUsageRegion& ActiveRegion()
+	IDDefRegion& ActiveRegion()
 		{ return usage_regions[ActiveRegionIndex()]; }
 	int ActiveRegionIndex();
 
@@ -109,11 +108,11 @@ private:
 	// one of the earlier instances rather than the last one.
 	std::vector<ExprPtr> init_exprs;
 
-	std::vector<IDUsageRegion> usage_regions;
+	std::vector<IDDefRegion> usage_regions;
 
 	// A type for collecting the indices of usage_regions that will
 	// all have confluence together at one point.
-	using ConfluenceSet = std::set<IDUsageRegion*>;
+	using ConfluenceSet = std::set<IDDefRegion*>;
 
 	// Maps loops/switches to their associated confluence sets.
 	std::map<const Stmt*, ConfluenceSet> pending_confluences;

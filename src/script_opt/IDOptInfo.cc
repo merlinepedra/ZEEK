@@ -7,8 +7,8 @@
 
 namespace zeek::detail {
 
-IDUsageRegion::IDUsageRegion(const Stmt* s,
-                             bool maybe, bool definitely, int single_def)
+IDDefRegion::IDDefRegion(const Stmt* s,
+                         bool maybe, bool definitely, int single_def)
 	{
 	start_stmt = s->GetOptInfo()->stmt_num;
 	block_level = s->GetOptInfo()->block_level;
@@ -16,8 +16,8 @@ IDUsageRegion::IDUsageRegion(const Stmt* s,
 	Init(maybe, definitely, single_def);
 	}
 
-IDUsageRegion::IDUsageRegion(int stmt_num, int level,
-                             bool maybe, bool definitely, int single_def)
+IDDefRegion::IDDefRegion(int stmt_num, int level,
+                         bool maybe, bool definitely, int single_def)
 	{
 	start_stmt = stmt_num;
 	block_level = level;
