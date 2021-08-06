@@ -285,11 +285,6 @@ const AttrPtr& ID::GetAttr(AttrTag t) const
 	return attrs ? attrs->Find(t) : Attr::nil;
 	}
 
-void ID::AddInitExpr(ExprPtr init_expr)
-	{
-	init_exprs.emplace_back(std::move(init_expr));
-	}
-
 bool ID::IsDeprecated() const
 	{
 	return GetAttr(ATTR_DEPRECATED) != nullptr;
@@ -674,6 +669,12 @@ std::vector<Func*> ID::GetOptionHandlers() const
 	for ( auto& element : option_handlers )
 		v.push_back(element.second.get());
 	return v;
+	}
+
+
+void IDOptInfo::AddInitExpr(ExprPtr init_expr)
+	{
+	init_exprs.emplace_back(std::move(init_expr));
 	}
 
 } // namespace detail

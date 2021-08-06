@@ -500,7 +500,7 @@ void ProfileFuncs::MergeInProfile(ProfileFunc* pf)
 		if ( t->Tag() == TYPE_TYPE )
 			(void) HashType(t->AsTypeType()->GetType());
 
-		auto& init_exprs = g->GetInitExprs();
+		auto& init_exprs = g->GetOptInfo()->GetInitExprs();
 		for ( const auto& i_e : init_exprs )
 			if ( i_e )
 				{
