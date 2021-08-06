@@ -11,7 +11,7 @@
 #include "zeek/Attr.h"
 #include "zeek/Notifier.h"
 #include "zeek/TraverseTypes.h"
-#include "zeek/IDOptInfo.h"
+#include "zeek/script_opt/IDOptInfo.h"
 
 namespace zeek {
 
