@@ -11,7 +11,7 @@
 #include "zeek/Attr.h"
 #include "zeek/Notifier.h"
 #include "zeek/TraverseTypes.h"
-#include "zeek/script_opt/IDOptInfo.h"
+// #include "zeek/script_opt/IDOptInfo.h"
 
 namespace zeek {
 
@@ -43,6 +43,8 @@ enum IDScope { SCOPE_FUNCTION, SCOPE_MODULE, SCOPE_GLOBAL };
 
 class ID;
 using IDPtr = IntrusivePtr<ID>;
+
+class IDOptInfo;
 
 class ID final : public Obj, public notifier::detail::Modifiable {
 public:
@@ -166,8 +168,9 @@ protected:
 	// up into a separate object for purposes of modularity, and,
 	// via the associated pointer, to allow it to be modified in
 	// contexts where the ID is itself "const".
-	IDOptInfo opt_info;
-	IDOptInfo* opt_info_ptr = &opt_info;
+	// IDOptInfo opt_info;
+	// IDOptInfo* opt_info_ptr = &opt_info;
+	IDOptInfo* opt_info_ptr;
 
 };
 

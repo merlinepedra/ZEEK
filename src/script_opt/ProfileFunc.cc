@@ -4,6 +4,7 @@
 #include <cerrno>
 
 #include "zeek/script_opt/ProfileFunc.h"
+#include "zeek/script_opt/IDOptInfo.h"
 #include "zeek/Desc.h"
 #include "zeek/Stmt.h"
 #include "zeek/Func.h"

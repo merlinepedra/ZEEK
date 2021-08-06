@@ -6,6 +6,7 @@
 
 #include "zeek/module_util.h"
 #include "zeek/script_opt/ProfileFunc.h"
+#include "zeek/script_opt/IDOptInfo.h"
 #include "zeek/script_opt/CPP/Compile.h"
 
 

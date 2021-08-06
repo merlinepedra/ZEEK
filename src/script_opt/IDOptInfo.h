@@ -20,15 +20,6 @@ public:
 	const std::vector<ExprPtr>& GetInitExprs() const
 		{ return init_exprs; }
 
-	int NumAssignments() const	{ return num_assignments; }
-	void SetNumAssignments(int n)	{ num_assignments = n; }
-
-	const ConstExpr* Const() const  	{ return const_expr; }
-	void SetConst(const ConstExpr* ce)	{ const_expr = ce; }
-
-	bool RDsAreTracked() const	{ return track_RDs; }
-	void SetTrackRDs()		{ track_RDs = true; }
-
 private:
 	// Expressions used to initialize the identifier, for use by
 	// the scripts-to-C++ compiler.  We need to track all of them

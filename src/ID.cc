@@ -20,6 +20,7 @@
 #include "zeek/zeekygen/ScriptInfo.h"
 #include "zeek/zeekygen/utils.h"
 #include "zeek/module_util.h"
+#include "zeek/script_opt/IDOptInfo.h"
 
 namespace zeek {
 
@@ -119,6 +120,8 @@ ID::ID(const char* arg_name, IDScope arg_scope, bool arg_is_export)
 	is_type = false;
 	offset = 0;
 
+	opt_info_ptr = new IDOptInfo();
+
 	infer_return_type = false;
 
 	SetLocationInfo(&start_location, &end_location);
@@ -127,6 +130,7 @@ ID::ID(const char* arg_name, IDScope arg_scope, bool arg_is_export)
 ID::~ID()
 	{
 	delete [] name;
+	delete opt_info_ptr;
 	}
 
 std::string ID::ModuleName() const
