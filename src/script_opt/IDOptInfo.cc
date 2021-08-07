@@ -35,14 +35,29 @@ void IDOptInfo::Clear()
 	confluence_stmts.clear();
 	}
 
-void IDOptInfo::DefinedAt(const Stmt* s)
+void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt)
 	{
 	if ( s )
 		{
 		auto s_oi = s->GetOptInfo();
 		auto stmt_num = s_oi->stmt_num;
 
-		EndRegionAt(stmt_num - 1, s_oi->block_level);
+		if ( confluence_stmts.size() == 0 )
+			{
+			// We're seeing this identifier for the first
+			// time, so we don't have any context or confluence
+			// information for it.  Create that now, as
+			// well as first a "backstory" region.
+			ASSERT(usage_regions.size() == 0);
+
+			// Create backstory.
+			usage_regions.emplace_back(0, 0, false, false, NO_DEF);
+
+			StartConfluenceBlock(conf_stmt);
+			}
+
+		else
+			EndRegionAt(stmt_num - 1, s_oi->block_level);
 
 		// Create new region corresponding to this definition.
 		usage_regions.emplace_back(s, false, true, stmt_num);
@@ -74,6 +89,14 @@ void IDOptInfo::BranchBackTo(const Stmt* to)
 	auto& from_reg = ActiveRegion();
 	auto t_oi = to->GetOptInfo();
 	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
+
+	if ( t_r_ind == NO_DEF )
+		// This is a variable that's only defined inside a
+		// loop body.  There's no point in trying to track it
+		// accurately, since all we'll be able to establish
+		// is that outside of its region, it's "maybe" defined.
+		return;
+
 	auto& t_r = usage_regions[t_r_ind];
 
 	if ( from_reg.single_definition != t_r.single_definition )
@@ -88,6 +111,7 @@ void IDOptInfo::BranchBackTo(const Stmt* to)
 
 void IDOptInfo::BranchBeyond(const Stmt* block)
 	{
+	ASSERT(pending_confluences.count(block) > 0);
 	pending_confluences[block].insert(&ActiveRegion());
 	}
 
@@ -128,10 +152,12 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 				continue;
 			}
 
+		else if ( ur.end_stmt < s_oi->stmt_num )
+			// Irrelevant, didn't extend into confluence region.
+			continue;
+
 		else
 			{
-			ASSERT(ur.end_stmt < s_oi->stmt_num);
-
 			// This region isn't active, but could still be
 			// germane if we're tracking it for confluence.
 			if ( pc.count(&ur) == 0 )
@@ -183,6 +209,21 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	                           single_def);
 
 	confluence_stmts.pop_back();
+	}
+
+bool IDOptInfo::IsPossiblyDefinedAt(const Stmt* s)
+	{
+	return FindRegion(s->GetOptInfo()->stmt_num).maybe_defined;
+	}
+
+bool IDOptInfo::IsDefinitelyDefinedAt(const Stmt* s)
+	{
+	return FindRegion(s->GetOptInfo()->stmt_num).definitely_defined;
+	}
+
+bool IDOptInfo::IsUniquelyDefinedAt(const Stmt* s)
+	{
+	return FindRegion(s->GetOptInfo()->stmt_num).single_definition != NO_DEF;
 	}
 
 void IDOptInfo::EndRegionAt(int stmt_num, int level)

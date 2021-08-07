@@ -62,8 +62,9 @@ public:
 		{ return init_exprs; }
 
 	// Called when the identifier is defined via execution of the
-	// given statement.
-	void DefinedAt(const Stmt* s);
+	// given statement.  "conf_stmt", if non-null, provides the
+	// surrounding confluence statement.
+	void DefinedAt(const Stmt* s, const Stmt* conf_stmt);
 
 	// Called upon encountering a "return" statement.
 	void ReturnAt(const Stmt* s);
