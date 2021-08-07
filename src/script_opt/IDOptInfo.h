@@ -55,6 +55,8 @@ public:
 
 class IDOptInfo {
 public:
+	void Clear();
+
 	void AddInitExpr(ExprPtr init_expr);
 	const std::vector<ExprPtr>& GetInitExprs() const
 		{ return init_exprs; }
@@ -79,8 +81,10 @@ public:
 	void StartConfluenceBlock(const Stmt* s);
 
 	// Finish tracking confluence; s is the last point of execution
-	// prior to leaving a block.
-	void ConfluenceBlockEndsAt(const Stmt* s);
+	// prior to leaving a block.  If no_orig_flow is true, then
+	// the region for 's' itself does not continue to the end of
+	// the block.
+	void ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow);
 
 	// All of these regarding the identifer's state just prior to
 	// executing the given statement.

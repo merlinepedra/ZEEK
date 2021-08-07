@@ -1,6 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include "zeek/Stmt.h"
+#include "zeek/Expr.h"
 #include "zeek/script_opt/IDOptInfo.h"
 #include "zeek/script_opt/StmtOptInfo.h"
 
@@ -26,15 +27,32 @@ IDDefRegion::IDDefRegion(int stmt_num, int level,
 	}
 
 
+void IDOptInfo::Clear()
+	{
+	init_exprs.clear();
+	usage_regions.clear();
+	pending_confluences.clear();
+	confluence_stmts.clear();
+	}
+
 void IDOptInfo::DefinedAt(const Stmt* s)
 	{
-	auto s_oi = s->GetOptInfo();
-	auto stmt_num = s_oi->stmt_num;
+	if ( s )
+		{
+		auto s_oi = s->GetOptInfo();
+		auto stmt_num = s_oi->stmt_num;
 
-	EndRegionAt(stmt_num - 1, s_oi->block_level);
+		EndRegionAt(stmt_num - 1, s_oi->block_level);
 
-	// Create new region corresponding to this definition.
-	usage_regions.emplace_back(s, false, true, stmt_num);
+		// Create new region corresponding to this definition.
+		usage_regions.emplace_back(s, false, true, stmt_num);
+		}
+
+	else
+		{ // This is a definition-upon-entry
+		ASSERT(usage_regions.size() == 0);
+		usage_regions.emplace_back(0, 0, true, true, 0);
+		}
 	}
 
 void IDOptInfo::ReturnAt(const Stmt* s)
@@ -80,7 +98,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	confluence_stmts.push_back(s);
 	}
 
-void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s)
+void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	{
 	auto s_oi = s->GetOptInfo();
 
@@ -96,11 +114,20 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s)
 	int single_def = 0;	// 0 just to keep linter from griping
 	bool have_multi_defs = false;
 
+	int num_regions = 0;
+
 	for ( auto& ur : usage_regions )
 		{
 		if ( ur.end_stmt == NO_DEF )
+			{
 			// End this region.
 			ur.end_stmt = s_oi->stmt_num;
+
+			if ( ur.start_stmt < s_oi->stmt_num && no_orig_flow )
+				// Don't include this region in our assessment.
+				continue;
+			}
+
 		else
 			{
 			ASSERT(ur.end_stmt < s_oi->stmt_num);
@@ -111,6 +138,8 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s)
 				// No, we're not tracking it.
 				continue;
 			}
+
+		++num_regions;
 
 		maybe = maybe || ur.maybe_defined;
 
@@ -135,6 +164,12 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s)
 			single_def = ur.single_definition;
 			did_single_def = true;
 			}
+		}
+
+	if ( num_regions == 0 )
+		{ // Nothing survives.
+		ASSERT(maybe == false);
+		definitely = false;
 		}
 
 	if ( have_multi_defs || ! did_single_def )
