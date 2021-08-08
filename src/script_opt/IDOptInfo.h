@@ -26,6 +26,8 @@ public:
 
 	void Init(bool maybe, bool definitely, int single_def)
 		{
+		if ( definitely )
+			maybe = true;
 		maybe_defined = maybe;
 		definitely_defined = definitely;
 		single_definition = definitely ? single_def : NO_DEF;
@@ -55,11 +57,16 @@ public:
 
 class IDOptInfo {
 public:
+	IDOptInfo(const ID* id)	{ my_id = id; }
+
 	void Clear();
 
 	void AddInitExpr(ExprPtr init_expr);
 	const std::vector<ExprPtr>& GetInitExprs() const
 		{ return init_exprs; }
+
+	bool IsTemp() const	{ return is_temp; }
+	void SetTemp()		{ is_temp = true; }
 
 	// Called when the identifier is defined via execution of the
 	// given statement.  "conf_stmt", if non-null, provides the
@@ -69,14 +76,15 @@ public:
 	// Called upon encountering a "return" statement.
 	void ReturnAt(const Stmt* s);
 
-	// Called when the current region contains a backwards branch,
-	// possibly across multiple block levels.
-	void BranchBackTo(const Stmt* to);
+	// Called when the current region ends with a backwards branch,
+	// possibly across multiple block levels, occurring at "from"
+	// and going into the block "to".
+	void BranchBackTo(const Stmt* from, const Stmt* to);
 
-	// Called when the current region contains a forwards branch,
-	// possibly across multiple block levels, to the statement that
-	// comes right after "block".
-	void BranchBeyond(const Stmt* block);
+	// Called when the current region ends at statement end_s with a
+	// forwards branch, possibly across multiple block levels, to
+	// the statement that comes right after the execution of "block".
+	void BranchBeyond(const Stmt* end_s, const Stmt* block);
 
 	// Start tracking block that begins with the body of s (not s itself).
 	void StartConfluenceBlock(const Stmt* s);
@@ -95,6 +103,7 @@ public:
 
 private:
 	// End the active region after execution of the given statement.
+	void EndRegionAt(const Stmt* s);
 	void EndRegionAt(int stmt_num, int level);
 
 	// Find the region that applies *prior* to executing the
@@ -119,12 +128,19 @@ private:
 	// all have confluence together at one point.
 	using ConfluenceSet = std::set<IDDefRegion*>;
 
-	// Maps loops/switches to their associated confluence sets.
+	// Maps loops/switches/catch-returns to their associated
+	// confluence sets.
 	std::map<const Stmt*, ConfluenceSet> pending_confluences;
 
 	// A stack of confluence statements, so we can always find
 	// the innermost when ending a confluence block.
 	std::vector<const Stmt*> confluence_stmts;
+
+	// Whether the identifier is a temporary variable.
+	bool is_temp = false;
+
+	// Only needed for debugging purposes.
+	const ID* my_id;
 };
 
 } // namespace zeek::detail

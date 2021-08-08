@@ -11,6 +11,7 @@
 #include "zeek/script_opt/ProfileFunc.h"
 #include "zeek/script_opt/Inline.h"
 #include "zeek/script_opt/Reduce.h"
+#include "zeek/script_opt/GenIDDefs.h"
 #include "zeek/script_opt/GenRDs.h"
 #include "zeek/script_opt/UseDefs.h"
 
@@ -78,6 +79,7 @@ static bool optimize_AST(ScriptFunc* f, std::shared_ptr<ProfileFunc>& pf,
 	pf = std::make_shared<ProfileFunc>(f, body, true);
 
 	RD_Decorate reduced_rds(pf, f, scope, body);
+	GenIDDefs ID_defs(pf, f, scope, body);
 
 	if ( reporter->Errors() > 0 )
 		return false;
@@ -163,6 +165,7 @@ static void optimize_func(ScriptFunc* f, std::shared_ptr<ProfileFunc> pf,
 
 	// Compute its reaching definitions.
 	RD_Decorate reduced_rds(pf, f, scope, body);
+	GenIDDefs ID_defs(pf, f, scope, body);
 
 	rc->SetDefSetsMgr(reduced_rds.GetDefSetsMgr());
 

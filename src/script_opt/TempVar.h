@@ -9,6 +9,7 @@
 
 #include "zeek/ID.h"
 #include "zeek/Expr.h"
+#include "zeek/script_opt/IDOptInfo.h"
 #include "zeek/script_opt/ReachingDefs.h"
 
 namespace zeek::detail {
@@ -22,7 +23,11 @@ public:
 	const Expr* RHS() const		{ return rhs.get(); }
 
 	IDPtr Id() const	{ return id; }
-	void SetID(IDPtr _id)	{ id = std::move(_id); }
+	void SetID(IDPtr _id)
+		{
+		id = std::move(_id);
+		id->GetOptInfo()->SetTemp();
+		}
 	void Deactivate()	{ active = false; }
 	bool IsActive() const	{ return active; }
 

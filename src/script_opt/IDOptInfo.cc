@@ -2,6 +2,7 @@
 
 #include "zeek/Stmt.h"
 #include "zeek/Expr.h"
+#include "zeek/Desc.h"
 #include "zeek/script_opt/IDOptInfo.h"
 #include "zeek/script_opt/StmtOptInfo.h"
 
@@ -42,7 +43,7 @@ void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt)
 		auto s_oi = s->GetOptInfo();
 		auto stmt_num = s_oi->stmt_num;
 
-		if ( confluence_stmts.size() == 0 )
+		if ( usage_regions.size() == 0 && confluence_stmts.size() == 0 )
 			{
 			// We're seeing this identifier for the first
 			// time, so we don't have any context or confluence
@@ -52,12 +53,24 @@ void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt)
 
 			// Create backstory.
 			usage_regions.emplace_back(0, 0, false, false, NO_DEF);
-
-			StartConfluenceBlock(conf_stmt);
 			}
 
 		else
 			EndRegionAt(stmt_num - 1, s_oi->block_level);
+
+		if ( conf_stmt )
+			{
+			if ( confluence_stmts.size() == 0 ||
+			     confluence_stmts.back() != conf_stmt )
+				// We've just learned about the block
+				StartConfluenceBlock(conf_stmt);
+			}
+
+		else
+			{
+			// Consistency check.
+			ASSERT(confluence_stmts.size() == 0);
+			}
 
 		// Create new region corresponding to this definition.
 		usage_regions.emplace_back(s, false, true, stmt_num);
@@ -72,31 +85,32 @@ void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt)
 
 void IDOptInfo::ReturnAt(const Stmt* s)
 	{
+	// Look for a catch-return that this would branch to.
+	for ( int i = confluence_stmts.size() - 1; i >= 0; --i )
+		if ( confluence_stmts[i]->Tag() == STMT_CATCH_RETURN )
+			{
+			BranchBeyond(s, confluence_stmts[i]);
+			return;
+			}
+
 	auto s_oi = s->GetOptInfo();
 	EndRegionAt(s_oi->stmt_num, s_oi->block_level);
 	}
 
-void IDOptInfo::BranchBackTo(const Stmt* to)
+void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	{
+	EndRegionAt(from);
+
 	// The key notion we need to update is whether the regions
 	// between from_reg and to_reg still have unique definitions.
 	// Confluence due to the branch can only take that away, it
 	// can't instill it.  (OTOH, in principle it could update
 	// "maybe defined", but not in a way we care about, since we
 	// only draw upon that for diagnosing usage errors, and for
-	// those the error has already occurred on entry into the
-	// loop.)
+	// those the error has already occurred on entry into the loop.)
 	auto& from_reg = ActiveRegion();
 	auto t_oi = to->GetOptInfo();
 	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
-
-	if ( t_r_ind == NO_DEF )
-		// This is a variable that's only defined inside a
-		// loop body.  There's no point in trying to track it
-		// accurately, since all we'll be able to establish
-		// is that outside of its region, it's "maybe" defined.
-		return;
-
 	auto& t_r = usage_regions[t_r_ind];
 
 	if ( from_reg.single_definition != t_r.single_definition )
@@ -109,10 +123,11 @@ void IDOptInfo::BranchBackTo(const Stmt* to)
 		}
 	}
 
-void IDOptInfo::BranchBeyond(const Stmt* block)
+void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 	{
 	ASSERT(pending_confluences.count(block) > 0);
 	pending_confluences[block].insert(&ActiveRegion());
+	EndRegionAt(end_s);
 	}
 
 void IDOptInfo::StartConfluenceBlock(const Stmt* s)
@@ -124,8 +139,6 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 
 void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	{
-	auto s_oi = s->GetOptInfo();
-
 	auto cs = confluence_stmts.back();
 	auto& pc = pending_confluences[cs];
 
@@ -139,6 +152,7 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	bool have_multi_defs = false;
 
 	int num_regions = 0;
+	auto s_oi = s->GetOptInfo();
 
 	for ( auto& ur : usage_regions )
 		{
@@ -201,9 +215,13 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	if ( have_multi_defs || ! did_single_def )
 		single_def = NO_DEF;
 
-	// Adjust for the new region coming just after 's'.
+	// Adjust for the new region coming just after 's'.  However,
+	// take the block level from the confluence statement rather
+	// than using one less than the block level of 's', since the
+	// latter might correspond to multiple confluence blocks within
+	// the one we're tracking.
 	int stmt_num = s_oi->stmt_num + 1;
-	int level = s_oi->block_level - 1;
+	int level = cs->GetOptInfo()->block_level;
 
 	usage_regions.emplace_back(stmt_num, level, maybe, definitely,
 	                           single_def);
@@ -224,6 +242,12 @@ bool IDOptInfo::IsDefinitelyDefinedAt(const Stmt* s)
 bool IDOptInfo::IsUniquelyDefinedAt(const Stmt* s)
 	{
 	return FindRegion(s->GetOptInfo()->stmt_num).single_definition != NO_DEF;
+	}
+
+void IDOptInfo::EndRegionAt(const Stmt* s)
+	{
+	auto s_oi = s->GetOptInfo();
+	EndRegionAt(s_oi->stmt_num, s_oi->block_level);
 	}
 
 void IDOptInfo::EndRegionAt(int stmt_num, int level)

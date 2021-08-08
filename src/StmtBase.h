@@ -164,7 +164,6 @@ public:
 
 	// Access/set the number associated with this statement.
 	StmtOptInfo* GetOptInfo() const		{ return opt_info; }
-	void SetOptInfo(StmtOptInfo* oi)	{ opt_info = oi; }
 
 protected:
 	explicit Stmt(StmtTag arg_tag);
@@ -191,7 +190,7 @@ protected:
 
 	// Information associated with the Stmt for purposes of
 	// script optimization.
-	StmtOptInfo* opt_info = nullptr;
+	StmtOptInfo* opt_info;
 };
 
 } // namespace detail

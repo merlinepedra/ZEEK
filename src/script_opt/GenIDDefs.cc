@@ -26,16 +26,25 @@ void GenIDDefs::TraverseFunction(const Func* f, ScopePtr scope, StmtPtr body)
 	const auto& args = scope->OrderedVars();
 	int nparam = f->GetType()->Params()->NumFields();
 
+	for ( const auto& g : pf->Globals() )
+		{
+		g->GetOptInfo()->Clear();
+		TrackID(g);
+		}
+
+	// Clear the locals before processing the arguments, since
+	// they're included among the locals.
+	for ( const auto& l : pf->Locals() )
+		l->GetOptInfo()->Clear();
+
 	for ( const auto& a : args )
 		{
 		if ( --nparam < 0 )
 			break;
 
-		TrackID(a, true);
+		a->GetOptInfo()->Clear();
+		TrackID(a);
 		}
-
-	for ( const auto& g : pf->Globals() )
-		TrackID(g, true);
 
 	stmt_num = 0;	// 0 = "before the first statement"
 
@@ -60,7 +69,9 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		block->Traverse(this);
 		EndConfluenceBlock();
 
-		TrackID(cr->RetVar()->Id());
+		auto retvar = cr->RetVar();
+		if ( retvar )
+			TrackID(retvar->Id());
 
 		return TC_ABORTSTMT;
 		}
@@ -77,9 +88,6 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		i->TrueBranch()->Traverse(this);
 		if ( ! i->TrueBranch()->NoFlowAfter(false) )
 			BranchBeyond(s);
-
-		// This needs to reset identifiers, too.
-		ClearConfluenceBlock();
 
 		i->FalseBranch()->Traverse(this);
 		if ( ! i->FalseBranch()->NoFlowAfter(false) )
@@ -149,7 +157,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo();
+			BranchBackTo(s);
 
 		EndConfluenceBlock();
 
@@ -172,7 +180,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo();
+			BranchBackTo(s);
 
 		EndConfluenceBlock();
 
@@ -215,7 +223,7 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 		break;
 
 	case STMT_NEXT:
-		BranchBackTo(FindLoop());
+		BranchBackTo(s, FindLoop());
 		break;
 
 	case STMT_BREAK:
@@ -223,7 +231,7 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 		auto target = FindBranchBeyondTarget();
 
 		if ( target )
-			BranchBeyond(target);
+			BranchBeyond(s, target);
 
 		else
 			{
@@ -255,15 +263,13 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 
 	case EXPR_ASSIGN:
 	case EXPR_INDEX_ASSIGN:
-	case EXPR_FIELD_ASSIGN:
 	case EXPR_FIELD_LHS_ASSIGN:
 		{
-		auto a = e->AsAssignExpr();
-		auto lhs = a->Op1();
-		auto rhs = a->Op2();
+		auto lhs = e->GetOp1();
+		auto op2 = e->GetOp2();
 
 		if ( lhs->Tag() == EXPR_LIST &&
-		     rhs->GetType()->Tag() != TYPE_ANY )
+		     op2->GetType()->Tag() != TYPE_ANY )
 			{
 			// This combination occurs only for assignments used
 			// to initialize table entries.  Treat it as references
@@ -271,18 +277,13 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 			return TC_CONTINUE;
 			}
 
-		rhs->Traverse(this);
+		op2->Traverse(this);
 
-		// Index assignments have a third operand.  For those,
-		// Op2() isn't actually "RHS" but rather the index into
-		// the aggregate, but we still want to traverse it
-		// in the same manner as a true RHS (i.e., treating it
-		// as access to values, not assignments), so the above
-		// call was okay.
-		auto addl = a->GetOp3();
+		// Index assignments have a third operand.
+		auto op3 = e->GetOp3();
 
-		if ( addl )
-			addl->Traverse(this);
+		if ( op3 )
+			op3->Traverse(this);
 
 		if ( CheckLHS(lhs) )
 			return TC_ABORTSTMT;
@@ -318,7 +319,7 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 			if ( IsAggr(expr) )
 				// Not only do we skip analyzing it, but
 				// we consider it initialized post-return.
-				(void) CheckLHS(expr->GetOp1());
+				(void) CheckLHS(expr);
 			else
 				expr->Traverse(this);
 			}
@@ -437,7 +438,7 @@ bool GenIDDefs::CheckLHS(const Expr* lhs)
 		}
 
 	default:
-		reporter->InternalError("bad tag in RD_Decorate::CheckLHS");
+		reporter->InternalError("bad tag in GenIDDefs::CheckLHS");
 	}
 	}
 
@@ -473,45 +474,37 @@ void GenIDDefs::CheckVarUsage(const Expr* e, const ID* id)
 void GenIDDefs::StartConfluenceBlock(const Stmt* s)
 	{
 	confluence_blocks.push_back(s);
-
 	std::unordered_set<const ID*> empty_IDs;
 	modified_IDs.push_back(empty_IDs);
 	}
 
-void GenIDDefs::ClearConfluenceBlock()
-	{
-	modified_IDs.back().clear();
-	}
-
-void GenIDDefs::EndConfluenceBlock(bool no_orig_flow)
+void GenIDDefs::EndConfluenceBlock(bool no_orig)
 	{
 	auto s = confluence_blocks.back();
-	auto ids = modified_IDs.back();
 
-	for ( auto id : ids )
-		id->GetOptInfo()->ConfluenceBlockEndsAt(s, no_orig_flow);
+	for ( auto id : modified_IDs.back() )
+		id->GetOptInfo()->ConfluenceBlockEndsAt(curr_stmt, no_orig);
 
 	confluence_blocks.pop_back();
 	modified_IDs.pop_back();
 	}
 
-void GenIDDefs::BranchBackTo(const Stmt* s)
+void GenIDDefs::BranchBackTo(const Stmt* from, const Stmt* to)
 	{
-	if ( ! s )
-		s = confluence_blocks.back();
+	if ( ! to )
+		to = confluence_blocks.back();
 
-	auto ids = modified_IDs.back();
-
-	for ( auto id : ids )
-		id->GetOptInfo()->BranchBackTo(s);
+	for ( auto id : modified_IDs.back() )
+		id->GetOptInfo()->BranchBackTo(from, to);
 	}
 
-void GenIDDefs::BranchBeyond(const Stmt* s)
+void GenIDDefs::BranchBeyond(const Stmt* from, const Stmt* to)
 	{
-	auto ids = modified_IDs.back();
+	if ( ! to )
+		to = confluence_blocks.back();
 
-	for ( auto id : ids )
-		id->GetOptInfo()->BranchBeyond(s);
+	for ( auto id : modified_IDs.back() )
+		id->GetOptInfo()->BranchBeyond(from, to);
 	}
 
 const Stmt* GenIDDefs::FindLoop()
@@ -550,18 +543,13 @@ const Stmt* GenIDDefs::FindBranchBeyondTarget()
 
 void GenIDDefs::ReturnAt(const Stmt* s)
 	{
-	auto ids = modified_IDs.back();
-
-	for ( auto id : ids )
+	for ( auto id : modified_IDs.back() )
 		id->GetOptInfo()->ReturnAt(s);
 	}
 
-void GenIDDefs::TrackID(const ID* id, bool is_init)
+void GenIDDefs::TrackID(const ID* id)
 	{
 	auto oi = id->GetOptInfo();
-
-	if ( is_init && id->IsGlobal() )
-		oi->Clear();
 
 	const Stmt* conf_stmt;
 	if ( confluence_blocks.size() > 0 )
@@ -570,6 +558,12 @@ void GenIDDefs::TrackID(const ID* id, bool is_init)
 		conf_stmt = nullptr;
 
 	oi->DefinedAt(curr_stmt, conf_stmt);
+
+	if ( modified_IDs.size() == 0 )
+		{ // Create the outermost set of identifiers.
+		std::unordered_set<const ID*> empty_IDs;
+		modified_IDs.push_back(empty_IDs);
+		}
 
 	modified_IDs.back().insert(id);
 	}

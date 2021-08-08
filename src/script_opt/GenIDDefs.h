@@ -42,15 +42,13 @@ private:
 	// Begin a new confluence block with the given statement.
 	void StartConfluenceBlock(const Stmt* s);
 
-	void ClearConfluenceBlock();
-
 	// Finish up the current confluence block.  If no_orig_flow is
 	// true, then there's no control flow from the origin (the statement
 	// that starts the block).
 	void EndConfluenceBlock(bool no_orig_flow = false);
 
-	void BranchBackTo(const Stmt* s = nullptr);
-	void BranchBeyond(const Stmt* s);
+	void BranchBackTo(const Stmt* from, const Stmt* to = nullptr);
+	void BranchBeyond(const Stmt* from, const Stmt* to = nullptr);
 
 	const Stmt* FindLoop();
 	const Stmt* FindBranchBeyondTarget();
@@ -58,12 +56,9 @@ private:
 	void ReturnAt(const Stmt* s);
 
 	// Tracks that the given identifier is defined at the current
-	// statement in the current confluence block.  "is_init" specifies
-	// whether this is an initialization-upon-function-entry, which
-	// holds for parameters and globals.
-	void TrackID(const IDPtr& id, bool is_init = false)
-		{ TrackID(id.get(), is_init); }
-	void TrackID(const ID* id, bool is_init = false);
+	// statement in the current confluence block.
+	void TrackID(const IDPtr& id)	{ TrackID(id.get()); }
+	void TrackID(const ID* id);
 
 	// Profile for the function.  Currently, all we actually need from
 	// this is the list of globals.
@@ -78,6 +73,10 @@ private:
 	int stmt_num;
 
 	std::vector<const Stmt*> confluence_blocks;
+
+	// The following is parallel to confluence_blocks except
+	// the front entry tracks identifiers at the outermost
+	// (non-confluence) scope.
 	std::vector<std::unordered_set<const ID*>> modified_IDs;
 };
 
