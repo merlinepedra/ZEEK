@@ -474,19 +474,75 @@ void GenIDDefs::CheckVarUsage(const Expr* e, const ID* id)
 void GenIDDefs::StartConfluenceBlock(const Stmt* s)
 	{
 	confluence_blocks.push_back(s);
+
+	if ( IsActiveBlock(s) )
+		ComputeActiveBlocks();
+
 	std::unordered_set<const ID*> empty_IDs;
 	modified_IDs.push_back(empty_IDs);
 	}
 
 void GenIDDefs::EndConfluenceBlock(bool no_orig)
 	{
-	auto s = confluence_blocks.back();
-
 	for ( auto id : modified_IDs.back() )
 		id->GetOptInfo()->ConfluenceBlockEndsAt(curr_stmt, no_orig);
 
+	bool is_active = IsActiveBlock(confluence_blocks.back());
+
 	confluence_blocks.pop_back();
+
+	if ( is_active )
+		ComputeActiveBlocks();
+
 	modified_IDs.pop_back();
+	}
+
+bool GenIDDefs::IsActiveBlock(const Stmt* s)
+	{
+	switch ( s->Tag() ) {
+	case STMT_FOR:
+	case STMT_WHILE:
+	case STMT_SWITCH:
+	case STMT_CATCH_RETURN:
+		return true;
+
+	default:
+		return false;
+	}
+	}
+
+void GenIDDefs::ComputeActiveBlocks()
+	{
+	bool saw_loop = false;
+	bool saw_switch = false;
+	bool saw_CR = false;
+
+	active_blocks.clear();
+	active_blocks.reserve(3);
+
+	for ( int i = confluence_blocks.size() - 1; i >= 0; --i )
+		{
+		auto& cb = confluence_blocks[i];
+		auto t = cb->Tag();
+		bool saw_one = false;
+
+		if ( ! saw_loop && (t == STMT_FOR || t == STMT_WHILE) )
+			saw_one = saw_loop = true;
+
+		if ( ! saw_switch && t == STMT_SWITCH )
+			saw_one = saw_switch = true;
+
+		if ( ! saw_CR && t == STMT_CATCH_RETURN )
+			saw_one = saw_CR = true;
+
+		if ( saw_one )
+			{
+			active_blocks.insert(active_blocks.begin(), cb);
+
+			if ( saw_loop && saw_switch && saw_CR )
+				break;
+			}
+		}
 	}
 
 void GenIDDefs::BranchBackTo(const Stmt* from, const Stmt* to)
@@ -557,7 +613,7 @@ void GenIDDefs::TrackID(const ID* id)
 	else
 		conf_stmt = nullptr;
 
-	oi->DefinedAt(curr_stmt, conf_stmt);
+	oi->DefinedAt(curr_stmt, conf_stmt, active_blocks);
 
 	if ( modified_IDs.size() == 0 )
 		{ // Create the outermost set of identifiers.

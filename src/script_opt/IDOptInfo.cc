@@ -36,51 +36,64 @@ void IDOptInfo::Clear()
 	confluence_stmts.clear();
 	}
 
-void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt)
+void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt,
+                          const std::vector<const Stmt*>& outer_confs)
 	{
-	if ( s )
-		{
-		auto s_oi = s->GetOptInfo();
-		auto stmt_num = s_oi->stmt_num;
-
-		if ( usage_regions.size() == 0 && confluence_stmts.size() == 0 )
-			{
-			// We're seeing this identifier for the first
-			// time, so we don't have any context or confluence
-			// information for it.  Create that now, as
-			// well as first a "backstory" region.
-			ASSERT(usage_regions.size() == 0);
-
-			// Create backstory.
-			usage_regions.emplace_back(0, 0, false, false, NO_DEF);
-			}
-
-		else
-			EndRegionAt(stmt_num - 1, s_oi->block_level);
-
-		if ( conf_stmt )
-			{
-			if ( confluence_stmts.size() == 0 ||
-			     confluence_stmts.back() != conf_stmt )
-				// We've just learned about the block
-				StartConfluenceBlock(conf_stmt);
-			}
-
-		else
-			{
-			// Consistency check.
-			ASSERT(confluence_stmts.size() == 0);
-			}
-
-		// Create new region corresponding to this definition.
-		usage_regions.emplace_back(s, false, true, stmt_num);
-		}
-
-	else
+	if ( ! s )
 		{ // This is a definition-upon-entry
 		ASSERT(usage_regions.size() == 0);
 		usage_regions.emplace_back(0, 0, true, true, 0);
+		return;
 		}
+
+	auto s_oi = s->GetOptInfo();
+	auto stmt_num = s_oi->stmt_num;
+
+	if ( usage_regions.size() == 0 )
+		{
+		ASSERT(confluence_stmts.size() == 0);
+
+		// We're seeing this identifier for the first
+		// time, so we don't have any context or confluence
+		// information for it.
+
+		// Populate the surrounding confluence blocks.
+		for ( auto oc : outer_confs )
+			{
+			if ( oc == conf_stmt )
+				{
+				// No need to add it now, we're about to
+				// do so below.  But make sure it's the
+				// innermost.
+				ASSERT(oc == outer_confs.back());
+				}
+			else
+				StartConfluenceBlock(oc);
+			}
+
+		// Create the "backstory" region.
+		usage_regions.emplace_back(0, 0, false, false, NO_DEF);
+		}
+
+	else
+		EndRegionAt(stmt_num - 1, s_oi->block_level);
+
+	if ( conf_stmt )
+		{
+		if ( confluence_stmts.size() == 0 ||
+		     confluence_stmts.back() != conf_stmt )
+			// We've just learned about the block.
+			StartConfluenceBlock(conf_stmt);
+		}
+
+	else
+		{
+		// Consistency check.
+		ASSERT(confluence_stmts.size() == 0);
+		}
+
+	// Create new region corresponding to this definition.
+	usage_regions.emplace_back(s, false, true, stmt_num);
 	}
 
 void IDOptInfo::ReturnAt(const Stmt* s)

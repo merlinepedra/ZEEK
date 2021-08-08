@@ -70,8 +70,13 @@ public:
 
 	// Called when the identifier is defined via execution of the
 	// given statement.  "conf_stmt", if non-null, provides the
-	// surrounding confluence statement.
-	void DefinedAt(const Stmt* s, const Stmt* conf_stmt);
+	// surrounding confluence statement.  In addition, outer_confs
+	// provides a list of broader confluence blocks that should
+	// also be created if not already present.  They are sorted
+	// outermost first, innermost last, and may include conf_stmt
+	// as their last entry.
+	void DefinedAt(const Stmt* s, const Stmt* conf_stmt,
+	               const std::vector<const Stmt*>& outer_confs);
 
 	// Called upon encountering a "return" statement.
 	void ReturnAt(const Stmt* s);
