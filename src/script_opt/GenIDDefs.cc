@@ -157,7 +157,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo(s);
+			BranchBackTo(curr_stmt);
 
 		EndConfluenceBlock();
 
@@ -180,7 +180,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo(s);
+			BranchBackTo(curr_stmt);
 
 		EndConfluenceBlock();
 
@@ -223,7 +223,7 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 		break;
 
 	case STMT_NEXT:
-		BranchBackTo(s, FindLoop());
+		BranchBackTo(curr_stmt, FindLoop());
 		break;
 
 	case STMT_BREAK:
@@ -518,7 +518,6 @@ void GenIDDefs::ComputeActiveBlocks()
 	bool saw_CR = false;
 
 	active_blocks.clear();
-	active_blocks.reserve(3);
 
 	for ( int i = confluence_blocks.size() - 1; i >= 0; --i )
 		{
@@ -537,7 +536,7 @@ void GenIDDefs::ComputeActiveBlocks()
 
 		if ( saw_one )
 			{
-			active_blocks.insert(active_blocks.begin(), cb);
+			active_blocks.push_back(cb);
 
 			if ( saw_loop && saw_switch && saw_CR )
 				break;
@@ -592,9 +591,7 @@ const Stmt* GenIDDefs::FindBranchBeyondTarget()
 		--i;
 		}
 
-	ASSERT(i >= 0);
-
-	return confluence_blocks[i];
+	return i >= 0 ? confluence_blocks[i] : nullptr;
 	}
 
 void GenIDDefs::ReturnAt(const Stmt* s)
@@ -619,6 +616,34 @@ void GenIDDefs::TrackID(const ID* id)
 		{ // Create the outermost set of identifiers.
 		std::unordered_set<const ID*> empty_IDs;
 		modified_IDs.push_back(empty_IDs);
+		}
+
+	// Indices into confluence_blocks and active_blocks, which
+	// we run in opposite directions since the latter is sorted
+	// innermost-to-outermost.
+	int cb_ind = confluence_blocks.size() - 1;
+	int ab_ind = 0;
+
+	if ( active_blocks.size() > 0 && active_blocks[0] == conf_stmt )
+		// Avoid redundant work given we will add the identifier
+		// at the end of this method.
+		++ab_ind;
+
+	while ( ab_ind < active_blocks.size() )
+		{
+		while ( cb_ind >= 0 )
+			{
+			if ( confluence_blocks[cb_ind] == active_blocks[ab_ind] )
+				{
+				modified_IDs[cb_ind + 1].insert(id);
+				--cb_ind;
+				break;
+				}
+
+			--cb_ind;
+			}
+
+		++ab_ind;
 		}
 
 	modified_IDs.back().insert(id);

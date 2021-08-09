@@ -53,30 +53,35 @@ void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt,
 		{
 		ASSERT(confluence_stmts.size() == 0);
 
-		// We're seeing this identifier for the first
-		// time, so we don't have any context or confluence
-		// information for it.
-
-		// Populate the surrounding confluence blocks.
-		for ( auto oc : outer_confs )
-			{
-			if ( oc == conf_stmt )
-				{
-				// No need to add it now, we're about to
-				// do so below.  But make sure it's the
-				// innermost.
-				ASSERT(oc == outer_confs.back());
-				}
-			else
-				StartConfluenceBlock(oc);
-			}
-
-		// Create the "backstory" region.
+		// We're seeing this identifier for the first time,
+		// so we don't have any context or confluence
+		// information for it.  Create its "backstory" region.
 		usage_regions.emplace_back(0, 0, false, false, NO_DEF);
 		}
-
 	else
 		EndRegionAt(stmt_num - 1, s_oi->block_level);
+
+	// Find the outermost active block we're not already tracking.
+	int ab;
+	for ( ab = outer_confs.size() - 1; ab >= 0; --ab )
+		{
+		bool found_it = false;
+
+		for ( auto cs : confluence_stmts )
+			if ( outer_confs[ab] == cs )
+				{
+				found_it = true;
+				break;
+				}
+
+		if ( ! found_it )
+			break;
+		}
+
+	// ab is now the outermost block not being tracked, or -1 if
+	// they're all being tracked.  Create outer active blocks.
+	for ( ; ab >= 0; --ab )
+		StartConfluenceBlock(outer_confs[ab]);
 
 	if ( conf_stmt )
 		{
@@ -112,8 +117,6 @@ void IDOptInfo::ReturnAt(const Stmt* s)
 
 void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	{
-	EndRegionAt(from);
-
 	// The key notion we need to update is whether the regions
 	// between from_reg and to_reg still have unique definitions.
 	// Confluence due to the branch can only take that away, it
@@ -121,12 +124,12 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	// "maybe defined", but not in a way we care about, since we
 	// only draw upon that for diagnosing usage errors, and for
 	// those the error has already occurred on entry into the loop.)
-	auto& from_reg = ActiveRegion();
+	auto from_reg = ActiveRegion();
 	auto t_oi = to->GetOptInfo();
 	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
 	auto& t_r = usage_regions[t_r_ind];
 
-	if ( from_reg.single_definition != t_r.single_definition )
+	if ( from_reg && from_reg->single_definition != t_r.single_definition )
 		{
 		// They disagree on the unique definition, if any.
 		// Invalidate any unique definitions in the regions
@@ -134,17 +137,29 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 		for ( auto i = t_r_ind; i < usage_regions.size(); ++i )
 			usage_regions[i].single_definition = NO_DEF;
 		}
+
+	EndRegionAt(from);
 	}
 
 void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 	{
 	ASSERT(pending_confluences.count(block) > 0);
-	pending_confluences[block].insert(&ActiveRegion());
-	EndRegionAt(end_s);
+
+	auto ar = ActiveRegion();
+	if ( ar )
+		{
+		pending_confluences[block].insert(ar);
+		EndRegionAt(end_s);
+		}
 	}
 
 void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	{
+	for ( auto cs : confluence_stmts )
+		{
+		ASSERT(cs != s);
+		}
+
 	ConfluenceSet empty_set;
 	pending_confluences[s] = empty_set;
 	confluence_stmts.push_back(s);
@@ -240,6 +255,7 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	                           single_def);
 
 	confluence_stmts.pop_back();
+	pending_confluences.erase(cs);
 	}
 
 bool IDOptInfo::IsPossiblyDefinedAt(const Stmt* s)
@@ -265,11 +281,11 @@ void IDOptInfo::EndRegionAt(const Stmt* s)
 
 void IDOptInfo::EndRegionAt(int stmt_num, int level)
 	{
-	auto& r = ActiveRegion();
+	auto r = ActiveRegion();
 
-	if ( r.block_level == level )
+	if ( r && r->block_level == level )
 		// Previous region ends here.
-		r.end_stmt = stmt_num;
+		r->end_stmt = stmt_num;
 	}
 
 int IDOptInfo::FindRegionIndex(int stmt_num)
@@ -277,7 +293,7 @@ int IDOptInfo::FindRegionIndex(int stmt_num)
 	int i;
 	for ( i = 0; i < usage_regions.size(); ++i )
 		{
-		ASSERT(usage_regions[i].start_stmt < stmt_num);
+		ASSERT(usage_regions[i].start_stmt <= stmt_num);
 
 		if ( usage_regions[i].end_stmt < 0 )
 			break;
@@ -296,7 +312,6 @@ int IDOptInfo::ActiveRegionIndex()
 		if ( usage_regions[i].end_stmt < 0 )
 			break;
 
-	ASSERT(i >= 0);
 	return i;
 	}
 

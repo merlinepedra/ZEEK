@@ -84,7 +84,7 @@ private:
 	// A subset of confluence_blocks that reflects the currently
 	// "active" outer blocks, where "active" means they could be
 	// the target of a branch (loops, switches, catch-returns).
-	// We maintain these sorted outermost-to-innermost, and
+	// We maintain these sorted innermost-to-outermost, and
 	// recompute every time we begin or end an "active" confluence
 	// block.
 	std::vector<const Stmt*> active_blocks;

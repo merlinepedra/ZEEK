@@ -73,8 +73,8 @@ public:
 	// surrounding confluence statement.  In addition, outer_confs
 	// provides a list of broader confluence blocks that should
 	// also be created if not already present.  They are sorted
-	// outermost first, innermost last, and may include conf_stmt
-	// as their last entry.
+	// innermost first, outermost last, and may include conf_stmt
+	// as their first entry.
 	void DefinedAt(const Stmt* s, const Stmt* conf_stmt,
 	               const std::vector<const Stmt*>& outer_confs);
 
@@ -112,13 +112,16 @@ private:
 	void EndRegionAt(int stmt_num, int level);
 
 	// Find the region that applies *prior* to executing the
-	// given statement.
+	// given statement.  There should always be such a region.
 	IDDefRegion& FindRegion(int stmt_num)
 		{ return usage_regions[FindRegionIndex(stmt_num)]; }
 	int FindRegionIndex(int stmt_num);
 
-	IDDefRegion& ActiveRegion()
-		{ return usage_regions[ActiveRegionIndex()]; }
+	IDDefRegion* ActiveRegion()
+		{
+		auto ind = ActiveRegionIndex();
+		return ind >= 0 ? &usage_regions[ind] : nullptr;
+		}
 	int ActiveRegionIndex();
 
 	// Expressions used to initialize the identifier, for use by
