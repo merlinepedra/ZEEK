@@ -108,6 +108,16 @@ public:
 	bool IsDefinitelyDefinedAt(const Stmt* s);
 	bool IsUniquelyDefinedAt(const Stmt* s);
 
+	bool DidUndefinedWarning() const
+		{ return did_undefined_warning; }
+	bool DidPossiblyUndefinedWarning() const
+		{ return did_possibly_undefined_warning; }
+
+	void SetDidUndefinedWarning()
+		{ did_undefined_warning = true; }
+	void SetDidPossiblyUndefinedWarning()
+		{ did_possibly_undefined_warning = true; }
+
 private:
 	// End the active region after execution of the given statement.
 	void EndRegionAt(const Stmt* s);
@@ -151,6 +161,9 @@ private:
 
 	// Only needed for debugging purposes.
 	const ID* my_id;
+
+	bool did_undefined_warning = false;
+	bool did_possibly_undefined_warning = false;
 };
 
 } // namespace zeek::detail
