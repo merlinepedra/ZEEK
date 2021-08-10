@@ -60,7 +60,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 
 	auto si = s->GetOptInfo();
 	si->stmt_num = ++stmt_num;
-	si->block_level = confluence_blocks.size();
+	si->block_level = confluence_blocks.size() + 1;
 
 	switch ( s->Tag() ) {
 	case STMT_CATCH_RETURN:
@@ -95,8 +95,10 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 			BranchBeyond(curr_stmt);
 
 		f_branch->Traverse(this);
+		if ( ! f_branch->NoFlowAfter(false) )
+			BranchBeyond(curr_stmt);
 
-		EndConfluenceBlock(f_branch->NoFlowAfter(false));
+		EndConfluenceBlock(true);
 
 		return TC_ABORTSTMT;
 		}
@@ -500,7 +502,8 @@ void GenIDDefs::EndConfluenceBlock(bool no_orig)
 
 	confluence_blocks.pop_back();
 
-	if ( confluence_blocks.size() == barrier_blocks.back() )
+	int bb = barrier_blocks.back();
+	if ( bb > 0 && confluence_blocks.size() == bb )
 		barrier_blocks.pop_back();
 
 	modified_IDs.pop_back();
@@ -566,6 +569,7 @@ void GenIDDefs::TrackID(const ID* id)
 	{
 	auto oi = id->GetOptInfo();
 
+	ASSERT(barrier_blocks.size() > 0);
 	oi->DefinedAt(curr_stmt, confluence_blocks, barrier_blocks.back());
 
 	if ( modified_IDs.size() == 0 )

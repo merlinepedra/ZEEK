@@ -29,6 +29,14 @@ IDDefRegion::IDDefRegion(int stmt_num, int level,
 	Init(maybe, definitely, single_def);
 	}
 
+IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
+	{
+	start_stmt = s->GetOptInfo()->stmt_num;
+	block_level = s->GetOptInfo()->block_level;
+
+	Init(ur.maybe_defined, ur.definitely_defined, ur.single_definition);
+	}
+
 void IDDefRegion::Dump() const
 	{
 	printf("\t%d->%d (%d), %d/%d/%d\n", start_stmt, end_stmt,
@@ -83,9 +91,6 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 
 	EndRegionAt(stmt_num - 1, s_oi->block_level);
 
-	// Create new region corresponding to this definition.
-	usage_regions.emplace_back(s, true, true, stmt_num);
-
 	// Fill in any missing confluence blocks.
 	int b = 0;	// index into our own blocks
 	int n = confluence_stmts.size();
@@ -109,6 +114,11 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 	// Add in the remainder.
 	for ( ; conf_start < conf_blocks.size(); ++conf_start )
 		StartConfluenceBlock(conf_blocks[conf_start]);
+
+	// Create new region corresponding to this definition.
+	// This needs to come after filling out the confluence
+	// blocks, since they'll create their own (earlier) regions.
+	usage_regions.emplace_back(s, true, true, stmt_num);
 
 	DumpBlocks();
 	}
@@ -189,6 +199,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	auto s_oi = s->GetOptInfo();
 	int block_level = s_oi->block_level;
 
+	// End any confluence blocks at this or inner levels.
 	for ( auto cs : confluence_stmts )
 		{
 		ASSERT(cs != s);
@@ -207,6 +218,24 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	ConfluenceSet empty_set;
 	pending_confluences[s] = empty_set;
 	confluence_stmts.push_back(s);
+
+	// Inherit the closest open, outer region, if necessary.
+	for ( int i = usage_regions.size() - 1; i >= 0; --i )
+		{
+		auto& ui = usage_regions[i];
+
+		if ( ui.end_stmt < 0 )
+			{
+			ASSERT(ui.block_level <= block_level);
+
+			if ( ui.block_level < block_level )
+				// Didn't find one at our own level.
+				usage_regions.emplace_back(s, ui);
+
+			// We now have one at our level that we can use.
+			break;
+			}
+		}
 
 	DumpBlocks();
 	}

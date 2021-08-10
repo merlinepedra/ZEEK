@@ -23,6 +23,7 @@ public:
 	IDDefRegion(const Stmt* s, bool maybe, bool definitely, int single_def);
 	IDDefRegion(int stmt_num, int level,
 	            bool maybe, bool definitely, int single_def);
+	IDDefRegion(const Stmt* s, const IDDefRegion& ur);
 
 	void Init(bool maybe, bool definitely, int single_def)
 		{
