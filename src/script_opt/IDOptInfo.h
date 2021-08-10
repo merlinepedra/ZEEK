@@ -73,14 +73,12 @@ public:
 	void SetTemp()		{ is_temp = true; }
 
 	// Called when the identifier is defined via execution of the
-	// given statement.  "conf_stmt", if non-null, provides the
-	// surrounding confluence statement.  In addition, outer_confs
-	// provides a list of broader confluence blocks that should
-	// also be created if not already present.  They are sorted
-	// innermost first, outermost last, and may include conf_stmt
-	// as their first entry.
-	void DefinedAt(const Stmt* s, const Stmt* conf_stmt,
-	               const std::vector<const Stmt*>& outer_confs);
+	// given statement.  "conf_blocks" gives the full set of
+	// surrounding confluence statements.  It should be processed
+	// starting at conf_start (note that conf_blocks may be empty).
+	void DefinedAt(const Stmt* s,
+	               const std::vector<const Stmt*>& conf_blocks,
+	               int conf_start);
 
 	// Called upon encountering a "return" statement.
 	void ReturnAt(const Stmt* s);

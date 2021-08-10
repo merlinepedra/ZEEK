@@ -36,8 +36,9 @@ void IDOptInfo::Clear()
 	confluence_stmts.clear();
 	}
 
-void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt,
-                          const std::vector<const Stmt*>& outer_confs)
+void IDOptInfo::DefinedAt(const Stmt* s,
+                          const std::vector<const Stmt*>& conf_blocks,
+                          int conf_start)
 	{
 	if ( ! s )
 		{ // This is a definition-upon-entry
@@ -61,44 +62,35 @@ void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt,
 
 	EndRegionAt(stmt_num - 1, s_oi->block_level);
 
-	// Find the outermost active block we're not already tracking.
-	int ab;
-	for ( ab = outer_confs.size() - 1; ab >= 0; --ab )
+	// Create new region corresponding to this definition.
+	usage_regions.emplace_back(s, true, true, stmt_num);
+
+	// Fill in any missing confluence blocks.
+	int b = 0;	// index into our own blocks
+	int n = confluence_stmts.size();
+
+	while ( b < n && conf_start < conf_blocks.size() )
 		{
-		bool found_it = false;
+		auto outer_block = conf_blocks[conf_start];
 
-		for ( auto cs : confluence_stmts )
-			if ( outer_confs[ab] == cs )
-				{
-				found_it = true;
+		// See if we can find that block.
+		for ( ; b < n; ++b )
+			if ( confluence_stmts[b] == outer_block )
 				break;
-				}
 
-		if ( ! found_it )
+		if ( b < n )
+			{ // We found it, look for the next one.
+			++conf_start;
+			++b;
+			}
+		else
+			// we've advanced conf_start as far as we can
 			break;
 		}
 
-	// ab is now the outermost block not being tracked, or -1 if
-	// they're all being tracked.  Create outer active blocks.
-	for ( ; ab >= 0; --ab )
-		StartConfluenceBlock(outer_confs[ab]);
-
-	if ( conf_stmt )
-		{
-		if ( confluence_stmts.size() == 0 ||
-		     confluence_stmts.back() != conf_stmt )
-			// We've just learned about the block.
-			StartConfluenceBlock(conf_stmt);
-		}
-
-	else
-		{
-		// Consistency check.
-		ASSERT(confluence_stmts.size() == 0);
-		}
-
-	// Create new region corresponding to this definition.
-	usage_regions.emplace_back(s, true, true, stmt_num);
+	// Add in the remainder.
+	for ( ; conf_start < conf_blocks.size(); ++conf_start )
+		StartConfluenceBlock(conf_blocks[conf_start]);
 	}
 
 void IDOptInfo::ReturnAt(const Stmt* s)

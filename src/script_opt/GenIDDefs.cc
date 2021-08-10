@@ -26,6 +26,9 @@ void GenIDDefs::TraverseFunction(const Func* f, ScopePtr scope, StmtPtr body)
 	const auto& args = scope->OrderedVars();
 	int nparam = f->GetType()->Params()->NumFields();
 
+	// Establish the outermost barrior.
+	barrier_blocks.push_back(0);
+
 	for ( const auto& g : pf->Globals() )
 		{
 		g->GetOptInfo()->Clear();
@@ -481,10 +484,10 @@ void GenIDDefs::CheckVarUsage(const Expr* e, const ID* id)
 
 void GenIDDefs::StartConfluenceBlock(const Stmt* s)
 	{
-	confluence_blocks.push_back(s);
+	if ( s->Tag() == STMT_CATCH_RETURN )
+		barrier_blocks.push_back(confluence_blocks.size());
 
-	if ( IsActiveBlock(s) )
-		ComputeActiveBlocks();
+	confluence_blocks.push_back(s);
 
 	std::unordered_set<const ID*> empty_IDs;
 	modified_IDs.push_back(empty_IDs);
@@ -495,61 +498,12 @@ void GenIDDefs::EndConfluenceBlock(bool no_orig)
 	for ( auto id : modified_IDs.back() )
 		id->GetOptInfo()->ConfluenceBlockEndsAt(curr_stmt, no_orig);
 
-	bool is_active = IsActiveBlock(confluence_blocks.back());
-
 	confluence_blocks.pop_back();
 
-	if ( is_active )
-		ComputeActiveBlocks();
+	if ( confluence_blocks.size() == barrier_blocks.back() )
+		barrier_blocks.pop_back();
 
 	modified_IDs.pop_back();
-	}
-
-bool GenIDDefs::IsActiveBlock(const Stmt* s)
-	{
-	switch ( s->Tag() ) {
-	case STMT_FOR:
-	case STMT_WHILE:
-	case STMT_SWITCH:
-	case STMT_CATCH_RETURN:
-		return true;
-
-	default:
-		return false;
-	}
-	}
-
-void GenIDDefs::ComputeActiveBlocks()
-	{
-	bool saw_loop = false;
-	bool saw_switch = false;
-	bool saw_CR = false;
-
-	active_blocks.clear();
-
-	for ( int i = confluence_blocks.size() - 1; i >= 0; --i )
-		{
-		auto& cb = confluence_blocks[i];
-		auto t = cb->Tag();
-		bool saw_one = false;
-
-		if ( ! saw_loop && (t == STMT_FOR || t == STMT_WHILE) )
-			saw_one = saw_loop = true;
-
-		if ( ! saw_switch && t == STMT_SWITCH )
-			saw_one = saw_switch = true;
-
-		if ( ! saw_CR && t == STMT_CATCH_RETURN )
-			saw_one = saw_CR = true;
-
-		if ( saw_one )
-			{
-			active_blocks.push_back(cb);
-
-			if ( saw_loop && saw_switch && saw_CR )
-				break;
-			}
-		}
 	}
 
 void GenIDDefs::BranchBackTo(const Stmt* from, const Stmt* to)
@@ -612,13 +566,7 @@ void GenIDDefs::TrackID(const ID* id)
 	{
 	auto oi = id->GetOptInfo();
 
-	const Stmt* conf_stmt;
-	if ( confluence_blocks.size() > 0 )
-		conf_stmt = confluence_blocks.back();
-	else
-		conf_stmt = nullptr;
-
-	oi->DefinedAt(curr_stmt, conf_stmt, active_blocks);
+	oi->DefinedAt(curr_stmt, confluence_blocks, barrier_blocks.back());
 
 	if ( modified_IDs.size() == 0 )
 		{ // Create the outermost set of identifiers.
@@ -626,35 +574,10 @@ void GenIDDefs::TrackID(const ID* id)
 		modified_IDs.push_back(empty_IDs);
 		}
 
-	// Indices into confluence_blocks and active_blocks, which
-	// we run in opposite directions since the latter is sorted
-	// innermost-to-outermost.
-	int cb_ind = confluence_blocks.size() - 1;
-	int ab_ind = 0;
-
-	if ( active_blocks.size() > 0 && active_blocks[0] == conf_stmt )
-		// Avoid redundant work given we will add the identifier
-		// at the end of this method.
-		++ab_ind;
-
-	while ( ab_ind < active_blocks.size() )
-		{
-		while ( cb_ind >= 0 )
-			{
-			if ( confluence_blocks[cb_ind] == active_blocks[ab_ind] )
-				{
-				modified_IDs[cb_ind + 1].insert(id);
-				--cb_ind;
-				break;
-				}
-
-			--cb_ind;
-			}
-
-		++ab_ind;
-		}
-
-	modified_IDs.back().insert(id);
+	// Ensure we track this identifier across all relevant
+	// confluence regions.
+	for ( int i = barrier_blocks.back(); i < confluence_blocks.size(); ++i )
+		modified_IDs[i].insert(id);
 	}
 
 } // zeek::detail

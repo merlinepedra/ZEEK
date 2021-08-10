@@ -47,13 +47,6 @@ private:
 	// that starts the block).
 	void EndConfluenceBlock(bool no_orig_flow = false);
 
-	// True if the given statement corresponds to an "active" block
-	// (one that could be branched to in some fashion.
-	bool IsActiveBlock(const Stmt* s);
-
-	// Recomputes active_blocks based on the current blocks.
-	void ComputeActiveBlocks();
-
 	void BranchBackTo(const Stmt* from, const Stmt* to = nullptr);
 	void BranchBeyond(const Stmt* from, const Stmt* to = nullptr);
 
@@ -81,13 +74,15 @@ private:
 
 	std::vector<const Stmt*> confluence_blocks;
 
-	// A subset of confluence_blocks that reflects the currently
-	// "active" outer blocks, where "active" means they could be
-	// the target of a branch (loops, switches, catch-returns).
-	// We maintain these sorted innermost-to-outermost, and
-	// recompute every time we begin or end an "active" confluence
-	// block.
-	std::vector<const Stmt*> active_blocks;
+	// Index into confluence_blocks of "barrier" blocks that
+	// represent unavoidable confluence blocks (no branching
+	// out of them).  These include the outermost block and
+	// any catch-return blocks.  We track these because
+	// (1) there's no need for an IDOptInfo to track previously
+	// unseen confluence regions outer to those, and (2) they
+	// can get quite deep due when inlining, so there are savings
+	// to avoid having to track outer to them.
+	std::vector<int> barrier_blocks;
 
 	// The following is parallel to confluence_blocks except
 	// the front entry tracks identifiers at the outermost
