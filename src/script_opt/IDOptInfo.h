@@ -28,8 +28,10 @@ public:
 		{
 		if ( definitely )
 			maybe = true;
+
 		maybe_defined = maybe;
 		definitely_defined = definitely;
+
 		single_definition = definitely ? single_def : NO_DEF;
 		}
 

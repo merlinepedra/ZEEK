@@ -57,7 +57,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 
 	auto si = s->GetOptInfo();
 	si->stmt_num = ++stmt_num;
-	si->block_level = confluence_blocks.size() + 1;
+	si->block_level = confluence_blocks.size();
 
 	switch ( s->Tag() ) {
 	case STMT_CATCH_RETURN:
@@ -80,18 +80,20 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		{
 		auto i = s->AsIfStmt();
 		auto cond = i->StmtExpr();
+		auto t_branch = i->TrueBranch();
+		auto f_branch = i->TrueBranch();
         
 		cond->Traverse(this);
 
 		StartConfluenceBlock(s);
 
-		i->TrueBranch()->Traverse(this);
-		if ( ! i->TrueBranch()->NoFlowAfter(false) )
+		t_branch->Traverse(this);
+		if ( ! t_branch->NoFlowAfter(false) )
 			BranchBeyond(curr_stmt);
 
-		i->FalseBranch()->Traverse(this);
+		f_branch->Traverse(this);
 
-		EndConfluenceBlock(true);
+		EndConfluenceBlock(f_branch->NoFlowAfter(false));
 
 		return TC_ABORTSTMT;
 		}

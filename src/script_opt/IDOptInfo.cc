@@ -98,7 +98,7 @@ void IDOptInfo::DefinedAt(const Stmt* s, const Stmt* conf_stmt,
 		}
 
 	// Create new region corresponding to this definition.
-	usage_regions.emplace_back(s, false, true, stmt_num);
+	usage_regions.emplace_back(s, true, true, stmt_num);
 	}
 
 void IDOptInfo::ReturnAt(const Stmt* s)
