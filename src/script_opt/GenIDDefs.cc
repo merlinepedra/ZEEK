@@ -84,7 +84,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		auto i = s->AsIfStmt();
 		auto cond = i->StmtExpr();
 		auto t_branch = i->TrueBranch();
-		auto f_branch = i->TrueBranch();
+		auto f_branch = i->FalseBranch();
         
 		cond->Traverse(this);
 
@@ -577,7 +577,13 @@ void GenIDDefs::TrackID(const ID* id)
 	// Ensure we track this identifier across all relevant
 	// confluence regions.
 	for ( int i = barrier_blocks.back(); i < confluence_blocks.size(); ++i )
-		modified_IDs[i].insert(id);
+		// Add one because modified_IDs includes outer non-confluence
+		// block.
+		modified_IDs[i+1].insert(id);
+
+	if ( confluence_blocks.size() == 0 )
+		// This is a definition at the outermost level.
+		modified_IDs[0].insert(id);
 	}
 
 } // zeek::detail

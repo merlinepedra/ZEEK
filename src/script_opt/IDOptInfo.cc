@@ -9,6 +9,8 @@
 
 namespace zeek::detail {
 
+const char* trace_ID = nullptr;
+
 IDDefRegion::IDDefRegion(const Stmt* s,
                          bool maybe, bool definitely, int single_def)
 	{
@@ -27,9 +29,24 @@ IDDefRegion::IDDefRegion(int stmt_num, int level,
 	Init(maybe, definitely, single_def);
 	}
 
+void IDDefRegion::Dump() const
+	{
+	printf("\t%d->%d (%d), %d/%d/%d\n", start_stmt, end_stmt,
+	       block_level, maybe_defined, definitely_defined,
+	       single_definition);
+	}
+
 
 void IDOptInfo::Clear()
 	{
+	static bool did_init = false;
+
+	if ( ! did_init )
+		{
+		trace_ID = getenv("ZEEK_TRACE_ID");
+		did_init = true;
+		}
+
 	init_exprs.clear();
 	usage_regions.clear();
 	pending_confluences.clear();
@@ -40,10 +57,14 @@ void IDOptInfo::DefinedAt(const Stmt* s,
                           const std::vector<const Stmt*>& conf_blocks,
                           int conf_start)
 	{
+	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+		printf("ID %s defined at %d: %s\n", trace_ID, s ? s->GetOptInfo()->stmt_num : NO_DEF, s ? obj_desc(s).c_str() : "<entry>");
+
 	if ( ! s )
 		{ // This is a definition-upon-entry
 		ASSERT(usage_regions.size() == 0);
 		usage_regions.emplace_back(0, 0, true, true, 0);
+		DumpBlocks();
 		return;
 		}
 
@@ -83,32 +104,40 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 			++conf_start;
 			++b;
 			}
-		else
-			// we've advanced conf_start as far as we can
-			break;
 		}
 
 	// Add in the remainder.
 	for ( ; conf_start < conf_blocks.size(); ++conf_start )
 		StartConfluenceBlock(conf_blocks[conf_start]);
+
+	DumpBlocks();
 	}
 
 void IDOptInfo::ReturnAt(const Stmt* s)
 	{
+	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+		printf("ID %s subject to return %d: %s\n", trace_ID, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
+
 	// Look for a catch-return that this would branch to.
 	for ( int i = confluence_stmts.size() - 1; i >= 0; --i )
 		if ( confluence_stmts[i]->Tag() == STMT_CATCH_RETURN )
 			{
 			BranchBeyond(s, confluence_stmts[i]);
+			DumpBlocks();
 			return;
 			}
 
 	auto s_oi = s->GetOptInfo();
 	EndRegionAt(s_oi->stmt_num, s_oi->block_level);
+
+	DumpBlocks();
 	}
 
 void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	{
+	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+		printf("ID %s branching back from %d: %s\n", trace_ID, from->GetOptInfo()->stmt_num, obj_desc(from).c_str());
+
 	// The key notion we need to update is whether the regions
 	// between from_reg and to_reg still have unique definitions.
 	// Confluence due to the branch can only take that away, it
@@ -131,10 +160,15 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 		}
 
 	EndRegionAt(from);
+
+	DumpBlocks();
 	}
 
 void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 	{
+	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+		printf("ID %s branching forward from %d: %s\n", trace_ID, end_s->GetOptInfo()->stmt_num, obj_desc(end_s).c_str());
+
 	ASSERT(pending_confluences.count(block) > 0);
 
 	auto ar = ActiveRegion();
@@ -143,10 +177,15 @@ void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 		pending_confluences[block].insert(ar);
 		EndRegionAt(end_s);
 		}
+
+	DumpBlocks();
 	}
 
 void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	{
+	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+		printf("ID %s starting confluence block at %d: %s\n", trace_ID, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
+
 	auto s_oi = s->GetOptInfo();
 	int block_level = s_oi->block_level;
 
@@ -168,10 +207,15 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	ConfluenceSet empty_set;
 	pending_confluences[s] = empty_set;
 	confluence_stmts.push_back(s);
+
+	DumpBlocks();
 	}
 
 void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	{
+	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+		printf("ID %s ending (%d) confluence block at %d: %s\n", trace_ID, no_orig_flow, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
+
 	auto stmt_num = s->GetOptInfo()->stmt_num;
 
 	ASSERT(confluence_stmts.size() > 0);
@@ -266,6 +310,8 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 	confluence_stmts.pop_back();
 	pending_confluences.erase(cs);
+
+	DumpBlocks();
 	}
 
 bool IDOptInfo::IsPossiblyDefinedAt(const Stmt* s)
@@ -333,6 +379,17 @@ int IDOptInfo::ActiveRegionIndex()
 			break;
 
 	return i;
+	}
+
+void IDOptInfo::DumpBlocks() const
+	{
+	if ( ! trace_ID || ! util::streq(trace_ID, my_id->Name()) )
+		return;
+
+	for ( auto i = 0; i < usage_regions.size(); ++i )
+		usage_regions[i].Dump();
+
+	printf("<end>\n");
 	}
 
 

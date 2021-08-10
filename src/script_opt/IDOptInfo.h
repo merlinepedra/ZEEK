@@ -35,6 +35,8 @@ public:
 		single_definition = definitely ? single_def : NO_DEF;
 		}
 
+	void Dump() const;
+
 	// Number of the statement for which this region applies *after*
 	// its execution.
 	int start_stmt;
@@ -136,6 +138,8 @@ private:
 		}
 	int ActiveRegionIndex();
 
+	void DumpBlocks() const;
+
 	// Expressions used to initialize the identifier, for use by
 	// the scripts-to-C++ compiler.  We need to track all of them
 	// because it's possible that a global value gets created using
@@ -165,5 +169,7 @@ private:
 	bool did_undefined_warning = false;
 	bool did_possibly_undefined_warning = false;
 };
+
+extern const char* trace_ID;
 
 } // namespace zeek::detail
