@@ -57,7 +57,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 
 	auto si = s->GetOptInfo();
 	si->stmt_num = ++stmt_num;
-	si->block_level = confluence_blocks.size();
+	si->block_level = confluence_blocks.size() + 1;
 
 	switch ( s->Tag() ) {
 	case STMT_CATCH_RETURN:
@@ -87,13 +87,11 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 
 		i->TrueBranch()->Traverse(this);
 		if ( ! i->TrueBranch()->NoFlowAfter(false) )
-			BranchBeyond(s);
+			BranchBeyond(curr_stmt);
 
 		i->FalseBranch()->Traverse(this);
-		if ( ! i->FalseBranch()->NoFlowAfter(false) )
-			BranchBeyond(s);
 
-		EndConfluenceBlock();
+		EndConfluenceBlock(true);
 
 		return TC_ABORTSTMT;
 		}
@@ -456,7 +454,7 @@ bool GenIDDefs::IsAggr(const Expr* e) const
 
 void GenIDDefs::CheckVarUsage(const Expr* e, const ID* id)
 	{
-	if ( analysis_options.usage_issues == 0 )
+	if ( analysis_options.usage_issues == 0 || id->IsGlobal() )
 		return;
 
 	auto oi = id->GetOptInfo();

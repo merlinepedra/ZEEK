@@ -296,12 +296,16 @@ static void init_options()
 		analysis_options.gen_ZAM_code = true;
 
 	if ( analysis_options.only_func )
+		{
 		// Note, this comes after the statement above because for
 		// --optimize-only we don't necessarily want to go all
 		// the way to *generating* ZAM code, though we'll want to
 		// dump it *if* we generate it.
-		analysis_options.dump_xform = analysis_options.dump_ZAM =
-		 analysis_options.report_uncompilable = true;
+		analysis_options.dump_xform = analysis_options.dump_ZAM = true;
+
+		if ( analysis_options.gen_ZAM_code || generating_CPP )
+			analysis_options.report_uncompilable = true;
+		}
 
 	if ( analysis_options.report_uncompilable &&
 	     ! analysis_options.gen_ZAM_code && ! generating_CPP )

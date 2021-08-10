@@ -36,11 +36,13 @@ public:
 	// Number of the statement for which this region applies *after*
 	// its execution.
 	int start_stmt;
-	int block_level;
 
 	// Number of the statement that this region applies to, *after*
 	// its execution.
 	int end_stmt = NO_DEF;	// means the region hasn't ended yet
+
+	// Degree of confluence nesting associated with this region.
+	int block_level;
 
 	// Identifier might be defined in this region.
 	bool maybe_defined;
