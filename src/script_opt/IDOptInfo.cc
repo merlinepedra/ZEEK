@@ -39,8 +39,7 @@ IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
 
 void IDDefRegion::Dump() const
 	{
-	printf("\t%d->%d%s (%d), %d/%d/%d\n", start_stmt, end_stmt,
-	       end_stmt >= 0 && start_stmt > end_stmt ? "*" : "",
+	printf("\t%d->%d (%d), %d/%d/%d\n", start_stmt, end_stmt,
 	       block_level, maybe_defined, definitely_defined,
 	       single_definition);
 	}
@@ -352,7 +351,7 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	// Adjust for the new region coming just after stmt_num.
 	int level = cs->GetOptInfo()->block_level;
 
-	usage_regions.emplace_back(stmt_num + 1, level, maybe, definitely,
+	usage_regions.emplace_back(stmt_num, level, maybe, definitely,
 	                           single_def);
 
 	confluence_stmts.pop_back();
@@ -407,10 +406,6 @@ int IDOptInfo::FindRegionIndex(int stmt_num)
 	for ( auto i = 0; i < usage_regions.size(); ++i )
 		{
 		auto ur = usage_regions[i];
-
-		if ( ur.end_stmt >= 0 && ur.start_stmt > ur.end_stmt )
-			// Degenerate region.
-			continue;
 
 		if ( ur.start_stmt > stmt_num )
 			break;
