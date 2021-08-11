@@ -127,10 +127,6 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 				}
 
 			body->Traverse(this);
-
-			if ( ! body->NoFlowAfter(false) )
-				// This occurs for fallthrough.
-				BranchBeyond(s, sw);
 			}
 
 		EndConfluenceBlock(sw->HasDefault());
