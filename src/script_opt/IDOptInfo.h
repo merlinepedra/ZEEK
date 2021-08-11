@@ -151,7 +151,7 @@ private:
 
 	// A type for collecting the indices of usage_regions that will
 	// all have confluence together at one point.
-	using ConfluenceSet = std::set<IDDefRegion*>;
+	using ConfluenceSet = std::set<int>;
 
 	// Maps loops/switches/catch-returns to their associated
 	// confluence sets.
@@ -160,6 +160,13 @@ private:
 	// A stack of confluence statements, so we can always find
 	// the innermost when ending a confluence block.
 	std::vector<const Stmt*> confluence_stmts;
+
+	// Parallel vector that tracks whether, upon creating the
+	// confluence block, there had already been observed internal
+	// flow going beyond it.  If so, then we can ignore no_orig_flow
+	// when ending the block, because in fact there *was* original
+	// flow.
+	std::vector<bool> block_has_orig_flow;
 
 	// Whether the identifier is a temporary variable.
 	bool is_temp = false;

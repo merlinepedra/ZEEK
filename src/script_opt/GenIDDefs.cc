@@ -92,11 +92,11 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 
 		t_branch->Traverse(this);
 		if ( ! t_branch->NoFlowAfter(false) )
-			BranchBeyond(curr_stmt);
+			BranchBeyond(curr_stmt, s);
 
 		f_branch->Traverse(this);
 		if ( ! f_branch->NoFlowAfter(false) )
-			BranchBeyond(curr_stmt);
+			BranchBeyond(curr_stmt, s);
 
 		EndConfluenceBlock(true);
 
@@ -131,9 +131,10 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 			body->Traverse(this);
 
 			if ( ! body->NoFlowAfter(false) )
-				BranchBeyond(s);
+				// This occurs for fallthrough.
+				BranchBeyond(s, body);
 
-			EndConfluenceBlock();
+			EndConfluenceBlock(true);
 			}
 
 		EndConfluenceBlock(sw->HasDefault());
@@ -162,7 +163,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo(curr_stmt);
+			BranchBackTo(curr_stmt, s);
 
 		EndConfluenceBlock();
 
@@ -185,7 +186,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo(curr_stmt);
+			BranchBackTo(curr_stmt, s);
 
 		EndConfluenceBlock();
 
@@ -511,20 +512,16 @@ void GenIDDefs::EndConfluenceBlock(bool no_orig)
 
 void GenIDDefs::BranchBackTo(const Stmt* from, const Stmt* to)
 	{
-	if ( ! to )
-		to = confluence_blocks.back();
-
 	for ( auto id : modified_IDs.back() )
 		id->GetOptInfo()->BranchBackTo(from, to);
 	}
 
 void GenIDDefs::BranchBeyond(const Stmt* from, const Stmt* to)
 	{
-	if ( ! to )
-		to = confluence_blocks.back();
-
 	for ( auto id : modified_IDs.back() )
 		id->GetOptInfo()->BranchBeyond(from, to);
+
+	to->GetOptInfo()->contains_branch_beyond = true;
 	}
 
 const Stmt* GenIDDefs::FindLoop()
@@ -549,14 +546,15 @@ const Stmt* GenIDDefs::FindBranchBeyondTarget()
 	int i = confluence_blocks.size() - 1;
 	while ( i >= 0 )
 		{
-		auto t = confluence_blocks[i]->Tag();
+		auto cb = confluence_blocks[i];
+		auto t = cb->Tag();
 		if ( t == STMT_WHILE || t == STMT_FOR || t == STMT_SWITCH )
-			break;
+			return cb;
 
 		--i;
 		}
 
-	return i >= 0 ? confluence_blocks[i] : nullptr;
+	return nullptr;
 	}
 
 void GenIDDefs::ReturnAt(const Stmt* s)

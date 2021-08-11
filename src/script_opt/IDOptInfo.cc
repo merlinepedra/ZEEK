@@ -39,7 +39,8 @@ IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
 
 void IDDefRegion::Dump() const
 	{
-	printf("\t%d->%d (%d), %d/%d/%d\n", start_stmt, end_stmt,
+	printf("\t%d->%d%s (%d), %d/%d/%d\n", start_stmt, end_stmt,
+	       end_stmt >= 0 && start_stmt > end_stmt ? "*" : "",
 	       block_level, maybe_defined, definitely_defined,
 	       single_definition);
 	}
@@ -146,7 +147,9 @@ void IDOptInfo::ReturnAt(const Stmt* s)
 void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
-		printf("ID %s branching back from %d: %s\n", trace_ID, from->GetOptInfo()->stmt_num, obj_desc(from).c_str());
+		printf("ID %s branching back from %d->%d: %s\n", trace_ID,
+		       from->GetOptInfo()->stmt_num,
+		       to->GetOptInfo()->stmt_num, obj_desc(from).c_str());
 
 	// The key notion we need to update is whether the regions
 	// between from_reg and to_reg still have unique definitions.
@@ -177,12 +180,14 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
-		printf("ID %s branching forward from %d: %s\n", trace_ID, end_s->GetOptInfo()->stmt_num, obj_desc(end_s).c_str());
+		printf("ID %s branching forward from %d beyond %d: %s\n",
+		       trace_ID, end_s->GetOptInfo()->stmt_num,
+		       block->GetOptInfo()->stmt_num, obj_desc(end_s).c_str());
 
 	ASSERT(pending_confluences.count(block) > 0);
 
-	auto ar = ActiveRegion();
-	if ( ar )
+	auto ar = ActiveRegionIndex();
+	if ( ar != NO_DEF )
 		{
 		pending_confluences[block].insert(ar);
 		EndRegionAt(end_s);
@@ -211,13 +216,13 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 			ASSERT(cs_level == block_level);
 			ASSERT(cs == confluence_stmts.back());
 			EndRegionAt(s_oi->stmt_num - 1, block_level);
-			break;	// iterator is invalid
 			}
 		}
 
 	ConfluenceSet empty_set;
 	pending_confluences[s] = empty_set;
 	confluence_stmts.push_back(s);
+	block_has_orig_flow.push_back(s_oi->contains_branch_beyond);
 
 	// Inherit the closest open, outer region, if necessary.
 	for ( int i = usage_regions.size() - 1; i >= 0; --i )
@@ -229,7 +234,9 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 			ASSERT(ui.block_level <= block_level);
 
 			if ( ui.block_level < block_level )
-				// Didn't find one at our own level.
+				// Didn't find one at our own level,
+				// so create on inherited from the
+				// outer one.
 				usage_regions.emplace_back(s, ui);
 
 			// We now have one at our level that we can use.
@@ -256,6 +263,9 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	int cs_stmt_num = cs->GetOptInfo()->stmt_num;
 	int cs_level = cs->GetOptInfo()->block_level;
 
+	if ( block_has_orig_flow.back() )
+		no_orig_flow = false;
+
 	bool maybe = false;
 	bool definitely = true;
 
@@ -265,8 +275,10 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 	int num_regions = 0;
 
-	for ( auto& ur : usage_regions )
+	for ( auto i = 0; i < usage_regions.size(); ++i )
 		{
+		auto& ur = usage_regions[i];
+
 		if ( ur.block_level < cs_level )
 			// It's not applicable.
 			continue;
@@ -277,7 +289,7 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 			ur.end_stmt = stmt_num;
 
 			if ( ur.start_stmt <= cs_stmt_num && no_orig_flow &&
-			     pc.count(&ur) == 0 )
+			     pc.count(i) == 0 )
 				// Don't include this region in our assessment.
 				continue;
 			}
@@ -290,10 +302,16 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 			{
 			// This region isn't active, but could still be
 			// germane if we're tracking it for confluence.
-			if ( pc.count(&ur) == 0 )
+			if ( pc.count(i) == 0 )
 				// No, we're not tracking it.
 				continue;
 			}
+
+		if ( ur.start_stmt > ur.end_stmt )
+			// This can happen when ending a bunch of confluence
+			// blocks at once.  This block corresponds to code
+			// that doesn't actually execute, so skip it.
+			continue;
 
 		++num_regions;
 
@@ -338,6 +356,7 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	                           single_def);
 
 	confluence_stmts.pop_back();
+	block_has_orig_flow.pop_back();
 	pending_confluences.erase(cs);
 
 	DumpBlocks();
@@ -387,12 +406,18 @@ int IDOptInfo::FindRegionIndex(int stmt_num)
 	int region_ind = NO_DEF;
 	for ( auto i = 0; i < usage_regions.size(); ++i )
 		{
-		if ( usage_regions[i].start_stmt > stmt_num )
+		auto ur = usage_regions[i];
+
+		if ( ur.end_stmt >= 0 && ur.start_stmt > ur.end_stmt )
+			// Degenerate region.
+			continue;
+
+		if ( ur.start_stmt > stmt_num )
 			break;
 
-		if ( usage_regions[i].end_stmt < 0 )
+		if ( ur.end_stmt < 0 )
 			region_ind = i;
-		if ( usage_regions[i].end_stmt >= stmt_num )
+		if ( ur.end_stmt >= stmt_num )
 			region_ind = i;
 		}
 
@@ -405,9 +430,9 @@ int IDOptInfo::ActiveRegionIndex()
 	int i;
 	for ( i = usage_regions.size() - 1; i >= 0; --i )
 		if ( usage_regions[i].end_stmt < 0 )
-			break;
+			return i;
 
-	return i;
+	return NO_DEF;
 	}
 
 void IDOptInfo::DumpBlocks() const
