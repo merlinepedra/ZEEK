@@ -173,11 +173,17 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 
 		StartConfluenceBlock(s);
 
-		auto cond_stmt = w->CondPredStmt();
-		if ( cond_stmt )
-			cond_stmt->Traverse(this);
+		auto cond_pred_stmt = w->CondPredStmt();
+		if ( cond_pred_stmt )
+			cond_pred_stmt->Traverse(this);
 
-		w->Condition()->Traverse(this);
+		// Important to traverse the condition in its version
+		// interpreted as a statement, so that when evaluating
+		// its variable usage, that's done in the context of
+		// *after* cond_pred_stmt executes, rather than as
+		// part of that execution.
+		auto cond_stmt = w->ConditionAsStmt();
+		cond_stmt->Traverse(this);
 
 		auto body = w->Body();
 		body->Traverse(this);
