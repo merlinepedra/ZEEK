@@ -363,26 +363,54 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 bool IDOptInfo::IsPossiblyDefinedAt(const Stmt* s)
 	{
-	if ( usage_regions.size() == 0 )
-		return false;
-
-	return FindRegion(s->GetOptInfo()->stmt_num).maybe_defined;
+	return IsPossiblyDefinedAt(s->GetOptInfo()->stmt_num);
 	}
 
 bool IDOptInfo::IsDefinitelyDefinedAt(const Stmt* s)
 	{
-	if ( usage_regions.size() == 0 )
-		return false;
-
-	return FindRegion(s->GetOptInfo()->stmt_num).definitely_defined;
+	return IsDefinitelyDefinedAt(s->GetOptInfo()->stmt_num);
 	}
 
 bool IDOptInfo::IsUniquelyDefinedAt(const Stmt* s)
 	{
+	return IsUniquelyDefinedAt(s->GetOptInfo()->stmt_num);
+	}
+
+int IDOptInfo::UniqueDefinitionAt(const Stmt* s)
+	{
+	return UniqueDefinitionAt(s->GetOptInfo()->stmt_num);
+	}
+
+bool IDOptInfo::IsPossiblyDefinedAt(int stmt_num)
+	{
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(s->GetOptInfo()->stmt_num).single_definition != NO_DEF;
+	return FindRegion(stmt_num).maybe_defined;
+	}
+
+bool IDOptInfo::IsDefinitelyDefinedAt(int stmt_num)
+	{
+	if ( usage_regions.size() == 0 )
+		return false;
+
+	return FindRegion(stmt_num).definitely_defined;
+	}
+
+bool IDOptInfo::IsUniquelyDefinedAt(int stmt_num)
+	{
+	if ( usage_regions.size() == 0 )
+		return false;
+
+	return FindRegion(stmt_num).single_definition != NO_DEF;
+	}
+
+int IDOptInfo::UniqueDefinitionAt(int stmt_num)
+	{
+	if ( usage_regions.size() == 0 )
+		return NO_DEF;
+
+	return FindRegion(stmt_num).single_definition;
 	}
 
 void IDOptInfo::EndRegionAt(const Stmt* s)

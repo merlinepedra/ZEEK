@@ -7,6 +7,7 @@
 #include "zeek/Stmt.h"
 #include "zeek/Desc.h"
 #include "zeek/Reporter.h"
+#include "zeek/script_opt/ExprOptInfo.h"
 #include "zeek/script_opt/ProfileFunc.h"
 #include "zeek/script_opt/Reduce.h"
 #include "zeek/script_opt/TempVar.h"
@@ -209,7 +210,19 @@ bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 		auto op1_dps = GetDefPoints(op1_n);
 		auto op2_dps = GetDefPoints(op2_n);
 
-		return same_DPs(op1_dps, op2_dps);
+		bool s1 = same_DPs(op1_dps, op2_dps);
+
+		bool e_stmt_1 = op1->GetOptInfo()->stmt_num;
+		bool e_stmt_2 = op2->GetOptInfo()->stmt_num;
+
+		auto single_def_1 = op1_id->GetOptInfo()->UniqueDefinitionAt(e_stmt_1);
+		auto single_def_2 = op2_id->GetOptInfo()->UniqueDefinitionAt(e_stmt_2);
+
+		bool s2 = single_def_1 == single_def_2 && single_def_1 != NO_DEF;
+
+		ASSERT(s1 == s2);
+
+		return s1;
 		}
 
 	else if ( op1->Tag() == EXPR_CONST )

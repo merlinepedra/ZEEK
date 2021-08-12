@@ -110,6 +110,12 @@ public:
 	bool IsPossiblyDefinedAt(const Stmt* s);
 	bool IsDefinitelyDefinedAt(const Stmt* s);
 	bool IsUniquelyDefinedAt(const Stmt* s);
+	int UniqueDefinitionAt(const Stmt* s);
+
+	bool IsPossiblyDefinedAt(int stmt_num);
+	bool IsDefinitelyDefinedAt(int stmt_num);
+	bool IsUniquelyDefinedAt(int stmt_num);
+	int UniqueDefinitionAt(int stmt_num);
 
 	bool DidUndefinedWarning() const
 		{ return did_undefined_warning; }
