@@ -9,7 +9,7 @@ namespace zeek::detail {
 
 class StmtOptInfo {
 public:
-	int node_num = -1;	// -1 = not assigned yet
+	int stmt_num = -1;	// -1 = not assigned yet
 	int block_level = -1;
 
 	bool contains_branch_beyond = false;

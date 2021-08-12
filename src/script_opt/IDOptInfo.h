@@ -21,7 +21,7 @@ using ExprPtr = IntrusivePtr<Expr>;
 class IDDefRegion {
 public:
 	IDDefRegion(const Stmt* s, bool maybe, int def);
-	IDDefRegion(int node_num, int level, bool maybe, int def);
+	IDDefRegion(int stmt_num, int level, bool maybe, int def);
 	IDDefRegion(const Stmt* s, const IDDefRegion& ur);
 
 	void Init(bool maybe, int def)
@@ -38,13 +38,13 @@ public:
 
 	void Dump() const;
 
-	// Number of the AST node for which this region applies *after*
-	// its execution.  Tracked at statement granularity.
-	int start_node;
+	// Number of the statement for which this region applies *after*
+	// its execution.
+	int start_stmt;
 
-	// Number of the AST node that this region applies to, *after*
-	// its execution.  Tracked at statement granularity.
-	int end_node = NO_DEF;	// means the region hasn't ended yet
+	// Number of the statement that this region applies to, *after*
+	// its execution.
+	int end_stmt = NO_DEF;	// means the region hasn't ended yet
 
 	// Degree of confluence nesting associated with this region.
 	int block_level;
@@ -52,9 +52,9 @@ public:
 	// Identifier might be defined in this region.
 	bool maybe_defined;
 
-	// If not NO_DEF, then the statement node number of either the
-	// identifier's definition, or its confluence point if multiple,
-	// differing definitions come together.
+	// If not NO_DEF, then the statement number of either the identifier's
+	// definition, or its confluence point if multiple, differing
+	// definitions come together.
 	int defined;
 };
 
@@ -107,9 +107,9 @@ public:
 	bool IsDefinedBefore(const Stmt* s);
 	int DefinitionBefore(const Stmt* s);
 
-	bool IsPossiblyDefinedBefore(int node_num);
-	bool IsDefinedBefore(int node_num);
-	int DefinitionBefore(int node_num);
+	bool IsPossiblyDefinedBefore(int stmt_num);
+	bool IsDefinedBefore(int stmt_num);
+	int DefinitionBefore(int stmt_num);
 
 	bool DidUndefinedWarning() const
 		{ return did_undefined_warning; }
@@ -124,13 +124,13 @@ public:
 private:
 	// End the active region after execution of the given statement.
 	void EndRegionAt(const Stmt* s);
-	void EndRegionAt(int node_num, int level);
+	void EndRegionAt(int stmt_num, int level);
 
 	// Find the region that applies *prior* to executing the
 	// given statement.  There should always be such a region.
-	IDDefRegion& FindRegion(int node_num)
-		{ return usage_regions[FindRegionIndex(node_num)]; }
-	int FindRegionIndex(int node_num);
+	IDDefRegion& FindRegion(int stmt_num)
+		{ return usage_regions[FindRegionIndex(stmt_num)]; }
+	int FindRegionIndex(int stmt_num);
 
 	IDDefRegion* ActiveRegion()
 		{

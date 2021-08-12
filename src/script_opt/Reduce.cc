@@ -51,7 +51,7 @@ NameExprPtr Reducer::UpdateName(NameExprPtr n)
 
 	// This name can be used by follow-on optimization analysis,
 	// so need to associate it with its statement.
-	BindExprToExpr(ne, n);
+	BindExprToCurrStmt(ne);
 
 	return ne;
 	}
@@ -162,20 +162,20 @@ ExprPtr Reducer::NewVarUsage(IDPtr var, const DefPoints* dps, const Expr* orig)
 
 	auto var_usage = make_intrusive<NameExpr>(var);
 	SetDefPoints(var_usage.get(), dps);
-	BindExprToExpr(var_usage, orig);
+	BindExprToCurrStmt(var_usage);
 	TrackExprReplacement(orig, var_usage.get());
 
 	return var_usage;
 	}
 
-void Reducer::BindExprToExpr(const ExprPtr& e1, const Expr* e2)
+void Reducer::BindExprToCurrStmt(const ExprPtr& e)
 	{
-	e1->GetOptInfo()->node_num = e2->GetOptInfo()->node_num;
+	e->GetOptInfo()->stmt_num = curr_stmt->GetOptInfo()->stmt_num;
 	}
 
-void Reducer::BindStmtToStmt(const StmtPtr& s1, const Stmt* s2)
+void Reducer::BindStmtToCurrStmt(const StmtPtr& s)
 	{
-	s1->GetOptInfo()->node_num = s2->GetOptInfo()->node_num;
+	s->GetOptInfo()->stmt_num = curr_stmt->GetOptInfo()->stmt_num;
 	}
 
 const DefPoints* Reducer::GetDefPoints(const NameExpr* var)
@@ -236,8 +236,8 @@ bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 
 		bool s1 = same_DPs(op1_dps, op2_dps);
 
-		auto e_stmt_1 = op1->GetOptInfo()->node_num;
-		auto e_stmt_2 = op2->GetOptInfo()->node_num;
+		auto e_stmt_1 = op1->GetOptInfo()->stmt_num;
+		auto e_stmt_2 = op2->GetOptInfo()->stmt_num;
 
 		auto def_1 = op1_id->GetOptInfo()->DefinitionBefore(e_stmt_1);
 		auto def_2 = op2_id->GetOptInfo()->DefinitionBefore(e_stmt_2);
@@ -799,8 +799,13 @@ StmtPtr Reducer::MergeStmts(const NameExpr* lhs, ExprPtr rhs, Stmt* succ_stmt)
 
 	auto merge_e_stmt = make_intrusive<ExprStmt>(merge_e);
 
-	BindExprToExpr(merge_e, rhs);
-	BindStmtToStmt(merge_e_stmt, curr_stmt);
+	// Update the associated stmt_num's.  For strict correctness, we
+	// want both of these bound to the earlier of the two statements
+	// we're merging (though in practice, either will work, since
+	// we're eliding the only difference between the two).  Our
+	// caller ensures this.
+	BindExprToCurrStmt(merge_e);
+	BindStmtToCurrStmt(merge_e_stmt);
 
 	return merge_e_stmt;
 	}

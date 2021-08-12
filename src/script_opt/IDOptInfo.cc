@@ -13,15 +13,15 @@ const char* trace_ID = nullptr;
 
 IDDefRegion::IDDefRegion(const Stmt* s, bool maybe, int def)
 	{
-	start_node = s->GetOptInfo()->node_num;
+	start_stmt = s->GetOptInfo()->stmt_num;
 	block_level = s->GetOptInfo()->block_level;
 
 	Init(maybe, def);
 	}
 
-IDDefRegion::IDDefRegion(int node_num, int level, bool maybe, int def)
+IDDefRegion::IDDefRegion(int stmt_num, int level, bool maybe, int def)
 	{
-	start_node = node_num;
+	start_stmt = stmt_num;
 	block_level = level;
 
 	Init(maybe, def);
@@ -29,7 +29,7 @@ IDDefRegion::IDDefRegion(int node_num, int level, bool maybe, int def)
 
 IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
 	{
-	start_node = s->GetOptInfo()->node_num;
+	start_stmt = s->GetOptInfo()->stmt_num;
 	block_level = s->GetOptInfo()->block_level;
 
 	Init(ur.maybe_defined, ur.defined);
@@ -37,7 +37,7 @@ IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
 
 void IDDefRegion::Dump() const
 	{
-	printf("\t%d->%d (%d): ", start_node, end_node, block_level);
+	printf("\t%d->%d (%d): ", start_stmt, end_stmt, block_level);
 
 	if ( defined != NO_DEF )
 		printf("%d", defined);
@@ -71,7 +71,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
                           int conf_start)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
-		printf("ID %s defined at %d: %s\n", trace_ID, s ? s->GetOptInfo()->node_num : NO_DEF, s ? obj_desc(s).c_str() : "<entry>");
+		printf("ID %s defined at %d: %s\n", trace_ID, s ? s->GetOptInfo()->stmt_num : NO_DEF, s ? obj_desc(s).c_str() : "<entry>");
 
 	if ( ! s )
 		{ // This is a definition-upon-entry
@@ -82,7 +82,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 		}
 
 	auto s_oi = s->GetOptInfo();
-	auto node_num = s_oi->node_num;
+	auto stmt_num = s_oi->stmt_num;
 
 	if ( usage_regions.size() == 0 )
 		{
@@ -94,7 +94,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 		usage_regions.emplace_back(0, 0, false, NO_DEF);
 		}
 
-	EndRegionAt(node_num - 1, s_oi->block_level);
+	EndRegionAt(stmt_num - 1, s_oi->block_level);
 
 	// Fill in any missing confluence blocks.
 	int b = 0;	// index into our own blocks
@@ -123,7 +123,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 	// Create new region corresponding to this definition.
 	// This needs to come after filling out the confluence
 	// blocks, since they'll create their own (earlier) regions.
-	usage_regions.emplace_back(s, true, node_num);
+	usage_regions.emplace_back(s, true, stmt_num);
 
 	DumpBlocks();
 	}
@@ -131,7 +131,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 void IDOptInfo::ReturnAt(const Stmt* s)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
-		printf("ID %s subject to return %d: %s\n", trace_ID, s->GetOptInfo()->node_num, obj_desc(s).c_str());
+		printf("ID %s subject to return %d: %s\n", trace_ID, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
 
 	// Look for a catch-return that this would branch to.
 	for ( int i = confluence_stmts.size() - 1; i >= 0; --i )
@@ -143,7 +143,7 @@ void IDOptInfo::ReturnAt(const Stmt* s)
 			}
 
 	auto s_oi = s->GetOptInfo();
-	EndRegionAt(s_oi->node_num, s_oi->block_level);
+	EndRegionAt(s_oi->stmt_num, s_oi->block_level);
 
 	DumpBlocks();
 	}
@@ -152,8 +152,8 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
 		printf("ID %s branching back from %d->%d: %s\n", trace_ID,
-		       from->GetOptInfo()->node_num,
-		       to->GetOptInfo()->node_num, obj_desc(from).c_str());
+		       from->GetOptInfo()->stmt_num,
+		       to->GetOptInfo()->stmt_num, obj_desc(from).c_str());
 
 	// The key notion we need to update is whether the regions
 	// between from_reg and to_reg still have unique definitions.
@@ -164,7 +164,7 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	// those the error has already occurred on entry into the loop.)
 	auto from_reg = ActiveRegion();
 	auto t_oi = to->GetOptInfo();
-	auto t_r_ind = FindRegionIndex(t_oi->node_num);
+	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
 	auto& t_r = usage_regions[t_r_ind];
 
 	if ( from_reg && from_reg->defined != t_r.defined &&
@@ -175,7 +175,7 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 		// update any blocks inside the region that refer to
 		// a pre-"to" definition to instead reflect the confluence
 		// region.
-		int new_def = t_oi->node_num;
+		int new_def = t_oi->stmt_num;
 
 		for ( auto i = t_r_ind; i < usage_regions.size(); ++i )
 			if ( usage_regions[i].defined < new_def )
@@ -194,8 +194,8 @@ void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
 		printf("ID %s branching forward from %d beyond %d: %s\n",
-		       trace_ID, end_s->GetOptInfo()->node_num,
-		       block->GetOptInfo()->node_num, obj_desc(end_s).c_str());
+		       trace_ID, end_s->GetOptInfo()->stmt_num,
+		       block->GetOptInfo()->stmt_num, obj_desc(end_s).c_str());
 
 	ASSERT(pending_confluences.count(block) > 0);
 
@@ -212,7 +212,7 @@ void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
-		printf("ID %s starting confluence block at %d: %s\n", trace_ID, s->GetOptInfo()->node_num, obj_desc(s).c_str());
+		printf("ID %s starting confluence block at %d: %s\n", trace_ID, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
 
 	auto s_oi = s->GetOptInfo();
 	int block_level = s_oi->block_level;
@@ -228,7 +228,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 			{
 			ASSERT(cs_level == block_level);
 			ASSERT(cs == confluence_stmts.back());
-			EndRegionAt(s_oi->node_num - 1, block_level);
+			EndRegionAt(s_oi->stmt_num - 1, block_level);
 			}
 		}
 
@@ -242,7 +242,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 		{
 		auto& ui = usage_regions[i];
 
-		if ( ui.end_node == NO_DEF )
+		if ( ui.end_stmt < 0 )
 			{
 			ASSERT(ui.block_level <= block_level);
 
@@ -263,9 +263,9 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
-		printf("ID %s ending (%d) confluence block at %d: %s\n", trace_ID, no_orig_flow, s->GetOptInfo()->node_num, obj_desc(s).c_str());
+		printf("ID %s ending (%d) confluence block at %d: %s\n", trace_ID, no_orig_flow, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
 
-	auto node_num = s->GetOptInfo()->node_num;
+	auto stmt_num = s->GetOptInfo()->stmt_num;
 
 	ASSERT(confluence_stmts.size() > 0);
 	auto cs = confluence_stmts.back();
@@ -273,7 +273,7 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 	// End any active regions.  Those will all have a level >= that
 	// of cs, since we're now returning to cs's level.
-	int cs_node_num = cs->GetOptInfo()->node_num;
+	int cs_stmt_num = cs->GetOptInfo()->stmt_num;
 	int cs_level = cs->GetOptInfo()->block_level;
 
 	if ( block_has_orig_flow.back() )
@@ -296,22 +296,22 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 			// It's not applicable.
 			continue;
 
-		if ( ur.end_node == NO_DEF )
+		if ( ur.end_stmt == NO_DEF )
 			{
 			// End this region.
-			ur.end_node = node_num;
+			ur.end_stmt = stmt_num;
 
-			if ( ur.start_node <= cs_node_num && no_orig_flow &&
+			if ( ur.start_stmt <= cs_stmt_num && no_orig_flow &&
 			     pc.count(i) == 0 )
 				// Don't include this region in our assessment.
 				continue;
 			}
 
-		else if ( ur.end_node < cs_node_num )
+		else if ( ur.end_stmt < cs_stmt_num )
 			// Irrelevant, didn't extend into confluence region.
 			continue;
 
-		else if ( ur.end_node < node_num )
+		else if ( ur.end_stmt < stmt_num )
 			{
 			// This region isn't active, but could still be
 			// germane if we're tracking it for confluence.
@@ -357,10 +357,10 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	if ( have_multi_defs )
 		// Definition reflects confluence point, which comes
 		// just after 's'.
-		single_def = node_num + 1;
+		single_def = stmt_num + 1;
 
 	int level = cs->GetOptInfo()->block_level;
-	usage_regions.emplace_back(node_num, level, maybe, single_def);
+	usage_regions.emplace_back(stmt_num, level, maybe, single_def);
 
 	confluence_stmts.pop_back();
 	block_has_orig_flow.pop_back();
@@ -371,71 +371,71 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 bool IDOptInfo::IsPossiblyDefinedBefore(const Stmt* s)
 	{
-	return IsPossiblyDefinedBefore(s->GetOptInfo()->node_num);
+	return IsPossiblyDefinedBefore(s->GetOptInfo()->stmt_num);
 	}
 
 bool IDOptInfo::IsDefinedBefore(const Stmt* s)
 	{
-	return IsDefinedBefore(s->GetOptInfo()->node_num);
+	return IsDefinedBefore(s->GetOptInfo()->stmt_num);
 	}
 
 int IDOptInfo::DefinitionBefore(const Stmt* s)
 	{
-	return DefinitionBefore(s->GetOptInfo()->node_num);
+	return DefinitionBefore(s->GetOptInfo()->stmt_num);
 	}
 
-bool IDOptInfo::IsPossiblyDefinedBefore(int node_num)
+bool IDOptInfo::IsPossiblyDefinedBefore(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(node_num - 1).maybe_defined;
+	return FindRegion(stmt_num - 1).maybe_defined;
 	}
 
-bool IDOptInfo::IsDefinedBefore(int node_num)
+bool IDOptInfo::IsDefinedBefore(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(node_num - 1).defined != NO_DEF;
+	return FindRegion(stmt_num - 1).defined != NO_DEF;
 	}
 
-int IDOptInfo::DefinitionBefore(int node_num)
+int IDOptInfo::DefinitionBefore(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return NO_DEF;
 
-	return FindRegion(node_num - 1).defined;
+	return FindRegion(stmt_num - 1).defined;
 	}
 
 void IDOptInfo::EndRegionAt(const Stmt* s)
 	{
 	auto s_oi = s->GetOptInfo();
-	EndRegionAt(s_oi->node_num, s_oi->block_level);
+	EndRegionAt(s_oi->stmt_num, s_oi->block_level);
 	}
 
-void IDOptInfo::EndRegionAt(int node_num, int level)
+void IDOptInfo::EndRegionAt(int stmt_num, int level)
 	{
 	auto r = ActiveRegion();
 
 	if ( r && r->block_level == level )
 		// Previous region ends here.
-		r->end_node = node_num;
+		r->end_stmt = stmt_num;
 	}
 
-int IDOptInfo::FindRegionIndex(int node_num)
+int IDOptInfo::FindRegionIndex(int stmt_num)
 	{
 	int region_ind = NO_DEF;
 	for ( auto i = 0; i < usage_regions.size(); ++i )
 		{
 		auto ur = usage_regions[i];
 
-		if ( ur.start_node > node_num )
+		if ( ur.start_stmt > stmt_num )
 			break;
 
-		if ( ur.end_node == NO_DEF )
+		if ( ur.end_stmt < 0 )
 			region_ind = i;
-		if ( ur.end_node >= node_num )
+		if ( ur.end_stmt >= stmt_num )
 			region_ind = i;
 		}
 
@@ -447,7 +447,7 @@ int IDOptInfo::ActiveRegionIndex()
 	{
 	int i;
 	for ( i = usage_regions.size() - 1; i >= 0; --i )
-		if ( usage_regions[i].end_node == NO_DEF )
+		if ( usage_regions[i].end_stmt < 0 )
 			return i;
 
 	return NO_DEF;

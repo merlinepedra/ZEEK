@@ -9,7 +9,7 @@ namespace zeek::detail {
 
 class ExprOptInfo {
 public:
-	int node_num = -1;	// -1 = not assigned yet
+	int stmt_num = -1;	// -1 = not assigned yet
 };
 
 } // namespace zeek::detail

@@ -848,7 +848,9 @@ bool StmtList::ReduceStmt(int& s_i, StmtPList* f_stmts, Reducer* c)
 			auto& s_i_succ = Stmts()[s_i + 1];
 
 			// Don't reduce s_i_succ.  If it's what we're
-			// looking for, it's already reduced.
+			// looking for, it's already reduced.  Plus
+			// that's what Reducer::MergeStmts (not that
+			// it really matters, per the comment there).
 			auto merge = c->MergeStmts(var, rhs, s_i_succ);
 			if ( merge )
 				{
