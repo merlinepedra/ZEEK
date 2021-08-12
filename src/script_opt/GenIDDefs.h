@@ -33,6 +33,7 @@ private:
 	bool CheckLHS(const Expr* lhs);
 
 	// True if the given expression directly represents an aggregate.
+	bool IsAggr(const ExprPtr& e) const	{ return IsAggr(e.get()); }
 	bool IsAggr(const Expr* e) const;
 
 	// If -u is active, checks for whether the given identifier present

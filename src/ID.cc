@@ -120,7 +120,7 @@ ID::ID(const char* arg_name, IDScope arg_scope, bool arg_is_export)
 	is_type = false;
 	offset = 0;
 
-	opt_info_ptr = new IDOptInfo(this);
+	opt_info = new IDOptInfo(this);
 
 	infer_return_type = false;
 
@@ -130,7 +130,7 @@ ID::ID(const char* arg_name, IDScope arg_scope, bool arg_is_export)
 ID::~ID()
 	{
 	delete [] name;
-	delete opt_info_ptr;
+	delete opt_info;
 	}
 
 std::string ID::ModuleName() const

@@ -27,8 +27,12 @@ void GenIDDefs::TraverseFunction(const Func* f, ScopePtr scope, StmtPtr body)
 	const auto& args = scope->OrderedVars();
 	int nparam = f->GetType()->Params()->NumFields();
 
-	// Establish the outermost barrior.
+	// Establish the outermost barrior and associated set of
+	// identifiers.
 	barrier_blocks.push_back(0);
+
+	std::unordered_set<const ID*> empty_IDs;
+	modified_IDs.push_back(empty_IDs);
 
 	for ( const auto& g : pf->Globals() )
 		{
@@ -263,8 +267,6 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 		break;
 
 	case EXPR_ASSIGN:
-	case EXPR_INDEX_ASSIGN:
-	case EXPR_FIELD_LHS_ASSIGN:
 		{
 		auto lhs = e->GetOp1();
 		auto op2 = e->GetOp2();
@@ -280,58 +282,11 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 
 		op2->Traverse(this);
 
-		// Index assignments have a third operand.
-		auto op3 = e->GetOp3();
-
-		if ( op3 )
-			op3->Traverse(this);
-
-		if ( CheckLHS(lhs) )
-			return TC_ABORTSTMT;
-
-		// Too hard to figure out what's going on with the assignment.
-		// Just analyze it in terms of values it accesses.
-		break;
-		}
-
-	case EXPR_CALL:
-		{
-		auto c = e->AsCallExpr();
-		auto f = c->Func();
-		auto args_l = c->Args();
-
-		// If one of the arguments is an aggregate, then
-		// it's actually passed by reference, and we shouldn't
-		// ding it for not being initialized.  In addition,
-		// we should treat this as a definition of the
-		// aggregate, because while it can't be actually
-		// reassigned, all of its dynamic properties can change
-		// due to the call.  (In the future, we could consider
-		// analyzing the call to see whether this is in fact
-		// the case.)
-		//
-		// We handle all of this by just doing the traversal
-		// ourselves.
-
-		f->Traverse(this);
-
-		for ( const auto& expr : args_l->Exprs() )
-			{
-			if ( IsAggr(expr) )
-				// Not only do we skip analyzing it, but
-				// we consider it initialized post-return.
-				(void) CheckLHS(expr);
-			else
-				expr->Traverse(this);
-			}
-
-		// Mark any non-const globals as possibly modified by
-		// the call.  In the future, we could aim to comprehensively
-		// understand which globals could possibly be altered, but
-		// for now we just assume they all could.
-		for ( const auto& g : pf->Globals() )
-			if ( ! g->IsConst() )
-				TrackID(g);
+		if ( ! CheckLHS(lhs) )
+			// Not a simple assignment (or group of assignments),
+			// so analyze the accesses to check for use of
+			// possibly undefined values.
+			lhs->Traverse(this);
 
 		return TC_ABORTSTMT;
 		}
@@ -379,9 +334,13 @@ TraversalCode GenIDDefs::PostExpr(const Expr* e)
 	// of their operands).
 
 	auto t = e->Tag();
-	if ( t == EXPR_INCR || t == EXPR_DECR || t == EXPR_ADD_TO ||
-	     t == EXPR_APPEND_TO )
-		(void) CheckLHS(e->GetOp1());
+	if ( t == EXPR_INCR || t == EXPR_DECR ||
+	     t == EXPR_ADD_TO || t == EXPR_REMOVE_FROM )
+		{
+		auto op = e->GetOp1();
+		if ( ! IsAggr(op) )
+			(void) CheckLHS(op);
+		}
 
 	return TC_CONTINUE;
 	}
@@ -417,26 +376,14 @@ bool GenIDDefs::CheckLHS(const Expr* lhs)
 		}
 
 	case EXPR_FIELD:
-		{
-		auto f = lhs->AsFieldExpr();
-		auto r = f->Op();
-
-		if ( r->Tag() != EXPR_NAME )
-			// This is a more complicated expression that we're
-			// not able to concretely track.
-			return false;
-
-		TrackID(r->AsNameExpr()->Id());
-
-		return true;
-		}
+		// If we want to track record field initializations,
+		// we'd handle that here.
+		return false;
 
 	case EXPR_INDEX:
-		{
-		// Treat as an  initialization of the aggregate.
-		auto i_e = lhs->AsIndexExpr();
-		return CheckLHS(i_e->Op1());
-		}
+		// If we wanted to track potential alterations of
+		// aggregates, we'd do that here.
+		return false;
 
 	default:
 		reporter->InternalError("bad tag in GenIDDefs::CheckLHS");
@@ -564,12 +511,6 @@ void GenIDDefs::TrackID(const ID* id)
 
 	ASSERT(barrier_blocks.size() > 0);
 	oi->DefinedAt(curr_stmt, confluence_blocks, barrier_blocks.back());
-
-	if ( modified_IDs.size() == 0 )
-		{ // Create the outermost set of identifiers.
-		std::unordered_set<const ID*> empty_IDs;
-		modified_IDs.push_back(empty_IDs);
-		}
 
 	// Ensure we track this identifier across all relevant
 	// confluence regions.

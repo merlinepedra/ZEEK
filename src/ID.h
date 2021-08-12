@@ -142,7 +142,7 @@ public:
 	void AddOptionHandler(FuncPtr callback, int priority);
 	std::vector<Func*> GetOptionHandlers() const;
 
-	IDOptInfo* GetOptInfo() const			{ return opt_info_ptr; }
+	IDOptInfo* GetOptInfo() const			{ return opt_info; }
 
 protected:
 	void EvalFunc(ExprPtr ef, ExprPtr ev);
@@ -168,9 +168,7 @@ protected:
 	// up into a separate object for purposes of modularity, and,
 	// via the associated pointer, to allow it to be modified in
 	// contexts where the ID is itself "const".
-	// IDOptInfo opt_info;
-	// IDOptInfo* opt_info_ptr = &opt_info;
-	IDOptInfo* opt_info_ptr;
+	IDOptInfo* opt_info;
 
 };
 

@@ -8,6 +8,7 @@
 #include "zeek/Desc.h"
 #include "zeek/Reporter.h"
 #include "zeek/script_opt/ExprOptInfo.h"
+#include "zeek/script_opt/StmtOptInfo.h"
 #include "zeek/script_opt/ProfileFunc.h"
 #include "zeek/script_opt/Reduce.h"
 #include "zeek/script_opt/TempVar.h"
@@ -34,6 +35,10 @@ ExprPtr Reducer::GenTemporaryExpr(const TypePtr& t, ExprPtr rhs)
 	{
 	auto e = make_intrusive<NameExpr>(GenTemporary(t, rhs));
 	e->SetLocationInfo(rhs->GetLocationInfo());
+
+	// No need to associate with current statement, since these
+	// are not generated during optimization.
+
 	return e;
 	}
 
@@ -42,7 +47,13 @@ NameExprPtr Reducer::UpdateName(NameExprPtr n)
 	if ( NameIsReduced(n.get()) )
 		return n;
 
-	return make_intrusive<NameExpr>(FindNewLocal(n));
+	auto ne = make_intrusive<NameExpr>(FindNewLocal(n));
+
+	// This name can be used by follow-on optimization analysis,
+	// so need to associate it with its statement.
+	BindExprToCurrStmt(ne);
+
+	return ne;
 	}
 
 bool Reducer::NameIsReduced(const NameExpr* n) const
@@ -107,6 +118,8 @@ bool Reducer::ID_IsReduced(const ID* id) const
 
 NameExprPtr Reducer::GenInlineBlockName(const IDPtr& id)
 	{
+	// We do this during reduction, not optimization, so no need
+	// to associate with curr_stmt.
 	return make_intrusive<NameExpr>(GenLocal(id));
 	}
 
@@ -149,9 +162,20 @@ ExprPtr Reducer::NewVarUsage(IDPtr var, const DefPoints* dps, const Expr* orig)
 
 	auto var_usage = make_intrusive<NameExpr>(var);
 	SetDefPoints(var_usage.get(), dps);
+	BindExprToCurrStmt(var_usage);
 	TrackExprReplacement(orig, var_usage.get());
 
 	return var_usage;
+	}
+
+void Reducer::BindExprToCurrStmt(const ExprPtr& e)
+	{
+	e->GetOptInfo()->stmt_num = curr_stmt->GetOptInfo()->stmt_num;
+	}
+
+void Reducer::BindStmtToCurrStmt(const StmtPtr& s)
+	{
+	s->GetOptInfo()->stmt_num = curr_stmt->GetOptInfo()->stmt_num;
 	}
 
 const DefPoints* Reducer::GetDefPoints(const NameExpr* var)
@@ -212,8 +236,8 @@ bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 
 		bool s1 = same_DPs(op1_dps, op2_dps);
 
-		bool e_stmt_1 = op1->GetOptInfo()->stmt_num;
-		bool e_stmt_2 = op2->GetOptInfo()->stmt_num;
+		auto e_stmt_1 = op1->GetOptInfo()->stmt_num;
+		auto e_stmt_2 = op2->GetOptInfo()->stmt_num;
 
 		auto single_def_1 = op1_id->GetOptInfo()->UniqueDefinitionAt(e_stmt_1);
 		auto single_def_2 = op2_id->GetOptInfo()->UniqueDefinitionAt(e_stmt_2);
@@ -773,7 +797,17 @@ StmtPtr Reducer::MergeStmts(const NameExpr* lhs, ExprPtr rhs, Stmt* succ_stmt)
 						nullptr, nullptr, false);
 	TrackExprReplacement(rhs.get(), merge_e.get());
 
-	return make_intrusive<ExprStmt>(merge_e);
+	auto merge_e_stmt = make_intrusive<ExprStmt>(merge_e);
+
+	// Update the associated stmt_num's.  For strict correctness, we
+	// want both of these bound to the earlier of the two statements
+	// we're merging (though in practice, either will work, since
+	// we're eliding the only difference between the two).  Our
+	// caller ensures this.
+	BindExprToCurrStmt(merge_e);
+	BindStmtToCurrStmt(merge_e_stmt);
+
+	return merge_e_stmt;
 	}
 
 IDPtr Reducer::GenTemporary(const TypePtr& t, ExprPtr rhs)

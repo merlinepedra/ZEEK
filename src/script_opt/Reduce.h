@@ -21,6 +21,8 @@ public:
 
 	void SetDefSetsMgr(const DefSetsMgr* _mgr)	{ mgr = _mgr; }
 
+	void SetCurrStmt(const Stmt* stmt)      { curr_stmt = stmt; }
+
 	ExprPtr GenTemporaryExpr(const TypePtr& t, ExprPtr rhs);
 
 	NameExprPtr UpdateName(NameExprPtr n);
@@ -154,6 +156,9 @@ protected:
 	// is just a NameExpr referring to "var").
 	ExprPtr NewVarUsage(IDPtr var, const DefPoints* dps, const Expr* orig);
 
+	void BindExprToCurrStmt(const ExprPtr& e);
+	void BindStmtToCurrStmt(const StmtPtr& s);
+
 	// Returns the definition points associated with "var".  If none
 	// exist in our cache, then populates the cache.
 	const DefPoints* GetDefPoints(const NameExpr* var);
@@ -285,6 +290,9 @@ protected:
 
 	// Statement at which the current reduction started.
 	StmtPtr reduction_root = nullptr;
+
+	// Statement we're currently working on.
+	const Stmt* curr_stmt = nullptr;
 
 	const DefSetsMgr* mgr = nullptr;
 };
