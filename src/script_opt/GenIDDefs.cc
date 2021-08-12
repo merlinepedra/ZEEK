@@ -409,8 +409,7 @@ void GenIDDefs::CheckVarUsage(const Expr* e, const ID* id)
 
 	auto oi = id->GetOptInfo();
 
-	if ( ! oi->DidUndefinedWarning() &&
-	     ! oi->IsDefinitelyDefinedAt(curr_stmt) &&
+	if ( ! oi->DidUndefinedWarning() && ! oi->IsDefinedAt(curr_stmt) &&
 	     ! id->GetAttr(ATTR_IS_ASSIGNED) )
 		{
 		if ( ! oi->IsPossiblyDefinedAt(curr_stmt) )

@@ -11,22 +11,20 @@ namespace zeek::detail {
 
 const char* trace_ID = nullptr;
 
-IDDefRegion::IDDefRegion(const Stmt* s,
-                         bool maybe, bool definitely, int single_def)
+IDDefRegion::IDDefRegion(const Stmt* s, bool maybe, int def)
 	{
 	start_stmt = s->GetOptInfo()->stmt_num;
 	block_level = s->GetOptInfo()->block_level;
 
-	Init(maybe, definitely, single_def);
+	Init(maybe, def);
 	}
 
-IDDefRegion::IDDefRegion(int stmt_num, int level,
-                         bool maybe, bool definitely, int single_def)
+IDDefRegion::IDDefRegion(int stmt_num, int level, bool maybe, int def)
 	{
 	start_stmt = stmt_num;
 	block_level = level;
 
-	Init(maybe, definitely, single_def);
+	Init(maybe, def);
 	}
 
 IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
@@ -34,14 +32,21 @@ IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
 	start_stmt = s->GetOptInfo()->stmt_num;
 	block_level = s->GetOptInfo()->block_level;
 
-	Init(ur.maybe_defined, ur.definitely_defined, ur.single_definition);
+	Init(ur.maybe_defined, ur.defined);
 	}
 
 void IDDefRegion::Dump() const
 	{
-	printf("\t%d->%d (%d), %d/%d/%d\n", start_stmt, end_stmt,
-	       block_level, maybe_defined, definitely_defined,
-	       single_definition);
+	printf("\t%d->%d (%d): ", start_stmt, end_stmt, block_level);
+
+	if ( defined != NO_DEF )
+		printf("%d", defined);
+	else if ( maybe_defined )
+		printf("?");
+	else
+		printf("N/A");
+
+	printf("\n");
 	}
 
 
@@ -71,7 +76,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 	if ( ! s )
 		{ // This is a definition-upon-entry
 		ASSERT(usage_regions.size() == 0);
-		usage_regions.emplace_back(0, 0, true, true, 0);
+		usage_regions.emplace_back(0, 0, true, 0);
 		DumpBlocks();
 		return;
 		}
@@ -86,7 +91,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 		// We're seeing this identifier for the first time,
 		// so we don't have any context or confluence
 		// information for it.  Create its "backstory" region.
-		usage_regions.emplace_back(0, 0, false, false, NO_DEF);
+		usage_regions.emplace_back(0, 0, false, NO_DEF);
 		}
 
 	EndRegionAt(stmt_num - 1, s_oi->block_level);
@@ -118,7 +123,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 	// Create new region corresponding to this definition.
 	// This needs to come after filling out the confluence
 	// blocks, since they'll create their own (earlier) regions.
-	usage_regions.emplace_back(s, true, true, stmt_num);
+	usage_regions.emplace_back(s, true, stmt_num);
 
 	DumpBlocks();
 	}
@@ -162,13 +167,22 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
 	auto& t_r = usage_regions[t_r_ind];
 
-	if ( from_reg && from_reg->single_definition != t_r.single_definition )
+	if ( from_reg && from_reg->defined != t_r.defined &&
+	     t_r.defined != NO_DEF )
 		{
-		// They disagree on the unique definition, if any.
-		// Invalidate any unique definitions in the regions
-		// subsequent to t_r.
+		// They disagree on the definition.  Move the definition
+		// point to be the start of the confluence region, and
+		// update any blocks inside the region that refer to
+		// a pre-"to" definition to instead reflect the confluence
+		// region.
+		int new_def = t_oi->stmt_num;
+
 		for ( auto i = t_r_ind; i < usage_regions.size(); ++i )
-			usage_regions[i].single_definition = NO_DEF;
+			if ( usage_regions[i].defined < new_def )
+				{
+				ASSERT(usage_regions[i].defined != NO_DEF);
+				usage_regions[i].defined = new_def;
+				}
 		}
 
 	EndRegionAt(from);
@@ -266,10 +280,10 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 		no_orig_flow = false;
 
 	bool maybe = false;
-	bool definitely = true;
+	bool defined = true;
 
 	bool did_single_def = false;
-	int single_def = 0;	// 0 just to keep linter from griping
+	int single_def = NO_DEF;
 	bool have_multi_defs = false;
 
 	int num_regions = 0;
@@ -316,25 +330,20 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 		maybe = maybe || ur.maybe_defined;
 
-		if ( ! ur.definitely_defined )
-			definitely = false;
-
-		if ( have_multi_defs || ! definitely ||
-		     ur.single_definition < 0 )
+		if ( ur.defined == NO_DEF )
 			{
-			// No need to assess single-definition any further.
-			have_multi_defs = true;
+			defined = false;
 			continue;
 			}
 
 		if ( did_single_def )
 			{
-			if ( single_def != ur.single_definition )
+			if ( single_def != ur.defined )
 				have_multi_defs = true;
 			}
 		else
 			{
-			single_def = ur.single_definition;
+			single_def = ur.defined;
 			did_single_def = true;
 			}
 		}
@@ -342,17 +351,22 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	if ( num_regions == 0 )
 		{ // Nothing survives.
 		ASSERT(maybe == false);
-		definitely = false;
+		defined = false;
 		}
 
-	if ( have_multi_defs || ! did_single_def )
+	if ( ! defined )
+		{
 		single_def = NO_DEF;
+		have_multi_defs = false;
+		}
 
-	// Adjust for the new region coming just after stmt_num.
+	if ( have_multi_defs )
+		// Definition reflects confluence point, which comes
+		// just after 's'.
+		single_def = stmt_num + 1;
+
 	int level = cs->GetOptInfo()->block_level;
-
-	usage_regions.emplace_back(stmt_num, level, maybe, definitely,
-	                           single_def);
+	usage_regions.emplace_back(stmt_num, level, maybe, single_def);
 
 	confluence_stmts.pop_back();
 	block_has_orig_flow.pop_back();
@@ -366,19 +380,14 @@ bool IDOptInfo::IsPossiblyDefinedAt(const Stmt* s)
 	return IsPossiblyDefinedAt(s->GetOptInfo()->stmt_num);
 	}
 
-bool IDOptInfo::IsDefinitelyDefinedAt(const Stmt* s)
+bool IDOptInfo::IsDefinedAt(const Stmt* s)
 	{
-	return IsDefinitelyDefinedAt(s->GetOptInfo()->stmt_num);
+	return IsDefinedAt(s->GetOptInfo()->stmt_num);
 	}
 
-bool IDOptInfo::IsUniquelyDefinedAt(const Stmt* s)
+int IDOptInfo::DefinitionAt(const Stmt* s)
 	{
-	return IsUniquelyDefinedAt(s->GetOptInfo()->stmt_num);
-	}
-
-int IDOptInfo::UniqueDefinitionAt(const Stmt* s)
-	{
-	return UniqueDefinitionAt(s->GetOptInfo()->stmt_num);
+	return DefinitionAt(s->GetOptInfo()->stmt_num);
 	}
 
 bool IDOptInfo::IsPossiblyDefinedAt(int stmt_num)
@@ -389,28 +398,20 @@ bool IDOptInfo::IsPossiblyDefinedAt(int stmt_num)
 	return FindRegion(stmt_num).maybe_defined;
 	}
 
-bool IDOptInfo::IsDefinitelyDefinedAt(int stmt_num)
+bool IDOptInfo::IsDefinedAt(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(stmt_num).definitely_defined;
+	return FindRegion(stmt_num).defined != NO_DEF;
 	}
 
-bool IDOptInfo::IsUniquelyDefinedAt(int stmt_num)
-	{
-	if ( usage_regions.size() == 0 )
-		return false;
-
-	return FindRegion(stmt_num).single_definition != NO_DEF;
-	}
-
-int IDOptInfo::UniqueDefinitionAt(int stmt_num)
+int IDOptInfo::DefinitionAt(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return NO_DEF;
 
-	return FindRegion(stmt_num).single_definition;
+	return FindRegion(stmt_num).defined;
 	}
 
 void IDOptInfo::EndRegionAt(const Stmt* s)

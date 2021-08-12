@@ -20,20 +20,20 @@ using ExprPtr = IntrusivePtr<Expr>;
 
 class IDDefRegion {
 public:
-	IDDefRegion(const Stmt* s, bool maybe, bool definitely, int single_def);
-	IDDefRegion(int stmt_num, int level,
-	            bool maybe, bool definitely, int single_def);
+	IDDefRegion(const Stmt* s, bool maybe, int def);
+	IDDefRegion(int stmt_num, int level, bool maybe, int def);
 	IDDefRegion(const Stmt* s, const IDDefRegion& ur);
 
-	void Init(bool maybe, bool definitely, int single_def)
+	void Init(bool maybe, int def)
 		{
-		if ( definitely )
-			maybe = true;
+		if ( def != NO_DEF )
+			maybe_defined = true;
+		else
+			maybe_defined = maybe;
 
-		maybe_defined = maybe;
-		definitely_defined = definitely;
+		defined = def;
 
-		single_definition = definitely ? single_def : NO_DEF;
+		ASSERT(defined < 50000 && defined > -50000);
 		}
 
 	void Dump() const;
@@ -52,14 +52,10 @@ public:
 	// Identifier might be defined in this region.
 	bool maybe_defined;
 
-	// Identifier is definitely defined in this region.
-	bool definitely_defined;
-
-	// Statement number of unique definition, or NO_DEF if none.
-	// Only meaningful if definitely_defined is true (but the
-	// converse doesn't hold, as the identifier can be definitely
-	// defined, but via > 1 statement).
-	int single_definition;
+	// If not NO_DEF, then the statement number of either the identifier's
+	// definition, or its confluence point if multiple, differing
+	// definitions come together.
+	int defined;
 };
 
 class IDOptInfo {
@@ -108,14 +104,12 @@ public:
 	// All of these regarding the identifer's state just prior to
 	// executing the given statement.
 	bool IsPossiblyDefinedAt(const Stmt* s);
-	bool IsDefinitelyDefinedAt(const Stmt* s);
-	bool IsUniquelyDefinedAt(const Stmt* s);
-	int UniqueDefinitionAt(const Stmt* s);
+	bool IsDefinedAt(const Stmt* s);
+	int DefinitionAt(const Stmt* s);
 
 	bool IsPossiblyDefinedAt(int stmt_num);
-	bool IsDefinitelyDefinedAt(int stmt_num);
-	bool IsUniquelyDefinedAt(int stmt_num);
-	int UniqueDefinitionAt(int stmt_num);
+	bool IsDefinedAt(int stmt_num);
+	int DefinitionAt(int stmt_num);
 
 	bool DidUndefinedWarning() const
 		{ return did_undefined_warning; }

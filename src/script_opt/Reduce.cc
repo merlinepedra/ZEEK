@@ -239,10 +239,10 @@ bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 		auto e_stmt_1 = op1->GetOptInfo()->stmt_num;
 		auto e_stmt_2 = op2->GetOptInfo()->stmt_num;
 
-		auto single_def_1 = op1_id->GetOptInfo()->UniqueDefinitionAt(e_stmt_1);
-		auto single_def_2 = op2_id->GetOptInfo()->UniqueDefinitionAt(e_stmt_2);
+		auto def_1 = op1_id->GetOptInfo()->DefinitionAt(e_stmt_1);
+		auto def_2 = op2_id->GetOptInfo()->DefinitionAt(e_stmt_2);
 
-		bool s2 = single_def_1 == single_def_2 && single_def_1 != NO_DEF;
+		bool s2 = def_1 == def_2 && def_1 != NO_DEF;
 
 		ASSERT(s1 == s2);
 
