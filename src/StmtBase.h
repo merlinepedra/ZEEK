@@ -162,7 +162,8 @@ public:
 			return Obj::GetLocationInfo();
 		}
 
-	// Access/set the number associated with this statement.
+	// Access script optimization information associated with
+	// this statement.
 	StmtOptInfo* GetOptInfo() const		{ return opt_info; }
 
 protected:

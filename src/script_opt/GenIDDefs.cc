@@ -6,6 +6,7 @@
 #include "zeek/Desc.h"
 #include "zeek/script_opt/GenIDDefs.h"
 #include "zeek/script_opt/ScriptOpt.h"
+#include "zeek/script_opt/ExprOptInfo.h"
 #include "zeek/script_opt/StmtOptInfo.h"
 
 
@@ -254,6 +255,8 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 
 TraversalCode GenIDDefs::PreExpr(const Expr* e)
 	{
+	e->GetOptInfo()->stmt_num = stmt_num;
+
 	switch ( e->Tag() ) {
 	case EXPR_NAME:
 		CheckVarUsage(e, e->AsNameExpr()->Id());
