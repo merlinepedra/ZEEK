@@ -71,7 +71,8 @@ private:
 	FunctionFlavor func_flavor;
 
 	const Stmt* curr_stmt = nullptr;
-	int stmt_num;
+
+	int node_num;
 
 	std::vector<const Stmt*> confluence_blocks;
 

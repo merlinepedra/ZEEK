@@ -156,8 +156,13 @@ protected:
 	// is just a NameExpr referring to "var").
 	ExprPtr NewVarUsage(IDPtr var, const DefPoints* dps, const Expr* orig);
 
-	void BindExprToCurrStmt(const ExprPtr& e);
-	void BindStmtToCurrStmt(const StmtPtr& s);
+	// Set e1/s1's node number to reflect that of e2/s2.
+	void BindExprToExpr(const ExprPtr& e1, const ExprPtr& e2)
+		{ BindExprToExpr(e1, e2.get()); }
+	void BindExprToExpr(const ExprPtr& e1, const Expr* e2);
+	void BindStmtToStmt(const StmtPtr& s1, const StmtPtr& s2)
+		{ BindStmtToStmt(s1, s2.get()); }
+	void BindStmtToStmt(const StmtPtr& s1, const Stmt* s2);
 
 	// Returns the definition points associated with "var".  If none
 	// exist in our cache, then populates the cache.

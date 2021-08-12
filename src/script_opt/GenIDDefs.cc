@@ -54,7 +54,7 @@ void GenIDDefs::TraverseFunction(const Func* f, ScopePtr scope, StmtPtr body)
 		TrackID(a);
 		}
 
-	stmt_num = 0;	// 0 = "before the first statement"
+	node_num = 0;	// 0 = "before the first statement"
 
 	body->Traverse(this);
 	}
@@ -64,7 +64,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 	curr_stmt = s;
 
 	auto si = s->GetOptInfo();
-	si->stmt_num = ++stmt_num;
+	si->node_num = ++node_num;
 	si->block_level = confluence_blocks.size() + 1;
 
 	switch ( s->Tag() ) {
@@ -259,7 +259,7 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 
 TraversalCode GenIDDefs::PreExpr(const Expr* e)
 	{
-	e->GetOptInfo()->stmt_num = stmt_num;
+	e->GetOptInfo()->node_num = ++node_num;
 
 	switch ( e->Tag() ) {
 	case EXPR_NAME:
@@ -408,11 +408,12 @@ void GenIDDefs::CheckVarUsage(const Expr* e, const ID* id)
 		return;
 
 	auto oi = id->GetOptInfo();
+	auto e_node = e->GetOptInfo()->node_num;
 
-	if ( ! oi->DidUndefinedWarning() && ! oi->IsDefinedBefore(curr_stmt) &&
+	if ( ! oi->DidUndefinedWarning() && ! oi->IsDefinedBefore(e_node) &&
 	     ! id->GetAttr(ATTR_IS_ASSIGNED) )
 		{
-		if ( ! oi->IsPossiblyDefinedBefore(curr_stmt) )
+		if ( ! oi->IsPossiblyDefinedBefore(e_node) )
 			{
 			e->Warn("used without definition");
 			oi->SetDidUndefinedWarning();
