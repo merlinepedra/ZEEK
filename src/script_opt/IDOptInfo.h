@@ -103,13 +103,13 @@ public:
 
 	// All of these regarding the identifer's state just prior to
 	// executing the given statement.
-	bool IsPossiblyDefinedAt(const Stmt* s);
-	bool IsDefinedAt(const Stmt* s);
-	int DefinitionAt(const Stmt* s);
+	bool IsPossiblyDefinedBefore(const Stmt* s);
+	bool IsDefinedBefore(const Stmt* s);
+	int DefinitionBefore(const Stmt* s);
 
-	bool IsPossiblyDefinedAt(int stmt_num);
-	bool IsDefinedAt(int stmt_num);
-	int DefinitionAt(int stmt_num);
+	bool IsPossiblyDefinedBefore(int stmt_num);
+	bool IsDefinedBefore(int stmt_num);
+	int DefinitionBefore(int stmt_num);
 
 	bool DidUndefinedWarning() const
 		{ return did_undefined_warning; }

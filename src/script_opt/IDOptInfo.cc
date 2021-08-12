@@ -311,7 +311,7 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 			// Irrelevant, didn't extend into confluence region.
 			continue;
 
-		else
+		else if ( ur.end_stmt < stmt_num )
 			{
 			// This region isn't active, but could still be
 			// germane if we're tracking it for confluence.
@@ -319,12 +319,6 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 				// No, we're not tracking it.
 				continue;
 			}
-
-		if ( ur.start_stmt > ur.end_stmt )
-			// This can happen when ending a bunch of confluence
-			// blocks at once.  This block corresponds to code
-			// that doesn't actually execute, so skip it.
-			continue;
 
 		++num_regions;
 
@@ -375,43 +369,43 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 	DumpBlocks();
 	}
 
-bool IDOptInfo::IsPossiblyDefinedAt(const Stmt* s)
+bool IDOptInfo::IsPossiblyDefinedBefore(const Stmt* s)
 	{
-	return IsPossiblyDefinedAt(s->GetOptInfo()->stmt_num);
+	return IsPossiblyDefinedBefore(s->GetOptInfo()->stmt_num);
 	}
 
-bool IDOptInfo::IsDefinedAt(const Stmt* s)
+bool IDOptInfo::IsDefinedBefore(const Stmt* s)
 	{
-	return IsDefinedAt(s->GetOptInfo()->stmt_num);
+	return IsDefinedBefore(s->GetOptInfo()->stmt_num);
 	}
 
-int IDOptInfo::DefinitionAt(const Stmt* s)
+int IDOptInfo::DefinitionBefore(const Stmt* s)
 	{
-	return DefinitionAt(s->GetOptInfo()->stmt_num);
+	return DefinitionBefore(s->GetOptInfo()->stmt_num);
 	}
 
-bool IDOptInfo::IsPossiblyDefinedAt(int stmt_num)
-	{
-	if ( usage_regions.size() == 0 )
-		return false;
-
-	return FindRegion(stmt_num).maybe_defined;
-	}
-
-bool IDOptInfo::IsDefinedAt(int stmt_num)
+bool IDOptInfo::IsPossiblyDefinedBefore(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(stmt_num).defined != NO_DEF;
+	return FindRegion(stmt_num - 1).maybe_defined;
 	}
 
-int IDOptInfo::DefinitionAt(int stmt_num)
+bool IDOptInfo::IsDefinedBefore(int stmt_num)
+	{
+	if ( usage_regions.size() == 0 )
+		return false;
+
+	return FindRegion(stmt_num - 1).defined != NO_DEF;
+	}
+
+int IDOptInfo::DefinitionBefore(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return NO_DEF;
 
-	return FindRegion(stmt_num).defined;
+	return FindRegion(stmt_num - 1).defined;
 	}
 
 void IDOptInfo::EndRegionAt(const Stmt* s)
