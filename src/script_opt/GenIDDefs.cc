@@ -358,7 +358,7 @@ bool GenIDDefs::CheckLHS(const ExprPtr& lhs, const ExprPtr& rhs)
 	{
 	switch ( lhs->Tag() ) {
 	case EXPR_REF:
-		return CheckLHS(lhs->GetOp1());
+		return CheckLHS(lhs->GetOp1(), rhs);
 
 	case EXPR_NAME:
 		{

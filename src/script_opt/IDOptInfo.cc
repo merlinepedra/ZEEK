@@ -41,7 +41,7 @@ void IDDefRegion::Dump() const
 	printf("\t%d->%d (%d): ", start_stmt, end_stmt, block_level);
 
 	if ( defined != NO_DEF )
-		printf("%d", defined);
+		printf("%d (%llx)", defined, def_expr.get());
 	else if ( maybe_defined )
 		printf("?");
 	else
@@ -71,7 +71,9 @@ void IDOptInfo::DefinedAfter(const Stmt* s, const ExprPtr& e,
                              const std::vector<const Stmt*>& conf_blocks,
                              int conf_start)
 	{
-	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+	bool trace = trace_ID && util::streq(trace_ID, my_id->Name());
+
+	if ( trace )
 		printf("ID %s defined at %d: %s\n", trace_ID, s ? s->GetOptInfo()->stmt_num : NO_DEF, s ? obj_desc(s).c_str() : "<entry>");
 
 	if ( ! s )
@@ -152,7 +154,9 @@ void IDOptInfo::ReturnAt(const Stmt* s)
 
 void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	{
-	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+	bool trace = trace_ID && util::streq(trace_ID, my_id->Name());
+
+	if ( trace )
 		printf("ID %s branching back from %d->%d: %s\n", trace_ID,
 		       from->GetOptInfo()->stmt_num,
 		       to->GetOptInfo()->stmt_num, obj_desc(from).c_str());
@@ -299,7 +303,9 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 	int cs_stmt_num = cs->GetOptInfo()->stmt_num;
 	int cs_level = cs->GetOptInfo()->block_level;
 
-	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+	bool trace = trace_ID && util::streq(trace_ID, my_id->Name());
+
+	if ( trace )
 		printf("ID %s ending (%d) confluence block (%d, level %d) at %d: %s\n", trace_ID, no_orig_flow, cs_stmt_num, cs_level, stmt_num, obj_desc(s).c_str());
 
 	if ( block_has_orig_flow.back() )
