@@ -32,7 +32,7 @@ IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
 	start_stmt = s->GetOptInfo()->stmt_num;
 	block_level = s->GetOptInfo()->block_level;
 
-	Init(ur.maybe_defined, ur.defined);
+	Init(ur.MaybeDefined(), ur.DefinedAfter());
 	}
 
 void IDDefRegion::Dump() const
@@ -168,8 +168,8 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
 	auto& t_r = usage_regions[t_r_ind];
 
-	if ( from_reg && from_reg->defined != t_r.defined &&
-	     t_r.defined != NO_DEF )
+	if ( from_reg && from_reg->DefinedAfter() != t_r.DefinedAfter() &&
+	     t_r.DefinedAfter() != NO_DEF )
 		{
 		// They disagree on the definition.  Move the definition
 		// point to be the start of the confluence region, and
@@ -179,10 +179,10 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 		int new_def = t_oi->stmt_num;
 
 		for ( auto i = t_r_ind; i < usage_regions.size(); ++i )
-			if ( usage_regions[i].defined < new_def )
+			if ( usage_regions[i].DefinedAfter() < new_def )
 				{
-				ASSERT(usage_regions[i].defined != NO_DEF);
-				usage_regions[i].defined = new_def;
+				ASSERT(usage_regions[i].DefinedAfter() != NO_DEF);
+				usage_regions[i].UpdateDefinedAfter(new_def);
 				}
 		}
 
@@ -251,11 +251,11 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 		{
 		auto& ui = usage_regions[i];
 
-		if ( ui.end_stmt == NO_DEF )
+		if ( ui.EndsAfter() == NO_DEF )
 			{
-			ASSERT(ui.block_level <= block_level);
+			ASSERT(ui.BlockLevel() <= block_level);
 
-			if ( ui.block_level < block_level )
+			if ( ui.BlockLevel() < block_level )
 				// Didn't find one at our own level,
 				// so create on inherited from the
 				// outer one.
@@ -301,26 +301,26 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 		{
 		auto& ur = usage_regions[i];
 
-		if ( ur.block_level < cs_level )
+		if ( ur.BlockLevel() < cs_level )
 			// It's not applicable.
 			continue;
 
-		if ( ur.end_stmt == NO_DEF )
+		if ( ur.EndsAfter() == NO_DEF )
 			{
 			// End this region.
-			ur.end_stmt = stmt_num;
+			ur.SetEndsAfter(stmt_num);
 
-			if ( ur.start_stmt <= cs_stmt_num && no_orig_flow &&
+			if ( ur.StartsAfter() <= cs_stmt_num && no_orig_flow &&
 			     pc.count(i) == 0 )
 				// Don't include this region in our assessment.
 				continue;
 			}
 
-		else if ( ur.end_stmt < cs_stmt_num )
+		else if ( ur.EndsAfter() < cs_stmt_num )
 			// Irrelevant, didn't extend into confluence region.
 			continue;
 
-		else if ( ur.end_stmt < stmt_num )
+		else if ( ur.EndsAfter() < stmt_num )
 			{
 			// This region isn't active, but could still be
 			// germane if we're tracking it for confluence.
@@ -331,9 +331,9 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 		++num_regions;
 
-		maybe = maybe || ur.maybe_defined;
+		maybe = maybe || ur.MaybeDefined();
 
-		if ( ur.defined == NO_DEF )
+		if ( ur.DefinedAfter() == NO_DEF )
 			{
 			defined = false;
 			continue;
@@ -341,12 +341,12 @@ void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
 
 		if ( did_single_def )
 			{
-			if ( single_def != ur.defined )
+			if ( single_def != ur.DefinedAfter() )
 				have_multi_defs = true;
 			}
 		else
 			{
-			single_def = ur.defined;
+			single_def = ur.DefinedAfter();
 			did_single_def = true;
 			}
 		}
@@ -398,7 +398,7 @@ bool IDOptInfo::IsPossiblyDefinedBefore(int stmt_num)
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(stmt_num - 1).maybe_defined;
+	return FindRegion(stmt_num - 1).MaybeDefined();
 	}
 
 bool IDOptInfo::IsDefinedBefore(int stmt_num)
@@ -406,7 +406,7 @@ bool IDOptInfo::IsDefinedBefore(int stmt_num)
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(stmt_num - 1).defined != NO_DEF;
+	return FindRegion(stmt_num - 1).DefinedAfter() != NO_DEF;
 	}
 
 int IDOptInfo::DefinitionBefore(int stmt_num)
@@ -414,7 +414,7 @@ int IDOptInfo::DefinitionBefore(int stmt_num)
 	if ( usage_regions.size() == 0 )
 		return NO_DEF;
 
-	return FindRegion(stmt_num - 1).defined;
+	return FindRegion(stmt_num - 1).DefinedAfter();
 	}
 
 void IDOptInfo::EndRegionsAt(int stmt_num, int level)
@@ -423,11 +423,11 @@ void IDOptInfo::EndRegionsAt(int stmt_num, int level)
 		{
 		auto& ur = usage_regions[i];
 
-		if ( ur.block_level < level )
+		if ( ur.BlockLevel() < level )
 			return;
 
-		if ( ur.end_stmt == NO_DEF )
-			ur.end_stmt = stmt_num;
+		if ( ur.EndsAfter() == NO_DEF )
+			ur.SetEndsAfter(stmt_num);
 		}
 	}
 
@@ -438,12 +438,12 @@ int IDOptInfo::FindRegionIndex(int stmt_num)
 		{
 		auto ur = usage_regions[i];
 
-		if ( ur.start_stmt > stmt_num )
+		if ( ur.StartsAfter() > stmt_num )
 			break;
 
-		if ( ur.end_stmt == NO_DEF )
+		if ( ur.EndsAfter() == NO_DEF )
 			region_ind = i;
-		if ( ur.end_stmt >= stmt_num )
+		if ( ur.EndsAfter() >= stmt_num )
 			region_ind = i;
 		}
 
@@ -455,7 +455,7 @@ int IDOptInfo::ActiveRegionIndex()
 	{
 	int i;
 	for ( i = usage_regions.size() - 1; i >= 0; --i )
-		if ( usage_regions[i].end_stmt == NO_DEF )
+		if ( usage_regions[i].EndsAfter() == NO_DEF )
 			return i;
 
 	return NO_DEF;

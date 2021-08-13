@@ -38,6 +38,19 @@ public:
 
 	void Dump() const;
 
+	int StartsAfter() const	{ return start_stmt; }
+
+	int EndsAfter() const			{ return end_stmt; }
+	void SetEndsAfter(int _end_stmt)	{ end_stmt = _end_stmt; }
+
+	int BlockLevel() const		{ return block_level; }
+
+	bool MaybeDefined() const	{ return maybe_defined; }
+
+	int DefinedAfter() const	{ return defined; }
+	void UpdateDefinedAfter(int _defined)	{ defined = _defined; }
+
+protected:
 	// Number of the statement for which this region applies *after*
 	// its execution.
 	int start_stmt;
