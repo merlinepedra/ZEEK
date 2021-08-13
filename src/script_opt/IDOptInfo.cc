@@ -318,16 +318,15 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 
 		else if ( ur.EndsAfter() < cs_stmt_num )
 			// Irrelevant, didn't extend into confluence region.
+			// We test here just to avoid the set lookup in
+			// the next test, which presumably will sometimes
+			// be a tad expensive.
 			continue;
 
-		else if ( ur.EndsAfter() < stmt_num )
-			{
-			// This region isn't active, but could still be
-			// germane if we're tracking it for confluence.
-			if ( pc.count(i) == 0 )
-				// No, we're not tracking it.
-				continue;
-			}
+		else if ( pc.count(i) == 0 )
+			// This region isn't active, and we're not
+			// tracking it for confluence.
+			continue;
 
 		++num_regions;
 
