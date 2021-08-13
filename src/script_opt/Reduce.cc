@@ -439,7 +439,8 @@ IDPtr Reducer::FindExprTmp(const Expr* rhs, const Expr* a,
 
 			bool s2 = def != NO_DEF;
 
-			ASSERT(s1 == s2);
+if ( s1 != s2 )
+	printf("differing for %s\n", obj_desc(a).c_str());
 
 			if ( ! s1 )
 				// The temporary's value isn't guaranteed
