@@ -50,8 +50,8 @@ public:
 	int DefinedAfter() const		{ return defined; }
 	void UpdateDefinedAfter(int _defined)	{ defined = _defined; }
 
-	const Expr* DefExprAfter() const	{ return def_expr; }
-	void SetDefExpr(const Expr* e)		{ def_expr = e; }
+	const ExprPtr& DefExprAfter() const	{ return def_expr; }
+	void SetDefExpr(ExprPtr e)		{ def_expr = e; }
 
 protected:
 	// Number of the statement for which this region applies *after*
@@ -76,7 +76,7 @@ protected:
 	// The expression used to define the identifier in this region.
 	// Nil if either it's ambiguous (due to confluence), or the
 	// identifier isn't guaranteed to be defined.
-	const Expr* def_expr = nullptr;
+	ExprPtr def_expr;
 };
 
 class IDOptInfo {
@@ -98,7 +98,7 @@ public:
 	// gives the full set of surrounding confluence statements.
 	// It should be processed starting at conf_start (note that
 	// conf_blocks may be empty).
-	void DefinedAfter(const Stmt* s, const Expr* e,
+	void DefinedAfter(const Stmt* s, const ExprPtr& e,
 	                  const std::vector<const Stmt*>& conf_blocks,
 	                  int conf_start);
 
@@ -132,12 +132,12 @@ public:
 	bool IsPossiblyDefinedBefore(const Stmt* s);
 	bool IsDefinedBefore(const Stmt* s);
 	int DefinitionBefore(const Stmt* s);
-	const Expr* DefExprBefore(const Stmt* s);
+	ExprPtr DefExprBefore(const Stmt* s);
 
 	bool IsPossiblyDefinedBefore(int stmt_num);
 	bool IsDefinedBefore(int stmt_num);
 	int DefinitionBefore(int stmt_num);
-	const Expr* DefExprBefore(int stmt_num);
+	ExprPtr DefExprBefore(int stmt_num);
 
 	bool DidUndefinedWarning() const
 		{ return did_undefined_warning; }

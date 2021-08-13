@@ -290,7 +290,7 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 
 		op2->Traverse(this);
 
-		if ( ! CheckLHS(lhs, op2.get()) )
+		if ( ! CheckLHS(lhs, op2) )
 			// Not a simple assignment (or group of assignments),
 			// so analyze the accesses to check for use of
 			// possibly undefined values.
@@ -354,12 +354,12 @@ TraversalCode GenIDDefs::PostExpr(const Expr* e)
 	return TC_CONTINUE;
 	}
 
-bool GenIDDefs::CheckLHS(const Expr* lhs, const Expr* rhs)
+bool GenIDDefs::CheckLHS(const ExprPtr& lhs, const ExprPtr& rhs)
 	{
-	if ( lhs->Tag() == EXPR_REF )
-		lhs = lhs->GetOp1().get();
-
 	switch ( lhs->Tag() ) {
+	case EXPR_REF:
+		return CheckLHS(lhs->GetOp1());
+
 	case EXPR_NAME:
 		{
 		auto n = lhs->AsNameExpr();
@@ -514,7 +514,7 @@ void GenIDDefs::ReturnAt(const Stmt* s)
 		id->GetOptInfo()->ReturnAt(s);
 	}
 
-void GenIDDefs::TrackID(const ID* id, const Expr* e)
+void GenIDDefs::TrackID(const ID* id, const ExprPtr& e)
 	{
 	auto oi = id->GetOptInfo();
 

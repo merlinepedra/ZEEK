@@ -67,7 +67,7 @@ void IDOptInfo::Clear()
 	confluence_stmts.clear();
 	}
 
-void IDOptInfo::DefinedAfter(const Stmt* s, const Expr* e,
+void IDOptInfo::DefinedAfter(const Stmt* s, const ExprPtr& e,
                              const std::vector<const Stmt*>& conf_blocks,
                              int conf_start)
 	{
@@ -300,7 +300,7 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 
 	bool did_single_def = false;
 	int single_def = NO_DEF;
-	const Expr* single_def_expr = nullptr;
+	ExprPtr single_def_expr;
 	bool have_multi_defs = false;
 
 	int num_regions = 0;
@@ -404,7 +404,7 @@ int IDOptInfo::DefinitionBefore(const Stmt* s)
 	return DefinitionBefore(s->GetOptInfo()->stmt_num);
 	}
 
-const Expr* IDOptInfo::DefExprBefore(const Stmt* s)
+ExprPtr IDOptInfo::DefExprBefore(const Stmt* s)
 	{
 	return DefExprBefore(s->GetOptInfo()->stmt_num);
 	}
@@ -433,7 +433,7 @@ int IDOptInfo::DefinitionBefore(int stmt_num)
 	return FindRegionBefore(stmt_num).DefinedAfter();
 	}
 
-const Expr* IDOptInfo::DefExprBefore(int stmt_num)
+ExprPtr IDOptInfo::DefExprBefore(int stmt_num)
 	{
 	if ( usage_regions.size() == 0 )
 		return nullptr;

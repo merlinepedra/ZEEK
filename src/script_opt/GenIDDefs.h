@@ -30,9 +30,7 @@ private:
 	// (e.g., assignments to variables, but not to elements of
 	// aggregates).  "rhs" gives the expression used for simple direct
 	// assignments.
-	bool CheckLHS(const ExprPtr& lhs, const Expr* rhs = nullptr)
-		{ return CheckLHS(lhs.get(), rhs); }
-	bool CheckLHS(const Expr* lhs, const Expr* rhs = nullptr);
+	bool CheckLHS(const ExprPtr& lhs, const ExprPtr& rhs = nullptr);
 
 	// True if the given expression directly represents an aggregate.
 	bool IsAggr(const ExprPtr& e) const	{ return IsAggr(e.get()); }
@@ -62,9 +60,9 @@ private:
 	// statement in the current confluence block.  'e' is the
 	// expression used to define the identifier, for simple direct
 	// assignments.
-	void TrackID(const IDPtr& id, const Expr* e = nullptr)
+	void TrackID(const IDPtr& id, const ExprPtr& e = nullptr)
 		{ TrackID(id.get(), e); }
-	void TrackID(const ID* id, const Expr* e = nullptr);
+	void TrackID(const ID* id, const ExprPtr& e = nullptr);
 
 	// Profile for the function.  Currently, all we actually need from
 	// this is the list of globals.
