@@ -31,7 +31,12 @@ public:
 	void Deactivate()	{ active = false; }
 	bool IsActive() const	{ return active; }
 
-	// Associated constant expression, if any.
+	// Associated constant expression, if any.  This information is
+	// conceptually redundant with the tracking of def_expr in
+	// IDDefRegion, but much easier (and efficient) to get at
+	// by managing it directly here.  This does mean, however,
+	// that callers must take care to check TempVar's separately
+	// from regular identifiers when looking for constant expressions.
 	const ConstExpr* Const() const	{ return const_expr; }
 
 	// The most use of "const" in any single line in the Zeek

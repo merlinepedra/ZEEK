@@ -33,6 +33,7 @@ IDDefRegion::IDDefRegion(const Stmt* s, const IDDefRegion& ur)
 	block_level = s->GetOptInfo()->block_level;
 
 	Init(ur.MaybeDefined(), ur.DefinedAfter());
+	SetDefExpr(ur.DefExprAfter());
 	}
 
 void IDDefRegion::Dump() const
@@ -66,7 +67,7 @@ void IDOptInfo::Clear()
 	confluence_stmts.clear();
 	}
 
-void IDOptInfo::DefinedAfter(const Stmt* s,
+void IDOptInfo::DefinedAfter(const Stmt* s, const Expr* e,
                              const std::vector<const Stmt*>& conf_blocks,
                              int conf_start)
 	{
@@ -124,6 +125,7 @@ void IDOptInfo::DefinedAfter(const Stmt* s,
 	// This needs to come after filling out the confluence
 	// blocks, since they'll create their own (earlier) regions.
 	usage_regions.emplace_back(s, true, stmt_num);
+	usage_regions.back().SetDefExpr(e);
 
 	DumpBlocks();
 	}
@@ -175,15 +177,20 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 		// point to be the start of the confluence region, and
 		// update any blocks inside the region that refer to
 		// a pre-"to" definition to instead reflect the confluence
-		// region.
+		// region (and remove their definition expressions).
 		int new_def = t_oi->stmt_num;
 
 		for ( auto i = t_r_ind; i < usage_regions.size(); ++i )
-			if ( usage_regions[i].DefinedAfter() < new_def )
+			{
+			auto& ur = usage_regions[i];
+
+			if ( ur.DefinedAfter() < new_def )
 				{
-				ASSERT(usage_regions[i].DefinedAfter() != NO_DEF);
-				usage_regions[i].UpdateDefinedAfter(new_def);
+				ASSERT(ur.DefinedAfter() != NO_DEF);
+				ur.UpdateDefinedAfter(new_def);
+				ur.SetDefExpr(nullptr);
 				}
+			}
 		}
 
 	int level = close_all ? t_oi->block_level + 1 : f_oi->block_level;
@@ -293,6 +300,7 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 
 	bool did_single_def = false;
 	int single_def = NO_DEF;
+	const Expr* single_def_expr = nullptr;
 	bool have_multi_defs = false;
 
 	int num_regions = 0;
@@ -346,6 +354,7 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 		else
 			{
 			single_def = ur.DefinedAfter();
+			single_def_expr = ur.DefExprAfter();
 			did_single_def = true;
 			}
 		}
@@ -370,6 +379,9 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 	int level = cs->GetOptInfo()->block_level;
 	usage_regions.emplace_back(stmt_num, level, maybe, single_def);
 
+	if ( single_def != NO_DEF && ! have_multi_defs )
+		usage_regions.back().SetDefExpr(single_def_expr);
+
 	confluence_stmts.pop_back();
 	block_has_orig_flow.pop_back();
 	pending_confluences.erase(cs);
@@ -390,6 +402,11 @@ bool IDOptInfo::IsDefinedBefore(const Stmt* s)
 int IDOptInfo::DefinitionBefore(const Stmt* s)
 	{
 	return DefinitionBefore(s->GetOptInfo()->stmt_num);
+	}
+
+const Expr* IDOptInfo::DefExprBefore(const Stmt* s)
+	{
+	return DefExprBefore(s->GetOptInfo()->stmt_num);
 	}
 
 bool IDOptInfo::IsPossiblyDefinedBefore(int stmt_num)
@@ -414,6 +431,14 @@ int IDOptInfo::DefinitionBefore(int stmt_num)
 		return NO_DEF;
 
 	return FindRegionBefore(stmt_num).DefinedAfter();
+	}
+
+const Expr* IDOptInfo::DefExprBefore(int stmt_num)
+	{
+	if ( usage_regions.size() == 0 )
+		return nullptr;
+
+	return FindRegionBefore(stmt_num).DefExprAfter();
 	}
 
 void IDOptInfo::EndRegionsAfter(int stmt_num, int level)

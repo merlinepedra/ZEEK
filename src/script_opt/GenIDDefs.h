@@ -28,9 +28,11 @@ private:
 	// Analyzes the target of an assignment.  Returns true if the LHS
 	// was an expression for which we can track it as a definition
 	// (e.g., assignments to variables, but not to elements of
-	// aggregates).
-	bool CheckLHS(const ExprPtr& lhs)	{ return CheckLHS(lhs.get()); }
-	bool CheckLHS(const Expr* lhs);
+	// aggregates).  "rhs" gives the expression used for simple direct
+	// assignments.
+	bool CheckLHS(const ExprPtr& lhs, const Expr* rhs = nullptr)
+		{ return CheckLHS(lhs.get(), rhs); }
+	bool CheckLHS(const Expr* lhs, const Expr* rhs = nullptr);
 
 	// True if the given expression directly represents an aggregate.
 	bool IsAggr(const ExprPtr& e) const	{ return IsAggr(e.get()); }
@@ -57,9 +59,12 @@ private:
 	void ReturnAt(const Stmt* s);
 
 	// Tracks that the given identifier is defined at the current
-	// statement in the current confluence block.
-	void TrackID(const IDPtr& id)	{ TrackID(id.get()); }
-	void TrackID(const ID* id);
+	// statement in the current confluence block.  'e' is the
+	// expression used to define the identifier, for simple direct
+	// assignments.
+	void TrackID(const IDPtr& id, const Expr* e = nullptr)
+		{ TrackID(id.get(), e); }
+	void TrackID(const ID* id, const Expr* e = nullptr);
 
 	// Profile for the function.  Currently, all we actually need from
 	// this is the list of globals.
@@ -89,6 +94,8 @@ private:
 	// the front entry tracks identifiers at the outermost
 	// (non-confluence) scope.
 	std::vector<std::unordered_set<const ID*>> modified_IDs;
+
+	int suppress_usage = 0;
 };
 
 } // zeek::detail

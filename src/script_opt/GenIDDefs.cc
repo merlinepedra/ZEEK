@@ -113,6 +113,8 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		auto sw = s->AsSwitchStmt();
 		auto e = sw->StmtExpr();
 
+		e->Traverse(this);
+
 		StartConfluenceBlock(sw);
 
 		for ( const auto& c : *sw->Cases() )
@@ -288,7 +290,7 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 
 		op2->Traverse(this);
 
-		if ( ! CheckLHS(lhs) )
+		if ( ! CheckLHS(lhs, op2.get()) )
 			// Not a simple assignment (or group of assignments),
 			// so analyze the accesses to check for use of
 			// possibly undefined values.
@@ -298,16 +300,17 @@ TraversalCode GenIDDefs::PreExpr(const Expr* e)
 		}
 
 	case EXPR_COND:
-		// Special hack.  We don't bother traversing the operands
-		// of conditionals.  This is because we use them heavily
-		// to deconstruct logical expressions for which the
-		// actual operand access is safe (guaranteed not to
-		// access a value that hasn't been undefined), but the
-		// flow analysis has trouble determining that.  In principle
-		// we could do a bit better here and only traverse operands
-		// that aren't temporaries, but that's a bit of a pain
-		// to discern.
+		// Special hack.  We turn off checking for usage issues
+		// inside conditionals.  This is because we use them heavily
+		// to deconstruct logical expressions for which the actual
+		// operand access is safe (guaranteed not to access a value
+		// that hasn't been undefined), but the flow analysis has
+		// trouble determining that.
+		++suppress_usage;
 		e->GetOp1()->Traverse(this);
+		e->GetOp2()->Traverse(this);
+		e->GetOp3()->Traverse(this);
+		--suppress_usage;
 
 		return TC_ABORTSTMT;
 
@@ -351,7 +354,7 @@ TraversalCode GenIDDefs::PostExpr(const Expr* e)
 	return TC_CONTINUE;
 	}
 
-bool GenIDDefs::CheckLHS(const Expr* lhs)
+bool GenIDDefs::CheckLHS(const Expr* lhs, const Expr* rhs)
 	{
 	if ( lhs->Tag() == EXPR_REF )
 		lhs = lhs->GetOp1().get();
@@ -360,7 +363,7 @@ bool GenIDDefs::CheckLHS(const Expr* lhs)
 	case EXPR_NAME:
 		{
 		auto n = lhs->AsNameExpr();
-		TrackID(n->Id());
+		TrackID(n->Id(), rhs);
 		return true;
 		}
 
@@ -410,7 +413,8 @@ bool GenIDDefs::IsAggr(const Expr* e) const
 
 void GenIDDefs::CheckVarUsage(const Expr* e, const ID* id)
 	{
-	if ( analysis_options.usage_issues == 0 || id->IsGlobal() )
+	if ( analysis_options.usage_issues == 0 || id->IsGlobal() ||
+	     suppress_usage > 0 )
 		return;
 
 	auto oi = id->GetOptInfo();
@@ -510,12 +514,13 @@ void GenIDDefs::ReturnAt(const Stmt* s)
 		id->GetOptInfo()->ReturnAt(s);
 	}
 
-void GenIDDefs::TrackID(const ID* id)
+void GenIDDefs::TrackID(const ID* id, const Expr* e)
 	{
 	auto oi = id->GetOptInfo();
 
 	ASSERT(barrier_blocks.size() > 0);
-	oi->DefinedAfter(curr_stmt, confluence_blocks, barrier_blocks.back());
+	oi->DefinedAfter(curr_stmt, e,
+	                 confluence_blocks, barrier_blocks.back());
 
 	// Ensure we track this identifier across all relevant
 	// confluence regions.
