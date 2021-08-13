@@ -256,17 +256,27 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	// Inherit the closest open, outer region, if necessary.
 	for ( int i = usage_regions.size() - 1; i >= 0; --i )
 		{
-		auto& ui = usage_regions[i];
+		auto& ur = usage_regions[i];
 
-		if ( ui.EndsAfter() == NO_DEF )
+		if ( ur.EndsAfter() == NO_DEF )
 			{
-			ASSERT(ui.BlockLevel() <= block_level);
+			if ( ur.BlockLevel() > block_level )
+				{
+				// This can happen for regions left over
+				// from a previous catch-return, which
+				// we haven't closed out yet because we
+				// don't track new identifiers beyond
+				// outer CRs.  Close the region now.
+				ASSERT(s->Tag() == STMT_CATCH_RETURN);
+				ur.SetEndsAfter(s_oi->stmt_num - 1);
+				continue;
+				}
 
-			if ( ui.BlockLevel() < block_level )
+			if ( ur.BlockLevel() < block_level )
 				// Didn't find one at our own level,
 				// so create on inherited from the
 				// outer one.
-				usage_regions.emplace_back(s, ui);
+				usage_regions.emplace_back(s, ur);
 
 			// We now have one at our level that we can use.
 			break;
@@ -278,9 +288,6 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 
 void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 	{
-	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
-		printf("ID %s ending (%d) confluence block at %d: %s\n", trace_ID, no_orig_flow, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
-
 	auto stmt_num = s->GetOptInfo()->stmt_num;
 
 	ASSERT(confluence_stmts.size() > 0);
@@ -291,6 +298,9 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 	// of cs, since we're now returning to cs's level.
 	int cs_stmt_num = cs->GetOptInfo()->stmt_num;
 	int cs_level = cs->GetOptInfo()->block_level;
+
+	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+		printf("ID %s ending (%d) confluence block (%d, level %d) at %d: %s\n", trace_ID, no_orig_flow, cs_stmt_num, cs_level, stmt_num, obj_desc(s).c_str());
 
 	if ( block_has_orig_flow.back() )
 		no_orig_flow = false;
