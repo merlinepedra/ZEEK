@@ -88,9 +88,9 @@ public:
 	// given statement.  "conf_blocks" gives the full set of
 	// surrounding confluence statements.  It should be processed
 	// starting at conf_start (note that conf_blocks may be empty).
-	void DefinedAt(const Stmt* s,
-	               const std::vector<const Stmt*>& conf_blocks,
-	               int conf_start);
+	void DefinedAfter(const Stmt* s,
+	                  const std::vector<const Stmt*>& conf_blocks,
+	                  int conf_start);
 
 	// Called upon encountering a "return" statement.
 	void ReturnAt(const Stmt* s);
@@ -115,7 +115,7 @@ public:
 	// prior to leaving a block.  If no_orig_flow is true, then
 	// the region for 's' itself does not continue to the end of
 	// the block.
-	void ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow);
+	void ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow);
 
 	// All of these regarding the identifer's state just prior to
 	// executing the given statement.
@@ -139,13 +139,13 @@ public:
 
 private:
 	// End any active regions that are at or inner to the given level.
-	void EndRegionsAt(int stmt_num, int level);
+	void EndRegionsAfter(int stmt_num, int level);
 
-	// Find the region that applies *prior* to executing the
+	// Find the region that applies *before* to executing the
 	// given statement.  There should always be such a region.
-	IDDefRegion& FindRegion(int stmt_num)
-		{ return usage_regions[FindRegionIndex(stmt_num)]; }
-	int FindRegionIndex(int stmt_num);
+	IDDefRegion& FindRegionBefore(int stmt_num)
+		{ return usage_regions[FindRegionBeforeIndex(stmt_num)]; }
+	int FindRegionBeforeIndex(int stmt_num);
 
 	IDDefRegion* ActiveRegion()
 		{

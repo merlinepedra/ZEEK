@@ -66,9 +66,9 @@ void IDOptInfo::Clear()
 	confluence_stmts.clear();
 	}
 
-void IDOptInfo::DefinedAt(const Stmt* s,
-                          const std::vector<const Stmt*>& conf_blocks,
-                          int conf_start)
+void IDOptInfo::DefinedAfter(const Stmt* s,
+                             const std::vector<const Stmt*>& conf_blocks,
+                             int conf_start)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
 		printf("ID %s defined at %d: %s\n", trace_ID, s ? s->GetOptInfo()->stmt_num : NO_DEF, s ? obj_desc(s).c_str() : "<entry>");
@@ -94,7 +94,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 		usage_regions.emplace_back(0, 0, false, NO_DEF);
 		}
 
-	EndRegionsAt(stmt_num - 1, s_oi->block_level);
+	EndRegionsAfter(stmt_num - 1, s_oi->block_level);
 
 	// Fill in any missing confluence blocks.
 	int b = 0;	// index into our own blocks
@@ -143,7 +143,7 @@ void IDOptInfo::ReturnAt(const Stmt* s)
 			}
 
 	auto s_oi = s->GetOptInfo();
-	EndRegionsAt(s_oi->stmt_num, s_oi->block_level);
+	EndRegionsAfter(s_oi->stmt_num - 1, s_oi->block_level);
 
 	DumpBlocks();
 	}
@@ -165,7 +165,7 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	auto from_reg = ActiveRegion();
 	auto f_oi = from->GetOptInfo();
 	auto t_oi = to->GetOptInfo();
-	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
+	auto t_r_ind = FindRegionBeforeIndex(t_oi->stmt_num);
 	auto& t_r = usage_regions[t_r_ind];
 
 	if ( from_reg && from_reg->DefinedAfter() != t_r.DefinedAfter() &&
@@ -187,7 +187,7 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 		}
 
 	int level = close_all ? t_oi->block_level + 1 : f_oi->block_level;
-	EndRegionsAt(f_oi->stmt_num, level);
+	EndRegionsAfter(f_oi->stmt_num, level);
 
 	DumpBlocks();
 	}
@@ -213,7 +213,7 @@ void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block,
 	else
 		level = end_oi->block_level;
 
-	EndRegionsAt(end_oi->stmt_num, level);
+	EndRegionsAfter(end_oi->stmt_num, level);
 
 	DumpBlocks();
 	}
@@ -237,7 +237,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 			{
 			ASSERT(cs_level == block_level);
 			ASSERT(cs == confluence_stmts.back());
-			EndRegionsAt(s_oi->stmt_num - 1, block_level);
+			EndRegionsAfter(s_oi->stmt_num - 1, block_level);
 			}
 		}
 
@@ -269,7 +269,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	DumpBlocks();
 	}
 
-void IDOptInfo::ConfluenceBlockEndsAt(const Stmt* s, bool no_orig_flow)
+void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
 		printf("ID %s ending (%d) confluence block at %d: %s\n", trace_ID, no_orig_flow, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
@@ -398,7 +398,7 @@ bool IDOptInfo::IsPossiblyDefinedBefore(int stmt_num)
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(stmt_num - 1).MaybeDefined();
+	return FindRegionBefore(stmt_num).MaybeDefined();
 	}
 
 bool IDOptInfo::IsDefinedBefore(int stmt_num)
@@ -406,7 +406,7 @@ bool IDOptInfo::IsDefinedBefore(int stmt_num)
 	if ( usage_regions.size() == 0 )
 		return false;
 
-	return FindRegion(stmt_num - 1).DefinedAfter() != NO_DEF;
+	return FindRegionBefore(stmt_num).DefinedAfter() != NO_DEF;
 	}
 
 int IDOptInfo::DefinitionBefore(int stmt_num)
@@ -414,10 +414,10 @@ int IDOptInfo::DefinitionBefore(int stmt_num)
 	if ( usage_regions.size() == 0 )
 		return NO_DEF;
 
-	return FindRegion(stmt_num - 1).DefinedAfter();
+	return FindRegionBefore(stmt_num).DefinedAfter();
 	}
 
-void IDOptInfo::EndRegionsAt(int stmt_num, int level)
+void IDOptInfo::EndRegionsAfter(int stmt_num, int level)
 	{
 	for ( int i = usage_regions.size() - 1; i >= 0; --i )
 		{
@@ -431,19 +431,23 @@ void IDOptInfo::EndRegionsAt(int stmt_num, int level)
 		}
 	}
 
-int IDOptInfo::FindRegionIndex(int stmt_num)
+int IDOptInfo::FindRegionBeforeIndex(int stmt_num)
 	{
 	int region_ind = NO_DEF;
 	for ( auto i = 0; i < usage_regions.size(); ++i )
 		{
 		auto ur = usage_regions[i];
 
-		if ( ur.StartsAfter() > stmt_num )
+		if ( ur.StartsAfter() >= stmt_num )
 			break;
 
 		if ( ur.EndsAfter() == NO_DEF )
+			// It's active for everything beyond its start.
 			region_ind = i;
-		if ( ur.EndsAfter() >= stmt_num )
+
+		else if ( ur.EndsAfter() >= stmt_num - 1 )
+			// It's active at the beginning of the statement of
+			// interest.
 			region_ind = i;
 		}
 

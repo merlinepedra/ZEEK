@@ -446,7 +446,7 @@ void GenIDDefs::StartConfluenceBlock(const Stmt* s)
 void GenIDDefs::EndConfluenceBlock(bool no_orig)
 	{
 	for ( auto id : modified_IDs.back() )
-		id->GetOptInfo()->ConfluenceBlockEndsAt(curr_stmt, no_orig);
+		id->GetOptInfo()->ConfluenceBlockEndsAfter(curr_stmt, no_orig);
 
 	confluence_blocks.pop_back();
 
@@ -515,7 +515,7 @@ void GenIDDefs::TrackID(const ID* id)
 	auto oi = id->GetOptInfo();
 
 	ASSERT(barrier_blocks.size() > 0);
-	oi->DefinedAt(curr_stmt, confluence_blocks, barrier_blocks.back());
+	oi->DefinedAfter(curr_stmt, confluence_blocks, barrier_blocks.back());
 
 	// Ensure we track this identifier across all relevant
 	// confluence regions.
