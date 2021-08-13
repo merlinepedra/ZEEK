@@ -558,14 +558,13 @@ bool Reducer::IsCSE(const AssignExpr* a, const NameExpr* lhs, const Expr* rhs)
 			auto dps = a_max_rds->GetDefPoints(rhs_di);
 
 			auto rhs_const = CheckForConst(rhs_id, dps);
-
 			auto stmt_num = a->GetOptInfo()->stmt_num;
-			auto rhs_expr2 = rhs_id->GetOptInfo()->DefExprBefore(stmt_num);
-			const ConstExpr* rhs_const2 = nullptr;
-			if ( rhs_expr2 && rhs_expr2->Tag() == EXPR_CONST )
-				rhs_const2 = rhs_expr2->AsConstExpr();
+			auto rhs_const2 = CheckForConst(rhs_id, stmt_num);
 
-			ASSERT(rhs_const == rhs_const2);
+			if ( rhs_const )
+				ASSERT(rhs_const2 && rhs_const->Value() == rhs_const2->Value());
+			else
+				ASSERT(! rhs_const2);
 
 			if ( rhs_const )
 				lhs_tmp->SetConst(rhs_const);
@@ -649,6 +648,23 @@ const ConstExpr* Reducer::CheckForConst(const IDPtr& id,
 	return rhs->AsConstExpr();
 	}
 
+const ConstExpr* Reducer::CheckForConst(const IDPtr& id, int stmt_num) const
+	{
+	while ( auto e = id->GetOptInfo()->DefExprBefore(stmt_num) )
+		{
+		if ( e->Tag() == EXPR_CONST )
+			return e->AsConstExpr();
+
+		// Follow aliases.
+		if ( e->Tag() != EXPR_NAME )
+			return nullptr;
+
+		return CheckForConst(e->AsNameExpr()->IdPtr(), stmt_num);
+		}
+
+	return nullptr;
+	}
+
 void Reducer::TrackExprReplacement(const Expr* orig, const Expr* e)
 	{
 	new_expr_to_orig[e] = orig;
@@ -698,14 +714,13 @@ ExprPtr Reducer::UpdateExpr(ExprPtr e)
 		auto dps = max_rds->GetDefPoints(di);
 
 		auto is_const = CheckForConst(id_ptr, dps);
-
 		auto stmt_num = e->GetOptInfo()->stmt_num;
-		auto expr2 = id->GetOptInfo()->DefExprBefore(stmt_num);
-		const ConstExpr* is_const2 = nullptr;
-		if ( expr2 && expr2->Tag() == EXPR_CONST )
-			is_const2 = expr2->AsConstExpr();
+		auto is_const2 = CheckForConst(id_ptr, stmt_num);
 
-		ASSERT(is_const == is_const2);
+		if ( is_const )
+			ASSERT(is_const2 && is_const->Value() == is_const2->Value());
+		else
+			ASSERT(! is_const2);
 
 		if ( is_const )
 			{

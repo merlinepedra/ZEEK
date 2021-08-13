@@ -224,6 +224,7 @@ protected:
 	// then returns the corresponding ConstExpr with the value.
 	const ConstExpr* CheckForConst(const IDPtr& id,
 					const DefPoints* dps) const;
+	const ConstExpr* CheckForConst(const IDPtr& id, int stmt_num) const;
 
 	// Track that we're replacing instances of "orig" with a new
 	// expression.  This allows us to locate the RDs associated
