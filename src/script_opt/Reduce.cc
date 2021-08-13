@@ -244,7 +244,7 @@ bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 
 		bool s2 = def_1 == def_2 && def_1 != NO_DEF;
 
-		ASSERT(s1 == s2 || op1_id->IsGlobal());
+		ASSERT(s1 == s2 || op1_id->IsGlobal() || IsAggr(op1_id->GetType()));
 
 		return s1;
 		}
@@ -432,7 +432,16 @@ IDPtr Reducer::FindExprTmp(const Expr* rhs, const Expr* a,
 			// because the RHS can get rewritten (for example,
 			// due to folding) after we generate RDs, and
 			// thus might not have any.
-			if ( ! mgr->HasSinglePreMinRD(a, id) )
+			bool s1 = mgr->HasSinglePreMinRD(a, id);
+
+			auto stmt_num = a->GetOptInfo()->stmt_num;
+			auto def = id->GetOptInfo()->DefinitionBefore(stmt_num);
+
+			bool s2 = def != NO_DEF;
+
+			ASSERT(s1 == s2);
+
+			if ( ! s1 )
 				// The temporary's value isn't guaranteed
 				// to make it here.
 				continue;
@@ -727,7 +736,19 @@ ExprPtr Reducer::UpdateExpr(ExprPtr e)
 		auto alias_di = mgr->GetConstID_DI(alias.get());
 		auto alias_dps = e_max_rds->GetDefPoints(alias_di);
 
-		if ( same_DPs(alias_dps, tmp_var->DPs()) )
+		bool s1 = same_DPs(alias_dps, tmp_var->DPs());
+
+		auto e_stmt_1 = e->GetOptInfo()->stmt_num;
+		auto e_stmt_2 = tmp_var->RHS()->GetOptInfo()->stmt_num;
+
+		auto def_1 = alias->GetOptInfo()->DefinitionBefore(e_stmt_1);
+		auto def_2 = tmp_var->Id()->GetOptInfo()->DefinitionBefore(e_stmt_2);
+
+		bool s2 = def_1 == def_2 && def_1 != NO_DEF;
+
+		ASSERT(s1 == s2);
+
+		if ( s1 )
 			return NewVarUsage(alias, alias_dps, e.get());
 		else
 			return e;

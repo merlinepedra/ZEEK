@@ -48,8 +48,8 @@ private:
 	// that starts the block).
 	void EndConfluenceBlock(bool no_orig_flow = false);
 
-	void BranchBackTo(const Stmt* from, const Stmt* to);
-	void BranchBeyond(const Stmt* from, const Stmt* to);
+	void BranchBackTo(const Stmt* from, const Stmt* to, bool close_all);
+	void BranchBeyond(const Stmt* from, const Stmt* to, bool close_all);
 
 	const Stmt* FindLoop();
 	const Stmt* FindBranchBeyondTarget();

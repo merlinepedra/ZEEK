@@ -84,13 +84,16 @@ public:
 
 	// Called when the current region ends with a backwards branch,
 	// possibly across multiple block levels, occurring at "from"
-	// and going into the block "to".
-	void BranchBackTo(const Stmt* from, const Stmt* to);
+	// and going into the block "to".  If "close_all" is true then
+	// any pending regions at a level inner to "to" should be
+	// closed; if not, just those at "from"'s level.
+	void BranchBackTo(const Stmt* from, const Stmt* to, bool close_all);
 
 	// Called when the current region ends at statement end_s with a
 	// forwards branch, possibly across multiple block levels, to
 	// the statement that comes right after the execution of "block".
-	void BranchBeyond(const Stmt* end_s, const Stmt* block);
+	// See above re "close_all".
+	void BranchBeyond(const Stmt* end_s, const Stmt* block, bool close_all);
 
 	// Start tracking block that begins with the body of s (not s itself).
 	void StartConfluenceBlock(const Stmt* s);
@@ -122,9 +125,8 @@ public:
 		{ did_possibly_undefined_warning = true; }
 
 private:
-	// End the active region after execution of the given statement.
-	void EndRegionAt(const Stmt* s);
-	void EndRegionAt(int stmt_num, int level);
+	// End any active regions that are at or inner to the given level.
+	void EndRegionsAt(int stmt_num, int level);
 
 	// Find the region that applies *prior* to executing the
 	// given statement.  There should always be such a region.

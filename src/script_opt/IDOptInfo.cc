@@ -94,7 +94,7 @@ void IDOptInfo::DefinedAt(const Stmt* s,
 		usage_regions.emplace_back(0, 0, false, NO_DEF);
 		}
 
-	EndRegionAt(stmt_num - 1, s_oi->block_level);
+	EndRegionsAt(stmt_num - 1, s_oi->block_level);
 
 	// Fill in any missing confluence blocks.
 	int b = 0;	// index into our own blocks
@@ -137,18 +137,18 @@ void IDOptInfo::ReturnAt(const Stmt* s)
 	for ( int i = confluence_stmts.size() - 1; i >= 0; --i )
 		if ( confluence_stmts[i]->Tag() == STMT_CATCH_RETURN )
 			{
-			BranchBeyond(s, confluence_stmts[i]);
+			BranchBeyond(s, confluence_stmts[i], false);
 			DumpBlocks();
 			return;
 			}
 
 	auto s_oi = s->GetOptInfo();
-	EndRegionAt(s_oi->stmt_num, s_oi->block_level);
+	EndRegionsAt(s_oi->stmt_num, s_oi->block_level);
 
 	DumpBlocks();
 	}
 
-void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
+void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
 		printf("ID %s branching back from %d->%d: %s\n", trace_ID,
@@ -163,6 +163,7 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 	// only draw upon that for diagnosing usage errors, and for
 	// those the error has already occurred on entry into the loop.)
 	auto from_reg = ActiveRegion();
+	auto f_oi = from->GetOptInfo();
 	auto t_oi = to->GetOptInfo();
 	auto t_r_ind = FindRegionIndex(t_oi->stmt_num);
 	auto& t_r = usage_regions[t_r_ind];
@@ -185,12 +186,14 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to)
 				}
 		}
 
-	EndRegionAt(from);
+	int level = close_all ? t_oi->block_level + 1 : f_oi->block_level;
+	EndRegionsAt(f_oi->stmt_num, level);
 
 	DumpBlocks();
 	}
 
-void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
+void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block,
+                             bool close_all)
 	{
 	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
 		printf("ID %s branching forward from %d beyond %d: %s\n",
@@ -201,10 +204,16 @@ void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block)
 
 	auto ar = ActiveRegionIndex();
 	if ( ar != NO_DEF )
-		{
 		pending_confluences[block].insert(ar);
-		EndRegionAt(end_s);
-		}
+
+	auto end_oi = end_s->GetOptInfo();
+	int level;
+	if ( close_all )
+		level = block->GetOptInfo()->block_level + 1;
+	else
+		level = end_oi->block_level;
+
+	EndRegionsAt(end_oi->stmt_num, level);
 
 	DumpBlocks();
 	}
@@ -228,7 +237,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 			{
 			ASSERT(cs_level == block_level);
 			ASSERT(cs == confluence_stmts.back());
-			EndRegionAt(s_oi->stmt_num - 1, block_level);
+			EndRegionsAt(s_oi->stmt_num - 1, block_level);
 			}
 		}
 
@@ -242,7 +251,7 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 		{
 		auto& ui = usage_regions[i];
 
-		if ( ui.end_stmt < 0 )
+		if ( ui.end_stmt == NO_DEF )
 			{
 			ASSERT(ui.block_level <= block_level);
 
@@ -408,19 +417,18 @@ int IDOptInfo::DefinitionBefore(int stmt_num)
 	return FindRegion(stmt_num - 1).defined;
 	}
 
-void IDOptInfo::EndRegionAt(const Stmt* s)
+void IDOptInfo::EndRegionsAt(int stmt_num, int level)
 	{
-	auto s_oi = s->GetOptInfo();
-	EndRegionAt(s_oi->stmt_num, s_oi->block_level);
-	}
+	for ( int i = usage_regions.size() - 1; i >= 0; --i )
+		{
+		auto& ur = usage_regions[i];
 
-void IDOptInfo::EndRegionAt(int stmt_num, int level)
-	{
-	auto r = ActiveRegion();
+		if ( ur.block_level < level )
+			return;
 
-	if ( r && r->block_level == level )
-		// Previous region ends here.
-		r->end_stmt = stmt_num;
+		if ( ur.end_stmt == NO_DEF )
+			ur.end_stmt = stmt_num;
+		}
 	}
 
 int IDOptInfo::FindRegionIndex(int stmt_num)
@@ -433,7 +441,7 @@ int IDOptInfo::FindRegionIndex(int stmt_num)
 		if ( ur.start_stmt > stmt_num )
 			break;
 
-		if ( ur.end_stmt < 0 )
+		if ( ur.end_stmt == NO_DEF )
 			region_ind = i;
 		if ( ur.end_stmt >= stmt_num )
 			region_ind = i;
@@ -447,7 +455,7 @@ int IDOptInfo::ActiveRegionIndex()
 	{
 	int i;
 	for ( i = usage_regions.size() - 1; i >= 0; --i )
-		if ( usage_regions[i].end_stmt < 0 )
+		if ( usage_regions[i].end_stmt == NO_DEF )
 			return i;
 
 	return NO_DEF;

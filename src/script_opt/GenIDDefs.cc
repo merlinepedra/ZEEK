@@ -97,11 +97,11 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 
 		t_branch->Traverse(this);
 		if ( ! t_branch->NoFlowAfter(false) )
-			BranchBeyond(curr_stmt, s);
+			BranchBeyond(curr_stmt, s, true);
 
 		f_branch->Traverse(this);
 		if ( ! f_branch->NoFlowAfter(false) )
-			BranchBeyond(curr_stmt, s);
+			BranchBeyond(curr_stmt, s, true);
 
 		EndConfluenceBlock(true);
 
@@ -160,7 +160,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo(curr_stmt, s);
+			BranchBackTo(curr_stmt, s, true);
 
 		EndConfluenceBlock();
 
@@ -189,7 +189,7 @@ TraversalCode GenIDDefs::PreStmt(const Stmt* s)
 		body->Traverse(this);
 
 		if ( ! body->NoFlowAfter(false) )
-			BranchBackTo(curr_stmt, s);
+			BranchBackTo(curr_stmt, s, true);
 
 		EndConfluenceBlock();
 
@@ -232,7 +232,7 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 		break;
 
 	case STMT_NEXT:
-		BranchBackTo(curr_stmt, FindLoop());
+		BranchBackTo(curr_stmt, FindLoop(), false);
 		break;
 
 	case STMT_BREAK:
@@ -240,7 +240,7 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 		auto target = FindBranchBeyondTarget();
 
 		if ( target )
-			BranchBeyond(s, target);
+			BranchBeyond(s, target, false);
 
 		else
 			{
@@ -457,16 +457,16 @@ void GenIDDefs::EndConfluenceBlock(bool no_orig)
 	modified_IDs.pop_back();
 	}
 
-void GenIDDefs::BranchBackTo(const Stmt* from, const Stmt* to)
+void GenIDDefs::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	{
 	for ( auto id : modified_IDs.back() )
-		id->GetOptInfo()->BranchBackTo(from, to);
+		id->GetOptInfo()->BranchBackTo(from, to, close_all);
 	}
 
-void GenIDDefs::BranchBeyond(const Stmt* from, const Stmt* to)
+void GenIDDefs::BranchBeyond(const Stmt* from, const Stmt* to, bool close_all)
 	{
 	for ( auto id : modified_IDs.back() )
-		id->GetOptInfo()->BranchBeyond(from, to);
+		id->GetOptInfo()->BranchBeyond(from, to, close_all);
 
 	to->GetOptInfo()->contains_branch_beyond = true;
 	}
