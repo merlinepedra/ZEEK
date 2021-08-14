@@ -8,6 +8,7 @@
 #include "zeek/Reporter.h"
 #include "zeek/Desc.h"
 #include "zeek/Traverse.h"
+#include "zeek/script_opt/IDOptInfo.h"
 #include "zeek/script_opt/Reduce.h"
 
 
@@ -1018,10 +1019,19 @@ StmtPtr CatchReturnStmt::DoReduce(Reducer* c)
 			return make_intrusive<NullStmt>();
 			}
 
-		auto assign = make_intrusive<AssignExpr>(ret_var->Duplicate(),
-							ret_e->Duplicate(),
+		auto rv_dup = ret_var->Duplicate();
+		auto ret_e_dup = ret_e->Duplicate();
+
+		auto assign = make_intrusive<AssignExpr>(rv_dup, ret_e_dup,
 							false);
 		assign_stmt = make_intrusive<ExprStmt>(assign);
+
+		if ( ret_e_dup->Tag() == EXPR_CONST )
+			{
+			auto c = ret_e_dup->AsConstExpr();
+			rv_dup->AsNameExpr()->Id()->GetOptInfo()->SetConst(c);
+			}
+
 		return assign_stmt;
 		}
 

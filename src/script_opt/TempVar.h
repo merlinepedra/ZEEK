@@ -31,17 +31,13 @@ public:
 	void Deactivate()	{ active = false; }
 	bool IsActive() const	{ return active; }
 
-	// Associated constant expression, if any.  This information is
-	// conceptually redundant with the tracking of def_expr in
-	// IDDefRegion, but much easier (and efficient) to get at
-	// by managing it directly here.  This does mean, however,
-	// that callers must take care to check TempVar's separately
-	// from regular identifiers when looking for constant expressions.
-	const ConstExpr* Const() const	{ return const_expr; }
+	// Associated constant expression, if any.
+	const ConstExpr* Const() const	{ return id->GetOptInfo()->Const(); }
 
 	// The most use of "const" in any single line in the Zeek
 	// codebase :-P ... though only by one!
-	void SetConst(const ConstExpr* _const) { const_expr = _const; }
+	void SetConst(const ConstExpr* _const)
+		{ id->GetOptInfo()->SetConst(_const); }
 
 	IDPtr Alias() const			{ return alias; }
 	const DefPoints* DPs() const		{ return dps; }
@@ -57,7 +53,6 @@ protected:
 	const TypePtr& type;
 	ExprPtr rhs;
 	bool active = true;
-	const ConstExpr* const_expr = nullptr;
 	IDPtr alias;
 	const DefPoints* dps = nullptr;
 	RDPtr max_rds;

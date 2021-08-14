@@ -89,6 +89,15 @@ public:
 	const std::vector<ExprPtr>& GetInitExprs() const
 		{ return init_exprs; }
 
+	// Associated constant expression, if any.  This is only set
+	// for identifiers that are aliases for a constant (i.e., there
+	// are no other assignments to them).
+	const ConstExpr* Const() const	{ return const_expr; }
+
+	// The most use of "const" in any single line in the Zeek
+	// codebase :-P ... though only by one!
+	void SetConst(const ConstExpr* _const) { const_expr = _const; }
+
 	bool IsTemp() const	{ return is_temp; }
 	void SetTemp()		{ is_temp = true; }
 
@@ -173,6 +182,10 @@ private:
 	// because it's possible that a global value gets created using
 	// one of the earlier instances rather than the last one.
 	std::vector<ExprPtr> init_exprs;
+
+	// If non-nil, a constant that this identifier always holds
+	// once initially defined.
+	const ConstExpr* const_expr = nullptr;
 
 	std::vector<IDDefRegion> usage_regions;
 
