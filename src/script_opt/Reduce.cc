@@ -650,7 +650,8 @@ const ConstExpr* Reducer::CheckForConst(const IDPtr& id,
 
 const ConstExpr* Reducer::CheckForConst(const IDPtr& id, int stmt_num) const
 	{
-	while ( auto e = id->GetOptInfo()->DefExprBefore(stmt_num) )
+	auto e = id->GetOptInfo()->DefExprBefore(stmt_num);
+	if ( e )
 		{
 		if ( e->Tag() == EXPR_CONST )
 			return e->AsConstExpr();
