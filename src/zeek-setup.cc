@@ -784,7 +784,12 @@ SetupResult setup(int argc, char** argv, Options* zopts)
 		}
 
 	if ( options.parse_only )
+		{
+		if ( analysis_options.usage_issues > 0 )
+			analyze_scripts();
+
 		exit(reporter->Errors() != 0);
+		}
 
 	auto init_stmts = stmts ? analyze_global_stmts(stmts) : nullptr;
 
