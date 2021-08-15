@@ -13,7 +13,7 @@ namespace zeek::detail {
 class GenIDDefs : public TraversalCallback {
 public:
 	GenIDDefs(std::shared_ptr<ProfileFunc> _pf, const Func* f,
-	            ScopePtr scope, StmtPtr body);
+	          ScopePtr scope, StmtPtr body);
 
 private:
 	// Traverses the given function body, using the first two
@@ -43,17 +43,26 @@ private:
 	// Begin a new confluence block with the given statement.
 	void StartConfluenceBlock(const Stmt* s);
 
-	// Finish up the current confluence block.  If no_orig_flow is
-	// true, then there's no control flow from the origin (the statement
-	// that starts the block).
+	// Finish up the current confluence block.  If no_orig_flow is true,
+	// then there's no control flow from the origin (the statement that
+	// starts the block).
 	void EndConfluenceBlock(bool no_orig_flow = false);
 
+	// Note branches from the given "from" statement back up to the
+	// beginning of, or just past, the "to" statement.  If "close_all"
+	// is true then the nature of the branch is that it terminates
+	// all pending confluence blocks.
 	void BranchBackTo(const Stmt* from, const Stmt* to, bool close_all);
 	void BranchBeyond(const Stmt* from, const Stmt* to, bool close_all);
 
+	// These search back through the active confluence blocks looking
+	// for either the innermost loop, or the innermost block for which
+	// a "break" would target going beyond that block.
 	const Stmt* FindLoop();
-	const Stmt* FindBranchBeyondTarget();
+	const Stmt* FindBreakTarget();
 
+	// Note that the given statement executes a "return" (which could
+	// instead be an outer "break" for a hook).
 	void ReturnAt(const Stmt* s);
 
 	// Tracks that the given identifier is defined at the current
@@ -65,7 +74,7 @@ private:
 	void TrackID(const ID* id, const ExprPtr& e = nullptr);
 
 	// Profile for the function.  Currently, all we actually need from
-	// this is the list of globals.
+	// this is the list of globals and locals.
 	std::shared_ptr<ProfileFunc> pf;
 
 	// Whether the Func is an event/hook/function.  We currently only
@@ -73,9 +82,13 @@ private:
 	// outer "break" in that context.
 	FunctionFlavor func_flavor;
 
+	// The statement we are currently traversing.
 	const Stmt* curr_stmt = nullptr;
+
+	// Used to number Stmt objects found during AST traversal.
 	int stmt_num;
 
+	// A stack of confluence blocks, with the innermost at the top/back.
 	std::vector<const Stmt*> confluence_blocks;
 
 	// Index into confluence_blocks of "barrier" blocks that
@@ -90,9 +103,13 @@ private:
 
 	// The following is parallel to confluence_blocks except
 	// the front entry tracks identifiers at the outermost
-	// (non-confluence) scope.
+	// (non-confluence) scope.  Thus, to index it for a given
+	// confluence block i, we need to use i+1.
 	std::vector<std::unordered_set<const ID*>> modified_IDs;
 
+	// If non-zero, indicates we should suspend any generation
+	// of usage errors.  A counter rather than a boolean because
+	// such situations might nest.
 	int suppress_usage = 0;
 };
 

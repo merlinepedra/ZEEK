@@ -65,22 +65,23 @@ void IDOptInfo::Clear()
 	usage_regions.clear();
 	pending_confluences.clear();
 	confluence_stmts.clear();
+
+	tracing = trace_ID && util::streq(trace_ID, my_id->Name());
 	}
 
 void IDOptInfo::DefinedAfter(const Stmt* s, const ExprPtr& e,
                              const std::vector<const Stmt*>& conf_blocks,
                              int conf_start)
 	{
-	bool trace = trace_ID && util::streq(trace_ID, my_id->Name());
-
-	if ( trace )
+	if ( tracing )
 		printf("ID %s defined at %d: %s\n", trace_ID, s ? s->GetOptInfo()->stmt_num : NO_DEF, s ? obj_desc(s).c_str() : "<entry>");
 
 	if ( ! s )
 		{ // This is a definition-upon-entry
 		ASSERT(usage_regions.size() == 0);
 		usage_regions.emplace_back(0, 0, true, 0);
-		DumpBlocks();
+		if ( tracing )
+			DumpBlocks();
 		return;
 		}
 
@@ -89,14 +90,14 @@ void IDOptInfo::DefinedAfter(const Stmt* s, const ExprPtr& e,
 
 	if ( usage_regions.size() == 0 )
 		{
-		ASSERT(confluence_stmts.size() == 0);
-
 		// We're seeing this identifier for the first time,
 		// so we don't have any context or confluence
 		// information for it.  Create its "backstory" region.
+		ASSERT(confluence_stmts.size() == 0);
 		usage_regions.emplace_back(0, 0, false, NO_DEF);
 		}
 
+	// Any pending regions stop prior to this statement.
 	EndRegionsAfter(stmt_num - 1, s_oi->block_level);
 
 	// Fill in any missing confluence blocks.
@@ -123,18 +124,19 @@ void IDOptInfo::DefinedAfter(const Stmt* s, const ExprPtr& e,
 	for ( ; conf_start < conf_blocks.size(); ++conf_start )
 		StartConfluenceBlock(conf_blocks[conf_start]);
 
-	// Create new region corresponding to this definition.
+	// Create a new region corresponding to this definition.
 	// This needs to come after filling out the confluence
 	// blocks, since they'll create their own (earlier) regions.
 	usage_regions.emplace_back(s, true, stmt_num);
 	usage_regions.back().SetDefExpr(e);
 
-	DumpBlocks();
+	if ( tracing )
+		DumpBlocks();
 	}
 
 void IDOptInfo::ReturnAt(const Stmt* s)
 	{
-	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+	if ( tracing )
 		printf("ID %s subject to return %d: %s\n", trace_ID, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
 
 	// Look for a catch-return that this would branch to.
@@ -142,21 +144,21 @@ void IDOptInfo::ReturnAt(const Stmt* s)
 		if ( confluence_stmts[i]->Tag() == STMT_CATCH_RETURN )
 			{
 			BranchBeyond(s, confluence_stmts[i], false);
-			DumpBlocks();
+			if ( tracing )
+				DumpBlocks();
 			return;
 			}
 
 	auto s_oi = s->GetOptInfo();
 	EndRegionsAfter(s_oi->stmt_num - 1, s_oi->block_level);
 
-	DumpBlocks();
+	if ( tracing )
+		DumpBlocks();
 	}
 
 void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	{
-	bool trace = trace_ID && util::streq(trace_ID, my_id->Name());
-
-	if ( trace )
+	if ( tracing )
 		printf("ID %s branching back from %d->%d: %s\n", trace_ID,
 		       from->GetOptInfo()->stmt_num,
 		       to->GetOptInfo()->stmt_num, obj_desc(from).c_str());
@@ -168,6 +170,7 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	// "maybe defined", but not in a way we care about, since we
 	// only draw upon that for diagnosing usage errors, and for
 	// those the error has already occurred on entry into the loop.)
+
 	auto from_reg = ActiveRegion();
 	auto f_oi = from->GetOptInfo();
 	auto t_oi = to->GetOptInfo();
@@ -200,13 +203,14 @@ void IDOptInfo::BranchBackTo(const Stmt* from, const Stmt* to, bool close_all)
 	int level = close_all ? t_oi->block_level + 1 : f_oi->block_level;
 	EndRegionsAfter(f_oi->stmt_num, level);
 
-	DumpBlocks();
+	if ( tracing )
+		DumpBlocks();
 	}
 
 void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block,
                              bool close_all)
 	{
-	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+	if ( tracing )
 		printf("ID %s branching forward from %d beyond %d: %s\n",
 		       trace_ID, end_s->GetOptInfo()->stmt_num,
 		       block->GetOptInfo()->stmt_num, obj_desc(end_s).c_str());
@@ -226,12 +230,13 @@ void IDOptInfo::BranchBeyond(const Stmt* end_s, const Stmt* block,
 
 	EndRegionsAfter(end_oi->stmt_num, level);
 
-	DumpBlocks();
+	if ( tracing )
+		DumpBlocks();
 	}
 
 void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 	{
-	if ( trace_ID && util::streq(trace_ID, my_id->Name()) )
+	if ( tracing )
 		printf("ID %s starting confluence block at %d: %s\n", trace_ID, s->GetOptInfo()->stmt_num, obj_desc(s).c_str());
 
 	auto s_oi = s->GetOptInfo();
@@ -287,7 +292,8 @@ void IDOptInfo::StartConfluenceBlock(const Stmt* s)
 			}
 		}
 
-	DumpBlocks();
+	if ( tracing )
+		DumpBlocks();
 	}
 
 void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
@@ -303,14 +309,15 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 	int cs_stmt_num = cs->GetOptInfo()->stmt_num;
 	int cs_level = cs->GetOptInfo()->block_level;
 
-	bool trace = trace_ID && util::streq(trace_ID, my_id->Name());
-
-	if ( trace )
+	if ( tracing )
 		printf("ID %s ending (%d) confluence block (%d, level %d) at %d: %s\n", trace_ID, no_orig_flow, cs_stmt_num, cs_level, stmt_num, obj_desc(s).c_str());
 
 	if ( block_has_orig_flow.back() )
 		no_orig_flow = false;
 
+	// Compute the state of the definition at the point of confluence:
+	// whether it's at least could-be-defined, whether it's definitely
+	// defined and if so whether it has a single point of definition.
 	bool maybe = false;
 	bool defined = true;
 
@@ -326,12 +333,11 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 		auto& ur = usage_regions[i];
 
 		if ( ur.BlockLevel() < cs_level )
-			// It's not applicable.
+			// Region is not applicable.
 			continue;
 
 		if ( ur.EndsAfter() == NO_DEF )
-			{
-			// End this region.
+			{ // End this region.
 			ur.SetEndsAfter(stmt_num);
 
 			if ( ur.StartsAfter() <= cs_stmt_num && no_orig_flow &&
@@ -402,7 +408,8 @@ void IDOptInfo::ConfluenceBlockEndsAfter(const Stmt* s, bool no_orig_flow)
 	block_has_orig_flow.pop_back();
 	pending_confluences.erase(cs);
 
-	DumpBlocks();
+	if ( tracing )
+		DumpBlocks();
 	}
 
 bool IDOptInfo::IsPossiblyDefinedBefore(const Stmt* s)
@@ -507,14 +514,10 @@ int IDOptInfo::ActiveRegionIndex()
 
 void IDOptInfo::DumpBlocks() const
 	{
-	if ( ! trace_ID || ! util::streq(trace_ID, my_id->Name()) )
-		return;
-
 	for ( auto i = 0; i < usage_regions.size(); ++i )
 		usage_regions[i].Dump();
 
 	printf("<end>\n");
 	}
-
 
 } // zeek::detail

@@ -24,9 +24,6 @@ void GenIDDefs::TraverseFunction(const Func* f, ScopePtr scope, StmtPtr body)
 	{
 	func_flavor = f->Flavor();
 
-	const auto& args = scope->OrderedVars();
-	int nparam = f->GetType()->Params()->NumFields();
-
 	// Establish the outermost barrior and associated set of
 	// identifiers.
 	barrier_blocks.push_back(0);
@@ -44,6 +41,9 @@ void GenIDDefs::TraverseFunction(const Func* f, ScopePtr scope, StmtPtr body)
 	// they're included among the locals.
 	for ( const auto& l : pf->Locals() )
 		l->GetOptInfo()->Clear();
+
+	const auto& args = scope->OrderedVars();
+	int nparam = f->GetType()->Params()->NumFields();
 
 	for ( const auto& a : args )
 		{
@@ -239,7 +239,7 @@ TraversalCode GenIDDefs::PostStmt(const Stmt* s)
 
 	case STMT_BREAK:
 		{
-		auto target = FindBranchBeyondTarget();
+		auto target = FindBreakTarget();
 
 		if ( target )
 			BranchBeyond(s, target, false);
@@ -492,7 +492,7 @@ const Stmt* GenIDDefs::FindLoop()
 	return confluence_blocks[i];
 	}
 
-const Stmt* GenIDDefs::FindBranchBeyondTarget()
+const Stmt* GenIDDefs::FindBreakTarget()
 	{
 	int i = confluence_blocks.size() - 1;
 	while ( i >= 0 )
