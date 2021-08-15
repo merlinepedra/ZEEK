@@ -132,6 +132,7 @@ NameExprPtr Reducer::PushInlineBlock(TypePtr type)
 
 	IDPtr ret_id = install_ID("@retvar", "<internal>", false, false);
 	ret_id->SetType(type);
+	ret_id->GetOptInfo()->SetTemp();
 
 	// Track this as a new local *if* we're in the outermost inlining
 	// block.  If we're recursively deeper into inlining, then this
@@ -155,13 +156,9 @@ bool Reducer::SameVal(const Val* v1, const Val* v2) const
 		return v1 == v2;
 	}
 
-ExprPtr Reducer::NewVarUsage(IDPtr var, const DefPoints* dps, const Expr* orig)
+ExprPtr Reducer::NewVarUsage(IDPtr var, const Expr* orig)
 	{
-	if ( ! dps )
-		reporter->InternalError("null defpoints in NewVarUsage");
-
 	auto var_usage = make_intrusive<NameExpr>(var);
-	SetDefPoints(var_usage.get(), dps);
 	BindExprToCurrStmt(var_usage);
 	TrackExprReplacement(orig, var_usage.get());
 
@@ -178,38 +175,6 @@ void Reducer::BindStmtToCurrStmt(const StmtPtr& s)
 	s->GetOptInfo()->stmt_num = curr_stmt->GetOptInfo()->stmt_num;
 	}
 
-const DefPoints* Reducer::GetDefPoints(const NameExpr* var)
-	{
-	auto dps = FindDefPoints(var);
-
-	if ( ! dps )
-		{
-		auto id = var->Id();
-		auto di = mgr->GetConstID_DI(id);
-		auto rds = mgr->GetPreMaxRDs(GetRDLookupObj(var));
-
-		dps = rds->GetDefPoints(di);
-
-		SetDefPoints(var, dps);
-		}
-
-	return dps;
-	}
-
-const DefPoints* Reducer::FindDefPoints(const NameExpr* var) const
-	{
-	auto dps = var_usage_to_DPs.find(var);
-	if ( dps == var_usage_to_DPs.end() )
-		return nullptr;
-	else
-		return dps->second;
-	}
-
-void Reducer::SetDefPoints(const NameExpr* var, const DefPoints* dps)
-	{
-	var_usage_to_DPs[var] = dps;
-	}
-
 bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 	{
 	if ( op1 == op2 )
@@ -221,7 +186,7 @@ bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 	if ( op1->Tag() == EXPR_NAME )
 		{
 		// Needs to be both the same identifier and in contexts
-		// where the identifier has the same definition points.
+		// where the identifier has the same definitions.
 		auto op1_n = op1->AsNameExpr();
 		auto op2_n = op2->AsNameExpr();
 
@@ -231,22 +196,13 @@ bool Reducer::SameOp(const Expr* op1, const Expr* op2)
 		if ( op1_id != op2_id )
 			return false;
 
-		auto op1_dps = GetDefPoints(op1_n);
-		auto op2_dps = GetDefPoints(op2_n);
-
-		bool s1 = same_DPs(op1_dps, op2_dps);
-
 		auto e_stmt_1 = op1->GetOptInfo()->stmt_num;
 		auto e_stmt_2 = op2->GetOptInfo()->stmt_num;
 
 		auto def_1 = op1_id->GetOptInfo()->DefinitionBefore(e_stmt_1);
 		auto def_2 = op2_id->GetOptInfo()->DefinitionBefore(e_stmt_2);
 
-		bool s2 = def_1 == def_2 && def_1 != NO_DEF;
-
-		ASSERT(s1 == s2 || op1_id->IsGlobal() || IsAggr(op1_id->GetType()));
-
-		return s1;
+		return def_1 == def_2 && def_1 != NO_DEF;
 		}
 
 	else if ( op1->Tag() == EXPR_CONST )
@@ -428,20 +384,10 @@ IDPtr Reducer::FindExprTmp(const Expr* rhs, const Expr* a,
 			// always makes it here.
 			auto id = et_i->Id().get();
 
-			// We use 'a' in the following rather than rhs
-			// because the RHS can get rewritten (for example,
-			// due to folding) after we generate RDs, and
-			// thus might not have any.
-			bool s1 = mgr->HasSinglePreMinRD(a, id);
-
 			auto stmt_num = a->GetOptInfo()->stmt_num;
 			auto def = id->GetOptInfo()->DefinitionBefore(stmt_num);
 
-			bool s2 = def != NO_DEF;
-
-// if ( s1 != s2 ) printf("differing for %s\n", obj_desc(a).c_str());
-
-			if ( ! s1 )
+			if ( def == NO_DEF )
 				// The temporary's value isn't guaranteed
 				// to make it here.
 				continue;
@@ -516,8 +462,6 @@ void Reducer::CheckIDs(const Expr* e, std::vector<const ID*>& ids) const
 
 bool Reducer::IsCSE(const AssignExpr* a, const NameExpr* lhs, const Expr* rhs)
 	{
-	auto a_max_rds = mgr->GetPostMaxRDs(GetRDLookupObj(a));
-
 	auto lhs_id = lhs->Id();
 	auto lhs_tmp = FindTemporary(lhs_id);	// nil if LHS not a temporary
 	auto rhs_tmp = FindExprTmp(rhs, a, lhs_tmp);
@@ -525,9 +469,7 @@ bool Reducer::IsCSE(const AssignExpr* a, const NameExpr* lhs, const Expr* rhs)
 	ExprPtr new_rhs;
 	if ( rhs_tmp )
 		{ // We already have a temporary
-		auto tmp_di = mgr->GetConstID_DI(rhs_tmp.get());
-		auto dps = a_max_rds->GetDefPoints(tmp_di);
-		new_rhs = NewVarUsage(rhs_tmp, dps, rhs);
+		new_rhs = NewVarUsage(rhs_tmp, rhs);
 		rhs = new_rhs.get();
 		}
 
@@ -553,98 +495,21 @@ bool Reducer::IsCSE(const AssignExpr* a, const NameExpr* lhs, const Expr* rhs)
 			// Treat the LHS as either an alias for the RHS,
 			// or as a constant if the RHS is a constant in
 			// this context.
-			auto rhs_di = mgr->GetConstID_DI(rhs_id.get());
-			auto dps = a_max_rds->GetDefPoints(rhs_di);
-
-			auto rhs_const = CheckForConst(rhs_id, dps);
 			auto stmt_num = a->GetOptInfo()->stmt_num;
-			auto rhs_const2 = CheckForConst(rhs_id, stmt_num);
-
-			if ( rhs_const )
-				ASSERT(rhs_const2 && rhs_const->Value() == rhs_const2->Value());
-			else
-				ASSERT(! rhs_const2);
+			auto rhs_const = CheckForConst(rhs_id, stmt_num);
 
 			if ( rhs_const )
 				lhs_tmp->SetConst(rhs_const);
 			else
-				lhs_tmp->SetAlias(rhs_id, dps);
+				lhs_tmp->SetAlias(rhs_id);
 
 			return true;
 			}
-
-		// Track where we define the temporary.
-		auto lhs_di = mgr->GetConstID_DI(lhs_id);
-		auto dps = a_max_rds->GetDefPoints(lhs_di);
-		if ( lhs_tmp->DPs() && ! same_DPs(lhs_tmp->DPs(), dps) )
-			reporter->InternalError("double DPs for temporary");
-
-		lhs_tmp->SetDPs(dps);
-		SetDefPoints(lhs, dps);
 
 		expr_temps.emplace_back(lhs_tmp);
 		}
 
 	return false;
-	}
-
-const ConstExpr* Reducer::CheckForConst(const IDPtr& id,
-					const DefPoints* dps) const
-	{
-	if ( ! dps || dps->length() == 0 )
-		// This can happen for access to uninitialized values.
-		return nullptr;
-
-	if ( dps->length() != 1 )
-		// Multiple definitions of the variable reach to this
-		// location.  In theory we could check whether they *all*
-		// provide the same constant, but that hardly seems likely.
-		return nullptr;
-
-	// Identifier has a unique definition.
-	auto dp = (*dps)[0];
-	const Expr* e = nullptr;
-
-	if ( dp.Tag() == STMT_DEF )
-		{
-		auto s = dp.StmtVal();
-
-		if ( s->Tag() == STMT_CATCH_RETURN )
-			{
-			// Change 's' to refer to the associated assignment
-			// statement, if any.
-			auto cr = s->AsCatchReturnStmt();
-			s = cr->AssignStmt().get();
-
-			if ( ! s )
-				return nullptr;
-			}
-
-		if ( s->Tag() != STMT_EXPR )
-			// Defined in a statement other than an assignment.
-			return nullptr;
-
-		e = s->AsExprStmt()->StmtExpr();
-		}
-
-	else if ( dp.Tag() == EXPR_DEF )
-		e = dp.ExprVal();
-
-	else
-		return nullptr;
-
-	if ( e->Tag() != EXPR_ASSIGN )
-		// Not sure why this would happen, other than EXPR_APPEND_TO,
-		// but in any case not an expression we can mine for a
-		// constant.
-		return nullptr;
-
-	auto rhs = e->GetOp2();
-
-	if ( rhs->Tag() != EXPR_CONST )
-		return nullptr;
-
-	return rhs->AsConstExpr();
 	}
 
 const ConstExpr* Reducer::CheckForConst(const IDPtr& id, int stmt_num) const
@@ -713,20 +578,9 @@ ExprPtr Reducer::UpdateExpr(ExprPtr e)
 	auto tmp_var = FindTemporary(id);
 	if ( ! tmp_var )
 		{
-		auto max_rds = mgr->GetPreMaxRDs(GetRDLookupObj(n));
-
 		IDPtr id_ptr = {NewRef{}, id};
-		auto di = mgr->GetConstID_DI(id);
-		auto dps = max_rds->GetDefPoints(di);
-
-		auto is_const = CheckForConst(id_ptr, dps);
 		auto stmt_num = e->GetOptInfo()->stmt_num;
-		auto is_const2 = CheckForConst(id_ptr, stmt_num);
-
-		if ( is_const )
-			ASSERT(is_const2 && is_const->Value() == is_const2->Value());
-		else
-			ASSERT(! is_const2);
+		auto is_const = CheckForConst(id_ptr, stmt_num);
 
 		if ( is_const )
 			{
@@ -748,35 +602,24 @@ ExprPtr Reducer::UpdateExpr(ExprPtr e)
 	auto alias = tmp_var->Alias();
 	if ( alias )
 		{
-		// Make sure that the definition points for the
-		// alias here are the same as when the alias
-		// was created.
+		// Make sure that the definitions for the alias here are
+		// the same as when the alias was created.
 		auto alias_tmp = FindTemporary(alias.get());
 
-		if ( alias_tmp )
+		// Resolve any alias chains.
+		while ( alias_tmp && alias_tmp->Alias() )
 			{
-			while ( alias_tmp->Alias() )
-				{
-				// Alias chains can occur due to
-				// re-reduction while optimizing.
-				auto a_id = alias_tmp->Id();
-				if ( a_id == id )
-					return e;
-
-				alias_tmp = FindTemporary(alias_tmp->Id().get());
-				}
-
-			// Temporaries always have only one definition point,
-			// so no need to check for consistency.
-			auto new_usage = NewVarUsage(alias, alias_tmp->DPs(), e.get());
-			return new_usage;
+			alias = alias_tmp->Alias();
+			alias_tmp = FindTemporary(alias.get());
 			}
 
-		auto e_max_rds = mgr->GetPreMaxRDs(GetRDLookupObj(e.get()));
-		auto alias_di = mgr->GetConstID_DI(alias.get());
-		auto alias_dps = e_max_rds->GetDefPoints(alias_di);
-
-		bool s1 = same_DPs(alias_dps, tmp_var->DPs());
+		if ( alias->GetOptInfo()->IsTemp() )
+			{
+			// Temporaries always have only one definition,
+			// so no need to check for consistency.
+			auto new_usage = NewVarUsage(alias, e.get());
+			return new_usage;
+			}
 
 		auto e_stmt_1 = e->GetOptInfo()->stmt_num;
 		auto e_stmt_2 = tmp_var->RHS()->GetOptInfo()->stmt_num;
@@ -784,12 +627,8 @@ ExprPtr Reducer::UpdateExpr(ExprPtr e)
 		auto def_1 = alias->GetOptInfo()->DefinitionBefore(e_stmt_1);
 		auto def_2 = tmp_var->Id()->GetOptInfo()->DefinitionBefore(e_stmt_2);
 
-		bool s2 = def_1 == def_2 && def_1 != NO_DEF;
-
-		ASSERT(s1 == s2);
-
-		if ( s1 )
-			return NewVarUsage(alias, alias_dps, e.get());
+		if ( def_1 == def_2 && def_1 != NO_DEF )
+			return NewVarUsage(alias, e.get());
 		else
 			return e;
 		}
@@ -916,6 +755,9 @@ IDPtr Reducer::GenLocal(const IDPtr& orig)
 	IDPtr local_id = install_ID(buf, "<internal>", false, false);
 	local_id->SetType(orig->GetType());
 	local_id->SetAttrs(orig->GetAttrs());
+
+	if ( orig->GetOptInfo()->IsTemp() )
+		local_id->GetOptInfo()->SetTemp();
 
 	new_locals.insert(local_id.get());
 	orig_to_new_locals[orig.get()] = local_id;
@@ -1145,27 +987,6 @@ bool CSE_ValidityChecker::CheckAggrMod(const std::vector<const ID*>& ids,
 		}
 
 	return false;
-	}
-
-
-bool same_DPs(const DefPoints* dp1, const DefPoints* dp2)
-	{
-	if ( dp1 == dp2 )
-		return true;
-
-	if ( ! dp1 || ! dp2 )
-		return false;
-
-	// Given how we construct DPs, they should be element-by-element
-	// equivalent; we don't have to worry about reordering.
-	if ( dp1->length() != dp2->length() )
-		return false;
-
-	for ( auto i = 0; i < dp1->length(); ++i )
-		if ( ! (*dp1)[i].SameAs((*dp2)[i]) )
-			return false;
-
-	return true;
 	}
 
 

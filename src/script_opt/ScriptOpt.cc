@@ -78,13 +78,13 @@ static bool optimize_AST(ScriptFunc* f, std::shared_ptr<ProfileFunc>& pf,
 	{
 	pf = std::make_shared<ProfileFunc>(f, body, true);
 
-	RD_Decorate reduced_rds(pf, f, scope, body);
+	// RD_Decorate reduced_rds(pf, f, scope, body);
 	GenIDDefs ID_defs(pf, f, scope, body);
 
 	if ( reporter->Errors() > 0 )
 		return false;
 
-	rc->SetDefSetsMgr(reduced_rds.GetDefSetsMgr());
+	rc->SetReadyToOptimize();
 
 	auto new_body = rc->Reduce(body);
 
@@ -164,10 +164,10 @@ static void optimize_func(ScriptFunc* f, std::shared_ptr<ProfileFunc> pf,
 	pf = std::make_shared<ProfileFunc>(f, body, true);
 
 	// Compute its reaching definitions.
-	RD_Decorate reduced_rds(pf, f, scope, body);
+	// RD_Decorate reduced_rds(pf, f, scope, body);
 	GenIDDefs ID_defs(pf, f, scope, body);
 
-	rc->SetDefSetsMgr(reduced_rds.GetDefSetsMgr());
+	rc->SetReadyToOptimize();
 
 	auto ud = std::make_shared<UseDefs>(body, rc);
 	ud->Analyze();

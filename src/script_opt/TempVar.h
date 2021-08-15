@@ -40,9 +40,7 @@ public:
 		{ id->GetOptInfo()->SetConst(_const); }
 
 	IDPtr Alias() const			{ return alias; }
-	const DefPoints* DPs() const		{ return dps; }
-	void SetAlias(IDPtr id, const DefPoints* dps);
-	void SetDPs(const DefPoints* _dps);
+	void SetAlias(IDPtr id);
 
 	const RDPtr& MaxRDs() const	{ return max_rds; }
 	void SetMaxRDs(RDPtr rds)	{ max_rds = std::move(rds); }
@@ -54,7 +52,6 @@ protected:
 	ExprPtr rhs;
 	bool active = true;
 	IDPtr alias;
-	const DefPoints* dps = nullptr;
 	RDPtr max_rds;
 };
 

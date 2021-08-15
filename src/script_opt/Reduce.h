@@ -6,7 +6,6 @@
 #include "zeek/Expr.h"
 #include "zeek/Stmt.h"
 #include "zeek/Traverse.h"
-#include "zeek/script_opt/DefSetsMgr.h"
 
 namespace zeek::detail {
 
@@ -19,7 +18,7 @@ public:
 
 	StmtPtr Reduce(StmtPtr s);
 
-	void SetDefSetsMgr(const DefSetsMgr* _mgr)	{ mgr = _mgr; }
+	void SetReadyToOptimize()	{ opt_ready = true; }
 
 	void SetCurrStmt(const Stmt* stmt)      { curr_stmt = stmt; }
 
@@ -76,7 +75,7 @@ public:
 	// True if the Reducer is being used in the context of a second
 	// pass over for AST optimization.
 	bool Optimizing() const
-		{ return ! IsPruning() && mgr != nullptr; }
+		{ return ! IsPruning() && opt_ready; }
 
 	// A predicate that indicates whether a given reduction pass
 	// is being made to prune unused statements.
@@ -150,26 +149,13 @@ protected:
 	// are in fact equivalent.)
 	bool SameVal(const Val* v1, const Val* v2) const;
 
-	// Track that the variable "var", which has the given set of
-	// definition points, will be a replacement for the "orig"
-	// expression.  Returns the replacement expression (which is
-	// is just a NameExpr referring to "var").
-	ExprPtr NewVarUsage(IDPtr var, const DefPoints* dps, const Expr* orig);
+	// Track that the variable "var" will be a replacement for
+	// the "orig" expression.  Returns the replacement expression
+	// (which is is just a NameExpr referring to "var").
+	ExprPtr NewVarUsage(IDPtr var, const Expr* orig);
 
 	void BindExprToCurrStmt(const ExprPtr& e);
 	void BindStmtToCurrStmt(const StmtPtr& s);
-
-	// Returns the definition points associated with "var".  If none
-	// exist in our cache, then populates the cache.
-	const DefPoints* GetDefPoints(const NameExpr* var);
-
-	// Retrieve the definition points associated in our cache with the
-	// given variable, if any.
-	const DefPoints* FindDefPoints(const NameExpr* var) const;
-
-	// Adds a mapping in our cache of the given variable to the given
-	// set of definition points.
-	void SetDefPoints(const NameExpr* var, const DefPoints* dps);
 
 	// Returns true if op1 and op2 represent the same operand, given
 	// the reaching definitions available at their usages (e1 and e2).
@@ -219,11 +205,9 @@ protected:
 	// for the current function.
 	IDPtr GenLocal(const IDPtr& orig);
 
-	// This is the heart of constant propagation.  Given an identifier
-	// and a set of definition points for it, if its value is constant
-	// then returns the corresponding ConstExpr with the value.
-	const ConstExpr* CheckForConst(const IDPtr& id,
-					const DefPoints* dps) const;
+	// This is the heart of constant propagation.  Given an identifier,
+	// if its value is constant at the given location then returns
+	// the corresponding ConstExpr with the value.
 	const ConstExpr* CheckForConst(const IDPtr& id, int stmt_num) const;
 
 	// Track that we're replacing instances of "orig" with a new
@@ -274,12 +258,6 @@ protected:
 	// exponentially.
 	int bifurcation_level = 0;
 
-	// For a given usage of a variable's value, return the definition
-	// points associated with its use at that point.  We use this
-	// both as a cache (populating it every time we do a more laborious
-	// lookup), and proactively when creating new references to variables.
-	std::unordered_map<const NameExpr*, const DefPoints*> var_usage_to_DPs;
-
 	// Tracks which (non-temporary) variables had constant
 	// values used for constant propagation.
 	std::unordered_set<const ID*> constant_vars;
@@ -295,7 +273,7 @@ protected:
 	// Statement we're currently working on.
 	const Stmt* curr_stmt = nullptr;
 
-	const DefSetsMgr* mgr = nullptr;
+	bool opt_ready = false;
 };
 
 
@@ -370,8 +348,6 @@ protected:
 	bool in_aggr_mod_stmt = false;
 };
 
-
-extern bool same_DPs(const DefPoints* dp1, const DefPoints* dp2);
 
 // Used for debugging, to communicate which expression wasn't
 // reduced when we expected them all to be.
