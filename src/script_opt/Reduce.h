@@ -125,6 +125,14 @@ public:
 	// already been applied.
 	bool IsCSE(const AssignExpr* a, const NameExpr* lhs, const Expr* rhs);
 
+	// Returns a constant representing folding of the given expression
+	// (which must have constant operands).
+	ConstExprPtr Fold(ExprPtr e);
+
+	// Notes that the given expression has been folded to the
+	// given constant.
+	void FoldedTo(ExprPtr orig, ConstExprPtr c);
+
 	// Given an lhs=rhs statement followed by succ_stmt, returns
 	// a (new) merge of the two if they're of the form tmp=rhs, var=tmp;
 	// otherwise, nil.
@@ -210,18 +218,6 @@ protected:
 	// the corresponding ConstExpr with the value.
 	const ConstExpr* CheckForConst(const IDPtr& id, int stmt_num) const;
 
-	// Track that we're replacing instances of "orig" with a new
-	// expression.  This allows us to locate the RDs associated
-	// with "orig" in the context of the new expression, without
-	// requiring an additional RD propagation pass.
-	void TrackExprReplacement(const Expr* orig, const Expr* e);
-
-	// Returns the object we should use to look up RD's associated
-	// with 'e'.  (This isn't necessarily 'e' itself because we
-	// may have decided to replace it with a different expression,
-	// per TrackExprReplacement().)
-	const Obj* GetRDLookupObj(const Expr* e) const;
-
 	// Tracks the temporary variables created during the reduction/
 	// optimization process.
 	std::vector<std::shared_ptr<TempVar>> temps;
@@ -240,6 +236,14 @@ protected:
 	// Mapping of original identifiers to new locals.  Used to
 	// rename local variables when inlining.
 	std::unordered_map<const ID*, IDPtr> orig_to_new_locals;
+
+	// Tracks expressions we've folded, so that we can recognize them
+	// for constant propagation.
+	std::unordered_map<const Expr*, ConstExprPtr> constant_exprs;
+
+	// Holds onto those expressions so they don't become invalid
+	// due to memory management.
+	std::vector<ExprPtr> folded_exprs;
 
 	// Which statements to elide from the AST (because optimization
 	// has determined they're no longer needed).
@@ -261,11 +265,6 @@ protected:
 	// Tracks which (non-temporary) variables had constant
 	// values used for constant propagation.
 	std::unordered_set<const ID*> constant_vars;
-
-	// For a new expression we've created, map it to the expression
-	// it's replacing.  This allows us to locate the RDs associated
-	// with the usage.
-	std::unordered_map<const Expr*, const Expr*> new_expr_to_orig;
 
 	// Statement at which the current reduction started.
 	StmtPtr reduction_root = nullptr;

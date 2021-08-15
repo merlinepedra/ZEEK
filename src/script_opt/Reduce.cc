@@ -160,7 +160,6 @@ ExprPtr Reducer::NewVarUsage(IDPtr var, const Expr* orig)
 	{
 	auto var_usage = make_intrusive<NameExpr>(var);
 	BindExprToCurrStmt(var_usage);
-	TrackExprReplacement(orig, var_usage.get());
 
 	return var_usage;
 	}
@@ -523,6 +522,10 @@ const ConstExpr* Reducer::CheckForConst(const IDPtr& id, int stmt_num) const
 	auto e = id->GetOptInfo()->DefExprBefore(stmt_num);
 	if ( e )
 		{
+		auto ce = constant_exprs.find(e.get());
+		if ( ce != constant_exprs.end() )
+			e = ce->second;
+
 		if ( e->Tag() == EXPR_CONST )
 			return e->AsConstExpr();
 
@@ -536,18 +539,17 @@ const ConstExpr* Reducer::CheckForConst(const IDPtr& id, int stmt_num) const
 	return nullptr;
 	}
 
-void Reducer::TrackExprReplacement(const Expr* orig, const Expr* e)
+ConstExprPtr Reducer::Fold(ExprPtr e)
 	{
-	new_expr_to_orig[e] = orig;
+	auto c = make_intrusive<ConstExpr>(e->Eval(nullptr));
+	FoldedTo(e, c);
+	return c;
 	}
 
-const Obj* Reducer::GetRDLookupObj(const Expr* e) const
+void Reducer::FoldedTo(ExprPtr e, ConstExprPtr c)
 	{
-	auto orig_e = new_expr_to_orig.find(e);
-	if ( orig_e == new_expr_to_orig.end() )
-		return e;
-	else
-		return orig_e->second;
+	constant_exprs[e.get()] = std::move(c);
+	folded_exprs.push_back(std::move(e));
 	}
 
 ExprPtr Reducer::OptExpr(Expr* e)
@@ -695,8 +697,6 @@ StmtPtr Reducer::MergeStmts(const NameExpr* lhs, ExprPtr rhs, Stmt* succ_stmt)
 	lhs_tmp->Deactivate();
 	auto merge_e = make_intrusive<AssignExpr>(a_lhs_deref, rhs, false,
 						nullptr, nullptr, false);
-	TrackExprReplacement(rhs.get(), merge_e.get());
-
 	auto merge_e_stmt = make_intrusive<ExprStmt>(merge_e);
 
 	// Update the associated stmt_num's.  For strict correctness, we
