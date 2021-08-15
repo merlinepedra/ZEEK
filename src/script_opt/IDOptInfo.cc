@@ -41,7 +41,7 @@ void IDDefRegion::Dump() const
 	printf("\t%d->%d (%d): ", start_stmt, end_stmt, block_level);
 
 	if ( defined != NO_DEF )
-		printf("%d (%llx)", defined, def_expr.get());
+		printf("%d (%s)", defined, def_expr ? obj_desc(def_expr.get()).c_str() : "<no expr>");
 	else if ( maybe_defined )
 		printf("?");
 	else
