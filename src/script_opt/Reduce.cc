@@ -513,6 +513,17 @@ bool Reducer::IsCSE(const AssignExpr* a, const NameExpr* lhs, const Expr* rhs)
 
 const ConstExpr* Reducer::CheckForConst(const IDPtr& id, int stmt_num) const
 	{
+	if ( id->GetType()->Tag() == TYPE_ANY )
+		// Don't propagate identifiers of type "any" as constants.
+		// This is because the identifier might be used in some
+		// context that's dynamically unreachable due to the type
+		// of its value (such as via a type-switch), but for which
+		// constant propagation of the constant value to that
+		// context can result in compile-time errors when folding
+		// expressions in which the identifier appears (and is
+		// in that context presumed to have a different type).
+		return nullptr;
+
 	auto oi = id->GetOptInfo();
 	auto c = oi->Const();
 
