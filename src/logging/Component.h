@@ -15,7 +15,7 @@ class WriterBackend;
 /**
  * Component description for plugins providing log writers.
  */
-class Component : public plugin::Component, public plugin::TaggedComponent<logging::Tag>
+class Component : public plugin::Component, public plugin::TaggedComponent
 	{
 public:
 	typedef WriterBackend* (*factory_callback)(WriterFrontend* frontend);

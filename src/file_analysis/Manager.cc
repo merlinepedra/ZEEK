@@ -19,7 +19,7 @@ namespace zeek::file_analysis
 	{
 
 Manager::Manager()
-	: plugin::ComponentManager<file_analysis::Tag, file_analysis::Component>("Files", "Tag"),
+	: plugin::ComponentManager<file_analysis::Component>("Files", "Tag"),
 	  current_file_id(), magic_state(), cumulative_files(0), max_files(0)
 	{
 	}

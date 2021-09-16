@@ -15,7 +15,7 @@ class ReaderBackend;
 /**
  * Component description for plugins providing log readers.
  */
-class Component : public plugin::Component, public plugin::TaggedComponent<Tag>
+class Component : public plugin::Component, public plugin::TaggedComponent
 	{
 public:
 	typedef ReaderBackend* (*factory_callback)(ReaderFrontend* frontend);

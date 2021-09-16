@@ -23,7 +23,7 @@ namespace packet_analysis
 class Analyzer;
 using AnalyzerPtr = std::shared_ptr<Analyzer>;
 
-class Manager : public plugin::ComponentManager<Tag, Component>
+class Manager : public plugin::ComponentManager<Component>
 	{
 public:
 	/**
