@@ -76,8 +76,8 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 			}
 		}
 
-	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }", fname, addl_args.c_str(),
-	     inits.c_str());
+	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }", fname, addl_args,
+	     inits);
 
 	// An additional constructor just used to generate place-holder
 	// instances, due to the mis-design that lambdas are identified
@@ -146,7 +146,7 @@ void CPPCompile::BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf, const
 		{
 		auto name = lambda_names[id];
 		auto tn = FullTypeName(id->GetType());
-		Emit("%s %s;", tn, name.c_str());
+		Emit("%s %s;", tn, name);
 		}
 
 	// Generate initialization to create and register the lambda.

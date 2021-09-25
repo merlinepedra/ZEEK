@@ -134,6 +134,23 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	NL();
 
+	int n = static_cast<int>(str_reps.size());
+	Emit("StringValPtr CPP__str_const[%s];", Fmt(n));
+
+	Emit("int CPP__str_lens[%s] =", Fmt(n));
+	StartBlock();
+	for ( auto i = 0; i < n; ++i )
+		Emit("%s,", Fmt(str_lens[i]), i % 8 == 7 || i == n - 1);
+	EndBlock(true);
+
+	Emit("std::string CPP__str_reps[%s] =", Fmt(n));
+	StartBlock();
+	for ( auto i = 0; i < n; ++i )
+		Emit("%s,", str_reps[i]);
+	EndBlock(true);
+
+	NL();
+
 	for ( auto& g : pfs.AllGlobals() )
 		CreateGlobal(g);
 
@@ -217,7 +234,7 @@ void CPPCompile::GenProlog()
 		Emit("namespace zeek::detail { //\n");
 		}
 
-	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir.c_str());
+	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir);
 
 	// The following might-or-might-not wind up being populated/used.
 	Emit("std::vector<int> field_mapping;");
@@ -328,7 +345,7 @@ void CPPCompile::GenEpilog()
 
 	GenInitHook();
 
-	Emit("} // %s\n\n", scope_prefix(addl_tag).c_str());
+	Emit("} // %s\n\n", scope_prefix(addl_tag));
 
 	if ( update )
 		UpdateGlobalHashes();

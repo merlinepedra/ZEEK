@@ -4,10 +4,43 @@
 #include "zeek/RE.h"
 #include "zeek/script_opt/CPP/Compile.h"
 
+using namespace std;
+
 namespace zeek::detail
 	{
 
-using namespace std;
+std::string CPP_Consts::NextName() const
+	{
+	ASSERT(! did_init_info);
+	return base_name + "[" + Fmt(Size()) + "]";
+	}
+
+std::vector<std::string> CPP_Consts::GenInitInfo()
+	{
+	ASSERT(! did_init_info);
+
+	std::vector<std::string> init_infos;
+
+	init_infos.emplace_back(type + " " + base_name + "[" + Fmt(Size()) + "];");
+
+	DoGenInitInfo(init_infos);
+
+	did_init_info = true;
+
+	return init_infos;
+	}
+
+std::vector<std::string> CPP_Consts::GenInit() const
+	{
+	ASSERT(did_init_info);
+
+	std::vector<std::string> inits;
+
+	inits.emplace_back(std::string("for ( auto i = 0U; i < ") + Fmt(Size()) + "; ++i)");
+	inits.emplace_back(std::string("\t") + DoGenInit() + ";");
+
+	return inits;
+	}
 
 string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
 	{
@@ -91,18 +124,32 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		return true;
 		}
 
-	// Need a C++ global for this constant.
-	auto const_name = string("CPP__const__") + Fmt(int(constants.size()));
+	string const_name;
+
+	auto tag = t->Tag();
+
+	if ( tag == TYPE_STRING )
+		{
+		const_name = string("CPP__str_const[") + Fmt(int(str_reps.size())) + "]";
+
+		auto s = vp->AsString();
+		const char* b = (const char*)(s->Bytes());
+		auto len = s->Len();
+		str_lens.push_back(len);
+		str_reps.emplace_back(CPPEscape(b, len));
+		}
+	else
+		// Need a C++ global for this constant.
+		const_name = string("CPP__const__") + Fmt(int(constants.size()));
 
 	const_vals[v] = constants[c_desc] = const_name;
 	constants_to_vals[c_desc] = v;
 
-	auto tag = t->Tag();
-
 	switch ( tag )
 		{
 		case TYPE_STRING:
-			AddStringConstant(vp, const_name);
+			AddInit(vp);
+			// AddStringConstant(vp, const_name);
 			break;
 
 		case TYPE_PATTERN:
@@ -167,17 +214,6 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		}
 
 	return true;
-	}
-
-void CPPCompile::AddStringConstant(const ValPtr& v, string& const_name)
-	{
-	Emit("StringValPtr %s;", const_name);
-
-	auto s = v->AsString();
-	const char* b = (const char*)(s->Bytes());
-	auto len = s->Len();
-
-	AddInit(v, const_name, GenString(b, len));
 	}
 
 void CPPCompile::AddPatternConstant(const ValPtr& v, string& const_name)

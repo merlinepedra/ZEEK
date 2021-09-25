@@ -23,11 +23,6 @@ void CPPCompile::EndBlock(bool needs_semi)
 	--block_level;
 	}
 
-string CPPCompile::GenString(const char* b, int len) const
-	{
-	return string("make_intrusive<StringVal>(") + Fmt(len) + ", " + CPPEscape(b, len) + ")";
-	}
-
 string CPPCompile::CPPEscape(const char* b, int len) const
 	{
 	string res = "\"";

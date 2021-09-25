@@ -3,6 +3,7 @@
 #pragma once
 
 #include "zeek/Desc.h"
+#include "zeek/script_opt/CPP/Consts.h"
 #include "zeek/script_opt/CPP/Func.h"
 #include "zeek/script_opt/CPP/HashMgr.h"
 #include "zeek/script_opt/CPP/Tracker.h"
@@ -452,7 +453,6 @@ private:
 
 	// Build particular types of C++ variables (with the given name)
 	// to hold constants initialized at run-time.
-	void AddStringConstant(const ValPtr& v, std::string& const_name);
 	void AddPatternConstant(const ValPtr& v, std::string& const_name);
 	void AddListConstant(const ValPtr& v, std::string& const_name);
 	void AddRecordConstant(const ValPtr& v, std::string& const_name);
@@ -471,6 +471,11 @@ private:
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
+
+	// Parallel vectors tracking the lengths and C++-compatible
+	// representations of string constants.
+	std::vector<int> str_lens;
+	std::vector<std::string> str_reps;
 
 	// Maps the same representations to the Val* associated with their
 	// original creation.  This enables us to construct initialization
@@ -960,11 +965,12 @@ private:
 		NL();
 		}
 
-	void Emit(const std::string& fmt, const std::string& arg) const
+	void Emit(const std::string& fmt, const std::string& arg, bool do_NL = true) const
 		{
 		Indent();
 		fprintf(write_file, fmt.c_str(), arg.c_str());
-		NL();
+		if ( do_NL )
+			NL();
 		}
 
 	void Emit(const std::string& fmt, const std::string& arg1, const std::string& arg2) const
@@ -998,10 +1004,6 @@ private:
 		        arg5.c_str());
 		NL();
 		}
-
-	// Returns an expression for constructing a Zeek String object
-	// corresponding to the given byte array.
-	std::string GenString(const char* b, int len) const;
 
 	// For the given byte array / string, returns a version expanded
 	// with escape sequences in order to represent it as a C++ string.

@@ -144,7 +144,7 @@ void CPPCompile::InitializeEvents(const ProfileFunc* pf)
 		// returns an EventHandlerPtr, sigh.
 		Emit("if ( event_registry->Lookup(\"%s\") )", e);
 		StartBlock();
-		Emit("%s = event_registry->Register(\"%s\");", ev_name.c_str(), e);
+		Emit("%s = event_registry->Register(\"%s\");", ev_name, e);
 		EndBlock();
 		Emit("did_init = true;");
 		EndBlock();

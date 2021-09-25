@@ -407,7 +407,7 @@ void CPPCompile::InitializeFieldMappings()
 		{
 		auto rt = mapping.first;
 		auto td = mapping.second;
-		auto fn = td->id;
+		std::string fn = td->id;
 		auto rt_name = GenTypeName(rt) + "->AsRecordType()";
 
 		Emit("fm_offset = %s->FieldOffset(\"%s\");", rt_name, fn);
