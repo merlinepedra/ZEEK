@@ -11,35 +11,81 @@ namespace zeek::detail
 
 std::string CPP_Consts::NextName() const
 	{
-	ASSERT(! did_init_info);
+	ASSERT(! did_init);
 	return base_name + "[" + Fmt(Size()) + "]";
 	}
 
-std::vector<std::string> CPP_Consts::GenInitInfo()
+std::vector<std::string> CPP_Consts::GenInitInfo() const
 	{
-	ASSERT(! did_init_info);
+	ASSERT(! did_init);
 
 	std::vector<std::string> init_infos;
 
-	init_infos.emplace_back(type + " " + base_name + "[" + Fmt(Size()) + "];");
-
-	DoGenInitInfo(init_infos);
-
-	did_init_info = true;
+	init_infos.emplace_back(std::string("extern ") + type + " " + base_name + "[];");
 
 	return init_infos;
 	}
 
-std::vector<std::string> CPP_Consts::GenInit() const
+std::vector<std::string> CPP_Consts::GenInit()
 	{
-	ASSERT(did_init_info);
+	ASSERT(! did_init);
 
 	std::vector<std::string> inits;
 
-	inits.emplace_back(std::string("for ( auto i = 0U; i < ") + Fmt(Size()) + "; ++i)");
-	inits.emplace_back(std::string("\t") + DoGenInit() + ";");
+	for ( int i = 0; i < NumVecs(); ++i )
+		{
+		inits.emplace_back(type + " " + NthInitVec(i) + "[" + Fmt(Size()) + "] =");
+		inits.emplace_back("\t{");
+		DoGenInitSetup(i, inits);
+		inits.emplace_back("\t};");
+		inits.emplace_back("\n");
+		}
+
+	inits.emplace_back(std::string("void init__const_") + base_name + "()");
+	inits.emplace_back("\t{");
+	inits.emplace_back(std::string("\tfor ( auto i = 0U; i < ") + Fmt(Size()) + "; ++i)");
+	inits.emplace_back(std::string("\t") + base_name + "[i] = " + DoGenInitCore() + ";");
+	inits.emplace_back("\t}");
+	inits.emplace_back("\n");
+
+	did_init = true;
 
 	return inits;
+	}
+
+std::string CPP_Consts::NthInitVec(int init_vec) const
+	{
+	return base_name + Fmt(init_vec);
+	}
+
+void CPP_StringConsts::DoGenInitSetup(int which_init, std::vector<std::string>& inits) const
+	{
+	for ( int i = 0; i < Size(); ++i )
+		{
+		std::string init;
+
+		switch ( which_init )
+			{
+			case 0:
+				init = Fmt(lens[i]);
+				break;
+
+			case 1:
+				init = reps[i];
+				break;
+
+			default:
+				reporter->InternalError("bad which_init in CPP_StringConsts::DoGenInitSetup");
+				break;
+			}
+
+		inits.emplace_back(init + ",");
+		}
+	}
+
+std::string CPP_StringConsts::DoGenInitCore() const
+	{
+	return std::string("make_intrusive<StringVal>(") + NthInitVec(0) + "[i], " + NthInitVec(1) + "[i]);";
 	}
 
 string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)

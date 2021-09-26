@@ -21,12 +21,15 @@ public:
 	std::string NextName() const;
 	virtual int Size() const = 0;
 
-	std::vector<std::string> GenInitInfo();
-	std::vector<std::string> GenInit() const;
+	std::vector<std::string> GenInitInfo() const;
+	std::vector<std::string> GenInit();
 
 protected:
-	virtual void DoGenInitInfo(std::vector<std::string>& inits) const = 0;
-	virtual std::string DoGenInit() const = 0;
+	virtual int NumVecs() const = 0;
+	virtual void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const = 0;
+	virtual std::string DoGenInitCore() const = 0;
+
+	std::string NthInitVec(int init_vec) const;
 
 	// Tag used to distinguish a particular set of constants.
 	std::string tag;
@@ -37,10 +40,10 @@ protected:
 	// C++ name for this set of constants.
 	std::string base_name;
 
-	// Whether we've generated the initialization information for
-	// this set of constants.  We track this to make sure no constants
-	// are subsequently added.
-	bool did_init_info = false;
+	// Whether we've generated the initializations for this set of
+	// constants.  We track this to make sure no constants are
+	// subsequently added.
+	bool did_init = false;
 	};
 
 class CPP_StringConsts : public CPP_Consts
@@ -51,8 +54,9 @@ public:
 	int Size() const override { return static_cast<int>(reps.size()); }
 
 private:
-	void DoGenInitInfo(std::vector<std::string>& inits) const override;
-	std::string DoGenInit() const override;
+	int NumVecs() const override { return 2; }
+	void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const override;
+	std::string DoGenInitCore() const override;
 
 	std::vector<int> lens;
 	std::vector<std::string> reps;
