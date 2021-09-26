@@ -472,6 +472,8 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
+	CPP_StringConsts str_constants;
+
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.
 	std::vector<int> str_lens;
@@ -1004,11 +1006,6 @@ private:
 		        arg5.c_str());
 		NL();
 		}
-
-	// For the given byte array / string, returns a version expanded
-	// with escape sequences in order to represent it as a C++ string.
-	std::string CPPEscape(const char* b, int len) const;
-	std::string CPPEscape(const char* s) const { return CPPEscape(s, strlen(s)); }
 
 	void NL() const { fputc('\n', write_file); }
 

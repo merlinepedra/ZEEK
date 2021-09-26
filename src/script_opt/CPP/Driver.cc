@@ -134,20 +134,10 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	NL();
 
-	int n = static_cast<int>(str_reps.size());
-	Emit("StringValPtr CPP__str_const[%s];", Fmt(n));
-
-	Emit("int CPP__str_lens[%s] =", Fmt(n));
-	StartBlock();
-	for ( auto i = 0; i < n; ++i )
-		Emit("%s,", Fmt(str_lens[i]), i % 8 == 7 || i == n - 1);
-	EndBlock(true);
-
-	Emit("std::string CPP__str_reps[%s] =", Fmt(n));
-	StartBlock();
-	for ( auto i = 0; i < n; ++i )
-		Emit("%s,", str_reps[i]);
-	EndBlock(true);
+	std::vector<std::string> c_init;
+	str_constants.GenInitInfo(c_init);
+	for ( auto c : c_init )
+		Emit(c);
 
 	NL();
 
@@ -222,6 +212,11 @@ void CPPCompile::Compile(bool report_uncompilable)
 		RegisterCompiledBody(f);
 
 	GenFuncVarInits();
+
+	c_init.clear();
+	str_constants.GenInit(c_init);
+	for ( auto c : c_init )
+		Emit(c);
 
 	GenEpilog();
 	}
@@ -326,6 +321,8 @@ void CPPCompile::GenEpilog()
 	Emit("void init__CPP()");
 
 	StartBlock();
+
+	Emit(str_constants.GenInitCall());
 
 	Emit("enum_mapping.resize(%s);\n", Fmt(int(enum_names.size())));
 	Emit("pre_init__CPP();");

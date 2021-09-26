@@ -15,47 +15,73 @@ std::string CPP_Consts::NextName() const
 	return base_name + "[" + Fmt(Size()) + "]";
 	}
 
-std::vector<std::string> CPP_Consts::GenInitInfo() const
+void CPP_Consts::GenInitInfo(std::vector<std::string>& inits) const
 	{
 	ASSERT(! did_init);
 
-	std::vector<std::string> init_infos;
-
-	init_infos.emplace_back(std::string("extern ") + type + " " + base_name + "[];");
-
-	return init_infos;
+	inits.emplace_back(std::string("extern ") + type + " " + base_name + "[];");
 	}
 
-std::vector<std::string> CPP_Consts::GenInit()
+void CPP_Consts::GenInit(std::vector<std::string>& inits)
 	{
 	ASSERT(! did_init);
-
-	std::vector<std::string> inits;
 
 	for ( int i = 0; i < NumVecs(); ++i )
 		{
-		inits.emplace_back(type + " " + NthInitVec(i) + "[" + Fmt(Size()) + "] =");
+		inits.emplace_back(NthInitVecType(i) + " " + NthInitVec(i) + "[" + Fmt(Size()) + "] =");
 		inits.emplace_back("\t{");
 		DoGenInitSetup(i, inits);
 		inits.emplace_back("\t};");
 		inits.emplace_back("\n");
 		}
 
-	inits.emplace_back(std::string("void init__const_") + base_name + "()");
+	inits.emplace_back(type + " " + base_name + "[" + Fmt(Size()) + "];");
+
+	inits.emplace_back(std::string("void ") + InitFuncName() + "()");
 	inits.emplace_back("\t{");
 	inits.emplace_back(std::string("\tfor ( auto i = 0U; i < ") + Fmt(Size()) + "; ++i)");
-	inits.emplace_back(std::string("\t") + base_name + "[i] = " + DoGenInitCore() + ";");
+	inits.emplace_back(std::string("\t\t") + base_name + "[i] = " + DoGenInitCore() + ";");
 	inits.emplace_back("\t}");
 	inits.emplace_back("\n");
 
 	did_init = true;
+	}
 
-	return inits;
+std::string CPP_Consts::GenInitCall() const
+	{
+	return InitFuncName() + "();";
 	}
 
 std::string CPP_Consts::NthInitVec(int init_vec) const
 	{
 	return base_name + Fmt(init_vec);
+	}
+
+std::string CPP_Consts::InitFuncName() const
+	{
+	return std::string("init__const_") + base_name;
+	}
+
+
+void CPP_StringConsts::AddInit(const ValPtr& v)
+	{
+	auto s = v->AsString();
+	const char* b = (const char*)(s->Bytes());
+	auto len = s->Len();
+	lens.push_back(len);
+	reps.emplace_back(CPPEscape(b, len));
+	}
+
+std::string CPP_StringConsts::NthInitVecType(int init_vec) const
+	{
+	switch ( init_vec )
+		{
+		case 0:	return "int";
+		case 1:	return "std::string";
+
+		default:
+			reporter->InternalError("bad init_vec in CPP_StringConsts::DoGenInitSetup");
+		}
 	}
 
 void CPP_StringConsts::DoGenInitSetup(int which_init, std::vector<std::string>& inits) const
@@ -79,13 +105,13 @@ void CPP_StringConsts::DoGenInitSetup(int which_init, std::vector<std::string>& 
 				break;
 			}
 
-		inits.emplace_back(init + ",");
+		inits.emplace_back(std::string("\t") + init + ",");
 		}
 	}
 
 std::string CPP_StringConsts::DoGenInitCore() const
 	{
-	return std::string("make_intrusive<StringVal>(") + NthInitVec(0) + "[i], " + NthInitVec(1) + "[i]);";
+	return std::string("make_intrusive<StringVal>(") + NthInitVec(0) + "[i], " + NthInitVec(1) + "[i].c_str())";
 	}
 
 string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
@@ -176,13 +202,8 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 
 	if ( tag == TYPE_STRING )
 		{
-		const_name = string("CPP__str_const[") + Fmt(int(str_reps.size())) + "]";
-
-		auto s = vp->AsString();
-		const char* b = (const char*)(s->Bytes());
-		auto len = s->Len();
-		str_lens.push_back(len);
-		str_reps.emplace_back(CPPEscape(b, len));
+		const_name = str_constants.NextName();
+		str_constants.AddInit(vp);
 		}
 	else
 		// Need a C++ global for this constant.
