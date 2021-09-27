@@ -38,7 +38,8 @@ protected:
 	std::string InitFuncName() const;
 
 	virtual void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const = 0;
-	virtual std::string DoGenInitCore() const = 0;
+	virtual void GenInitCore(std::vector<std::string>& inits) const;
+	virtual std::string DoGenInitAssignmentCore() const = 0;
 
 	// Tag used to distinguish a particular set of constants.
 	std::string tag;
@@ -69,7 +70,7 @@ private:
 	std::string NthInitVecType(int init_vec) const override;
 
 	void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const override;
-	std::string DoGenInitCore() const override;
+	std::string DoGenInitAssignmentCore() const override;
 
 	std::vector<int> lens;
 	std::vector<std::string> reps;

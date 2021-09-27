@@ -40,7 +40,7 @@ void CPP_Consts::GenInit(std::vector<std::string>& inits)
 	inits.emplace_back(std::string("void ") + InitFuncName() + "()");
 	inits.emplace_back("\t{");
 	inits.emplace_back(std::string("\tfor ( auto i = 0U; i < ") + Fmt(Size()) + "; ++i)");
-	inits.emplace_back(std::string("\t\t") + base_name + "[i] = " + DoGenInitCore() + ";");
+	GenInitCore(inits);
 	inits.emplace_back("\t}");
 	inits.emplace_back("\n");
 
@@ -60,6 +60,11 @@ std::string CPP_Consts::NthInitVec(int init_vec) const
 std::string CPP_Consts::InitFuncName() const
 	{
 	return std::string("init__const_") + base_name;
+	}
+
+void CPP_Consts::GenInitCore(std::vector<std::string>& inits) const
+	{
+	inits.emplace_back(std::string("\t\t") + base_name + "[i] = " + DoGenInitAssignmentCore() + ";");
 	}
 
 
@@ -109,7 +114,7 @@ void CPP_StringConsts::DoGenInitSetup(int which_init, std::vector<std::string>& 
 		}
 	}
 
-std::string CPP_StringConsts::DoGenInitCore() const
+std::string CPP_StringConsts::DoGenInitAssignmentCore() const
 	{
 	return std::string("make_intrusive<StringVal>(") + NthInitVec(0) + "[i], " + NthInitVec(1) + "[i].c_str())";
 	}
