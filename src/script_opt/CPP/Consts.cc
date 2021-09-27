@@ -31,8 +31,7 @@ void CPP_Consts::GenInit(std::vector<std::string>& inits)
 		inits.emplace_back(NthInitVecType(i) + " " + NthInitVec(i) + "[" + Fmt(Size()) + "] =");
 		inits.emplace_back("\t{");
 		DoGenInitSetup(i, inits);
-		inits.emplace_back("\t};");
-		inits.emplace_back("\n");
+		inits.emplace_back("\t};\n");
 		}
 
 	inits.emplace_back(type + " " + base_name + "[" + Fmt(Size()) + "];");
@@ -41,8 +40,7 @@ void CPP_Consts::GenInit(std::vector<std::string>& inits)
 	inits.emplace_back("\t{");
 	inits.emplace_back(std::string("\tfor ( auto i = 0U; i < ") + Fmt(Size()) + "; ++i)");
 	GenInitCore(inits);
-	inits.emplace_back("\t}");
-	inits.emplace_back("\n");
+	inits.emplace_back("\t}\n");
 
 	did_init = true;
 	}
@@ -81,8 +79,8 @@ std::string CPP_StringConsts::NthInitVecType(int init_vec) const
 	{
 	switch ( init_vec )
 		{
-		case 0:	return "int";
-		case 1:	return "std::string";
+		case 0:	return "std::string";
+		case 1:	return "int";
 
 		default:
 			reporter->InternalError("bad init_vec in CPP_StringConsts::DoGenInitSetup");
@@ -98,11 +96,11 @@ void CPP_StringConsts::DoGenInitSetup(int which_init, std::vector<std::string>& 
 		switch ( which_init )
 			{
 			case 0:
-				init = Fmt(lens[i]);
+				init = reps[i];
 				break;
 
 			case 1:
-				init = reps[i];
+				init = Fmt(lens[i]);
 				break;
 
 			default:
@@ -116,8 +114,66 @@ void CPP_StringConsts::DoGenInitSetup(int which_init, std::vector<std::string>& 
 
 std::string CPP_StringConsts::DoGenInitAssignmentCore() const
 	{
-	return std::string("make_intrusive<StringVal>(") + NthInitVec(0) + "[i], " + NthInitVec(1) + "[i].c_str())";
+	return std::string("make_intrusive<StringVal>(") + NthInitVec(1) + "[i], " + NthInitVec(0) + "[i].c_str())";
 	}
+
+
+void CPP_PatternConsts::AddInit(const ValPtr& v)
+	{
+	auto re = v->AsPatternVal()->Get();
+	patterns.emplace_back(CPPEscape(re->OrigText()));
+	is_case_insensitive.push_back(re->IsCaseInsensitive());
+	}
+
+std::string CPP_PatternConsts::NthInitVecType(int init_vec) const
+	{
+	switch ( init_vec )
+		{
+		case 0:	return "std::string";
+		case 1:	return "int";
+
+		default:
+			reporter->InternalError("bad init_vec in CPP_PatternConsts::DoGenInitSetup");
+		}
+	}
+
+void CPP_PatternConsts::DoGenInitSetup(int which_init, std::vector<std::string>& inits) const
+	{
+	for ( int i = 0; i < Size(); ++i )
+		{
+		std::string init;
+
+		switch ( which_init )
+			{
+			case 0:
+				init = patterns[i];
+				break;
+
+			case 1:
+				init = Fmt(is_case_insensitive[i]);
+				break;
+
+			default:
+				reporter->InternalError("bad which_init in CPP_PatternConsts::DoGenInitSetup");
+				break;
+			}
+
+		inits.emplace_back(std::string("\t") + init + ",");
+		}
+	}
+
+void CPP_PatternConsts::GenInitCore(std::vector<std::string>& inits) const
+	{
+	std::string indent = "\t\t";
+	inits.emplace_back(indent + "{");
+	inits.emplace_back(indent + "auto re = new RE_Matcher(" + NthInitVec(0) + "[i].c_str());");
+	inits.emplace_back(indent + "if ( " + NthInitVec(1) + "[i] )");
+	inits.emplace_back(indent + "\tre->MakeCaseInsensitive();");
+	inits.emplace_back(indent + "re->Compile();");
+	inits.emplace_back(indent + base_name + "[i] = make_intrusive<PatternVal>(re);");
+	inits.emplace_back(indent + "}");
+	}
+
 
 string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
 	{
@@ -210,6 +266,11 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		const_name = str_constants.NextName();
 		str_constants.AddInit(vp);
 		}
+	else if ( tag == TYPE_PATTERN )
+		{
+		const_name = re_constants.NextName();
+		re_constants.AddInit(vp);
+		}
 	else
 		// Need a C++ global for this constant.
 		const_name = string("CPP__const__") + Fmt(int(constants.size()));
@@ -225,7 +286,8 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 			break;
 
 		case TYPE_PATTERN:
-			AddPatternConstant(vp, const_name);
+			AddInit(vp);
+			// AddPatternConstant(vp, const_name);
 			break;
 
 		case TYPE_LIST:

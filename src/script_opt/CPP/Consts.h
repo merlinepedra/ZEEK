@@ -39,7 +39,7 @@ protected:
 
 	virtual void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const = 0;
 	virtual void GenInitCore(std::vector<std::string>& inits) const;
-	virtual std::string DoGenInitAssignmentCore() const = 0;
+	virtual std::string DoGenInitAssignmentCore() const { return ""; }
 
 	// Tag used to distinguish a particular set of constants.
 	std::string tag;
@@ -72,8 +72,28 @@ private:
 	void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const override;
 	std::string DoGenInitAssignmentCore() const override;
 
-	std::vector<int> lens;
 	std::vector<std::string> reps;
+	std::vector<int> lens;
+	};
+
+class CPP_PatternConsts : public CPP_Consts
+	{
+public:
+	CPP_PatternConsts() : CPP_Consts("re", "PatternValPtr") { }
+
+	int Size() const override { return static_cast<int>(patterns.size()); }
+
+	void AddInit(const ValPtr& v) override;
+
+private:
+	int NumVecs() const override { return 2; }
+	std::string NthInitVecType(int init_vec) const override;
+
+	void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const override;
+	void GenInitCore(std::vector<std::string>& inits) const override;
+
+	std::vector<std::string> patterns;
+	std::vector<int> is_case_insensitive;
 	};
 
 	} // zeek::detail
