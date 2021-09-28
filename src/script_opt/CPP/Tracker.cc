@@ -57,7 +57,15 @@ template <class T> string CPPTracker<T>::KeyName(const T* key)
 	if ( IsInherited(hash) )
 		scope = scope_prefix(scope2[hash]);
 
-	return scope + string(base_name) + "_" + Fmt(index) + "__CPP";
+	string ind = Fmt(index);
+	string full_name;
+
+	if ( single_global )
+		full_name = base_name + "__CPP[" + ind + "]";
+	else
+		full_name = base_name + "_" + ind + "__CPP";
+
+	return scope + full_name;
 	}
 
 template <class T> void CPPTracker<T>::LogIfNew(IntrusivePtr<T> key, int scope, FILE* log_file)

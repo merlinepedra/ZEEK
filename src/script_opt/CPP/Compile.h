@@ -752,7 +752,7 @@ private:
 	const char* IntrusiveVal(const TypePtr& t);
 
 	// Maps types to indices in the global "types__CPP" array.
-	CPPTracker<Type> types = {"types", &compiled_items};
+	CPPTracker<Type> types = {"types", true, &compiled_items};
 
 	// Used to prevent analysis of mutually-referring types from
 	// leading to infinite recursion.
@@ -789,7 +789,7 @@ private:
 	const char* AttrName(const AttrPtr& attr);
 
 	// Similar for attributes, so we can reconstruct record types.
-	CPPTracker<Attributes> attributes = {"attrs", &compiled_items};
+	CPPTracker<Attributes> attributes = {"attrs", false, &compiled_items};
 
 	//
 	// End of methods related to managing script type attributes.
@@ -936,7 +936,7 @@ private:
 	// Expressions for which we need to generate initialization-time
 	// code.  Currently, these are only expressions appearing in
 	// attributes.
-	CPPTracker<Expr> init_exprs = {"gen_init_expr", &compiled_items};
+	CPPTracker<Expr> init_exprs = {"gen_init_expr", false, &compiled_items};
 
 	// Maps an object requiring initialization to its initializers.
 	std::unordered_map<const Obj*, std::vector<std::string>> obj_inits;

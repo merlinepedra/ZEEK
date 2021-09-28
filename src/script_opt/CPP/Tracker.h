@@ -24,11 +24,13 @@ namespace zeek::detail
 template <class T> class CPPTracker
 	{
 public:
-	// The base name is used to construct key names.  The mapper,
-	// if present, maps hash values to information about the previously
-	// generated scope in which the value appears.
-	CPPTracker(const char* _base_name, VarMapper* _mapper = nullptr)
-		: base_name(_base_name), mapper(_mapper)
+	// The base name is used to construct key names.  "single_global",
+	// if true, specifies that the names should be constructed as
+	// indexes into a single global, rather than as distinct globals.
+	// The mapper, if present, maps hash values to information about
+	// the previously generated scope in which the value appears.
+	CPPTracker(const char* _base_name, bool _single_global, VarMapper* _mapper = nullptr)
+		: base_name(_base_name), single_global(_single_global), mapper(_mapper)
 		{
 		}
 
@@ -97,6 +99,10 @@ private:
 
 	// Used to construct key names.
 	std::string base_name;
+
+	// Whether to base the names out of a single global, or distinct
+	// globals.
+	bool single_global;
 
 	// If non-nil, the mapper to consult for previous names.
 	VarMapper* mapper;
