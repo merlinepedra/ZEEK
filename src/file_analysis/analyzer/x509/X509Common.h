@@ -49,7 +49,7 @@ public:
 	                              Reporter* reporter);
 
 protected:
-	X509Common(const file_analysis::Tag& arg_tag, RecordValPtr arg_args,
+	X509Common(const zeek::Tag& arg_tag, RecordValPtr arg_args,
 	           file_analysis::File* arg_file);
 
 	void ParseExtension(X509_EXTENSION* ex, const EventHandlerPtr& h, bool global);

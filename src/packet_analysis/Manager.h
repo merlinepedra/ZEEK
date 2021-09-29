@@ -3,10 +3,10 @@
 #pragma once
 
 #include "zeek/PacketFilter.h"
+#include "zeek/Tag.h"
 #include "zeek/iosource/Packet.h"
 #include "zeek/packet_analysis/Component.h"
 #include "zeek/packet_analysis/Dispatcher.h"
-#include "zeek/packet_analysis/Tag.h"
 #include "zeek/plugin/ComponentManager.h"
 
 namespace zeek
@@ -135,7 +135,7 @@ private:
 	 * @return The new analyzer instance. Returns null if tag is invalid, the
 	 * requested analyzer is disabled, or the analyzer can't be instantiated.
 	 */
-	AnalyzerPtr InstantiateAnalyzer(const Tag& tag);
+	AnalyzerPtr InstantiateAnalyzer(const zeek::Tag& tag);
 
 	/**
 	 * Instantiates a new analyzer.
