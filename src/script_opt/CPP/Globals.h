@@ -9,16 +9,16 @@
 namespace zeek::detail
 	{
 
-class CPP_Consts
+class CPP_Globals
 	{
 public:
-	CPP_Consts(std::string _tag, std::string _type)
+	CPP_Globals(std::string _tag, std::string _type)
 		: tag(std::move(_tag)), type(std::move(_type))
 		{
 		base_name = std::string("CPP__") + tag + "const__";
 		}
 
-	virtual ~CPP_Consts() { }
+	virtual ~CPP_Globals() { }
 
 	std::string NextName() const;
 	virtual int Size() const = 0;
@@ -56,10 +56,10 @@ protected:
 	bool did_init = false;
 	};
 
-class CPP_StringConsts : public CPP_Consts
+class CPP_StringConsts : public CPP_Globals
 	{
 public:
-	CPP_StringConsts() : CPP_Consts("str", "StringValPtr") { }
+	CPP_StringConsts() : CPP_Globals("str", "StringValPtr") { }
 
 	int Size() const override { return static_cast<int>(reps.size()); }
 
@@ -76,10 +76,10 @@ private:
 	std::vector<int> lens;
 	};
 
-class CPP_PatternConsts : public CPP_Consts
+class CPP_PatternConsts : public CPP_Globals
 	{
 public:
-	CPP_PatternConsts() : CPP_Consts("re", "PatternValPtr") { }
+	CPP_PatternConsts() : CPP_Globals("re", "PatternValPtr") { }
 
 	int Size() const override { return static_cast<int>(patterns.size()); }
 

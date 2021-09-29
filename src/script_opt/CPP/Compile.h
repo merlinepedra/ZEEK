@@ -3,7 +3,7 @@
 #pragma once
 
 #include "zeek/Desc.h"
-#include "zeek/script_opt/CPP/Consts.h"
+#include "zeek/script_opt/CPP/Globals.h"
 #include "zeek/script_opt/CPP/Func.h"
 #include "zeek/script_opt/CPP/HashMgr.h"
 #include "zeek/script_opt/CPP/Tracker.h"
