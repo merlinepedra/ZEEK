@@ -8,7 +8,8 @@
 namespace zeek::iosource
 	{
 
-Component::Component(const std::string& name) : plugin::Component(plugin::component::IOSOURCE, name)
+Component::Component(const std::string& name)
+	: plugin::Component(plugin::component::IOSOURCE, name)
 	{
 	}
 
