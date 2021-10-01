@@ -58,12 +58,9 @@ public:
 	 * the Tag that the manager associates with this component,
 	 * and component instances can accordingly access it via Tag().
 	 * If not used, leave at zero.
-	 *
-	 * @param etype An enum type that describes the type for the tag in
-	 * script-land.
 	 */
 	Component(component::Type type, const std::string& name,
-	          Tag::subtype_t tag_subtype = 0, zeek::EnumTypePtr etype = nullptr);
+	          Tag::subtype_t tag_subtype = 0);
 
 	/**
 	 * Destructor.
@@ -140,7 +137,6 @@ private:
 
 	/** The automatically assigned analyzer tag */
 	zeek::Tag tag;
-	EnumTypePtr etype;
 	Tag::subtype_t tag_subtype;
 	bool tag_initialized = false;
 

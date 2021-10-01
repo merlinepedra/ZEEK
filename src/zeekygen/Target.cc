@@ -18,6 +18,7 @@
 #include "zeek/zeekygen/Manager.h"
 #include "zeek/zeekygen/PackageInfo.h"
 #include "zeek/zeekygen/ScriptInfo.h"
+#include "zeek/module_util.h"
 
 using namespace std;
 
@@ -38,35 +39,34 @@ static void write_plugin_section_heading(FILE* f, const plugin::Plugin* p)
 
 static void write_analyzer_component(FILE* f, const analyzer::Component* c)
 	{
-	const auto& atag = analyzer_mgr->GetTagType();
-	string tag = util::fmt("ANALYZER_%s", c->CanonicalName().c_str());
+	string tag = util::fmt("Analyzer::%s", util::to_upper(c->CanonicalName()).c_str());
 
-	if ( atag->Lookup("Analyzer", tag.c_str()) < 0 )
+	if ( Tag::global_enum_type->Lookup(zeek::detail::GLOBAL_MODULE_NAME, tag.c_str()) < 0 )
 		reporter->InternalError("missing analyzer tag for %s", tag.c_str());
 
-	fprintf(f, ":zeek:enum:`Analyzer::%s`\n\n", tag.c_str());
+	fprintf(f, ":zeek:enum:`%s`\n\n", tag.c_str());
 	}
 
 static void write_analyzer_component(FILE* f, const packet_analysis::Component* c)
 	{
-	const auto& atag = packet_mgr->GetTagType();
-	string tag = util::fmt("ANALYZER_%s", c->CanonicalName().c_str());
+	string tag = util::fmt("PacketAnalyzer::%s",
+	                       util::to_upper(c->CanonicalName()).c_str());
 
-	if ( atag->Lookup("PacketAnalyzer", tag.c_str()) < 0 )
+	if ( Tag::global_enum_type->Lookup(zeek::detail::GLOBAL_MODULE_NAME, tag.c_str()) < 0 )
 		reporter->InternalError("missing packet analyzer tag for %s", tag.c_str());
 
-	fprintf(f, ":zeek:enum:`PacketAnalyzer::%s`\n\n", tag.c_str());
+	fprintf(f, ":zeek:enum:`%s`\n\n", tag.c_str());
 	}
 
 static void write_analyzer_component(FILE* f, const file_analysis::Component* c)
 	{
-	const auto& atag = file_mgr->GetTagType();
-	string tag = util::fmt("ANALYZER_%s", c->CanonicalName().c_str());
+	string tag = util::fmt("Files::%s",
+	                       util::to_upper(c->CanonicalName()).c_str());
 
-	if ( atag->Lookup("Files", tag.c_str()) < 0 )
-		reporter->InternalError("missing analyzer tag for %s", tag.c_str());
+	if ( Tag::global_enum_type->Lookup(zeek::detail::GLOBAL_MODULE_NAME, tag.c_str()) < 0 )
+		reporter->InternalError("missing file analyzer tag for %s", tag.c_str());
 
-	fprintf(f, ":zeek:enum:`Files::%s`\n\n", tag.c_str());
+	fprintf(f, ":zeek:enum:`%s`\n\n", tag.c_str());
 	}
 
 static void write_plugin_components(FILE* f, const plugin::Plugin* p)

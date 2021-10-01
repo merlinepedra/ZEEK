@@ -569,6 +569,12 @@ SetupResult setup(int argc, char** argv, Options* zopts)
 
 	push_scope(nullptr, nullptr);
 
+	// This needs to be initialized before we start loading plugins because
+	// ComponentManager needs it to adds enum values for the tags. It does
+	// have to happen after zeekygen_mgr is created and the global scope is
+	// pushed though.
+	Tag::InitializeGlobalEnumType();
+
 	dns_mgr = new DNS_Mgr(dns_type);
 
 	// It would nice if this were configurable.  This is similar to the

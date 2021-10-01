@@ -10,7 +10,7 @@ namespace zeek::input
 	{
 
 Component::Component(const std::string& name, factory_callback arg_factory)
-	: plugin::Component(plugin::component::READER, name, 0, input_mgr->GetTagType())
+	: plugin::Component(plugin::component::READER, name, 0)
 	{
 	factory = arg_factory;
 	}

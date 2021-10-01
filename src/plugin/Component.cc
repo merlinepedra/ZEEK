@@ -11,9 +11,8 @@ namespace zeek::plugin
 Tag::type_t Component::type_counter(0);
 
 Component::Component(component::Type arg_type, const std::string& arg_name,
-                     Tag::subtype_t tag_subtype, zeek::EnumTypePtr etype) :
-	type(arg_type), name(arg_name), tag(etype, 1, 0), etype(std::move(etype)),
-	tag_subtype(tag_subtype)
+                     Tag::subtype_t tag_subtype) :
+	type(arg_type), name(arg_name), tag(1, 0), tag_subtype(tag_subtype)
 	{
 	canon_name = util::canonify_name(name);
 	}
@@ -79,7 +78,7 @@ void Component::InitializeTag()
 	{
 	assert(tag_initialized == false);
 	tag_initialized = true;
-	tag = zeek::Tag(etype, ++type_counter, tag_subtype);
+	tag = zeek::Tag(++type_counter, tag_subtype);
 	}
 
 /**

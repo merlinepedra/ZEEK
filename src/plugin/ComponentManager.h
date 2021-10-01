@@ -12,6 +12,9 @@
 #include "zeek/Var.h" // for add_type()
 #include "zeek/zeekygen/Manager.h"
 #include "zeek/Tag.h"
+#include "zeek/module_util.h"
+#include "zeek/Expr.h"
+#include "zeek/Attr.h"
 
 namespace zeek::plugin
 	{
@@ -51,6 +54,7 @@ public:
 	/**
 	 * @return The enum type associated with the script-layer "Tag".
 	 */
+	[[deprecated("Remove in v5.1. Use Tag::global_enum_type.")]]
 	const EnumTypePtr& GetTagType() const;
 
 	/**
@@ -120,8 +124,12 @@ public:
 	C* Lookup(EnumVal* val) const;
 
 private:
-	std::string module; /**< Script layer module in which component tags live. */
-	EnumTypePtr tag_enum_type; /**< Enum type of component tags. */
+	/** Script layer module in which component tags live. */
+	std::string module;
+
+	/** Module-local type of component tags. */
+	[[deprecated("Remove in v5.1. Use ComponentManager::tag_enum_type.")]] EnumTypePtr tag_enum_type;
+
 	std::map<std::string, C*> components_by_name;
 	std::map<zeek::Tag, C*> components_by_tag;
 	std::map<int, C*> components_by_val;
@@ -132,7 +140,10 @@ ComponentManager<C>::ComponentManager(const std::string& arg_module, const std::
 	: module(arg_module), tag_enum_type(make_intrusive<EnumType>(module + "::" + local_id))
 	{
 	auto id = zeek::detail::install_ID(local_id.c_str(), module.c_str(), true, true);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated"
 	zeek::detail::add_type(id.get(), tag_enum_type, nullptr);
+#pragma GCC diagnostic pop
 	zeek::detail::zeekygen_mgr->Identifier(std::move(id));
 	}
 
@@ -152,9 +163,13 @@ template <class C> std::list<C*> ComponentManager<C>::GetComponents() const
 	return rval;
 	}
 
-template <class C> const EnumTypePtr& ComponentManager<C>::GetTagType() const
+template <class C>
+const EnumTypePtr& ComponentManager<C>::GetTagType() const
 	{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated"
 	return tag_enum_type;
+#pragma GCC diagnostic pop
 	}
 
 template <class C> const std::string& ComponentManager<C>::GetComponentName(zeek::Tag tag) const
@@ -222,14 +237,25 @@ void ComponentManager<C>::RegisterComponent(C* component, const std::string& pre
 	DBG_LOG(DBG_PLUGINS, "Registering component %s (tag %s)", component->Name().c_str(),
 	        component->Tag().AsString().c_str());
 
+	// Create a string for the global tag that looks like Module::TagName.
+	std::string global_id = module;
+	global_id.append("::");
+	global_id.append(util::to_upper(cname));
+
 	components_by_name.insert(std::make_pair(cname, component));
 	components_by_tag.insert(std::make_pair(component->Tag(), component));
 	components_by_val.insert(std::make_pair(component->Tag().AsVal()->InternalInt(), component));
 
 	// Install an identfier for enum value
 	std::string id = util::fmt("%s%s", prefix.c_str(), cname.c_str());
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated"
 	tag_enum_type->AddName(module, id.c_str(), component->Tag().AsVal()->InternalInt(), true,
 	                       nullptr);
+#pragma GCC diagnostic pop
+
+	Tag::global_enum_type->AddName(zeek::detail::GLOBAL_MODULE_NAME, global_id.c_str(),
+	                               component->Tag().AsVal()->InternalInt(), true, nullptr);
 	}
 
 	} // namespace zeek::plugin

@@ -68,19 +68,6 @@ public:
 	/**
 	 * Constructor.
 	 *
-	 * @param etype the script-layer enum type associated with the tag.
-	 *
-	 * @param type The main type. Note that the manager class manages the
-	 * the value space internally, so noone else should assign main types.
-	 *
-	 * @param subtype The sub type, which is left to an analyzer for
-	 * interpretation. By default it's set to zero.
-	 */
-	Tag(const EnumTypePtr& etype, type_t type, subtype_t subtype = 0);
-
-	/**
-	 * Constructor.
-	 *
 	 * @param type The main type. Note that the \a analyzer::Manager
 	 * manages the value space internally, so noone else should assign
 	 * any main types.
@@ -162,12 +149,15 @@ public:
 	explicit operator bool() const { return *this != Error; }
 
 	static const Tag Error;
+	static EnumTypePtr global_enum_type;
+
+	static void InitializeGlobalEnumType();
 
 private:
 	type_t type; // Main type.
 	subtype_t subtype; // Subtype.
 	mutable EnumValPtr val; // Script-layer value.
-	mutable EnumTypePtr etype;
+
 	};
 
 	} // namespace zeek
