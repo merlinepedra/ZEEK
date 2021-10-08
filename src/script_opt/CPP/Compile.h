@@ -472,8 +472,10 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
-	CPP_StringConsts str_constants;
-	CPP_PatternConsts re_constants;
+	CPP_GlobalsInfo str_constants = CPP_GlobalsInfo("str", "StringValPtr");
+	CPP_GlobalsInfo re_constants = CPP_GlobalsInfo("re", "PatternValPtr");
+	CPP_GlobalsInfo addr_constants = CPP_GlobalsInfo("addr", "AddrValPtr");
+	CPP_GlobalsInfo subnet_constants = CPP_GlobalsInfo("subnet", "SubNetValPtr");
 
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.

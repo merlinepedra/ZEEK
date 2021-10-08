@@ -49,7 +49,7 @@ static int flag_init_CPP()
 
 static int dummy = flag_init_CPP();
 
-void register_type__CPP(TypePtr t, const std::string& name)
+void register_type__CPP(TypePtr t, const string& name)
 	{
 	if ( t->GetName().size() > 0 )
 		// Already registered.
@@ -62,7 +62,7 @@ void register_type__CPP(TypePtr t, const std::string& name)
 	id->MakeType();
 	}
 
-void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash, vector<string> events)
+void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash, std::vector<std::string> events)
 	{
 	compiled_scripts[hash] = {move(body), priority, move(events)};
 	}
@@ -113,8 +113,8 @@ void activate_bodies__CPP(const char* fn, const char* module, bool exported, Typ
 	auto v = fg->GetVal();
 	if ( ! v )
 		{ // Create it.
-		std::vector<StmtPtr> no_bodies;
-		std::vector<int> no_priorities;
+		vector<StmtPtr> no_bodies;
+		vector<int> no_priorities;
 		auto sf = make_intrusive<ScriptFunc>(fn, ft, no_bodies, no_priorities);
 
 		v = make_intrusive<FuncVal>(move(sf));

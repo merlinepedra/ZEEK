@@ -98,12 +98,22 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 	if ( tag == TYPE_STRING )
 		{
 		const_name = str_constants.NextName();
-		str_constants.AddInit(vp);
+		str_constants.AddInstance(make_unique<StringConstantInfo>(vp));
 		}
 	else if ( tag == TYPE_PATTERN )
 		{
 		const_name = re_constants.NextName();
-		re_constants.AddInit(vp);
+		re_constants.AddInstance(make_unique<PatternConstantInfo>(vp));
+		}
+	else if ( tag == TYPE_ADDR )
+		{
+		const_name = addr_constants.NextName();
+		addr_constants.AddInstance(make_unique<DescConstantInfo>(vp));
+		}
+	else if ( tag == TYPE_SUBNET )
+		{
+		const_name = subnet_constants.NextName();
+		subnet_constants.AddInstance(make_unique<DescConstantInfo>(vp));
 		}
 	else
 		// Need a C++ global for this constant.

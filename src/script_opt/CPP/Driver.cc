@@ -131,11 +131,13 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	NL();
 
+#if 0
 	std::vector<std::string> c_init;
 	str_constants.GenInitInfo(c_init);
 	re_constants.GenInitInfo(c_init);
 	for ( auto c : c_init )
 		Emit(c);
+#endif
 
 	NL();
 
@@ -211,11 +213,13 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	GenFuncVarInits();
 
+#if 0
 	c_init.clear();
 	str_constants.GenInit(c_init);
 	re_constants.GenInit(c_init);
 	for ( auto c : c_init )
 		Emit(c);
+#endif
 
 	GenEpilog();
 	}
@@ -321,8 +325,10 @@ void CPPCompile::GenEpilog()
 
 	StartBlock();
 
+#if 0
 	Emit(str_constants.GenInitCall());
 	Emit(re_constants.GenInitCall());
+#endif
 
 	Emit("enum_mapping.resize(%s);\n", Fmt(int(enum_names.size())));
 	Emit("pre_init__CPP();");
