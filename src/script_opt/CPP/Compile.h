@@ -146,6 +146,10 @@ private:
 	// See Driver.cc for definitions.
 	//
 
+	friend class CPP_GlobalsInfo;
+
+	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type);
+
 	// Main driver, invoked by constructor.
 	void Compile(bool report_uncompilable);
 
@@ -472,10 +476,11 @@ private:
 	// associated C++ globals.
 	std::unordered_map<std::string, std::string> constants;
 
-	CPP_GlobalsInfo str_constants = CPP_GlobalsInfo("str", "StringValPtr");
-	CPP_GlobalsInfo re_constants = CPP_GlobalsInfo("re", "PatternValPtr");
-	CPP_GlobalsInfo addr_constants = CPP_GlobalsInfo("addr", "AddrValPtr");
-	CPP_GlobalsInfo subnet_constants = CPP_GlobalsInfo("subnet", "SubNetValPtr");
+	std::set<std::shared_ptr<CPP_GlobalsInfo>> all_global_info;
+	std::shared_ptr<CPP_GlobalsInfo> str_constants;
+	std::shared_ptr<CPP_GlobalsInfo> re_constants;
+	std::shared_ptr<CPP_GlobalsInfo> addr_constants;
+	std::shared_ptr<CPP_GlobalsInfo> subnet_constants;
 
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.

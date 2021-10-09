@@ -64,12 +64,24 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 		fclose(addl_f);
 		}
 
+	str_constants = InitGlobalInfo("str", "String");
+	re_constants = InitGlobalInfo("re", "Pattern");
+	addr_constants = InitGlobalInfo("addr", "Addr");
+	subnet_constants = InitGlobalInfo("subnet", "SubNet");
+
 	Compile(report_uncompilable);
 	}
 
 CPPCompile::~CPPCompile()
 	{
 	fclose(write_file);
+	}
+
+shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const char* type)
+	{
+	auto gi = make_shared<CPP_GlobalsInfo>(tag, type);
+	all_global_info.insert(gi);
+	return gi;
 	}
 
 void CPPCompile::Compile(bool report_uncompilable)
@@ -131,13 +143,8 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	NL();
 
-#if 0
-	std::vector<std::string> c_init;
-	str_constants.GenInitInfo(c_init);
-	re_constants.GenInitInfo(c_init);
-	for ( auto c : c_init )
-		Emit(c);
-#endif
+	for ( auto gi : all_global_info )
+		Emit(gi->Declare());
 
 	NL();
 
@@ -212,6 +219,9 @@ void CPPCompile::Compile(bool report_uncompilable)
 		RegisterCompiledBody(f);
 
 	GenFuncVarInits();
+
+	for ( auto gi : all_global_info )
+		gi->GenerateInitializers(this);
 
 #if 0
 	c_init.clear();
@@ -324,11 +334,6 @@ void CPPCompile::GenEpilog()
 	Emit("void init__CPP()");
 
 	StartBlock();
-
-#if 0
-	Emit(str_constants.GenInitCall());
-	Emit(re_constants.GenInitCall());
-#endif
 
 	Emit("enum_mapping.resize(%s);\n", Fmt(int(enum_names.size())));
 	Emit("pre_init__CPP();");

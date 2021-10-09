@@ -16,6 +16,8 @@
 namespace zeek::detail
 	{
 
+class CPPCompile;
+
 // Abstract class for tracking the information about a single global.
 // This might be a stand-alone global, or a global that's ultimately
 // instantiated as part of a CPP_Globals object.
@@ -41,16 +43,19 @@ public:
 	int MaxCohort() const { return static_cast<int>(instances.size()) - 1; }
 
 	const std::string& Type() const { return type; }
+	std::string CPPType() const { return type + "ValPtr"; }
 
-	void AddInstance(std::unique_ptr<CPP_GlobalInfo> g);
+	void AddInstance(std::shared_ptr<CPP_GlobalInfo> g);
 
 	std::string Declare() const;
+
+	void GenerateInitializers(CPPCompile* cc);
 
 protected:
 	int size = 0;	// total number of globals
 
 	// The outer vector is indexed by initialization cohort.
-	std::vector<std::vector<std::unique_ptr<CPP_GlobalInfo>>> instances;
+	std::vector<std::vector<std::shared_ptr<CPP_GlobalInfo>>> instances;
 
 	// Tag used to distinguish a particular set of constants.
 	std::string tag;
@@ -161,17 +166,19 @@ template <class T>
 class CPP_Global
 	{
 public:
-	virtual T Generate() const = 0;
+	virtual ~CPP_Global() { }
+	virtual T Generate() const { return nullptr; }
 	};
 
 template <class T>
 class CPP_Globals
 	{
+public:
 	CPP_Globals(std::vector<CPP_Global<T>> _inits)
 		: inits(std::move(_inits))
 		{ }
 
-public:
+private:
 	std::vector<CPP_Global<T>> inits;
 	};
 
@@ -229,82 +236,6 @@ private:
 	};
 
 
-#if 0
-class CPP_StringConsts : public CPP_Globals
-	{
-public:
-	CPP_StringConsts() : CPP_Globals("str", "StringValPtr") { }
-
-	int Size() const override { return static_cast<int>(reps.size()); }
-
-	void AddInit(const ValPtr& v) override;
-
-private:
-	int NumVecs() const override { return 2; }
-	std::string NthInitVecType(int init_vec) const override;
-
-	void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const override;
-	std::string DoGenInitAssignmentCore() const override;
-
-	std::vector<std::string> reps;
-	std::vector<int> lens;
-	};
-
-class CPP_PatternConsts : public CPP_Globals
-	{
-public:
-	CPP_PatternConsts() : CPP_Globals("re", "PatternValPtr") { }
-
-	int Size() const override { return static_cast<int>(patterns.size()); }
-
-	void AddInit(const ValPtr& v) override;
-
-private:
-	int NumVecs() const override { return 2; }
-	std::string NthInitVecType(int init_vec) const override;
-
-	void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const override;
-	void GenInitCore(std::vector<std::string>& inits) const override;
-
-	std::vector<std::string> patterns;
-	std::vector<int> is_case_insensitive;
-	};
-
-###
-	virtual void AddInit(const ValPtr& v) = 0;
-
-	void GenInitInfo(std::vector<std::string>& inits) const;
-	void GenInit(std::vector<std::string>& inits);
-
-	std::string GenInitCall() const;
-
-protected:
-	virtual int NumVecs() const = 0;
-	virtual std::string NthInitVecType(int init_vec) const = 0;
-
-	std::string NthInitVec(int init_vec) const;
-	std::string InitFuncName() const;
-
-	virtual void DoGenInitSetup(int which_init, std::vector<std::string>& inits) const = 0;
-	virtual void GenInitCore(std::vector<std::string>& inits) const;
-	virtual std::string DoGenInitAssignmentCore() const { return ""; }
-
-	// Tag used to distinguish a particular set of constants.
-	std::string tag;
-
-	// C++ type associated with a single instance of these constants.
-	std::string type;
-
-	// C++ name for this set of constants.
-	std::string base_name;
-
-	// Whether we've generated the initializations for this set of
-	// constants.  We track this to make sure no constants are
-	// subsequently added.
-	bool did_init = false;
-	};
-
-#endif
 	} // zeek::detail
 
 // base_type(char*)
