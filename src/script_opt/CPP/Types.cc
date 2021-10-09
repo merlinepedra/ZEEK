@@ -251,7 +251,7 @@ string CPPCompile::GenTypeDecl(const TypeDecl* td)
 
 string CPPCompile::GenTypeName(const Type* t)
 	{
-	return types.KeyName(TypeRep(t));
+	return types_OBS.KeyName(TypeRep(t));
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag) const
@@ -503,9 +503,9 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 
 	AddInit(t);
 
-	if ( ! types.IsInherited(t) )
+	if ( ! types_OBS.IsInherited(t) )
 		{
-		auto t_rep = types.GetRep(t);
+		auto t_rep = types_OBS.GetRep(t);
 		if ( t_rep == t )
 			GenPreInit(t);
 		else

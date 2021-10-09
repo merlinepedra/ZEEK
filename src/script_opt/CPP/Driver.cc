@@ -131,11 +131,11 @@ void CPPCompile::Compile(bool report_uncompilable)
 	for ( const auto& t : pfs.RepTypes() )
 		{
 		TypePtr tp{NewRef{}, (Type*)(t)};
-		types.AddKey(tp, pfs.HashType(t));
+		types_OBS.AddKey(tp, pfs.HashType(t));
 		}
 
 	// ### This doesn't work for -O add-C++
-	Emit("TypePtr types__CPP[%s];", Fmt(static_cast<int>(types.DistinctKeys().size())));
+	Emit("TypePtr types__CPP[%s];", Fmt(static_cast<int>(types_OBS.DistinctKeys().size())));
 
 	NL();
 
@@ -173,7 +173,7 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	for ( const auto& t : pfs.RepTypes() )
 		{
-		ASSERT(types.HasKey(t));
+		ASSERT(types_OBS.HasKey(t));
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		RegisterType(tp);
 		}
@@ -302,11 +302,11 @@ void CPPCompile::GenEpilog()
 
 	// Generate the guts of compound types, and preserve type names
 	// if present.
-	for ( const auto& t : types.DistinctKeys() )
+	for ( const auto& t : types_OBS.DistinctKeys() )
 		{
 		ExpandTypeVar(t);
 		if ( update )
-			types.LogIfNew(t, addl_tag, hm.HashFile());
+			types_OBS.LogIfNew(t, addl_tag, hm.HashFile());
 		}
 
 	InitializeEnumMappings();

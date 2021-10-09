@@ -761,7 +761,7 @@ private:
 	const char* IntrusiveVal(const TypePtr& t);
 
 	// Maps types to indices in the global "types__CPP" array.
-	CPPTracker<Type> types = {"types", true, &compiled_items};
+	CPPTracker<Type> types_OBS = {"types", true, &compiled_items};
 
 	// Used to prevent analysis of mutually-referring types from
 	// leading to infinite recursion.
