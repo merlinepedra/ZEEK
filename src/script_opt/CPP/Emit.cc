@@ -13,14 +13,14 @@ using namespace std;
 
 void CPPCompile::StartBlock()
 	{
-	++block_level;
+	IndentUp();
 	Emit("{");
 	}
 
 void CPPCompile::EndBlock(bool needs_semi)
 	{
 	Emit("}%s", needs_semi ? ";" : "");
-	--block_level;
+	IndentDown();
 	}
 
 void CPPCompile::Indent() const

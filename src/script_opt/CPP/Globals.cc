@@ -29,29 +29,32 @@ void CPP_GlobalsInfo::AddInstance(std::shared_ptr<CPP_GlobalInfo> g)
 
 std::string CPP_GlobalsInfo::Declare() const
 	{
-	return std::string("extern ") + CPPType() + " " + base_name + "[];";
+	return std::string("std::vector<") + CPPType() + "> " + base_name + ";";
 	}
 
 void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* cc)
 	{
-	cc->Emit("%s %s[%s];", CPPType(), base_name, Fmt(Size()));
 	cc->NL();
 
-	cc->Emit("std::vector<CPP_Globals<%s>> %sinit =", CPPType(), base_name);
-	cc->StartBlock();
+	cc->Emit("CPP_Globals<%s> %s = CPP_Globals<%s>(", CPPType(),
+	         InitializersName(), CPPType());
+
+	cc->IndentUp();
+	cc->Emit("{");
 
 	for ( auto& cohort : instances )
 		{
-		cc->Emit("CPP_Globals<%s>(", CPPType());
 		cc->Emit("{");
 
 		for ( auto& c : cohort )
 			cc->Emit("%s,", c->Initializer());
 
-		cc->Emit("}),");
+		cc->Emit("},");
 		}
 
-	cc->EndBlock(true);
+	cc->Emit("}");
+	cc->IndentDown();
+	cc->Emit(");");
 	}
 
 

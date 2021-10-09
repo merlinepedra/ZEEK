@@ -36,6 +36,9 @@ public:
 
 	virtual ~CPP_GlobalsInfo() { }
 
+	std::string InitializersName() const { return base_name + "init"; }
+	const std::string& GlobalsName() const { return base_name; }
+
 	std::string Name(int index) const;
 	std::string NextName() const { return Name(Size()); }
 
@@ -174,12 +177,20 @@ template <class T>
 class CPP_Globals
 	{
 public:
-	CPP_Globals(std::vector<CPP_Global<T>> _inits)
+	CPP_Globals(std::vector<std::vector<CPP_Global<T>>> _inits)
 		: inits(std::move(_inits))
 		{ }
 
+	void InitializeCohort(std::vector<T>& global_vec, int cohort)
+		{
+		for ( const auto& i : inits[cohort] )
+			global_vec.emplace_back(i.Generate());
+		}
+
 private:
-	std::vector<CPP_Global<T>> inits;
+	// Indexed first by cohort, and then iterated over to get all
+	// of the initializers for that cohort.
+	std::vector<std::vector<CPP_Global<T>>> inits;
 	};
 
 class CPP_StringConst : public CPP_Global<StringValPtr>

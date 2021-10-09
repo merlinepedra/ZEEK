@@ -965,6 +965,9 @@ private:
 	void StartBlock();
 	void EndBlock(bool needs_semi = false);
 
+	void IndentUp() { ++block_level; }
+	void IndentDown() { --block_level; }
+
 	// Various ways of generating code.  The multi-argument methods
 	// assume that the first argument is a printf-style format
 	// (but one that can only have %s specifiers).

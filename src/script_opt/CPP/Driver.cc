@@ -223,14 +223,6 @@ void CPPCompile::Compile(bool report_uncompilable)
 	for ( auto gi : all_global_info )
 		gi->GenerateInitializers(this);
 
-#if 0
-	c_init.clear();
-	str_constants.GenInit(c_init);
-	re_constants.GenInit(c_init);
-	for ( auto c : c_init )
-		Emit(c);
-#endif
-
 	GenEpilog();
 	}
 
@@ -341,6 +333,15 @@ void CPPCompile::GenEpilog()
 	NL();
 	for ( auto i = 1; i <= nc; ++i )
 		Emit("init_%s__CPP();", Fmt(i));
+
+	int max_cohort = 0;
+	for ( auto gi : all_global_info )
+		max_cohort = std::max(max_cohort, gi->MaxCohort());
+
+	for ( auto c = 0; c <= max_cohort; ++c )
+		for ( auto gi : all_global_info )
+			Emit("%s.InitializeCohort(%s, %s);",
+			     gi->InitializersName(), gi->GlobalsName(), Fmt(c));
 
 	// Populate mappings for dynamic offsets.
 	NL();
