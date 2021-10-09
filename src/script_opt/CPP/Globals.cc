@@ -96,7 +96,7 @@ DescConstantInfo::DescConstantInfo(ValPtr v)
 
 std::string DescConstantInfo::Initializer() const
 	{
-	return std::string("CPP_") + gls->Type() + "Const(\"" + init + "\")";
+	return std::string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
 	}
 
 

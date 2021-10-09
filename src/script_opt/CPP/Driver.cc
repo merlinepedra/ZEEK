@@ -64,10 +64,11 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 		fclose(addl_f);
 		}
 
-	str_constants = InitGlobalInfo("str", "String");
-	re_constants = InitGlobalInfo("re", "Pattern");
-	addr_constants = InitGlobalInfo("addr", "Addr");
-	subnet_constants = InitGlobalInfo("subnet", "SubNet");
+	str_constants = InitGlobalInfo("String", "ValPtr");
+	re_constants = InitGlobalInfo("Pattern", "ValPtr");
+	addr_constants = InitGlobalInfo("Addr", "ValPtr");
+	subnet_constants = InitGlobalInfo("SubNet", "ValPtr");
+	type_info = InitGlobalInfo("Type", "Ptr");
 
 	Compile(report_uncompilable);
 	}

@@ -28,10 +28,11 @@ class CPP_GlobalInfo;
 class CPP_GlobalsInfo
 	{
 public:
-	CPP_GlobalsInfo(std::string _tag, std::string _type)
-		: tag(std::move(_tag)), type(std::move(_type))
+	CPP_GlobalsInfo(std::string _tag, std::string type)
+		: tag(std::move(_tag))
 		{
-		base_name = std::string("CPP__") + tag + "const__";
+		base_name = std::string("CPP__") + tag + "Const__";
+		CPP_type = tag + type;
 		}
 
 	virtual ~CPP_GlobalsInfo() { }
@@ -45,8 +46,8 @@ public:
 	int Size() const { return size; }
 	int MaxCohort() const { return static_cast<int>(instances.size()) - 1; }
 
-	const std::string& Type() const { return type; }
-	std::string CPPType() const { return type + "ValPtr"; }
+	const std::string& Tag() const { return tag; }
+	const std::string& CPPType() const { return CPP_type; }
 
 	void AddInstance(std::shared_ptr<CPP_GlobalInfo> g);
 
@@ -63,11 +64,11 @@ protected:
 	// Tag used to distinguish a particular set of constants.
 	std::string tag;
 
-	// C++ type associated with a single instance of these constants.
-	std::string type;
-
 	// C++ name for this set of constants.
 	std::string base_name;
+
+	// C++ type associated with a single instance of these constants.
+	std::string CPP_type;
 	};
 
 

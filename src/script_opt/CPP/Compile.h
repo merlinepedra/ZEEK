@@ -477,10 +477,12 @@ private:
 	std::unordered_map<std::string, std::string> constants;
 
 	std::set<std::shared_ptr<CPP_GlobalsInfo>> all_global_info;
+
 	std::shared_ptr<CPP_GlobalsInfo> str_constants;
 	std::shared_ptr<CPP_GlobalsInfo> re_constants;
 	std::shared_ptr<CPP_GlobalsInfo> addr_constants;
 	std::shared_ptr<CPP_GlobalsInfo> subnet_constants;
+	std::shared_ptr<CPP_GlobalsInfo> type_info;
 
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.
