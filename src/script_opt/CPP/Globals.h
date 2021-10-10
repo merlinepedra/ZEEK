@@ -76,20 +76,15 @@ class CPP_GlobalInfo
 	{
 public:
 	// Constructor used for stand-alone globals.  The second
-	// argument specifies the "initialization cohort", i.e.,
-	// the group of initializations to use for this global.
-	// Initializations begin with cohort 0 and then move on to
-	// cohort 1, 2, etc.
-	CPP_GlobalInfo(std::string _name, std::string _type, int _init_cohort)
-		: name(std::move(_name)), type(std::move(_type)), init_cohort(_init_cohort)
+	// argument specifies the core of the associated type.
+	CPP_GlobalInfo(std::string _name, std::string _type)
+		: name(std::move(_name)), type(std::move(_type))
 		{ }
 
 	// Constructor used for a global that will be part of a CPP_GlobalsInfo
 	// object.  The rest of its initialization will be done by
 	// CPP_GlobalsInfo::AddInstance.
-	CPP_GlobalInfo(int _init_cohort)
-		: init_cohort(_init_cohort)
-		{ }
+	CPP_GlobalInfo() { }
 
 	virtual ~CPP_GlobalInfo() { }
 
@@ -124,7 +119,11 @@ public:
 protected:
 	std::string name;
 	std::string type;
-	int init_cohort;
+
+	// By default, globals have no dependencies on other globals
+	// being first initialized.  Those that do must increase this
+	// value in their constructors.
+	int init_cohort = 0;
 
 	const CPP_GlobalsInfo* gls = nullptr;
 	int offset = -1;	// offset for CPP_GlobalsInfo, if non-nil
@@ -169,7 +168,7 @@ private:
 class AbstractTypeInfo : public CPP_GlobalInfo
 	{
 public:
-	AbstractTypeInfo(TypePtr _t) : CPP_GlobalInfo(0), t(std::move(_t)) { }
+	AbstractTypeInfo(TypePtr _t) : CPP_GlobalInfo(), t(std::move(_t)) { }
 
 protected:
 	TypePtr t;

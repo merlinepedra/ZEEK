@@ -60,7 +60,7 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* cc)
 
 
 StringConstantInfo::StringConstantInfo(ValPtr v)
-	: CPP_GlobalInfo(0)
+	: CPP_GlobalInfo()
 	{
 	auto s = v->AsString();
 	const char* b = (const char*)(s->Bytes());
@@ -75,7 +75,7 @@ string StringConstantInfo::Initializer() const
 	}
 
 PatternConstantInfo::PatternConstantInfo(ValPtr v)
-	: CPP_GlobalInfo(0)
+	: CPP_GlobalInfo()
 	{
 	auto re = v->AsPatternVal()->Get();
 	pattern = CPPEscape(re->OrigText());
@@ -88,7 +88,7 @@ string PatternConstantInfo::Initializer() const
 	}
 
 DescConstantInfo::DescConstantInfo(ValPtr v)
-	: CPP_GlobalInfo(0)
+	: CPP_GlobalInfo()
 	{
 	ODesc d;
 	v->Describe(&d);
