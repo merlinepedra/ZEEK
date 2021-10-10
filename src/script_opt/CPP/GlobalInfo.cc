@@ -4,7 +4,6 @@
 #include "zeek/Desc.h"
 #include "zeek/RE.h"
 #include "zeek/script_opt/CPP/Compile.h"
-#include "zeek/script_opt/CPP/RunTimeInit.h"
 
 using namespace std;
 
@@ -23,7 +22,7 @@ void CPP_GlobalsInfo::AddInstance(shared_ptr<CPP_GlobalInfo> g)
 	if ( static_cast<int>(instances.size()) <= init_cohort )
 		instances.resize(init_cohort + 1);
 
-	g->SetOffset(this, ++size);
+	g->SetOffset(this, size++);
 
 	instances[init_cohort].push_back(move(g));
 	}
@@ -125,27 +124,16 @@ string OpaqueTypeInfo::Initializer() const
 	return string("CPP_OpaqueType(\"") + t->GetName() + "\")";
 	}
 
-
-PatternValPtr CPP_PatternConst::Generate() const
+TypeTypeInfo::TypeTypeInfo(CPPCompile* c, TypePtr _t)
+	: AbstractTypeInfo(std::move(_t))
 	{
-	auto re = new RE_Matcher(pattern);
-	if ( is_case_insensitive )
-		re->MakeCaseInsensitive();
-
-	re->Compile();
-
-	return make_intrusive<PatternVal>(re);
+	auto tt = t->AsTypeType()->GetType();
+	tt_offset = c->RegisterType(tt);
 	}
 
-TypePtr CPP_EnumType::Generate() const
+string TypeTypeInfo::Initializer() const
 	{
-	auto et = get_enum_type__CPP(name);
-
-	if ( et->Names().empty() )
-		for ( auto i = 0U; i < elems.size(); ++i )
-			et->AddNameInternal(elems[i], vals[i]);
-
-	return et;
+	return string("CPP_TypeType(") + Fmt(tt_offset) + ")";
 	}
 
 	} // zeek::detail

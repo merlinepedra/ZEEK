@@ -3,7 +3,7 @@
 #pragma once
 
 #include "zeek/Desc.h"
-#include "zeek/script_opt/CPP/Globals.h"
+#include "zeek/script_opt/CPP/GlobalInfo.h"
 #include "zeek/script_opt/CPP/Func.h"
 #include "zeek/script_opt/CPP/HashMgr.h"
 #include "zeek/script_opt/CPP/Tracker.h"
@@ -139,6 +139,14 @@ public:
 	           const std::string& addl_name, CPPHashManager& _hm, bool _update, bool _standalone,
 	           bool report_uncompilable);
 	~CPPCompile();
+
+	// Track the given type (with support methods for onces that
+	// are complicated), recursively including its sub-types, and
+	// creating initializations (and dependencies) for constructing
+	// C++ variables representing the types.
+	//
+	// Returns the type's global offset.
+	int RegisterType(const TypePtr& t);
 
 private:
 	// Start of methods related to driving the overall compilation
@@ -744,11 +752,7 @@ private:
 	const char* FullTypeName(const TypePtr& t);
 	const char* TypeType(const TypePtr& t);
 
-	// Track the given type (with support methods for onces that
-	// are complicated), recursively including its sub-types, and
-	// creating initializations (and dependencies) for constructing
-	// C++ variables representing the types.
-	void RegisterType(const TypePtr& t);
+	// Helper methods for RegisterType().
 	void RegisterListType(const TypePtr& t);
 	void RegisterTableType(const TypePtr& t);
 	void RegisterRecordType(const TypePtr& t);
@@ -765,8 +769,13 @@ private:
 	CPPTracker<Type> types_OBS = {"types", true, &compiled_items};
 
 	// Used to prevent analysis of mutually-referring types from
-	// leading to infinite recursion.
-	std::unordered_set<const Type*> processed_types;
+	// leading to infinite recursion.  Maps types to their global
+	// offsets (or, initially, to 0, if they're in the process of
+	// being registered).
+	std::unordered_map<const Type*, int> processed_types;
+
+	// Given a type's global offset, provides its initialization cohort.
+	std::vector<int> type_cohort;
 
 	//
 	// End of methods related to managing script types.

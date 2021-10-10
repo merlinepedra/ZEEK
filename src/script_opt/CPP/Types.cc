@@ -431,16 +431,18 @@ const char* CPPCompile::TypeType(const TypePtr& t)
 		}
 	}
 
-void CPPCompile::RegisterType(const TypePtr& tp)
+int CPPCompile::RegisterType(const TypePtr& tp)
 	{
 	auto t = TypeRep(tp);
 
 	if ( processed_types.count(t) > 0 )
-		return;
+		return processed_types[t];
 
 	// Add the type before going further, to avoid loops due to types
 	// that reference each other.
-	processed_types.insert(t);
+	processed_types[t] = 0;
+
+	shared_ptr<CPP_GlobalInfo> gi;
 
 	switch ( t->Tag() )
 		{
@@ -460,15 +462,15 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 		case TYPE_VOID:
 		case TYPE_SUBNET:
 		case TYPE_FILE:
-			type_info->AddInstance(make_shared<BaseTypeInfo>(tp));
+			gi = make_shared<BaseTypeInfo>(tp);
 			break;
 
 		case TYPE_ENUM:
-			type_info->AddInstance(make_shared<EnumTypeInfo>(tp));
+			gi = make_shared<EnumTypeInfo>(tp);
 			break;
 
 		case TYPE_OPAQUE:
-			type_info->AddInstance(make_shared<OpaqueTypeInfo>(tp));
+			gi = make_shared<OpaqueTypeInfo>(tp);
 			break;
 
 		case TYPE_TYPE:
@@ -505,6 +507,14 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 
 		default:
 			reporter->InternalError("bad type in CPPCompile::RegisterType");
+		}
+
+	if ( gi )
+		{
+		type_info->AddInstance(gi);
+		processed_types[t] = gi->Offset();
+		ASSERT(type_cohort.size() == gi->Offset());
+		type_cohort.push_back(gi->InitCohort());
 		}
 
 	AddInit(t);

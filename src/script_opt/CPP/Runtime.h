@@ -17,7 +17,7 @@
 #include "zeek/ZeekString.h"
 #include "zeek/module_util.h"
 #include "zeek/script_opt/CPP/Func.h"
-#include "zeek/script_opt/CPP/Globals.h"
+#include "zeek/script_opt/CPP/RuntimeGlobals.h"
 #include "zeek/script_opt/CPP/RuntimeInit.h"
 #include "zeek/script_opt/CPP/RuntimeOps.h"
 #include "zeek/script_opt/CPP/RuntimeVec.h"
