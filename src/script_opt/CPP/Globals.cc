@@ -120,6 +120,11 @@ string EnumTypeInfo::Initializer() const
 	return string("CPP_EnumType(\"") + t->GetName() + "\", { " + elem_list + "}, { " + val_list + "})";
 	}
 
+string OpaqueTypeInfo::Initializer() const
+	{
+	return string("CPP_OpaqueType(\"") + t->GetName() + "\")";
+	}
+
 
 PatternValPtr CPP_PatternConst::Generate() const
 	{

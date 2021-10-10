@@ -211,6 +211,7 @@ void CPPCompile::GenPreInit(const Type* t)
 		case TYPE_PATTERN:
 		case TYPE_PORT:
 		case TYPE_STRING:
+		case TYPE_SUBNET:
 		case TYPE_TIME:
 		case TYPE_TIMER:
 		case TYPE_VOID:
@@ -219,10 +220,6 @@ void CPPCompile::GenPreInit(const Type* t)
 
 		case TYPE_ENUM:
 			pre_init = string("get_enum_type__CPP(\"") + t->GetName() + "\")";
-			break;
-
-		case TYPE_SUBNET:
-			pre_init = string("make_intrusive<SubNetType>()");
 			break;
 
 		case TYPE_FILE:

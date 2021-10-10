@@ -468,6 +468,7 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_OPAQUE:
+			type_info->AddInstance(make_shared<OpaqueTypeInfo>(tp));
 			break;
 
 		case TYPE_TYPE:

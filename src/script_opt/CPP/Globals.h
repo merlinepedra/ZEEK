@@ -191,6 +191,14 @@ public:
 	std::string Initializer() const override;
 	};
 
+class OpaqueTypeInfo : public AbstractTypeInfo
+	{
+public:
+	OpaqueTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
+
+	std::string Initializer() const override;
+	};
+
 
 template <class T>
 class CPP_Global
@@ -308,6 +316,15 @@ public:
 private:
 	std::vector<std::string> elems;
 	std::vector<int> vals;
+	};
+
+class CPP_OpaqueType : public CPP_AbstractType
+	{
+public:
+	CPP_OpaqueType(std::string _name) : CPP_AbstractType(_name) { }
+
+	TypePtr Generate() const override
+		{ return make_intrusive<OpaqueType>(name); }
 	};
 
 
