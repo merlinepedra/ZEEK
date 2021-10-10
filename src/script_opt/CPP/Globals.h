@@ -166,6 +166,32 @@ private:
 	};
 
 
+class AbstractTypeInfo : public CPP_GlobalInfo
+	{
+public:
+	AbstractTypeInfo(TypePtr _t) : CPP_GlobalInfo(0), t(std::move(_t)) { }
+
+protected:
+	TypePtr t;
+	};
+
+class BaseTypeInfo : public AbstractTypeInfo
+	{
+public:
+	BaseTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
+
+	std::string Initializer() const override;
+	};
+
+class EnumTypeInfo : public AbstractTypeInfo
+	{
+public:
+	EnumTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
+
+	std::string Initializer() const override;
+	};
+
+
 template <class T>
 class CPP_Global
 	{
@@ -245,6 +271,43 @@ public:
 
 private:
 	const char* init;
+	};
+
+
+class CPP_AbstractType : public CPP_Global<TypePtr>
+	{
+public:
+	CPP_AbstractType() { }
+	CPP_AbstractType(std::string _name) : name(std::move(_name)) { }
+
+protected:
+	std::string name;
+	};
+
+class CPP_BaseType : public CPP_AbstractType
+	{
+public:
+	CPP_BaseType(TypeTag t)
+		: CPP_AbstractType(), tag(t) { }
+
+	TypePtr Generate() const override
+		{ return base_type(tag); }
+
+private:
+	TypeTag tag;
+	};
+
+class CPP_EnumType : public CPP_AbstractType
+	{
+public:
+	CPP_EnumType(std::string _name, std::vector<std::string> _elems, std::vector<int> _vals)
+		: CPP_AbstractType(_name), elems(std::move(_elems)), vals(std::move(_vals)) { }
+
+	TypePtr Generate() const override;
+
+private:
+	std::vector<std::string> elems;
+	std::vector<int> vals;
 	};
 
 

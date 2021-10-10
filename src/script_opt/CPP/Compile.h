@@ -147,6 +147,7 @@ private:
 	//
 
 	friend class CPP_GlobalsInfo;
+	friend class BaseTypeInfo;
 
 	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type);
 
@@ -738,7 +739,7 @@ private:
 	const Type* TypeRep(const TypePtr& t) { return TypeRep(t.get()); }
 
 	// Low-level C++ representations for types, of various flavors.
-	const char* TypeTagName(TypeTag tag) const;
+	static const char* TypeTagName(TypeTag tag);
 	const char* TypeName(const TypePtr& t);
 	const char* FullTypeName(const TypePtr& t);
 	const char* TypeType(const TypePtr& t);

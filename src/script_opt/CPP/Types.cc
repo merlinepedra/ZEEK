@@ -254,7 +254,7 @@ string CPPCompile::GenTypeName(const Type* t)
 	return types_OBS.KeyName(TypeRep(t));
 	}
 
-const char* CPPCompile::TypeTagName(TypeTag tag) const
+const char* CPPCompile::TypeTagName(TypeTag tag)
 	{
 	switch ( tag )
 		{
@@ -449,7 +449,6 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 		case TYPE_BOOL:
 		case TYPE_COUNT:
 		case TYPE_DOUBLE:
-		case TYPE_ENUM:
 		case TYPE_ERROR:
 		case TYPE_INT:
 		case TYPE_INTERVAL:
@@ -459,10 +458,16 @@ void CPPCompile::RegisterType(const TypePtr& tp)
 		case TYPE_TIME:
 		case TYPE_TIMER:
 		case TYPE_VOID:
-		case TYPE_OPAQUE:
 		case TYPE_SUBNET:
 		case TYPE_FILE:
-			// Nothing to do.
+			type_info->AddInstance(make_shared<BaseTypeInfo>(tp));
+			break;
+
+		case TYPE_ENUM:
+			type_info->AddInstance(make_shared<EnumTypeInfo>(tp));
+			break;
+
+		case TYPE_OPAQUE:
 			break;
 
 		case TYPE_TYPE:

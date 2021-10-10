@@ -4,18 +4,19 @@
 #include "zeek/Desc.h"
 #include "zeek/RE.h"
 #include "zeek/script_opt/CPP/Compile.h"
+#include "zeek/script_opt/CPP/RunTimeInit.h"
 
 using namespace std;
 
 namespace zeek::detail
 	{
 
-std::string CPP_GlobalsInfo::Name(int index) const
+string CPP_GlobalsInfo::Name(int index) const
 	{
 	return base_name + "[" + Fmt(index) + "]";
 	}
 
-void CPP_GlobalsInfo::AddInstance(std::shared_ptr<CPP_GlobalInfo> g)
+void CPP_GlobalsInfo::AddInstance(shared_ptr<CPP_GlobalInfo> g)
 	{
 	auto init_cohort = g->InitCohort();
 
@@ -24,12 +25,12 @@ void CPP_GlobalsInfo::AddInstance(std::shared_ptr<CPP_GlobalInfo> g)
 
 	g->SetOffset(this, ++size);
 
-	instances[init_cohort].push_back(std::move(g));
+	instances[init_cohort].push_back(move(g));
 	}
 
-std::string CPP_GlobalsInfo::Declare() const
+string CPP_GlobalsInfo::Declare() const
 	{
-	return std::string("std::vector<") + CPPType() + "> " + base_name + ";";
+	return string("std::vector<") + CPPType() + "> " + base_name + ";";
 	}
 
 void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* cc)
@@ -68,9 +69,9 @@ StringConstantInfo::StringConstantInfo(ValPtr v)
 	rep = CPPEscape(b, len);
 	}
 
-std::string StringConstantInfo::Initializer() const
+string StringConstantInfo::Initializer() const
 	{
-	return std::string("CPP_StringConst(") + Fmt(len) + ", " + rep + ")";
+	return string("CPP_StringConst(") + Fmt(len) + ", " + rep + ")";
 	}
 
 PatternConstantInfo::PatternConstantInfo(ValPtr v)
@@ -81,9 +82,9 @@ PatternConstantInfo::PatternConstantInfo(ValPtr v)
 	is_case_insensitive = re->IsCaseInsensitive();
 	}
 
-std::string PatternConstantInfo::Initializer() const
+string PatternConstantInfo::Initializer() const
 	{
-	return std::string("CPP_PatternConst(") + pattern + ", " + Fmt(is_case_insensitive) + ")";
+	return string("CPP_PatternConst(") + pattern + ", " + Fmt(is_case_insensitive) + ")";
 	}
 
 DescConstantInfo::DescConstantInfo(ValPtr v)
@@ -94,9 +95,29 @@ DescConstantInfo::DescConstantInfo(ValPtr v)
 	init = d.Description();
 	}
 
-std::string DescConstantInfo::Initializer() const
+string DescConstantInfo::Initializer() const
 	{
-	return std::string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
+	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
+	}
+
+
+string BaseTypeInfo::Initializer() const
+	{
+	return string("CPP_BaseType(") + CPPCompile::TypeTagName(t->Tag()) + ")";
+	}
+
+string EnumTypeInfo::Initializer() const
+	{
+	string elem_list, val_list;
+	auto et = t->AsEnumType();
+
+	for ( const auto& name_pair : et->Names() )
+		{
+		elem_list += string("\"") + name_pair.first + "\", ";
+		val_list += Fmt(int(name_pair.second)) + ", ";
+		}
+
+	return string("CPP_EnumType(\"") + t->GetName() + "\", { " + elem_list + "}, { " + val_list + "})";
 	}
 
 
@@ -111,5 +132,15 @@ PatternValPtr CPP_PatternConst::Generate() const
 	return make_intrusive<PatternVal>(re);
 	}
 
+TypePtr CPP_EnumType::Generate() const
+	{
+	auto et = get_enum_type__CPP(name);
+
+	if ( et->Names().empty() )
+		for ( auto i = 0U; i < elems.size(); ++i )
+			et->AddNameInternal(elems[i], vals[i]);
+
+	return et;
+	}
 
 	} // zeek::detail
