@@ -431,7 +431,7 @@ const char* CPPCompile::TypeType(const TypePtr& t)
 		}
 	}
 
-int CPPCompile::RegisterType(const TypePtr& tp)
+shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 	{
 	auto t = TypeRep(tp);
 
@@ -440,7 +440,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 
 	// Add the type before going further, to avoid loops due to types
 	// that reference each other.
-	processed_types[t] = 0;
+	processed_types[t] = nullptr;
 
 	shared_ptr<CPP_GlobalInfo> gi;
 
@@ -517,9 +517,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 	if ( gi )
 		{
 		type_info->AddInstance(gi);
-		processed_types[t] = gi->Offset();
-		ASSERT(type_cohort.size() == gi->Offset());
-		type_cohort.push_back(gi->InitCohort());
+		processed_types[t] = gi;
 		}
 
 	AddInit(t);
@@ -533,7 +531,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 			NoteInitDependency(t, t_rep);
 		}
 
-	return processed_types[t];
+	return gi;
 	}
 
 void CPPCompile::RegisterListType(const TypePtr& t)

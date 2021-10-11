@@ -145,8 +145,8 @@ public:
 	// creating initializations (and dependencies) for constructing
 	// C++ variables representing the types.
 	//
-	// Returns the type's global offset.
-	int RegisterType(const TypePtr& t);
+	// Returns the initialization info associated with the type.
+	std::shared_ptr<CPP_GlobalInfo> RegisterType(const TypePtr& t);
 
 private:
 	// Start of methods related to driving the overall compilation
@@ -772,10 +772,7 @@ private:
 	// leading to infinite recursion.  Maps types to their global
 	// offsets (or, initially, to 0, if they're in the process of
 	// being registered).
-	std::unordered_map<const Type*, int> processed_types;
-
-	// Given a type's global offset, provides its initialization cohort.
-	std::vector<int> type_cohort;
+	std::unordered_map<const Type*, std::shared_ptr<CPP_GlobalInfo>> processed_types;
 
 	//
 	// End of methods related to managing script types.

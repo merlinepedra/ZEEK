@@ -125,10 +125,11 @@ string OpaqueTypeInfo::Initializer() const
 	}
 
 TypeTypeInfo::TypeTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(std::move(_t))
+	: AbstractTypeInfo(move(_t))
 	{
-	auto tt = t->AsTypeType()->GetType();
-	tt_offset = c->RegisterType(tt);
+	auto gi = c->RegisterType(t->AsTypeType()->GetType());
+	tt_offset = gi->Offset();
+	init_cohort = gi->InitCohort();
 	}
 
 string TypeTypeInfo::Initializer() const
@@ -137,9 +138,11 @@ string TypeTypeInfo::Initializer() const
 	}
 
 VectorTypeInfo::VectorTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(std::move(_t))
+	: AbstractTypeInfo(move(_t))
 	{
-	yt_offset = c->RegisterType(t->Yield());
+	auto gi = c->RegisterType(t->Yield());
+	yt_offset = gi->Offset();
+	init_cohort = gi->InitCohort();
 	}
 
 string VectorTypeInfo::Initializer() const
@@ -148,12 +151,16 @@ string VectorTypeInfo::Initializer() const
 	}
 
 ListTypeInfo::ListTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(std::move(_t))
+	: AbstractTypeInfo(move(_t))
 	{
 	const auto& tl = t->AsTypeList()->GetTypes();
 
 	for ( auto& tl_i : tl )
-		type_offsets.push_back(c->RegisterType(tl_i));
+		{
+		auto gi = c->RegisterType(tl_i);
+		type_offsets.push_back(gi->Offset());
+		init_cohort = max(init_cohort, gi->InitCohort());
+		}
 	}
 
 string ListTypeInfo::Initializer() const
@@ -166,14 +173,20 @@ string ListTypeInfo::Initializer() const
 	}
 
 TableTypeInfo::TableTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(std::move(_t))
+	: AbstractTypeInfo(move(_t))
 	{
 	auto tbl = t->AsTableType();
 
-	indices = c->RegisterType(tbl->GetIndices());
+	auto gi = c->RegisterType(tbl->GetIndices());
+	indices = gi->Offset();
+	init_cohort = gi->InitCohort();
 
 	if ( tbl->Yield() )
-		yield = c->RegisterType(tbl->Yield());
+		{
+		gi = c->RegisterType(tbl->Yield());
+		yield = gi->Offset();
+		init_cohort = max(init_cohort, gi->InitCohort());
+		}
 	}
 
 string TableTypeInfo::Initializer() const
@@ -182,15 +195,21 @@ string TableTypeInfo::Initializer() const
 	}
 
 FuncTypeInfo::FuncTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(std::move(_t))
+	: AbstractTypeInfo(move(_t))
 	{
 	auto f = t->AsFuncType();
 
 	flavor = f->Flavor();
-	params = c->RegisterType(f->Params());
+	auto gi = c->RegisterType(f->Params());
+	params = gi->Offset();
+	init_cohort = gi->InitCohort();
 
 	if ( f->Yield() )
-		yield = c->RegisterType(f->Yield());
+		{
+		gi = c->RegisterType(f->Yield());
+		yield = gi->Offset();
+		init_cohort = max(init_cohort, gi->InitCohort());
+		}
 	}
 
 string FuncTypeInfo::Initializer() const
