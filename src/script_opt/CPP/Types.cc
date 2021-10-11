@@ -474,6 +474,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_TYPE:
+			gi = make_shared<TypeTypeInfo>(this, tp);
 				{
 				const auto& tt = t->AsTypeType()->GetType();
 				NoteNonRecordInitDependency(t, tt);
@@ -482,6 +483,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_VECTOR:
+			gi = make_shared<VectorTypeInfo>(this, tp);
 				{
 				const auto& yield = t->AsVectorType()->Yield();
 				NoteNonRecordInitDependency(t, yield);
@@ -527,6 +529,8 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 		else
 			NoteInitDependency(t, t_rep);
 		}
+
+	return processed_types[t];
 	}
 
 void CPPCompile::RegisterListType(const TypePtr& t)

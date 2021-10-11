@@ -136,4 +136,15 @@ string TypeTypeInfo::Initializer() const
 	return string("CPP_TypeType(") + Fmt(tt_offset) + ")";
 	}
 
+VectorTypeInfo::VectorTypeInfo(CPPCompile* c, TypePtr _t)
+	: AbstractTypeInfo(std::move(_t))
+	{
+	yt_offset = c->RegisterType(t->Yield());
+	}
+
+string VectorTypeInfo::Initializer() const
+	{
+	return string("CPP_VectorType(") + Fmt(yt_offset) + ")";
+	}
+
 	} // zeek::detail

@@ -152,6 +152,19 @@ private:
 	int tt_offset;
 	};
 
+class CPP_VectorType : public CPP_AbstractType
+	{
+public:
+	CPP_VectorType(int _yt_offset)
+		: CPP_AbstractType(), yt_offset(_yt_offset) { }
+
+	TypePtr Generate() const override
+		{ return make_intrusive<VectorType>(CPP__TypeConst__[yt_offset]); }
+
+private:
+	int yt_offset;
+	};
+
 
 	} // zeek::detail
 

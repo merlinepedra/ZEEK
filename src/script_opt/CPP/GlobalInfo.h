@@ -204,5 +204,16 @@ private:
 	int tt_offset;	// offset of the type held in this type
 	};
 
+class VectorTypeInfo : public AbstractTypeInfo
+	{
+public:
+	VectorTypeInfo(CPPCompile* c, TypePtr _t);
+
+	std::string Initializer() const override;
+
+private:
+	int yt_offset;	// offset of the yield type
+	};
+
 
 	} // zeek::detail
