@@ -341,8 +341,8 @@ void CPPCompile::GenEpilog()
 
 	for ( auto c = 0; c <= max_cohort; ++c )
 		for ( auto gi : all_global_info )
-			Emit("%s.InitializeCohort(%s, %s);",
-			     gi->InitializersName(), gi->GlobalsName(), Fmt(c));
+			Emit("%s.InitializeCohort(%s);",
+			     gi->InitializersName(), Fmt(c));
 
 	// Populate mappings for dynamic offsets.
 	NL();

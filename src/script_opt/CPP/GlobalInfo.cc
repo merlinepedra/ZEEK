@@ -36,8 +36,8 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* cc)
 	{
 	cc->NL();
 
-	cc->Emit("CPP_Globals<%s> %s = CPP_Globals<%s>(", CPPType(),
-	         InitializersName(), CPPType());
+	cc->Emit("CPP_Globals<%s> %s = CPP_Globals<%s>(%s, ", CPPType(),
+	         InitializersName(), CPPType(), base_name);
 
 	cc->IndentUp();
 	cc->Emit("{");
@@ -145,6 +145,24 @@ VectorTypeInfo::VectorTypeInfo(CPPCompile* c, TypePtr _t)
 string VectorTypeInfo::Initializer() const
 	{
 	return string("CPP_VectorType(") + Fmt(yt_offset) + ")";
+	}
+
+ListTypeInfo::ListTypeInfo(CPPCompile* c, TypePtr _t)
+	: AbstractTypeInfo(std::move(_t))
+	{
+	const auto& tl = t->AsTypeList()->GetTypes();
+
+	for ( auto& tl_i : tl )
+		type_offsets.push_back(c->RegisterType(tl_i));
+	}
+
+string ListTypeInfo::Initializer() const
+	{
+	string type_list;
+	for ( auto& t : type_offsets )
+		type_list += Fmt(t) + ", ";
+
+	return string("CPP_TypeList({ ") + type_list + "})";
 	}
 
 	} // zeek::detail

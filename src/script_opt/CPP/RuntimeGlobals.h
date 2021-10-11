@@ -10,34 +10,67 @@
 namespace zeek::detail
 	{
 
-extern std::vector<TypePtr> CPP__TypeConst__;
-
 template <class T>
 class CPP_Global
 	{
 public:
 	virtual ~CPP_Global() { }
-	virtual T Generate() const { return nullptr; }
+
+	virtual T PreInit() const { return nullptr; }
+	virtual T Generate(std::vector<T>& global_vec, int offset) const
+		{ return Generate(global_vec); }
+	virtual T Generate(std::vector<T>& global_vec) const
+		{ return nullptr; }
 	};
 
 template <class T>
 class CPP_Globals
 	{
 public:
-	CPP_Globals(std::vector<std::vector<CPP_Global<T>>> _inits)
-		: inits(std::move(_inits))
-		{ }
-
-	void InitializeCohort(std::vector<T>& global_vec, int cohort)
+	CPP_Globals(std::vector<T>& _global_vec, std::vector<std::vector<CPP_Global<T>>> _inits)
+		: global_vec(_global_vec), inits(std::move(_inits))
 		{
+		int num_globals = 0;
+
+		for ( const auto& cohort : inits )
+			{
+			cohort_offsets.push_back(num_globals);
+			num_globals += cohort.size();
+			}
+
+		global_vec.reserve(num_globals);
+
+		DoPreInits();
+		}
+
+	void InitializeCohort(int cohort)
+		{
+		int offset = cohort_offsets[cohort];
+
 		for ( const auto& i : inits[cohort] )
-			global_vec.emplace_back(i.Generate());
+			{
+			global_vec[offset] = i.Generate(global_vec, offset);
+			++offset;
+			}
 		}
 
 private:
+	void DoPreInits()
+		{
+		int offset = 0;
+
+		for ( const auto& cohort : inits )
+			for ( const auto& i : cohort )
+				global_vec[offset++] = i.PreInit();
+		}
+
+	std::vector<T>& global_vec;
+
 	// Indexed first by cohort, and then iterated over to get all
 	// of the initializers for that cohort.
 	std::vector<std::vector<CPP_Global<T>>> inits;
+
+	std::vector<int> cohort_offsets;
 	};
 
 class CPP_StringConst : public CPP_Global<StringValPtr>
@@ -46,7 +79,7 @@ public:
 	CPP_StringConst(int _len, const char* _chars)
 		: len(_len), chars(_chars) { }
 
-	StringValPtr Generate() const override
+	StringValPtr Generate(std::vector<StringValPtr>& global_vec) const override
 		{ return make_intrusive<StringVal>(len, chars); }
 
 private:
@@ -60,7 +93,7 @@ public:
 	CPP_PatternConst(const char* _pattern, int _is_case_insensitive)
 		: pattern(_pattern), is_case_insensitive(_is_case_insensitive) { }
 
-	PatternValPtr Generate() const override;
+	PatternValPtr Generate(std::vector<PatternValPtr>& global_vec) const override;
 
 private:
 	const char* pattern;
@@ -73,7 +106,7 @@ public:
 	CPP_AddrConst(const char* _init)
 		: init(_init) { }
 
-	AddrValPtr Generate() const override
+	AddrValPtr Generate(std::vector<AddrValPtr>& global_vec) const override
 		{ return make_intrusive<AddrVal>(init); }
 
 private:
@@ -86,7 +119,7 @@ public:
 	CPP_SubNetConst(const char* _init)
 		: init(_init) { }
 
-	SubNetValPtr Generate() const override
+	SubNetValPtr Generate(std::vector<SubNetValPtr>& global_vec) const override
 		{ return make_intrusive<SubNetVal>(init); }
 
 private:
@@ -110,7 +143,7 @@ public:
 	CPP_BaseType(TypeTag t)
 		: CPP_AbstractType(), tag(t) { }
 
-	TypePtr Generate() const override
+	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
 		{ return base_type(tag); }
 
 private:
@@ -123,7 +156,7 @@ public:
 	CPP_EnumType(std::string _name, std::vector<std::string> _elems, std::vector<int> _vals)
 		: CPP_AbstractType(_name), elems(std::move(_elems)), vals(std::move(_vals)) { }
 
-	TypePtr Generate() const override;
+	TypePtr Generate(std::vector<TypePtr>& global_vec) const override;
 
 private:
 	std::vector<std::string> elems;
@@ -135,7 +168,7 @@ class CPP_OpaqueType : public CPP_AbstractType
 public:
 	CPP_OpaqueType(std::string _name) : CPP_AbstractType(_name) { }
 
-	TypePtr Generate() const override
+	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
 		{ return make_intrusive<OpaqueType>(name); }
 	};
 
@@ -145,8 +178,8 @@ public:
 	CPP_TypeType(int _tt_offset)
 		: CPP_AbstractType(), tt_offset(_tt_offset) { }
 
-	TypePtr Generate() const override
-		{ return make_intrusive<TypeType>(CPP__TypeConst__[tt_offset]); }
+	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
+		{ return make_intrusive<TypeType>(global_vec[tt_offset]); }
 
 private:
 	int tt_offset;
@@ -158,11 +191,32 @@ public:
 	CPP_VectorType(int _yt_offset)
 		: CPP_AbstractType(), yt_offset(_yt_offset) { }
 
-	TypePtr Generate() const override
-		{ return make_intrusive<VectorType>(CPP__TypeConst__[yt_offset]); }
+	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
+		{ return make_intrusive<VectorType>(global_vec[yt_offset]); }
 
 private:
 	int yt_offset;
+	};
+
+class CPP_TypeList : public CPP_AbstractType
+	{
+public:
+	CPP_TypeList(std::vector<int> _types)
+		: CPP_AbstractType(), types(std::move(_types)) { }
+
+	TypePtr PreInit() const override { return make_intrusive<TypeList>(); }
+	TypePtr Generate(std::vector<TypePtr>& global_vec, int offset) const override
+		{
+		const auto& tl = cast_intrusive<TypeList>(global_vec[offset]);
+
+		for ( auto t : types )
+			tl->Append(global_vec[t]);
+
+		return tl;
+		}
+
+private:
+	std::vector<int> types;
 	};
 
 

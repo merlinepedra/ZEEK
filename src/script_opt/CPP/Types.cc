@@ -492,6 +492,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_LIST:
+			gi = make_shared<ListTypeInfo>(this, tp);
 			RegisterListType(tp);
 			break;
 

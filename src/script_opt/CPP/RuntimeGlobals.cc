@@ -11,7 +11,7 @@ using namespace std;
 namespace zeek::detail
 	{
 
-PatternValPtr CPP_PatternConst::Generate() const
+PatternValPtr CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	{
 	auto re = new RE_Matcher(pattern);
 	if ( is_case_insensitive )
@@ -22,7 +22,7 @@ PatternValPtr CPP_PatternConst::Generate() const
 	return make_intrusive<PatternVal>(re);
 	}
 
-TypePtr CPP_EnumType::Generate() const
+TypePtr CPP_EnumType::Generate(std::vector<TypePtr>& global_vec) const
 	{
 	auto et = get_enum_type__CPP(name);
 

@@ -99,15 +99,6 @@ public:
 	// the global is part of a CPP_Globals object.
 	std::string Declare() const { return type + " " + Name() + ";"; }
 
-	// Some globals require *pre*-initialization before they are
-	// fully initialized.  (These arise when there are circularities
-	// in definitions, such as for recursive types.)  The first of
-	// these methods is a predicate indicating whether the global
-	// needs such pre-initialization, and if so, the second provides
-	// the pre-initialization code snippet.
-	virtual bool HasPreInit() const { return false; }
-	virtual std::string PreInit() const { return ""; }
-
 	// Returns a C++ initialization for creating this global.
 	virtual std::string Initializer() const = 0;
 
@@ -213,6 +204,17 @@ public:
 
 private:
 	int yt_offset;	// offset of the yield type
+	};
+
+class ListTypeInfo : public AbstractTypeInfo
+	{
+public:
+	ListTypeInfo(CPPCompile* c, TypePtr _t);
+
+	std::string Initializer() const override;
+
+private:
+	std::vector<int> type_offsets;
 	};
 
 
