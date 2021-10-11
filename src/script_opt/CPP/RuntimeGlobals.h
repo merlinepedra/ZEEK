@@ -232,21 +232,26 @@ private:
 	int yield;
 	};
 
+class CPP_FuncType : public CPP_AbstractType
+	{
+public:
+	CPP_FuncType(int _params, int _yield, FunctionFlavor _flavor)
+		: CPP_AbstractType(), params(std::move(_params)), yield(_yield), flavor(_flavor) { }
+
+	TypePtr Generate(std::vector<TypePtr>& global_vec) const override;
+
+private:
+	int params;
+	int yield;
+	FunctionFlavor flavor;
+	};
+
 
 	} // zeek::detail
 
-// base_type(char*)
 // get_enum_type__CPP(" + char* + ");
 // get_record_type__CPP(" + char* + ");
 // get_record_type__CPP(nullptr);
-// make_intrusive<SubNetType>();
-// make_intrusive<TypeList>();
-// make_intrusive<OpaqueType>(" char* + ");
 // 
-// make_intrusive<FileType>(TYPEINDEX);
 // make_intrusive<FuncType>(cast_intrusive<RecordType>(TYPEINDEX), TYPEINDEX|nullpt
 // r, FLAVOR);
-// make_intrusive<SetType>(cast_intrusive<TypeList>(TYPEINDEX), nullptr);
-// make_intrusive<TableType>(cast_intrusive<TypeList>(TYPEINDEX), TYPEINDEX);
-// make_intrusive<TypeType>(TYPEINDEX);
-// make_intrusive<VectorType>(TYPEINDEX);

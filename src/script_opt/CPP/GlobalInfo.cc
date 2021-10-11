@@ -181,4 +181,29 @@ string TableTypeInfo::Initializer() const
 	return string("CPP_TableType(") + Fmt(indices) + ", " + Fmt(yield) + ")";
 	}
 
+FuncTypeInfo::FuncTypeInfo(CPPCompile* c, TypePtr _t)
+	: AbstractTypeInfo(std::move(_t))
+	{
+	auto f = t->AsFuncType();
+
+	flavor = f->Flavor();
+	params = c->RegisterType(f->Params());
+
+	if ( f->Yield() )
+		yield = c->RegisterType(f->Yield());
+	}
+
+string FuncTypeInfo::Initializer() const
+	{
+	string fl_name;
+	if ( flavor == FUNC_FLAVOR_FUNCTION )
+		fl_name = "FUNC_FLAVOR_FUNCTION";
+	else if ( flavor == FUNC_FLAVOR_EVENT )
+		fl_name = "FUNC_FLAVOR_EVENT";
+	else if ( flavor == FUNC_FLAVOR_HOOK )
+		fl_name = "FUNC_FLAVOR_HOOK";
+
+	return string("CPP_FuncType(") + Fmt(params) + ", " + Fmt(yield) + ", " + fl_name + ")";
+	}
+
 	} // zeek::detail

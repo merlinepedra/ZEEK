@@ -41,4 +41,12 @@ TypePtr CPP_TableType::Generate(std::vector<TypePtr>& global_vec) const
 	return make_intrusive<TableType>(cast_intrusive<TypeList>(global_vec[indices]), global_vec[yield]);
 	}
 
+TypePtr CPP_FuncType::Generate(std::vector<TypePtr>& global_vec) const
+	{
+	auto p = cast_intrusive<RecordType>(global_vec[params]);
+	auto y = yield >= 0 ? global_vec[yield] : nullptr;
+
+	return make_intrusive<FuncType>(p, y, flavor);
+	}
+
 	} // zeek::detail

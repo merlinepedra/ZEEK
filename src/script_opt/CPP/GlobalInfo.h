@@ -229,5 +229,18 @@ private:
 	int yield = -1;	// -1 = no yield
 	};
 
+class FuncTypeInfo : public AbstractTypeInfo
+	{
+public:
+	FuncTypeInfo(CPPCompile* c, TypePtr _t);
+
+	std::string Initializer() const override;
+
+private:
+	FunctionFlavor flavor;
+	int params;
+	int yield = -1;	// -1 = no yield
+	};
+
 
 	} // zeek::detail

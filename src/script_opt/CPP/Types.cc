@@ -506,6 +506,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_FUNC:
+			gi = make_shared<FuncTypeInfo>(this, tp);
 			RegisterFuncType(tp);
 			break;
 
