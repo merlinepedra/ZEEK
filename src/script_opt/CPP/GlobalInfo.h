@@ -217,5 +217,17 @@ private:
 	std::vector<int> type_offsets;
 	};
 
+class TableTypeInfo : public AbstractTypeInfo
+	{
+public:
+	TableTypeInfo(CPPCompile* c, TypePtr _t);
+
+	std::string Initializer() const override;
+
+private:
+	int indices;
+	int yield = -1;	// -1 = no yield
+	};
+
 
 	} // zeek::detail

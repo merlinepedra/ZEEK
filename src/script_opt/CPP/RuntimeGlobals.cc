@@ -33,4 +33,12 @@ TypePtr CPP_EnumType::Generate(std::vector<TypePtr>& global_vec) const
 	return et;
 	}
 
+TypePtr CPP_TableType::Generate(std::vector<TypePtr>& global_vec) const
+	{
+	if ( yield >= 0 )
+		return make_intrusive<SetType>(cast_intrusive<TypeList>(global_vec[indices]), nullptr);
+
+	return make_intrusive<TableType>(cast_intrusive<TypeList>(global_vec[indices]), global_vec[yield]);
+	}
+
 	} // zeek::detail

@@ -497,6 +497,7 @@ int CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_TABLE:
+			gi = make_shared<TableTypeInfo>(this, tp);
 			RegisterTableType(tp);
 			break;
 

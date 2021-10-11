@@ -219,6 +219,19 @@ private:
 	std::vector<int> types;
 	};
 
+class CPP_TableType : public CPP_AbstractType
+	{
+public:
+	CPP_TableType(int _indices, int _yield)
+		: CPP_AbstractType(), indices(std::move(_indices)), yield(_yield) { }
+
+	TypePtr Generate(std::vector<TypePtr>& global_vec) const override;
+
+private:
+	int indices;
+	int yield;
+	};
+
 
 	} // zeek::detail
 

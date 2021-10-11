@@ -165,4 +165,20 @@ string ListTypeInfo::Initializer() const
 	return string("CPP_TypeList({ ") + type_list + "})";
 	}
 
+TableTypeInfo::TableTypeInfo(CPPCompile* c, TypePtr _t)
+	: AbstractTypeInfo(std::move(_t))
+	{
+	auto tbl = t->AsTableType();
+
+	indices = c->RegisterType(tbl->GetIndices());
+
+	if ( tbl->Yield() )
+		yield = c->RegisterType(tbl->Yield());
+	}
+
+string TableTypeInfo::Initializer() const
+	{
+	return string("CPP_TableType(") + Fmt(indices) + ", " + Fmt(yield) + ")";
+	}
+
 	} // zeek::detail
