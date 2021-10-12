@@ -47,7 +47,7 @@ public:
 
 	std::string Declare() const;
 
-	void GenerateInitializers(CPPCompile* cc);
+	void GenerateInitializers(CPPCompile* c);
 
 protected:
 	int size = 0;	// total number of globals
@@ -148,6 +148,30 @@ public:
 
 private:
 	std::string init;
+	};
+
+
+class AttrInfo : public CPP_GlobalInfo
+	{
+public:
+	AttrInfo(CPPCompile* c, const AttrPtr& attr);
+
+	std::string Initializer() const override;
+
+protected:
+	std::string tag;
+	std::string expr_param;
+	};
+
+class AttrsInfo : public CPP_GlobalInfo
+	{
+public:
+	AttrsInfo(CPPCompile* c, const AttributesPtr& attrs);
+
+	std::string Initializer() const override;
+
+protected:
+	std::vector<int> attrs;
 	};
 
 

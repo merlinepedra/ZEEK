@@ -148,6 +148,15 @@ public:
 	// Returns the initialization info associated with the type.
 	std::shared_ptr<CPP_GlobalInfo> RegisterType(const TypePtr& t);
 
+	// Tracks a use of the given set of attributes, including
+	// initialization dependencies and the generation of any
+	// associated expressions.
+	//
+	// Returns the initialization info associated with the set of
+	// attributes.
+	std::shared_ptr<CPP_GlobalInfo> RegisterAttributes(const AttributesPtr& attrs);
+	std::shared_ptr<CPP_GlobalInfo> RegisterAttr(const AttrPtr& attr);
+
 private:
 	// Start of methods related to driving the overall compilation
 	// process.
@@ -156,6 +165,8 @@ private:
 
 	friend class CPP_GlobalsInfo;
 	friend class BaseTypeInfo;
+	friend class AttrInfo;
+	friend class AttrsInfo;
 
 	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type);
 
@@ -293,6 +304,13 @@ private:
 	// characters stripped or transformed, and guananteed not to
 	// conflict with C++ keywords.
 	std::string Canonicalize(const char* name) const;
+
+	// Returns the name of the global corresponding to an expression
+	// (which must be a EXPR_NAME).
+	std::string GlobalName(const ExprPtr& e)
+		{
+		return globals[e->AsNameExpr()->Id()->Name()];
+		}
 
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
@@ -492,6 +510,8 @@ private:
 	std::shared_ptr<CPP_GlobalsInfo> addr_constants;
 	std::shared_ptr<CPP_GlobalsInfo> subnet_constants;
 	std::shared_ptr<CPP_GlobalsInfo> type_info;
+	std::shared_ptr<CPP_GlobalsInfo> attr_info;
+	std::shared_ptr<CPP_GlobalsInfo> attrs_info;
 
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.
@@ -770,8 +790,8 @@ private:
 
 	// Used to prevent analysis of mutually-referring types from
 	// leading to infinite recursion.  Maps types to their global
-	// offsets (or, initially, to 0, if they're in the process of
-	// being registered).
+	// initialization information (or, initially, to nullptr, if
+	// they're in the process of being registered).
 	std::unordered_map<const Type*, std::shared_ptr<CPP_GlobalInfo>> processed_types;
 
 	//
@@ -781,11 +801,6 @@ private:
 	// Attributes arise mainly in the context of constructing types.
 	// See Attrs.cc for definitions.
 	//
-
-	// Tracks a use of the given set of attributes, including
-	// initialization dependencies and the generation of any
-	// associated expressions.
-	void RegisterAttributes(const AttributesPtr& attrs);
 
 	// Populates the 2nd and 3rd arguments with C++ representations
 	// of the tags and (optional) values/expressions associated with
@@ -801,11 +816,16 @@ private:
 	std::string AttrsName(const AttributesPtr& attrs);
 
 	// Returns a string representation of the name associated with
-	// different attributes (e.g., "ATTR_DEFAULT").
-	const char* AttrName(const AttrPtr& attr);
+	// different attribute tags (e.g., "ATTR_DEFAULT").
+	static const char* AttrName(AttrTag t);
 
 	// Similar for attributes, so we can reconstruct record types.
 	CPPTracker<Attributes> attributes = {"attrs", false, &compiled_items};
+
+	// Maps Attributes and Attr's to their global initialization
+	// information.
+	std::unordered_map<const Attributes*, std::shared_ptr<CPP_GlobalInfo>> processed_attrs;
+	std::unordered_map<const Attr*, std::shared_ptr<CPP_GlobalInfo>> processed_attr;
 
 	//
 	// End of methods related to managing script type attributes.
@@ -822,7 +842,7 @@ private:
 	// True if the given expression is simple enough that we can
 	// generate code to evaluate it directly, and don't need to
 	// create a separate function per GenInitExpr().
-	bool IsSimpleInitExpr(const ExprPtr& e) const;
+	static bool IsSimpleInitExpr(const ExprPtr& e);
 
 	// Returns the name of a function used to evaluate an
 	// initialization expression.

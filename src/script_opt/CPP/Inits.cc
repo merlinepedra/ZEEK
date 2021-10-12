@@ -70,7 +70,7 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	            name + "_cl>())), make_intrusive<ListExpr>(), false)");
 	}
 
-bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e) const
+bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e)
 	{
 	switch ( e->Tag() )
 		{

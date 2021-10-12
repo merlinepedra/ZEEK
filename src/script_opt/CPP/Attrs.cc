@@ -7,42 +7,72 @@ namespace zeek::detail
 
 using namespace std;
 
-void CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
+shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
 	{
-	if ( ! attrs || attributes.HasKey(attrs) )
-		return;
+	if ( ! attrs )
+		return nullptr;
+
+	auto a = attrs.get();
+
+	if ( processed_attrs.count(a) > 0 )
+		return processed_attrs[a];
 
 	attributes.AddKey(attrs);
 	AddInit(attrs);
 
-	auto a_rep = attributes.GetRep(attrs);
-	if ( a_rep != attrs.get() )
+	// The cast is just so we can make an IntrusivePtr.
+	auto a_rep = const_cast<Attributes*>(attributes.GetRep(attrs));
+	if ( a_rep != a )
 		{
-		NoteInitDependency(attrs.get(), a_rep);
-		return;
+		NoteInitDependency(a, a_rep);
+		AttributesPtr a_rep_ptr = {NewRef{}, a_rep};
+		processed_attrs[a] = RegisterAttributes(a_rep_ptr);
+		return processed_attrs[a];
 		}
 
 	for ( const auto& a : attrs->GetAttrs() )
 		{
-		const auto& e = a->GetExpr();
-		if ( e )
-			{
-			if ( IsSimpleInitExpr(e) )
-				{
-				// Make sure any dependencies it has get noted.
-				(void)GenExpr(e, GEN_VAL_PTR);
-				continue;
-				}
+		(void)RegisterAttr(a);
+		NoteInitDependency(attrs, a);
+		}
 
+	shared_ptr<CPP_GlobalInfo> gi = make_shared<AttrsInfo>(this, attrs);
+	attrs_info->AddInstance(gi);
+	processed_attrs[a] = gi;
+	return gi;
+	}
+
+shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttr(const AttrPtr& attr)
+	{
+	auto a = attr.get();
+
+	if ( processed_attr.count(a) > 0 )
+		return processed_attr[a];
+
+	const auto& e = a->GetExpr();
+	if ( e )
+		{
+		if ( IsSimpleInitExpr(e) )
+			// Make sure any dependencies it has get noted.
+			(void)GenExpr(e, GEN_VAL_PTR);
+
+		else
+			{
 			init_exprs.AddKey(e);
 			AddInit(e);
-			NoteInitDependency(attrs, e);
+			AddInit(attr);
+			NoteInitDependency(attr, e);
 
 			auto e_rep = init_exprs.GetRep(e);
 			if ( e_rep != e.get() )
 				NoteInitDependency(e.get(), e_rep);
 			}
 		}
+
+	shared_ptr<CPP_GlobalInfo> gi = make_shared<AttrInfo>(this, attr);
+	attr_info->AddInstance(gi);
+	processed_attr[a] = gi;
+	return gi;
 	}
 
 void CPPCompile::BuildAttrs(const AttributesPtr& attrs, string& attr_tags, string& attr_vals)
@@ -91,7 +121,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 
 		if ( ! e )
 			{
-			Emit("attrs.emplace_back(make_intrusive<Attr>(%s));", AttrName(attr));
+			Emit("attrs.emplace_back(make_intrusive<Attr>(%s));", AttrName(attr->Tag()));
 			continue;
 			}
 
@@ -104,7 +134,7 @@ void CPPCompile::GenAttrs(const AttributesPtr& attrs)
 		else
 			e_arg = InitExprName(e);
 
-		Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));", AttrName(attr), e_arg);
+		Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));", AttrName(attr->Tag()), e_arg);
 		}
 
 	Emit("return make_intrusive<Attributes>(attrs, nullptr, true, false);");
@@ -141,9 +171,9 @@ string CPPCompile::AttrsName(const AttributesPtr& a)
 	return attributes.KeyName(a) + "()";
 	}
 
-const char* CPPCompile::AttrName(const AttrPtr& attr)
+const char* CPPCompile::AttrName(AttrTag t)
 	{
-	switch ( attr->Tag() )
+	switch ( t )
 		{
 		case ATTR_OPTIONAL:
 			return "ATTR_OPTIONAL";

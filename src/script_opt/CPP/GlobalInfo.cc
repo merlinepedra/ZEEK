@@ -32,29 +32,29 @@ string CPP_GlobalsInfo::Declare() const
 	return string("std::vector<") + CPPType() + "> " + base_name + ";";
 	}
 
-void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* cc)
+void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	{
-	cc->NL();
+	c->NL();
 
-	cc->Emit("CPP_Globals<%s> %s = CPP_Globals<%s>(%s, ", CPPType(),
-	         InitializersName(), CPPType(), base_name);
+	c->Emit("CPP_Globals<%s> %s = CPP_Globals<%s>(%s, ", CPPType(),
+	        InitializersName(), CPPType(), base_name);
 
-	cc->IndentUp();
-	cc->Emit("{");
+	c->IndentUp();
+	c->Emit("{");
 
 	for ( auto& cohort : instances )
 		{
-		cc->Emit("{");
+		c->Emit("{");
 
-		for ( auto& c : cohort )
-			cc->Emit("%s,", c->Initializer());
+		for ( auto& co : cohort )
+			c->Emit("%s,", co->Initializer());
 
-		cc->Emit("},");
+		c->Emit("},");
 		}
 
-	cc->Emit("}");
-	cc->IndentDown();
-	cc->Emit(");");
+	c->Emit("}");
+	c->IndentDown();
+	c->Emit(");");
 	}
 
 
@@ -97,6 +97,69 @@ DescConstantInfo::DescConstantInfo(ValPtr v)
 string DescConstantInfo::Initializer() const
 	{
 	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
+	}
+
+
+AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
+	: CPP_GlobalInfo()
+	{
+	tag = c->AttrName(attr->Tag());
+	auto a_e = attr->GetExpr();
+
+	if ( a_e )
+		{
+		auto gi = c->RegisterType(a_e->GetType());
+		init_cohort = max(init_cohort, gi->InitCohort() + 1);
+
+		auto expr_type = gi->Name();
+
+		if ( ! CPPCompile::IsSimpleInitExpr(a_e) )
+			expr_param = c->InitExprName(a_e);
+
+		else if ( a_e->Tag() == EXPR_CONST )
+			expr_param = string("make_intrusive<ConstExpr>(") + c->GenExpr(a_e, CPPCompile::GEN_VAL_PTR) + ")";
+
+		else if ( a_e->Tag() == EXPR_NAME )
+                        expr_param = string("make_intrusive<NameExpr>(") + c->GlobalName(a_e) + ")";
+
+		else
+			{
+			ASSERT(a_e->Tag() == EXPR_RECORD_COERCE);
+                        expr_param = "make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>(";
+			expr_param += "make_intrusive<ListExpr>()), cast_intrusive<RecordType>(";
+			expr_param += expr_type + "))";
+			}
+		}
+
+	else
+		expr_param = "nullptr";
+	}
+
+string AttrInfo::Initializer() const
+	{
+	return string("CPP_Attr(") + tag + ", " + expr_param + ")";
+	}
+
+AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)
+	: CPP_GlobalInfo()
+	{
+	for ( const auto& a : _attrs->GetAttrs() )
+		{
+		ASSERT(c->processed_attr.count(a.get()) > 0);
+		auto gi = c->processed_attr[a.get()];
+		init_cohort = max(init_cohort, gi->InitCohort() + 1);
+		attrs.push_back(gi->Offset());
+		}
+	}
+
+string AttrsInfo::Initializer() const
+	{
+	string attr_list;
+
+	for ( auto a : attrs )
+		attr_list += Fmt(a) + ", ";
+
+	return string("CPP_Attrs({ ") + attr_list + "})";
 	}
 
 

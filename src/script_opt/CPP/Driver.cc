@@ -69,6 +69,8 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	addr_constants = InitGlobalInfo("Addr", "ValPtr");
 	subnet_constants = InitGlobalInfo("SubNet", "ValPtr");
 	type_info = InitGlobalInfo("Type", "Ptr");
+	attr_info = InitGlobalInfo("Attr", "Ptr");
+	attrs_info = InitGlobalInfo("Attributes", "Ptr");
 
 	Compile(report_uncompilable);
 	}
