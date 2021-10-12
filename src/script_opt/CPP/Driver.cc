@@ -146,10 +146,12 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	NL();
 
+#if 0
 	for ( auto gi : all_global_info )
 		Emit(gi->Declare());
 
 	NL();
+#endif
 
 	for ( auto& g : pfs.AllGlobals() )
 		CreateGlobal(g);
@@ -222,9 +224,6 @@ void CPPCompile::Compile(bool report_uncompilable)
 		RegisterCompiledBody(f);
 
 	GenFuncVarInits();
-
-	for ( auto gi : all_global_info )
-		gi->GenerateInitializers(this);
 
 	GenEpilog();
 	}
@@ -314,6 +313,9 @@ void CPPCompile::GenEpilog()
 	InitializeEnumMappings();
 
 	GenPreInits();
+
+	for ( auto gi : all_global_info )
+		gi->GenerateInitializers(this);
 
 	unordered_set<const Obj*> to_do;
 	for ( const auto& oi : obj_inits )

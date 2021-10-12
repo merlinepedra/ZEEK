@@ -115,6 +115,7 @@ protected:
 	int offset = -1;	// offset for CPP_GlobalsInfo, if non-nil
 	};
 
+
 class StringConstantInfo : public CPP_GlobalInfo
 	{
 public:
@@ -264,6 +265,20 @@ private:
 	FunctionFlavor flavor;
 	int params;
 	int yield = -1;	// -1 = no yield
+	};
+
+class RecordTypeInfo : public AbstractTypeInfo
+	{
+public:
+	RecordTypeInfo(CPPCompile* c, TypePtr _t);
+
+	std::string Initializer() const override;
+
+private:
+	CPPCompile* c;
+	std::vector<std::string> field_names;
+	std::vector<TypePtr> field_types;
+	std::vector<int> field_attrs;
 	};
 
 

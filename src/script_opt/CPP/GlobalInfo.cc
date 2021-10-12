@@ -288,4 +288,58 @@ string FuncTypeInfo::Initializer() const
 	return string("CPP_FuncType(") + Fmt(params) + ", " + Fmt(yield) + ", " + fl_name + ")";
 	}
 
+RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
+	: AbstractTypeInfo(move(_t)), c(_c)
+	{
+	auto r = t->AsRecordType()->Types();
+
+	if ( ! r )
+		return;
+
+	for ( const auto& r_i : *r )
+		{
+		field_names.emplace_back(r_i->id);
+
+		auto gi = c->RegisterType(r_i->type);
+		if ( gi )
+			init_cohort = max(init_cohort, gi->InitCohort());
+		// else it's a recursive type, no need to adjust cohort here
+
+		field_types.push_back(r_i->type);
+
+		if ( r_i->attrs )
+			{
+			gi = c->RegisterAttributes(r_i->attrs);
+			init_cohort = max(init_cohort, gi->InitCohort() + 1);
+			field_attrs.push_back(gi->Offset());
+			}
+		else
+			field_attrs.push_back(-1);
+		}
+	}
+
+string RecordTypeInfo::Initializer() const
+	{
+	string names, types, attrs;
+
+	for ( auto& n : field_names )
+		names += string("\"") + n + "\", ";
+
+	for ( auto& t : field_types )
+		{
+		// Because RecordType's can be recursively defined,
+		// during construction we couldn't reliably access
+		// the field type's offsets.  At this point, though,
+		// they should all be available.
+		auto gi = c->RegisterType(t);
+		ASSERT(gi);
+		types += Fmt(gi->Offset()) + ", ";
+		}
+
+	for ( auto& a : field_attrs )
+		attrs += Fmt(a) + ", ";
+
+	return string("CPP_RecordType({ ") + names + "}, { " + types + "}, { " + attrs + "})";
+	}
+
 	} // zeek::detail

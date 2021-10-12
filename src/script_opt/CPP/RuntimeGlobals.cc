@@ -11,6 +11,14 @@ using namespace std;
 namespace zeek::detail
 	{
 
+std::vector<StringValPtr> CPP__StringConst__;
+std::vector<PatternValPtr> CPP__PatternConst__;
+std::vector<AddrValPtr> CPP__AddrConst__;
+std::vector<SubNetValPtr> CPP__SubNetConst__;
+std::vector<TypePtr> CPP__TypeConst__;
+std::vector<AttrPtr> CPP__AttrConst__;
+std::vector<AttributesPtr> CPP__AttributesConst__;
+
 PatternValPtr CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	{
 	auto re = new RE_Matcher(pattern);
@@ -47,6 +55,51 @@ TypePtr CPP_FuncType::Generate(std::vector<TypePtr>& global_vec) const
 	auto y = yield >= 0 ? global_vec[yield] : nullptr;
 
 	return make_intrusive<FuncType>(p, y, flavor);
+	}
+
+TypePtr CPP_RecordType::PreInit() const
+	{
+	if ( name.empty() )
+		return get_record_type__CPP(nullptr);
+	else
+		return get_record_type__CPP(name.c_str());
+	}
+
+TypePtr CPP_RecordType::Generate(std::vector<TypePtr>& global_vec, int offset) const
+	{
+	auto t = global_vec[offset];
+	auto r = t->AsRecordType();
+	ASSERT(r);
+
+	if ( r->NumFields() == 0 )
+		{
+		type_decl_list tl;
+		int n = field_names.size();
+		for ( auto i = 0; i < n; ++i )
+			{
+			auto id = util::copy_string(field_names[i].c_str());
+			auto type = global_vec[field_types[i]];
+
+			AttributesPtr attrs;
+			if ( field_attrs[i] >= 0 )
+				attrs = CPP__AttributesConst__[field_attrs[i]];
+
+			tl.append(new TypeDecl(id, type, attrs));
+			}
+
+		r->AddFieldsDirectly(tl);
+		}
+
+	return t;
+	}
+
+AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
+	{
+	vector<AttrPtr> a_list;
+	for ( auto a : attrs )
+		a_list.push_back(CPP__AttrConst__[a]);
+
+	return make_intrusive<Attributes>(a_list, nullptr, false, false);
 	}
 
 	} // zeek::detail

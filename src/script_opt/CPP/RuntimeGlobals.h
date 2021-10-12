@@ -10,6 +10,14 @@
 namespace zeek::detail
 	{
 
+extern std::vector<StringValPtr> CPP__StringConst__;
+extern std::vector<PatternValPtr> CPP__PatternConst__;
+extern std::vector<AddrValPtr> CPP__AddrConst__;
+extern std::vector<SubNetValPtr> CPP__SubNetConst__;
+extern std::vector<TypePtr> CPP__TypeConst__;
+extern std::vector<AttrPtr> CPP__AttrConst__;
+extern std::vector<AttributesPtr> CPP__AttributesConst__;
+
 template <class T>
 class CPP_Global
 	{
@@ -126,6 +134,32 @@ private:
 	const char* init;
 	};
 
+class CPP_Attr : public CPP_Global<AttrPtr>
+	{
+public:
+	CPP_Attr(AttrTag t, ExprPtr e)
+		: tag(t), expr(e) { }
+
+	AttrPtr Generate(std::vector<AttrPtr>& global_vec) const override
+		{ return make_intrusive<Attr>(tag, expr); }
+
+private:
+	AttrTag tag;
+	ExprPtr expr;
+	};
+
+class CPP_Attrs : public CPP_Global<AttributesPtr>
+	{
+public:
+	CPP_Attrs(std::vector<int> _attrs)
+		: attrs(std::move(_attrs)) { }
+
+	AttributesPtr Generate(std::vector<AttributesPtr>& global_vec) const override;
+
+private:
+	std::vector<int> attrs;
+	};
+
 
 class CPP_AbstractType : public CPP_Global<TypePtr>
 	{
@@ -156,6 +190,7 @@ public:
 	CPP_EnumType(std::string _name, std::vector<std::string> _elems, std::vector<int> _vals)
 		: CPP_AbstractType(_name), elems(std::move(_elems)), vals(std::move(_vals)) { }
 
+	// TypePtr PreInit() const override { return get_enum_type__CPP(name); }
 	TypePtr Generate(std::vector<TypePtr>& global_vec) const override;
 
 private:
@@ -244,6 +279,21 @@ private:
 	int params;
 	int yield;
 	FunctionFlavor flavor;
+	};
+
+class CPP_RecordType : public CPP_AbstractType
+	{
+public:
+	CPP_RecordType(std::vector<std::string> _field_names, std::vector<int> _field_types, std::vector<int> _field_attrs)
+		: CPP_AbstractType(), field_names(std::move(_field_names)), field_types(_field_types), field_attrs(_field_attrs) { }
+
+	TypePtr PreInit() const override;
+	TypePtr Generate(std::vector<TypePtr>& global_vec, int offset) const override;
+
+private:
+	std::vector<std::string> field_names;
+	std::vector<int> field_types;
+	std::vector<int> field_attrs;
 	};
 
 

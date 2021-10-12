@@ -438,8 +438,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 	if ( processed_types.count(t) > 0 )
 		return processed_types[t];
 
-	// Add the type before going further, to avoid loops due to types
-	// that reference each other.
 	processed_types[t] = nullptr;
 
 	shared_ptr<CPP_GlobalInfo> gi;
@@ -475,6 +473,58 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 
 		case TYPE_TYPE:
 			gi = make_shared<TypeTypeInfo>(this, tp);
+			break;
+
+		case TYPE_VECTOR:
+			gi = make_shared<VectorTypeInfo>(this, tp);
+			break;
+
+		case TYPE_LIST:
+			gi = make_shared<ListTypeInfo>(this, tp);
+			break;
+
+		case TYPE_TABLE:
+			gi = make_shared<TableTypeInfo>(this, tp);
+			break;
+
+		case TYPE_RECORD:
+			gi = make_shared<RecordTypeInfo>(this, tp);
+			break;
+
+		case TYPE_FUNC:
+			gi = make_shared<FuncTypeInfo>(this, tp);
+			break;
+
+		default:
+			reporter->InternalError("bad type in CPPCompile::RegisterType");
+		}
+
+	type_info->AddInstance(gi);
+	processed_types[t] = gi;
+
+	switch ( t->Tag() )
+		{
+		case TYPE_ADDR:
+		case TYPE_ANY:
+		case TYPE_BOOL:
+		case TYPE_COUNT:
+		case TYPE_DOUBLE:
+		case TYPE_ERROR:
+		case TYPE_INT:
+		case TYPE_INTERVAL:
+		case TYPE_PATTERN:
+		case TYPE_PORT:
+		case TYPE_STRING:
+		case TYPE_TIME:
+		case TYPE_TIMER:
+		case TYPE_VOID:
+		case TYPE_SUBNET:
+		case TYPE_FILE:
+		case TYPE_ENUM:
+		case TYPE_OPAQUE:
+			break;
+
+		case TYPE_TYPE:
 				{
 				const auto& tt = t->AsTypeType()->GetType();
 				NoteNonRecordInitDependency(t, tt);
@@ -483,7 +533,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_VECTOR:
-			gi = make_shared<VectorTypeInfo>(this, tp);
 				{
 				const auto& yield = t->AsVectorType()->Yield();
 				NoteNonRecordInitDependency(t, yield);
@@ -492,12 +541,10 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_LIST:
-			gi = make_shared<ListTypeInfo>(this, tp);
 			RegisterListType(tp);
 			break;
 
 		case TYPE_TABLE:
-			gi = make_shared<TableTypeInfo>(this, tp);
 			RegisterTableType(tp);
 			break;
 
@@ -506,18 +553,11 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 			break;
 
 		case TYPE_FUNC:
-			gi = make_shared<FuncTypeInfo>(this, tp);
 			RegisterFuncType(tp);
 			break;
 
 		default:
 			reporter->InternalError("bad type in CPPCompile::RegisterType");
-		}
-
-	if ( gi )
-		{
-		type_info->AddInstance(gi);
-		processed_types[t] = gi;
 		}
 
 	AddInit(t);
