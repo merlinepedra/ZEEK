@@ -49,6 +49,8 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttr(const AttrPtr& attr)
 	if ( processed_attr.count(a) > 0 )
 		return processed_attr[a];
 
+	AddInit(attr);
+
 	const auto& e = a->GetExpr();
 	if ( e )
 		{
@@ -60,7 +62,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttr(const AttrPtr& attr)
 			{
 			init_exprs.AddKey(e);
 			AddInit(e);
-			AddInit(attr);
 			NoteInitDependency(attr, e);
 
 			auto e_rep = init_exprs.GetRep(e);
