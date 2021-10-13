@@ -3,7 +3,7 @@
 // Classes for run-time initialization and management of C++ globals used
 // by the generated code.
 
-#include "zeek/Val.h"
+#include "zeek/Expr.h"
 
 #pragma once
 
@@ -137,15 +137,15 @@ private:
 class CPP_Attr : public CPP_Global<AttrPtr>
 	{
 public:
-	CPP_Attr(AttrTag t, ExprPtr e)
-		: tag(t), expr(e) { }
+	CPP_Attr(AttrTag t, ExprPtr e1, CallExprPtr* e2)
+		: tag(t), expr1(e1), expr2(e2) { }
 
-	AttrPtr Generate(std::vector<AttrPtr>& global_vec) const override
-		{ return make_intrusive<Attr>(tag, expr); }
+	AttrPtr Generate(std::vector<AttrPtr>& global_vec) const override;
 
 private:
 	AttrTag tag;
-	ExprPtr expr;
+	ExprPtr expr1;
+	CallExprPtr* expr2;
 	};
 
 class CPP_Attrs : public CPP_Global<AttributesPtr>

@@ -106,6 +106,8 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 	tag = c->AttrName(attr->Tag());
 	auto a_e = attr->GetExpr();
 
+	expr1 = expr2 = "nullptr";
+
 	if ( a_e )
 		{
 		auto gi = c->RegisterType(a_e->GetType());
@@ -114,30 +116,27 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 		auto expr_type = gi->Name();
 
 		if ( ! CPPCompile::IsSimpleInitExpr(a_e) )
-			expr_param = c->InitExprName(a_e);
+			expr2 = std::string("&") + c->InitExprName(a_e);
 
 		else if ( a_e->Tag() == EXPR_CONST )
-			expr_param = string("make_intrusive<ConstExpr>(") + c->GenExpr(a_e, CPPCompile::GEN_VAL_PTR) + ")";
+			expr1 = string("make_intrusive<ConstExpr>(") + c->GenExpr(a_e, CPPCompile::GEN_VAL_PTR) + ")";
 
 		else if ( a_e->Tag() == EXPR_NAME )
-                        expr_param = string("make_intrusive<NameExpr>(") + c->GlobalName(a_e) + ")";
+                        expr1 = string("make_intrusive<NameExpr>(") + c->GlobalName(a_e) + ")";
 
 		else
 			{
 			ASSERT(a_e->Tag() == EXPR_RECORD_COERCE);
-                        expr_param = "make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>(";
-			expr_param += "make_intrusive<ListExpr>()), cast_intrusive<RecordType>(";
-			expr_param += expr_type + "))";
+                        expr1 = "make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>(";
+			expr1 += "make_intrusive<ListExpr>()), cast_intrusive<RecordType>(";
+			expr1 += expr_type + "))";
 			}
 		}
-
-	else
-		expr_param = "nullptr";
 	}
 
 string AttrInfo::Initializer() const
 	{
-	return string("CPP_Attr(") + tag + ", " + expr_param + ")";
+	return string("CPP_Attr(") + tag + ", " + expr1 + ", " + expr2 + ")";
 	}
 
 AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)

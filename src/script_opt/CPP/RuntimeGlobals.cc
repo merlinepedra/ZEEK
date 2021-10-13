@@ -93,6 +93,14 @@ TypePtr CPP_RecordType::Generate(std::vector<TypePtr>& global_vec, int offset) c
 	return t;
 	}
 
+AttrPtr CPP_Attr::Generate(std::vector<AttrPtr>& global_vec) const
+	{
+	if ( expr2 )
+		return make_intrusive<Attr>(tag, *expr2);
+	else
+		return make_intrusive<Attr>(tag, expr1);
+	}
+
 AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
 	{
 	vector<AttrPtr> a_list;

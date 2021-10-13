@@ -161,7 +161,7 @@ public:
 
 protected:
 	std::string tag;
-	std::string expr_param;
+	std::string expr1, expr2;
 	};
 
 class AttrsInfo : public CPP_GlobalInfo
