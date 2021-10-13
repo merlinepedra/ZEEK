@@ -220,8 +220,13 @@ void CPPCompile::Compile(bool report_uncompilable)
 		lambda_names.insert(n);
 		}
 
+	NL();
+	Emit("std::vector<CPP_RegisterBody> CPP__bodies_to_register = {");
+
 	for ( const auto& f : compiled_funcs )
 		RegisterCompiledBody(f);
+
+	Emit("};");
 
 	GenFuncVarInits();
 
@@ -270,6 +275,8 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 		// runs by enabling multiple tests to be compiled into the
 		// same binary).
 		h = merge_p_hashes(h, p_hash(cf_locs[f]));
+
+	Emit("\tCPP_RegisterBodyT<%s>(\"%s\", %s, %s, %s),", f + "_cl", f, Fmt(p), Fmt(h), events);
 
 	auto init = string("register_body__CPP(make_intrusive<") + f + "_cl>(\"" + f + "\"), " +
 	            Fmt(p) + ", " + Fmt(h) + ", " + events + ");";
@@ -328,7 +335,7 @@ void CPPCompile::GenEpilog()
 		GenStandaloneActivation();
 
 	NL();
-	DeclareFieldMappings();
+	InitializeFieldMappings();
 
 	NL();
 	Emit("void init__CPP()");
@@ -351,9 +358,14 @@ void CPPCompile::GenEpilog()
 			Emit("%s.InitializeCohort(%s);",
 			     gi->InitializersName(), Fmt(c));
 
+	NL();
+	Emit("for ( auto& b : CPP__bodies_to_register )");
+	Emit("\tb.Register();");
+
 	// Populate mappings for dynamic offsets.
 	NL();
-	InitializeFieldMappings();
+	Emit("for ( auto& fm : CPP__field_mappings__ )");
+	Emit("\tfield_mapping.push_back(fm.ComputeOffset());");
 
 	if ( standalone )
 		Emit("standalone_init__CPP();");

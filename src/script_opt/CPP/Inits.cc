@@ -396,7 +396,7 @@ void CPPCompile::GenInitCohort(int nc, unordered_set<const Obj*>& cohort)
 	EndBlock();
 	}
 
-void CPPCompile::DeclareFieldMappings()
+void CPPCompile::InitializeFieldMappings()
 	{
 	Emit("std::vector<CPP_FieldMapping> CPP__field_mappings__ = ");
 
@@ -416,12 +416,6 @@ void CPPCompile::DeclareFieldMappings()
 		}
 
 	EndBlock(true);
-	}
-
-void CPPCompile::InitializeFieldMappings()
-	{
-	Emit("for ( auto& fm : CPP__field_mappings__ )");
-	Emit("\tfield_mapping.push_back(fm.ComputeOffset());");
 	}
 
 void CPPCompile::InitializeEnumMappings()

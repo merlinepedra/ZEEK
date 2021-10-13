@@ -942,9 +942,7 @@ private:
 	// Initialize the mappings for record field offsets for field
 	// accesses into regions of records that can be extensible (and
 	// thus can vary at run-time to the offsets encountered during
-	// compilation).  The first method generates the initializers,
-	// the second executes over them to build the final mapping.
-	void DeclareFieldMappings();
+	// compilation).
 	void InitializeFieldMappings();
 
 	// Same, but for enum types.  The second form does a single
