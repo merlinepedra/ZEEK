@@ -297,6 +297,33 @@ private:
 	};
 
 
+class CPP_FieldMapping
+	{
+public:
+	CPP_FieldMapping(int _rec, std::string _field_name, int _field_type, int _field_attrs)
+		: rec(_rec), field_name(std::move(_field_name)), field_type(_field_type), field_attrs(_field_attrs)
+		{ }
+
+	int ComputeOffset() const;
+private:
+	int rec;
+	std::string field_name;
+	int field_type;
+	int field_attrs;
+	};
+
+class CPP_FieldMappings
+	{
+public:
+	CPP_FieldMappings(std::vector<CPP_FieldMapping> _mappings) : mappings(std::move(_mappings)) { }
+
+	void BuildOffsets(std::vector<int>& offsets) const;
+
+private:
+	std::vector<CPP_FieldMapping> mappings;
+	};
+
+
 	} // zeek::detail
 
 // get_enum_type__CPP(" + char* + ");

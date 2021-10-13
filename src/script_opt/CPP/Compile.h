@@ -695,9 +695,9 @@ private:
 	// not the outer map).
 	int num_rf_mappings = 0;
 
-	// For each entry in "field_mapping", the record and TypeDecl
-	// associated with the mapping.
-	std::vector<std::pair<const RecordType*, const TypeDecl*>> field_decls;
+	// For each entry in "field_mapping", the record (as a global
+	// offset) and TypeDecl associated with the mapping.
+	std::vector<std::pair<int, const TypeDecl*>> field_decls;
 
 	// For enums that are extended via redef's, maps each distinct
 	// value (that the compiled scripts refer to) to locations in the
@@ -942,7 +942,9 @@ private:
 	// Initialize the mappings for record field offsets for field
 	// accesses into regions of records that can be extensible (and
 	// thus can vary at run-time to the offsets encountered during
-	// compilation).
+	// compilation).  The first method generates the initializers,
+	// the second executes over them to build the final mapping.
+	void DeclareFieldMappings();
 	void InitializeFieldMappings();
 
 	// Same, but for enum types.  The second form does a single

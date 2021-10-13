@@ -396,30 +396,32 @@ void CPPCompile::GenInitCohort(int nc, unordered_set<const Obj*>& cohort)
 	EndBlock();
 	}
 
-void CPPCompile::InitializeFieldMappings()
+void CPPCompile::DeclareFieldMappings()
 	{
-	Emit("int fm_offset;");
+	Emit("CPP_FieldMappings CPP__field_mappings__ = CPP_FieldMappings(");
+
+	StartBlock();
 
 	for ( const auto& mapping : field_decls )
 		{
-		auto rt = mapping.first;
+		auto rt_arg = Fmt(mapping.first);
 		auto td = mapping.second;
-		std::string fn = td->id;
-		auto rt_name = GenTypeName(rt) + "->AsRecordType()";
+		auto type_gi = RegisterType(td->type);
+		auto attrs_gi = RegisterAttributes(td->attrs);
 
-		Emit("fm_offset = %s->FieldOffset(\"%s\");", rt_name, fn);
-		Emit("if ( fm_offset < 0 )");
+		auto type_arg = Fmt(type_gi->Offset());
+		auto attrs_arg = Fmt(attrs_gi ? attrs_gi->Offset() : -1);
 
-		StartBlock();
-		Emit("// field does not exist, create it");
-		Emit("fm_offset = %s->NumFields();", rt_name);
-		Emit("type_decl_list tl;");
-		Emit(GenTypeDecl(td));
-		Emit("%s->AddFieldsDirectly(tl);", rt_name);
-		EndBlock();
-
-		Emit("field_mapping.push_back(fm_offset);");
+		Emit("CPP_FieldMapping(%s, \"%s\", %s, %s),", rt_arg, td->id, type_arg, attrs_arg);
 		}
+
+	EndBlock();
+	Emit(");");
+	}
+
+void CPPCompile::InitializeFieldMappings()
+	{
+	Emit("CPP__field_mappings__.BuildOffsets(field_mapping);");
 	}
 
 void CPPCompile::InitializeEnumMappings()

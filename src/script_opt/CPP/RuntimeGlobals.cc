@@ -110,4 +110,38 @@ AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
 	return make_intrusive<Attributes>(a_list, nullptr, false, false);
 	}
 
+
+int CPP_FieldMapping::ComputeOffset() const
+	{
+	auto r = CPP__Type__[rec]->AsRecordType();
+	auto fm_offset = r->FieldOffset(field_name.c_str());
+
+	if ( fm_offset < 0 )
+		{
+                // field does not exist, create it
+                fm_offset = r->NumFields();
+
+		auto id = util::copy_string(field_name.c_str());
+		auto type = CPP__Type__[field_type];
+
+		AttributesPtr attrs;
+		if ( field_attrs >= 0 )
+			attrs = CPP__Attributes__[field_attrs];
+
+		type_decl_list tl;
+		tl.append(new TypeDecl(id, type, attrs));
+
+		r->AddFieldsDirectly(tl);
+		}
+
+	return fm_offset;
+	}
+
+void CPP_FieldMappings::BuildOffsets(std::vector<int>& offsets) const
+	{
+	for ( const auto& m : mappings )
+		offsets.push_back(m.ComputeOffset());
+	}
+
+
 	} // zeek::detail

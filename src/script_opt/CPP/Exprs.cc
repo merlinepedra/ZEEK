@@ -1177,8 +1177,10 @@ string CPPCompile::GenField(const ExprPtr& rec, int field)
 		// New mapping.
 		mapping_slot = num_rf_mappings++;
 
+		ASSERT(processed_types.count(rt) > 0);
+		auto rt_offset = processed_types[rt]->Offset();
 		string field_name = rt->FieldName(field);
-		field_decls.emplace_back(pair(rt, rt->FieldDecl(field)));
+		field_decls.emplace_back(pair(rt_offset, rt->FieldDecl(field)));
 
 		if ( record_field_mappings.count(rt) > 0 )
 			// We're already tracking this record.

@@ -328,6 +328,9 @@ void CPPCompile::GenEpilog()
 		GenStandaloneActivation();
 
 	NL();
+	DeclareFieldMappings();
+
+	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();
