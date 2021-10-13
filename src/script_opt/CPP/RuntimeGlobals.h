@@ -312,17 +312,6 @@ private:
 	int field_attrs;
 	};
 
-class CPP_FieldMappings
-	{
-public:
-	CPP_FieldMappings(std::vector<CPP_FieldMapping> _mappings) : mappings(std::move(_mappings)) { }
-
-	void BuildOffsets(std::vector<int>& offsets) const;
-
-private:
-	std::vector<CPP_FieldMapping> mappings;
-	};
-
 
 	} // zeek::detail
 

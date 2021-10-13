@@ -137,11 +137,5 @@ int CPP_FieldMapping::ComputeOffset() const
 	return fm_offset;
 	}
 
-void CPP_FieldMappings::BuildOffsets(std::vector<int>& offsets) const
-	{
-	for ( const auto& m : mappings )
-		offsets.push_back(m.ComputeOffset());
-	}
-
 
 	} // zeek::detail
