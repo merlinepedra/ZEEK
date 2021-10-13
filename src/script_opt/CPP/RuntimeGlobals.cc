@@ -11,13 +11,13 @@ using namespace std;
 namespace zeek::detail
 	{
 
-std::vector<StringValPtr> CPP__StringConst__;
-std::vector<PatternValPtr> CPP__PatternConst__;
-std::vector<AddrValPtr> CPP__AddrConst__;
-std::vector<SubNetValPtr> CPP__SubNetConst__;
-std::vector<TypePtr> CPP__TypeConst__;
-std::vector<AttrPtr> CPP__AttrConst__;
-std::vector<AttributesPtr> CPP__AttributesConst__;
+std::vector<StringValPtr> CPP__String__;
+std::vector<PatternValPtr> CPP__Pattern__;
+std::vector<AddrValPtr> CPP__Addr__;
+std::vector<SubNetValPtr> CPP__SubNet__;
+std::vector<TypePtr> CPP__Type__;
+std::vector<AttrPtr> CPP__Attr__;
+std::vector<AttributesPtr> CPP__Attributes__;
 
 PatternValPtr CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	{
@@ -82,7 +82,7 @@ TypePtr CPP_RecordType::Generate(std::vector<TypePtr>& global_vec, int offset) c
 
 			AttributesPtr attrs;
 			if ( field_attrs[i] >= 0 )
-				attrs = CPP__AttributesConst__[field_attrs[i]];
+				attrs = CPP__Attributes__[field_attrs[i]];
 
 			tl.append(new TypeDecl(id, type, attrs));
 			}
@@ -97,7 +97,7 @@ AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
 	{
 	vector<AttrPtr> a_list;
 	for ( auto a : attrs )
-		a_list.push_back(CPP__AttrConst__[a]);
+		a_list.push_back(CPP__Attr__[a]);
 
 	return make_intrusive<Attributes>(a_list, nullptr, false, false);
 	}

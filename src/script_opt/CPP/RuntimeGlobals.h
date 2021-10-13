@@ -10,13 +10,13 @@
 namespace zeek::detail
 	{
 
-extern std::vector<StringValPtr> CPP__StringConst__;
-extern std::vector<PatternValPtr> CPP__PatternConst__;
-extern std::vector<AddrValPtr> CPP__AddrConst__;
-extern std::vector<SubNetValPtr> CPP__SubNetConst__;
-extern std::vector<TypePtr> CPP__TypeConst__;
-extern std::vector<AttrPtr> CPP__AttrConst__;
-extern std::vector<AttributesPtr> CPP__AttributesConst__;
+extern std::vector<StringValPtr> CPP__String__;
+extern std::vector<PatternValPtr> CPP__Pattern__;
+extern std::vector<AddrValPtr> CPP__Addr__;
+extern std::vector<SubNetValPtr> CPP__SubNet__;
+extern std::vector<TypePtr> CPP__Type__;
+extern std::vector<AttrPtr> CPP__Attr__;
+extern std::vector<AttributesPtr> CPP__Attributes__;
 
 template <class T>
 class CPP_Global

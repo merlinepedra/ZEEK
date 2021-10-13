@@ -25,7 +25,7 @@ public:
 	CPP_GlobalsInfo(std::string _tag, std::string type)
 		: tag(std::move(_tag))
 		{
-		base_name = std::string("CPP__") + tag + "Const__";
+		base_name = std::string("CPP__") + tag + "__";
 		CPP_type = tag + type;
 		}
 
