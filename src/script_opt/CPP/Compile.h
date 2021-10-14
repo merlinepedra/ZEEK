@@ -147,6 +147,8 @@ public:
 	//
 	// Returns the initialization info associated with the type.
 	std::shared_ptr<CPP_GlobalInfo> RegisterType(const TypePtr& t);
+	int TypeOffset(const TypePtr& t)
+		{ return GI_Offset(RegisterType(t)); }
 
 	// Tracks a use of the given set of attributes, including
 	// initialization dependencies and the generation of any
@@ -156,6 +158,10 @@ public:
 	// attributes.
 	std::shared_ptr<CPP_GlobalInfo> RegisterAttributes(const AttributesPtr& attrs);
 	std::shared_ptr<CPP_GlobalInfo> RegisterAttr(const AttrPtr& attr);
+	int AttributesOffset(const AttributesPtr& attrs)
+		{ return GI_Offset(RegisterAttributes(attrs)); }
+	int AttrOffset(const AttrPtr& attr)
+		{ return GI_Offset(RegisterAttr(attr)); }
 
 private:
 	// Start of methods related to driving the overall compilation
@@ -938,6 +944,9 @@ private:
 
 	// Generates a function for initializing the nc'th cohort.
 	void GenInitCohort(int nc, std::unordered_set<const Obj*>& cohort);
+
+	int GI_Offset(const std::shared_ptr<CPP_GlobalInfo>& gi) const
+		{ return gi ? gi->Offset() : -1; }
 
 	// Generate code to initialize the mappings for record field
 	// offsets for field accesses into regions of records that

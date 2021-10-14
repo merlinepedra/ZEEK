@@ -406,11 +406,8 @@ void CPPCompile::InitializeFieldMappings()
 		{
 		auto rt_arg = Fmt(mapping.first);
 		auto td = mapping.second;
-		auto type_gi = RegisterType(td->type);
-		auto attrs_gi = RegisterAttributes(td->attrs);
-
-		auto type_arg = Fmt(type_gi->Offset());
-		auto attrs_arg = Fmt(attrs_gi ? attrs_gi->Offset() : -1);
+		auto type_arg = Fmt(TypeOffset(td->type));
+		auto attrs_arg = Fmt(AttributesOffset(td->attrs));
 
 		Emit("CPP_FieldMapping(%s, \"%s\", %s, %s),", rt_arg, td->id, type_arg, attrs_arg);
 		}
