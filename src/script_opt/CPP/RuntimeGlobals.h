@@ -4,7 +4,7 @@
 // by the generated code.
 
 #include "zeek/Expr.h"
-#include "zeek/script_opt/ProfileFunc.h"
+#include "zeek/script_opt/CPP/RuntimeInit.h"
 
 #pragma once
 
@@ -346,6 +346,20 @@ public:
 	};
 
 	} // zeek::detail
+
+class CPP_LookupBiF
+	{
+public:
+	CPP_LookupBiF(zeek::Func*& _bif_func, std::string _bif_name)
+		: bif_func(_bif_func), bif_name(std::move(_bif_name))
+		{ }
+
+	void ResolveBiF() const { bif_func = zeek::detail::lookup_bif__CPP(bif_name.c_str()); }
+
+protected:
+	zeek::Func*& bif_func;
+	std::string bif_name;
+	};
 
 // get_enum_type__CPP(" + char* + ");
 // get_record_type__CPP(" + char* + ");

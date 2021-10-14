@@ -939,16 +939,19 @@ private:
 	// Generates a function for initializing the nc'th cohort.
 	void GenInitCohort(int nc, std::unordered_set<const Obj*>& cohort);
 
-	// Initialize the mappings for record field offsets for field
-	// accesses into regions of records that can be extensible (and
-	// thus can vary at run-time to the offsets encountered during
-	// compilation).
+	// Generate code to initialize the mappings for record field
+	// offsets for field accesses into regions of records that
+	// can be extensible (and thus can vary at run-time to the
+	// offsets encountered during compilation).
 	void InitializeFieldMappings();
 
 	// Same, but for enum types.  The second form does a single
 	// initialization corresponding to the given index in the mapping.
 	void InitializeEnumMappings();
 	void InitializeEnumMappings(const EnumType* et, const std::string& e_name, int index);
+
+	// Generate code to initialize BiFs.
+	void InitializeBiFs();
 
 	// Generate the initialization hook for this set of compiled code.
 	void GenInitHook();
@@ -968,6 +971,11 @@ private:
 	// A list of "activations" (essentially, post-initializations).
 	// See AddActivation() above.
 	std::vector<std::string> activations;
+
+	// A list of BiFs to look up during initialization.  First
+	// string is the name of the C++ global holding the BiF, the
+	// second is its name as known to Zeek.
+	std::unordered_map<std::string, std::string> BiFs;
 
 	// Expressions for which we need to generate initialization-time
 	// code.  Currently, these are only expressions appearing in

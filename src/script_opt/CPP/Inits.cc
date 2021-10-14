@@ -450,6 +450,18 @@ void CPPCompile::InitializeEnumMappings(const EnumType* et, const string& e_name
 	AddInit(et, "}");
 	}
 
+void CPPCompile::InitializeBiFs()
+	{
+	Emit("std::vector<CPP_LookupBiF> CPP__BiF_lookups__ = ");
+
+	StartBlock();
+
+	for ( const auto& b : BiFs )
+		Emit("CPP_LookupBiF(%s, \"%s\"),", b.first, b.second);
+
+	EndBlock(true);
+	}
+
 void CPPCompile::GenInitHook()
 	{
 	NL();

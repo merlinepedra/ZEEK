@@ -338,6 +338,9 @@ void CPPCompile::GenEpilog()
 	InitializeFieldMappings();
 
 	NL();
+	InitializeBiFs();
+
+	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();
@@ -357,6 +360,10 @@ void CPPCompile::GenEpilog()
 		for ( auto gi : all_global_info )
 			Emit("%s.InitializeCohort(%s);",
 			     gi->InitializersName(), Fmt(c));
+
+	NL();
+	Emit("for ( auto& b : CPP__BiF_lookups__ )");
+	Emit("\tb.ResolveBiF();");
 
 	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");

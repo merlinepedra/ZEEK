@@ -170,6 +170,9 @@ void CPPCompile::AddBiF(const ID* b, bool is_var)
 	if ( AddGlobal(n, "bif", true) )
 		Emit("Func* %s;", globals[n]);
 
+	ASSERT(BiFs.count(globals[n]) == 0);
+	BiFs[globals[n]] = bn;
+
 	auto lookup = string("lookup_bif__CPP(\"") + bn + "\")";
 
 	if ( standalone )
