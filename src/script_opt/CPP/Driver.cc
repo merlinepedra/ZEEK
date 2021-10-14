@@ -317,8 +317,6 @@ void CPPCompile::GenEpilog()
 			types_OBS.LogIfNew(t, addl_tag, hm.HashFile());
 		}
 
-	InitializeEnumMappings();
-
 	GenPreInits();
 
 	for ( auto gi : all_global_info )
@@ -333,6 +331,9 @@ void CPPCompile::GenEpilog()
 
 	if ( standalone )
 		GenStandaloneActivation();
+
+	NL();
+	InitializeEnumMappings();
 
 	NL();
 	InitializeFieldMappings();
@@ -370,6 +371,9 @@ void CPPCompile::GenEpilog()
 	Emit("\tb.Register();");
 
 	// Populate mappings for dynamic offsets.
+	NL();
+	Emit("for ( auto& em : CPP__enum_mappings__ )");
+	Emit("\tenum_mapping.push_back(em.ComputeOffset());");
 	NL();
 	Emit("for ( auto& fm : CPP__field_mappings__ )");
 	Emit("\tfield_mapping.push_back(fm.ComputeOffset());");

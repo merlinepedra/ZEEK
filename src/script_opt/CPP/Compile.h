@@ -713,7 +713,7 @@ private:
 
 	// For each entry in "enum_mapping", the record and name
 	// associated with the mapping.
-	std::vector<std::pair<const EnumType*, std::string>> enum_names;
+	std::vector<std::pair<int, std::string>> enum_names;
 
 	//
 	// End of methods related to generating code for AST Expr's.
@@ -945,10 +945,8 @@ private:
 	// offsets encountered during compilation).
 	void InitializeFieldMappings();
 
-	// Same, but for enum types.  The second form does a single
-	// initialization corresponding to the given index in the mapping.
+	// Same, but for enum types.
 	void InitializeEnumMappings();
-	void InitializeEnumMappings(const EnumType* et, const std::string& e_name, int index);
 
 	// Generate code to initialize BiFs.
 	void InitializeBiFs();

@@ -138,4 +138,21 @@ int CPP_FieldMapping::ComputeOffset() const
 	}
 
 
+int CPP_EnumMapping::ComputeOffset() const
+	{
+	auto e = CPP__Type__[e_type]->AsEnumType();
+
+	auto em_offset = e->Lookup(e_name);
+	if ( em_offset < 0 )
+		{
+		em_offset = e->Names().size();
+		if ( e->Lookup(em_offset) )
+			reporter->InternalError("enum inconsistency while initializing compiled scripts");
+		e->AddNameInternal(e_name, em_offset);
+		}
+
+	return em_offset;
+	}
+
+
 	} // zeek::detail

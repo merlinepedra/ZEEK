@@ -306,12 +306,29 @@ public:
 		{ }
 
 	int ComputeOffset() const;
+
 private:
 	int rec;
 	std::string field_name;
 	int field_type;
 	int field_attrs;
 	};
+
+
+class CPP_EnumMapping
+	{
+public:
+	CPP_EnumMapping(int _e_type, std::string _e_name)
+		: e_type(_e_type), e_name(std::move(_e_name))
+		{ }
+
+	int ComputeOffset() const;
+
+private:
+	int e_type;
+	std::string e_name;
+	};
+
 
 class CPP_RegisterBody
 	{

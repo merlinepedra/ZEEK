@@ -420,34 +420,14 @@ void CPPCompile::InitializeFieldMappings()
 
 void CPPCompile::InitializeEnumMappings()
 	{
-	int n = 0;
+	Emit("std::vector<CPP_EnumMapping> CPP__enum_mappings__ = ");
+
+	StartBlock();
 
 	for ( const auto& mapping : enum_names )
-		InitializeEnumMappings(mapping.first, mapping.second, n++);
-	}
+		Emit("CPP_EnumMapping(%s, \"%s\"),", Fmt(mapping.first), mapping.second);
 
-void CPPCompile::InitializeEnumMappings(const EnumType* et, const string& e_name, int index)
-	{
-	AddInit(et, "{");
-
-	auto et_name = GenTypeName(et) + "->AsEnumType()";
-	AddInit(et, "int em_offset = " + et_name + "->Lookup(\"" + e_name + "\");");
-	AddInit(et, "if ( em_offset < 0 )");
-
-	AddInit(et, "\t{");
-	AddInit(et, "\tem_offset = " + et_name + "->Names().size();");
-	// The following is to catch the case where the offset is already
-	// in use due to it being specified explicitly for an existing enum.
-	AddInit(et, "\tif ( " + et_name + "->Lookup(em_offset) )");
-	AddInit(
-		et,
-		"\t\treporter->InternalError(\"enum inconsistency while initializing compiled scripts\");");
-	AddInit(et, "\t" + et_name + "->AddNameInternal(\"" + e_name + "\", em_offset);");
-	AddInit(et, "\t}");
-
-	AddInit(et, "enum_mapping[" + Fmt(index) + "] = em_offset;");
-
-	AddInit(et, "}");
+	EndBlock(true);
 	}
 
 void CPPCompile::InitializeBiFs()
