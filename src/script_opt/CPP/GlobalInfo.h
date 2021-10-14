@@ -209,7 +209,18 @@ public:
 	std::string Initializer() const override;
 	};
 
-class TypeTypeInfo : public AbstractTypeInfo
+
+class CompoundTypeInfo : public AbstractTypeInfo
+	{
+public:
+	CompoundTypeInfo(CPPCompile* _c, TypePtr _t)
+		: AbstractTypeInfo(_t), c(_c) { }
+
+protected:
+	CPPCompile* c;
+	};
+
+class TypeTypeInfo : public CompoundTypeInfo
 	{
 public:
 	TypeTypeInfo(CPPCompile* c, TypePtr _t);
@@ -217,10 +228,10 @@ public:
 	std::string Initializer() const override;
 
 private:
-	int tt_offset;	// offset of the type held in this type
+	TypePtr tt;
 	};
 
-class VectorTypeInfo : public AbstractTypeInfo
+class VectorTypeInfo : public CompoundTypeInfo
 	{
 public:
 	VectorTypeInfo(CPPCompile* c, TypePtr _t);
@@ -228,10 +239,10 @@ public:
 	std::string Initializer() const override;
 
 private:
-	int yt_offset;	// offset of the yield type
+	TypePtr yield;
 	};
 
-class ListTypeInfo : public AbstractTypeInfo
+class ListTypeInfo : public CompoundTypeInfo
 	{
 public:
 	ListTypeInfo(CPPCompile* c, TypePtr _t);
@@ -239,10 +250,10 @@ public:
 	std::string Initializer() const override;
 
 private:
-	std::vector<int> type_offsets;
+	const std::vector<TypePtr>& types;
 	};
 
-class TableTypeInfo : public AbstractTypeInfo
+class TableTypeInfo : public CompoundTypeInfo
 	{
 public:
 	TableTypeInfo(CPPCompile* c, TypePtr _t);
@@ -251,10 +262,10 @@ public:
 
 private:
 	int indices;
-	int yield = -1;	// -1 = no yield
+	TypePtr yield;
 	};
 
-class FuncTypeInfo : public AbstractTypeInfo
+class FuncTypeInfo : public CompoundTypeInfo
 	{
 public:
 	FuncTypeInfo(CPPCompile* c, TypePtr _t);
@@ -263,11 +274,11 @@ public:
 
 private:
 	FunctionFlavor flavor;
-	int params;
-	int yield = -1;	// -1 = no yield
+	TypePtr params;
+	TypePtr yield;
 	};
 
-class RecordTypeInfo : public AbstractTypeInfo
+class RecordTypeInfo : public CompoundTypeInfo
 	{
 public:
 	RecordTypeInfo(CPPCompile* c, TypePtr _t);
@@ -275,7 +286,6 @@ public:
 	std::string Initializer() const override;
 
 private:
-	CPPCompile* c;
 	std::vector<std::string> field_names;
 	std::vector<TypePtr> field_types;
 	std::vector<int> field_attrs;

@@ -362,8 +362,6 @@ public:
 		}
 	};
 
-	} // zeek::detail
-
 class CPP_LookupBiF
 	{
 public:
@@ -377,6 +375,8 @@ protected:
 	zeek::Func*& bif_func;
 	std::string bif_name;
 	};
+
+	} // zeek::detail
 
 // get_enum_type__CPP(" + char* + ");
 // get_record_type__CPP(" + char* + ");

@@ -186,91 +186,99 @@ string OpaqueTypeInfo::Initializer() const
 	return string("CPP_OpaqueType(\"") + t->GetName() + "\")";
 	}
 
-TypeTypeInfo::TypeTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(move(_t))
+
+TypeTypeInfo::TypeTypeInfo(CPPCompile* _c, TypePtr _t)
+	: CompoundTypeInfo(_c, move(_t))
 	{
-	auto gi = c->RegisterType(t->AsTypeType()->GetType());
-	tt_offset = gi->Offset();
-	init_cohort = gi->InitCohort();
+	tt = t->AsTypeType()->GetType();
+	auto gi = c->RegisterType(tt);
+	if ( gi )
+		init_cohort = gi->InitCohort();
 	}
 
 string TypeTypeInfo::Initializer() const
 	{
-	return string("CPP_TypeType(") + Fmt(tt_offset) + ")";
+	return string("CPP_TypeType(") + Fmt(c->TypeOffset(tt)) + ")";
 	}
 
-VectorTypeInfo::VectorTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(move(_t))
+VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
+	: CompoundTypeInfo(_c, move(_t))
 	{
-	auto gi = c->RegisterType(t->Yield());
-	yt_offset = gi->Offset();
-	init_cohort = gi->InitCohort();
+	yield = t->Yield();
+	auto gi = c->RegisterType(yield);
+	if ( gi )
+		init_cohort = gi->InitCohort();
 	}
 
 string VectorTypeInfo::Initializer() const
 	{
-	return string("CPP_VectorType(") + Fmt(yt_offset) + ")";
+	return string("CPP_VectorType(") + Fmt(c->TypeOffset(yield)) + ")";
 	}
 
-ListTypeInfo::ListTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(move(_t))
+ListTypeInfo::ListTypeInfo(CPPCompile* _c, TypePtr _t)
+	: CompoundTypeInfo(_c, move(_t)), types(t->AsTypeList()->GetTypes())
 	{
-	const auto& tl = t->AsTypeList()->GetTypes();
-
-	for ( auto& tl_i : tl )
+	for ( auto& tl_i : types )
 		{
 		auto gi = c->RegisterType(tl_i);
-		type_offsets.push_back(gi->Offset());
-		init_cohort = max(init_cohort, gi->InitCohort());
+		if ( gi )
+			init_cohort = max(init_cohort, gi->InitCohort());
 		}
 	}
 
 string ListTypeInfo::Initializer() const
 	{
 	string type_list;
-	for ( auto& t : type_offsets )
-		type_list += Fmt(t) + ", ";
+	for ( auto& t : types )
+		type_list += Fmt(c->TypeOffset(t)) + ", ";
 
 	return string("CPP_TypeList({ ") + type_list + "})";
 	}
 
-TableTypeInfo::TableTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(move(_t))
+TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
+	: CompoundTypeInfo(_c, move(_t))
 	{
 	auto tbl = t->AsTableType();
 
 	auto gi = c->RegisterType(tbl->GetIndices());
+	ASSERT(gi);
 	indices = gi->Offset();
 	init_cohort = gi->InitCohort();
 
-	if ( tbl->Yield() )
+	yield = tbl->Yield();
+
+	if ( yield )
 		{
-		gi = c->RegisterType(tbl->Yield());
-		yield = gi->Offset();
-		init_cohort = max(init_cohort, gi->InitCohort());
+		gi = c->RegisterType(yield);
+		if ( gi )
+			init_cohort = max(init_cohort, gi->InitCohort());
 		}
 	}
 
 string TableTypeInfo::Initializer() const
 	{
-	return string("CPP_TableType(") + Fmt(indices) + ", " + Fmt(yield) + ")";
+	auto y = Fmt(yield ? c->TypeOffset(yield) : -1);
+	return string("CPP_TableType(") + Fmt(indices) + ", " + y + ")";
 	}
 
-FuncTypeInfo::FuncTypeInfo(CPPCompile* c, TypePtr _t)
-	: AbstractTypeInfo(move(_t))
+FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
+	: CompoundTypeInfo(_c, move(_t))
 	{
 	auto f = t->AsFuncType();
 
 	flavor = f->Flavor();
-	auto gi = c->RegisterType(f->Params());
-	params = gi->Offset();
-	init_cohort = gi->InitCohort();
+	params = f->Params();
+	yield = f->Yield();
 
-	if ( f->Yield() )
+	auto gi = c->RegisterType(f->Params());
+	if ( gi )
+		init_cohort = gi->InitCohort();
+
+	if ( yield )
 		{
 		gi = c->RegisterType(f->Yield());
-		yield = gi->Offset();
-		init_cohort = max(init_cohort, gi->InitCohort());
+		if ( gi )
+			init_cohort = max(init_cohort, gi->InitCohort());
 		}
 	}
 
@@ -284,11 +292,13 @@ string FuncTypeInfo::Initializer() const
 	else if ( flavor == FUNC_FLAVOR_HOOK )
 		fl_name = "FUNC_FLAVOR_HOOK";
 
-	return string("CPP_FuncType(") + Fmt(params) + ", " + Fmt(yield) + ", " + fl_name + ")";
+	auto y = Fmt(yield ? c->TypeOffset(yield) : -1);
+
+	return string("CPP_FuncType(") + Fmt(c->TypeOffset(params)) + ", " + y + ", " + fl_name + ")";
 	}
 
 RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
-	: AbstractTypeInfo(move(_t)), c(_c)
+	: CompoundTypeInfo(_c, move(_t))
 	{
 	auto r = t->AsRecordType()->Types();
 
@@ -330,9 +340,7 @@ string RecordTypeInfo::Initializer() const
 		// during construction we couldn't reliably access
 		// the field type's offsets.  At this point, though,
 		// they should all be available.
-		auto gi = c->RegisterType(t);
-		ASSERT(gi);
-		types += Fmt(gi->Offset()) + ", ";
+		types += Fmt(c->TypeOffset(t)) + ", ";
 		}
 
 	for ( auto& a : field_attrs )
