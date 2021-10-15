@@ -15,6 +15,7 @@ std::vector<StringValPtr> CPP__String__;
 std::vector<PatternValPtr> CPP__Pattern__;
 std::vector<AddrValPtr> CPP__Addr__;
 std::vector<SubNetValPtr> CPP__SubNet__;
+std::vector<ListValPtr> CPP__List__;
 std::vector<TypePtr> CPP__Type__;
 std::vector<AttrPtr> CPP__Attr__;
 std::vector<AttributesPtr> CPP__Attributes__;
@@ -28,6 +29,16 @@ PatternValPtr CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec)
 	re->Compile();
 
 	return make_intrusive<PatternVal>(re);
+	}
+
+ListValPtr CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec) const
+	{
+	auto l = make_intrusive<ListVal>(TYPE_ANY);
+
+	for ( auto& v : vals )
+		l->Append(v);
+
+	return l;
 	}
 
 

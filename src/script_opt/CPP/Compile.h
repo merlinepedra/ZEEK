@@ -170,6 +170,7 @@ private:
 	//
 
 	friend class CPP_GlobalsInfo;
+	friend class ListConstantInfo;
 	friend class BaseTypeInfo;
 	friend class AttrInfo;
 	friend class AttrsInfo;
@@ -514,6 +515,7 @@ private:
 	std::shared_ptr<CPP_GlobalsInfo> re_constants;
 	std::shared_ptr<CPP_GlobalsInfo> addr_constants;
 	std::shared_ptr<CPP_GlobalsInfo> subnet_constants;
+	std::shared_ptr<CPP_GlobalsInfo> list_constants;
 	std::shared_ptr<CPP_GlobalsInfo> type_info;
 	std::shared_ptr<CPP_GlobalsInfo> attr_info;
 	std::shared_ptr<CPP_GlobalsInfo> attrs_info;

@@ -99,6 +99,21 @@ string DescConstantInfo::Initializer() const
 	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
 	}
 
+ListConstantInfo::ListConstantInfo(CPPCompile* c, ValPtr v)
+	: CPP_GlobalInfo()
+	{
+	auto lv = cast_intrusive<ListVal>(v);
+	auto n = lv->Length();
+
+	for ( auto i = 0; i < n; ++i )
+		vals += c->BuildConstant(v, lv->Idx(i)) + ", ";
+	}
+
+string ListConstantInfo::Initializer() const
+	{
+	return string("CPP_ListConst({ " + vals + "})");
+	}
+
 
 AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 	: CPP_GlobalInfo()

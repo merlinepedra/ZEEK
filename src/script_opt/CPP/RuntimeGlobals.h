@@ -15,6 +15,7 @@ extern std::vector<StringValPtr> CPP__String__;
 extern std::vector<PatternValPtr> CPP__Pattern__;
 extern std::vector<AddrValPtr> CPP__Addr__;
 extern std::vector<SubNetValPtr> CPP__SubNet__;
+extern std::vector<ListValPtr> CPP__List__;
 extern std::vector<TypePtr> CPP__Type__;
 extern std::vector<AttrPtr> CPP__Attr__;
 extern std::vector<AttributesPtr> CPP__Attributes__;
@@ -134,6 +135,19 @@ public:
 private:
 	const char* init;
 	};
+
+class CPP_ListConst : public CPP_Global<ListValPtr>
+	{
+public:
+	CPP_ListConst(std::vector<ValPtr> _vals)
+		: vals(_vals) { }
+
+	ListValPtr Generate(std::vector<ListValPtr>& global_vec) const override;
+
+private:
+	std::vector<ValPtr> vals;
+	};
+
 
 class CPP_Attr : public CPP_Global<AttrPtr>
 	{

@@ -68,6 +68,7 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	re_constants = InitGlobalInfo("Pattern", "ValPtr");
 	addr_constants = InitGlobalInfo("Addr", "ValPtr");
 	subnet_constants = InitGlobalInfo("SubNet", "ValPtr");
+	list_constants = InitGlobalInfo("List", "ValPtr");
 	type_info = InitGlobalInfo("Type", "Ptr");
 	attr_info = InitGlobalInfo("Attr", "Ptr");
 	attrs_info = InitGlobalInfo("Attributes", "Ptr");

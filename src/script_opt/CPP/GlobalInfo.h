@@ -151,6 +151,17 @@ private:
 	std::string init;
 	};
 
+class ListConstantInfo : public CPP_GlobalInfo
+	{
+public:
+	ListConstantInfo(CPPCompile* c, ValPtr v);
+
+	std::string Initializer() const override;
+
+private:
+	std::string vals;
+	};
+
 
 class AttrInfo : public CPP_GlobalInfo
 	{

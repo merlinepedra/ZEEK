@@ -115,6 +115,11 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		const_name = subnet_constants->NextName();
 		subnet_constants->AddInstance(make_shared<DescConstantInfo>(vp));
 		}
+	else if ( tag == TYPE_LIST )
+		{
+		const_name = list_constants->NextName();
+		list_constants->AddInstance(make_shared<ListConstantInfo>(this, vp));
+		}
 	else
 		// Need a C++ global for this constant.
 		const_name = string("CPP__const__") + Fmt(int(constants.size()));
@@ -128,11 +133,8 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		case TYPE_PATTERN:
 		case TYPE_ADDR:
 		case TYPE_SUBNET:
-			AddInit(vp);
-			break;
-
 		case TYPE_LIST:
-			AddListConstant(vp, const_name);
+			AddInit(vp);
 			break;
 
 		case TYPE_RECORD:
