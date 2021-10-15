@@ -57,6 +57,12 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
+EnumConstantInfo::EnumConstantInfo(CPPCompile* c, ValPtr v)
+	{
+	auto ev = v->AsEnumVal();
+	e_type = c->TypeOffset(ev->GetType());
+	e_val = v->AsEnum();
+	}
 
 StringConstantInfo::StringConstantInfo(ValPtr v)
 	: CPP_GlobalInfo()
@@ -106,12 +112,75 @@ ListConstantInfo::ListConstantInfo(CPPCompile* c, ValPtr v)
 	auto n = lv->Length();
 
 	for ( auto i = 0; i < n; ++i )
-		vals += c->BuildConstant(v, lv->Idx(i)) + ", ";
+		{
+		auto gi = c->RegisterConst(lv->Idx(i));
+		init_cohort = max(init_cohort, gi->InitCohort());
+		vals += Fmt(gi->Offset()) + ", ";
+		}
 	}
 
 string ListConstantInfo::Initializer() const
 	{
 	return string("CPP_ListConst({ " + vals + "})");
+	}
+
+VectorConstantInfo::VectorConstantInfo(CPPCompile* c, ValPtr v)
+	: CPP_GlobalInfo()
+	{
+	auto vv = cast_intrusive<VectorVal>(v);
+	auto n = vv->Size();
+
+	yield = c->TypeOffset(v->GetType()->Yield());
+
+	for ( auto i = 0; i < n; ++i )
+		{
+		auto gi = c->RegisterConst(vv->ValAt(i));
+		init_cohort = max(init_cohort, gi->InitCohort());
+		vals += Fmt(gi->Offset()) + ", ";
+		}
+	}
+
+RecordConstantInfo::RecordConstantInfo(CPPCompile* c, ValPtr v)
+	: CPP_GlobalInfo()
+	{
+	auto r = cast_intrusive<RecordVal>(v);
+	auto n = r->NumFields();
+
+	type = c->TypeOffset(r->GetType());
+
+	for ( auto i = 0; i < n; ++i )
+		{
+		const auto& r_i = r->GetField(i);
+
+		if ( r_i )
+			{
+			auto gi = c->RegisterConst(r_i);
+			init_cohort = max(init_cohort, gi->InitCohort());
+			vals += Fmt(gi->Offset());
+			}
+		else
+			vals += Fmt(-1);
+
+		vals += ", ";
+		}
+	}
+
+TableConstantInfo::TableConstantInfo(CPPCompile* c, ValPtr v)
+	: CPP_GlobalInfo()
+	{
+	auto tv = cast_intrusive<TableVal>(v);
+	type = c->TypeOffset(tv->GetType());
+
+	for ( auto& tv_i : tv->ToMap() )
+		{
+		auto gi = c->RegisterConst(tv_i.first);
+		init_cohort = max(init_cohort, gi->InitCohort());
+		indices += Fmt(gi->Offset()) + ", ";
+
+		gi = c->RegisterConst(tv_i.second);
+		init_cohort = max(init_cohort, gi->InitCohort());
+		vals += Fmt(gi->Offset()) + ", ";
+		}
 	}
 
 

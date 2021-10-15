@@ -150,6 +150,8 @@ public:
 	int TypeOffset(const TypePtr& t)
 		{ return GI_Offset(RegisterType(t)); }
 
+	std::shared_ptr<CPP_GlobalInfo> RegisterConst(const ValPtr& c);
+
 	// Tracks a use of the given set of attributes, including
 	// initialization dependencies and the generation of any
 	// associated expressions.

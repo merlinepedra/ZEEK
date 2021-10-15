@@ -185,16 +185,8 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 	const_info[tag]->AddInstance(gi);
 
 #if 0
-		case TYPE_RECORD:
-			AddRecordConstant(vp, const_name);
-			break;
-
 		case TYPE_TABLE:
 			AddTableConstant(vp, const_name);
-			break;
-
-		case TYPE_VECTOR:
-			AddVectorConstant(vp, const_name);
 			break;
 
 		case TYPE_FUNC:
@@ -252,16 +244,8 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 			AddInit(vp);
 			break;
 
-		case TYPE_RECORD:
-			AddRecordConstant(vp, const_name);
-			break;
-
 		case TYPE_TABLE:
 			AddTableConstant(vp, const_name);
-			break;
-
-		case TYPE_VECTOR:
-			AddVectorConstant(vp, const_name);
 			break;
 
 		case TYPE_FUNC:

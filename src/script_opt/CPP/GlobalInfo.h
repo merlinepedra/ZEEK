@@ -4,6 +4,7 @@
 // generated code.
 
 #include "zeek/Val.h"
+#include "zeek/File.h"
 
 #pragma once
 
@@ -253,7 +254,7 @@ private:
 class PortConstantInfo : public CPP_GlobalInfo
 	{
 public:
-	PortConstantInfo(ValPtr v);
+	PortConstantInfo(ValPtr v) : p(static_cast<UnsignedValImplementation*>(v->AsPortVal())->Get()) { }
 
 	std::string Initializer() const override
 		{
@@ -261,7 +262,7 @@ public:
 		}
 
 private:
-	int p;
+	bro_uint_t p;
 	};
 
 class ListConstantInfo : public CPP_GlobalInfo
@@ -280,9 +281,13 @@ class VectorConstantInfo : public CPP_GlobalInfo
 public:
 	VectorConstantInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override;
+	std::string Initializer() const override
+		{
+		return std::string("CPP_VectorConst(") + std::to_string(yield) + ", { " + vals + "})";
+		}
 
 private:
+	int yield;
 	std::string vals;
 	};
 
@@ -291,9 +296,13 @@ class RecordConstantInfo : public CPP_GlobalInfo
 public:
 	RecordConstantInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override;
+	std::string Initializer() const override
+		{
+		return std::string("CPP_RecordConst(") + std::to_string(type) + ", { " + vals + "})";
+		}
 
 private:
+	int type;
 	std::string vals;
 	};
 
@@ -302,32 +311,44 @@ class TableConstantInfo : public CPP_GlobalInfo
 public:
 	TableConstantInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override;
+	std::string Initializer() const override
+		{
+		return std::string("CPP_TableConst(") + std::to_string(type) + ", { " + indices + "}, { " + vals + "})";
+		}
 
 private:
+	int type;
+	std::string indices;
 	std::string vals;
 	};
 
 class FileConstantInfo : public CPP_GlobalInfo
 	{
 public:
-	FileConstantInfo(CPPCompile* c, ValPtr v);
+	FileConstantInfo(CPPCompile* c, ValPtr v)
+		: CPP_GlobalInfo(), name(cast_intrusive<FileVal>(v)->Get()->Name())
+		{ }
 
-	std::string Initializer() const override;
+	std::string Initializer() const override
+		{
+		return std::string("CPP_FileConst(\"") + name + "\")";
+		}
 
 private:
-	std::string vals;
+	std::string name;
 	};
 
 class FuncConstantInfo : public CPP_GlobalInfo
 	{
 public:
-	FuncConstantInfo(CPPCompile* c, ValPtr v);
+	FuncConstantInfo(CPPCompile* _c, ValPtr v)
+		: CPP_GlobalInfo(), c(_c), f(v->AsFuncVal()) { }
 
 	std::string Initializer() const override;
 
 private:
-	std::string vals;
+	CPPCompile* c;
+	FuncVal* f;
 	};
 
 
