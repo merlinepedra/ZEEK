@@ -117,46 +117,32 @@ protected:
 	};
 
 
-class BoolConstInfo : public CPP_GlobalInfo
+class BasicConstInfo : public CPP_GlobalInfo
 	{
 public:
-	BoolConstInfo(ValPtr v) : b(v->AsBool()) { }
+	BasicConstInfo(std:: string name, std::string val)
+		{
+		init = std::string("CPP_") + name + "Const(" + val + ")";
+		}
 
 	std::string Initializer() const override
 		{
-		return std::string("CPP_BoolConst(") + (b ? "true" : "false") + ")";
+		return init;
 		}
 
 private:
-	bool b;
+	std::string init;
 	};
 
-class IntConstInfo : public CPP_GlobalInfo
+class DescConstInfo : public CPP_GlobalInfo
 	{
 public:
-	IntConstInfo(ValPtr v) : i(v->AsInt()) { }
+	DescConstInfo(ValPtr v);
 
-	std::string Initializer() const override
-		{
-		return std::string("CPP_IntConst(") + std::to_string(i) + ")";
-		}
+	std::string Initializer() const override;
 
 private:
-	bro_int_t i;
-	};
-
-class CountConstInfo : public CPP_GlobalInfo
-	{
-public:
-	CountConstInfo(ValPtr v) : u(v->AsCount()) { }
-
-	std::string Initializer() const override
-		{
-		return std::string("CPP_CountConst(") + std::to_string(u) + ")";
-		}
-
-private:
-	bro_uint_t u;
+	std::string init;
 	};
 
 class EnumConstInfo : public CPP_GlobalInfo
@@ -172,48 +158,6 @@ public:
 private:
 	int e_type;
 	int e_val;
-	};
-
-class DoubleConstInfo : public CPP_GlobalInfo
-	{
-public:
-	DoubleConstInfo(ValPtr v) : d(v->AsDouble()) { }
-
-	std::string Initializer() const override
-		{
-		return std::string("CPP_DoubleConst(") + std::to_string(d) + ")";
-		}
-
-private:
-	double d;
-	};
-
-class TimeConstInfo : public CPP_GlobalInfo
-	{
-public:
-	TimeConstInfo(ValPtr v) : d(v->AsTime()) { }
-
-	std::string Initializer() const override
-		{
-		return std::string("CPP_TimeConst(") + std::to_string(d) + ")";
-		}
-
-private:
-	double d;
-	};
-
-class IntervalConstInfo : public CPP_GlobalInfo
-	{
-public:
-	IntervalConstInfo(ValPtr v) : d(v->AsInterval()) { }
-
-	std::string Initializer() const override
-		{
-		return std::string("CPP_IntervalConst(") + std::to_string(d) + ")";
-		}
-
-private:
-	double d;
 	};
 
 class StringConstInfo : public CPP_GlobalInfo
@@ -238,17 +182,6 @@ public:
 private:
 	std::string pattern;
 	int is_case_insensitive;
-	};
-
-class DescConstInfo : public CPP_GlobalInfo
-	{
-public:
-	DescConstInfo(ValPtr v);
-
-	std::string Initializer() const override;
-
-private:
-	std::string init;
 	};
 
 class PortConstInfo : public CPP_GlobalInfo

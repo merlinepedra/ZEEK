@@ -26,7 +26,7 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 		RegisterConst(c->ValuePtr());
 	}
 
-std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
+shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
 	{
 	// Make sure the value pointer, which might be transient
 	// in construction, sticks around so we can track its
@@ -72,44 +72,32 @@ std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
 
 	auto tag = t->Tag();
 	auto const_name = const_info[tag]->NextName();
-	std::shared_ptr<CPP_GlobalInfo> gi;
+	shared_ptr<CPP_GlobalInfo> gi;
 
 	switch ( tag )
 		{
                 case TYPE_BOOL:
-			gi = make_shared<BoolConstInfo>(vp);
+			gi = make_shared<BasicConstInfo>("Bool", vp->AsBool() ? "true" : "false");
 			break;
 
                 case TYPE_INT:
-			gi = make_shared<IntConstInfo>(vp);
+			gi = make_shared<BasicConstInfo>("Int", to_string(vp->AsInt()));
 			break;
 
                 case TYPE_COUNT:
-			gi = make_shared<CountConstInfo>(vp);
-			break;
-
-                case TYPE_ENUM:
-			gi = make_shared<EnumConstInfo>(this, vp);
+			gi = make_shared<BasicConstInfo>("Count", to_string(vp->AsCount()));
 			break;
 
                 case TYPE_DOUBLE:
-			gi = make_shared<DoubleConstInfo>(vp);
+			gi = make_shared<BasicConstInfo>("Double", to_string(vp->AsDouble()));
 			break;
 
                 case TYPE_TIME:
-			gi = make_shared<TimeConstInfo>(vp);
+			gi = make_shared<BasicConstInfo>("Time", to_string(vp->AsDouble()));
 			break;
 
                 case TYPE_INTERVAL:
-			gi = make_shared<IntervalConstInfo>(vp);
-			break;
-
-                case TYPE_STRING:
-			gi = make_shared<StringConstInfo>(vp);
-			break;
-
-                case TYPE_PATTERN:
-			gi = make_shared<PatternConstInfo>(vp);
+			gi = make_shared<BasicConstInfo>("Interval", to_string(vp->AsDouble()));
 			break;
 
                 case TYPE_ADDR:
@@ -118,6 +106,18 @@ std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
 
                 case TYPE_SUBNET:
 			gi = make_shared<DescConstInfo>(vp);
+			break;
+
+                case TYPE_ENUM:
+			gi = make_shared<EnumConstInfo>(this, vp);
+			break;
+
+                case TYPE_STRING:
+			gi = make_shared<StringConstInfo>(vp);
+			break;
+
+                case TYPE_PATTERN:
+			gi = make_shared<PatternConstInfo>(vp);
 			break;
 
                 case TYPE_PORT:

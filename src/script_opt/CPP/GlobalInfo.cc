@@ -57,6 +57,19 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
+DescConstInfo::DescConstInfo(ValPtr v)
+	: CPP_GlobalInfo()
+	{
+	ODesc d;
+	v->Describe(&d);
+	init = d.Description();
+	}
+
+string DescConstInfo::Initializer() const
+	{
+	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
+	}
+
 EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)
 	{
 	auto ev = v->AsEnumVal();
@@ -90,19 +103,6 @@ PatternConstInfo::PatternConstInfo(ValPtr v)
 string PatternConstInfo::Initializer() const
 	{
 	return string("CPP_PatternConst(") + pattern + ", " + Fmt(is_case_insensitive) + ")";
-	}
-
-DescConstInfo::DescConstInfo(ValPtr v)
-	: CPP_GlobalInfo()
-	{
-	ODesc d;
-	v->Describe(&d);
-	init = d.Description();
-	}
-
-string DescConstInfo::Initializer() const
-	{
-	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
 	}
 
 CompoundConstInfo::CompoundConstInfo(CPPCompile* c, ValPtr v)
