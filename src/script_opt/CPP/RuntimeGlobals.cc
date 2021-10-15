@@ -34,7 +34,7 @@ std::vector<TypePtr> CPP__Type__;
 std::vector<AttrPtr> CPP__Attr__;
 std::vector<AttributesPtr> CPP__Attributes__;
 
-PatternValPtr CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
+PatternValPtr CPP_PatternConst::Generate() const
 	{
 	auto re = new RE_Matcher(pattern);
 	if ( is_case_insensitive )
@@ -45,7 +45,7 @@ PatternValPtr CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec)
 	return make_intrusive<PatternVal>(re);
 	}
 
-ListValPtr CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec) const
+ListValPtr CPP_ListConst::Generate() const
 	{
 	auto l = make_intrusive<ListVal>(TYPE_ANY);
 
@@ -56,7 +56,7 @@ ListValPtr CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec) const
 	}
 
 
-AttrPtr CPP_Attr::Generate(std::vector<AttrPtr>& global_vec) const
+AttrPtr CPP_Attr::Generate() const
 	{
 	if ( expr2 )
 		return make_intrusive<Attr>(tag, *expr2);
@@ -64,7 +64,7 @@ AttrPtr CPP_Attr::Generate(std::vector<AttrPtr>& global_vec) const
 		return make_intrusive<Attr>(tag, expr1);
 	}
 
-AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
+AttributesPtr CPP_Attrs::Generate() const
 	{
 	vector<AttrPtr> a_list;
 	for ( auto a : attrs )
@@ -74,7 +74,7 @@ AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
 	}
 
 
-TypePtr CPP_EnumType::DoGenerate(std::vector<TypePtr>& global_vec) const
+TypePtr CPP_EnumType::DoGenerate() const
 	{
 	auto et = get_enum_type__CPP(name);
 

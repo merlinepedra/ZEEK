@@ -77,27 +77,27 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
 	switch ( tag )
 		{
                 case TYPE_BOOL:
-			gi = make_shared<BasicConstInfo>("Bool", vp->AsBool() ? "true" : "false");
+			gi = make_shared<BasicConstInfo>("Bool", "bool", vp->AsBool() ? "true" : "false");
 			break;
 
                 case TYPE_INT:
-			gi = make_shared<BasicConstInfo>("Int", to_string(vp->AsInt()));
+			gi = make_shared<BasicConstInfo>("Int", "bro_int_t", to_string(vp->AsInt()));
 			break;
 
                 case TYPE_COUNT:
-			gi = make_shared<BasicConstInfo>("Count", to_string(vp->AsCount()));
+			gi = make_shared<BasicConstInfo>("Count", "bro_uint_t", to_string(vp->AsCount()));
 			break;
 
                 case TYPE_DOUBLE:
-			gi = make_shared<BasicConstInfo>("Double", to_string(vp->AsDouble()));
+			gi = make_shared<BasicConstInfo>("Double", "double", to_string(vp->AsDouble()));
 			break;
 
                 case TYPE_TIME:
-			gi = make_shared<BasicConstInfo>("Time", to_string(vp->AsDouble()));
+			gi = make_shared<BasicConstInfo>("Time", "double", to_string(vp->AsDouble()));
 			break;
 
                 case TYPE_INTERVAL:
-			gi = make_shared<BasicConstInfo>("Interval", to_string(vp->AsDouble()));
+			gi = make_shared<BasicConstInfo>("Interval", "double", to_string(vp->AsDouble()));
 			break;
 
                 case TYPE_ADDR:

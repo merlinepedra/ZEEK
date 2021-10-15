@@ -120,18 +120,18 @@ protected:
 class BasicConstInfo : public CPP_GlobalInfo
 	{
 public:
-	BasicConstInfo(std:: string name, std::string val)
-		{
-		init = std::string("CPP_") + name + "Const(" + val + ")";
-		}
+	BasicConstInfo(std:: string _name, std::string _cpp_type, std::string _val)
+		: name(std::move(_name)), cpp_type(std::move(_cpp_type)), val(std::move(_val)) { }
 
 	std::string Initializer() const override
 		{
-		return init;
+		return std::string("CPP_BasicConst<") + name + "ValPtr, " + cpp_type + ", " + name + "Val>(" + val + ")";
 		}
 
 private:
-	std::string init;
+	std::string name;
+	std::string cpp_type;
+	std::string val;
 	};
 
 class DescConstInfo : public CPP_GlobalInfo

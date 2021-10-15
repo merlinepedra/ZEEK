@@ -52,6 +52,8 @@ public:
 	virtual T Generate(std::vector<T>& global_vec, int offset) const
 		{ return Generate(global_vec); }
 	virtual T Generate(std::vector<T>& global_vec) const
+		{ return Generate(); }
+	virtual T Generate() const
 		{ return nullptr; }
 	};
 
@@ -105,13 +107,26 @@ private:
 	std::vector<int> cohort_offsets;
 	};
 
+template <class T1, typename T2, class T3>
+class CPP_BasicConst : public CPP_Global<T1>
+	{
+public:
+	CPP_BasicConst(T2 _v) : v(_v) { }
+
+	T1 Generate() const override
+		{ return make_intrusive<T3>(v); }
+
+private:
+	T2 v;
+	};
+
 class CPP_StringConst : public CPP_Global<StringValPtr>
 	{
 public:
 	CPP_StringConst(int _len, const char* _chars)
 		: len(_len), chars(_chars) { }
 
-	StringValPtr Generate(std::vector<StringValPtr>& global_vec) const override
+	StringValPtr Generate() const override
 		{ return make_intrusive<StringVal>(len, chars); }
 
 private:
@@ -125,7 +140,7 @@ public:
 	CPP_PatternConst(const char* _pattern, int _is_case_insensitive)
 		: pattern(_pattern), is_case_insensitive(_is_case_insensitive) { }
 
-	PatternValPtr Generate(std::vector<PatternValPtr>& global_vec) const override;
+	PatternValPtr Generate() const override;
 
 private:
 	const char* pattern;
@@ -138,7 +153,7 @@ public:
 	CPP_AddrConst(const char* _init)
 		: init(_init) { }
 
-	AddrValPtr Generate(std::vector<AddrValPtr>& global_vec) const override
+	AddrValPtr Generate() const override
 		{ return make_intrusive<AddrVal>(init); }
 
 private:
@@ -151,7 +166,7 @@ public:
 	CPP_SubNetConst(const char* _init)
 		: init(_init) { }
 
-	SubNetValPtr Generate(std::vector<SubNetValPtr>& global_vec) const override
+	SubNetValPtr Generate() const override
 		{ return make_intrusive<SubNetVal>(init); }
 
 private:
@@ -164,7 +179,7 @@ public:
 	CPP_ListConst(std::vector<ValPtr> _vals)
 		: vals(_vals) { }
 
-	ListValPtr Generate(std::vector<ListValPtr>& global_vec) const override;
+	ListValPtr Generate() const override;
 
 private:
 	std::vector<ValPtr> vals;
@@ -177,7 +192,7 @@ public:
 	CPP_Attr(AttrTag t, ExprPtr e1, CallExprPtr* e2)
 		: tag(t), expr1(e1), expr2(e2) { }
 
-	AttrPtr Generate(std::vector<AttrPtr>& global_vec) const override;
+	AttrPtr Generate() const override;
 
 private:
 	AttrTag tag;
@@ -191,7 +206,7 @@ public:
 	CPP_Attrs(std::vector<int> _attrs)
 		: attrs(std::move(_attrs)) { }
 
-	AttributesPtr Generate(std::vector<AttributesPtr>& global_vec) const override;
+	AttributesPtr Generate() const override;
 
 private:
 	std::vector<int> attrs;
@@ -216,6 +231,8 @@ protected:
 	virtual TypePtr DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
 		{ return DoGenerate(global_vec); }
 	virtual TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const
+		{ return DoGenerate(); }
+	virtual TypePtr DoGenerate() const
 		{ return nullptr; }
 
 	std::string name;
@@ -227,7 +244,7 @@ public:
 	CPP_BaseType(TypeTag t)
 		: CPP_AbstractType(), tag(t) { }
 
-	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override
+	TypePtr DoGenerate() const override
 		{ return base_type(tag); }
 
 private:
@@ -241,7 +258,7 @@ public:
 		: CPP_AbstractType(_name), elems(std::move(_elems)), vals(std::move(_vals)) { }
 
 	// TypePtr PreInit() const override { return get_enum_type__CPP(name); }
-	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override;
+	TypePtr DoGenerate() const override;
 
 private:
 	std::vector<std::string> elems;
@@ -253,7 +270,7 @@ class CPP_OpaqueType : public CPP_AbstractType
 public:
 	CPP_OpaqueType(std::string _name) : CPP_AbstractType(_name) { }
 
-	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override
+	TypePtr DoGenerate() const override
 		{ return make_intrusive<OpaqueType>(name); }
 	};
 
