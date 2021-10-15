@@ -105,8 +105,16 @@ string DescConstInfo::Initializer() const
 	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
 	}
 
-ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
+CompoundConstInfo::CompoundConstInfo(CPPCompile* c, ValPtr v)
 	: CPP_GlobalInfo()
+	{
+	auto& t = v->GetType();
+	type = c->TypeOffset(t);
+	init_cohort = c->TypeCohort(t) + 1;
+	}
+
+ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
+	: CompoundConstInfo(c, v)
 	{
 	auto lv = cast_intrusive<ListVal>(v);
 	auto n = lv->Length();
@@ -121,16 +129,14 @@ ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
 
 string ListConstInfo::Initializer() const
 	{
-	return string("CPP_ListConst({ " + vals + "})");
+	return string("CPP_ListConst(" + Fmt(type) + ", { " + vals + "})");
 	}
 
 VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_GlobalInfo()
+	: CompoundConstInfo(c, v)
 	{
 	auto vv = cast_intrusive<VectorVal>(v);
 	auto n = vv->Size();
-
-	yield = c->TypeOffset(v->GetType()->Yield());
 
 	for ( auto i = 0; i < n; ++i )
 		{
@@ -141,7 +147,7 @@ VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
 	}
 
 RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_GlobalInfo()
+	: CompoundConstInfo(c, v)
 	{
 	auto r = cast_intrusive<RecordVal>(v);
 	auto n = r->NumFields();
@@ -166,10 +172,9 @@ RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
 	}
 
 TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_GlobalInfo()
+	: CompoundConstInfo(c, v)
 	{
 	auto tv = cast_intrusive<TableVal>(v);
-	type = c->TypeOffset(tv->GetType());
 
 	for ( auto& tv_i : tv->ToMap() )
 		{
@@ -181,6 +186,10 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 		init_cohort = max(init_cohort, gi->InitCohort());
 		vals += Fmt(gi->Offset()) + ", ";
 		}
+	}
+
+std::string FuncConstInfo::Initializer() const
+	{
 	}
 
 

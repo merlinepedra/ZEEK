@@ -265,33 +265,36 @@ private:
 	bro_uint_t p;
 	};
 
-class ListConstInfo : public CPP_GlobalInfo
+class CompoundConstInfo : public CPP_GlobalInfo
+	{
+public:
+	CompoundConstInfo(CPPCompile* c, ValPtr v);
+
+protected:
+	int type;
+	std::string vals;
+	};
+
+class ListConstInfo : public CompoundConstInfo
 	{
 public:
 	ListConstInfo(CPPCompile* c, ValPtr v);
 
 	std::string Initializer() const override;
-
-private:
-	std::string vals;
 	};
 
-class VectorConstInfo : public CPP_GlobalInfo
+class VectorConstInfo : public CompoundConstInfo
 	{
 public:
 	VectorConstInfo(CPPCompile* c, ValPtr v);
 
 	std::string Initializer() const override
 		{
-		return std::string("CPP_VectorConst(") + std::to_string(yield) + ", { " + vals + "})";
+		return std::string("CPP_VectorConst(") + std::to_string(type) + ", { " + vals + "})";
 		}
-
-private:
-	int yield;
-	std::string vals;
 	};
 
-class RecordConstInfo : public CPP_GlobalInfo
+class RecordConstInfo : public CompoundConstInfo
 	{
 public:
 	RecordConstInfo(CPPCompile* c, ValPtr v);
@@ -300,13 +303,9 @@ public:
 		{
 		return std::string("CPP_RecordConst(") + std::to_string(type) + ", { " + vals + "})";
 		}
-
-private:
-	int type;
-	std::string vals;
 	};
 
-class TableConstInfo : public CPP_GlobalInfo
+class TableConstInfo : public CompoundConstInfo
 	{
 public:
 	TableConstInfo(CPPCompile* c, ValPtr v);
@@ -317,16 +316,14 @@ public:
 		}
 
 private:
-	int type;
 	std::string indices;
-	std::string vals;
 	};
 
-class FileConstInfo : public CPP_GlobalInfo
+class FileConstInfo : public CompoundConstInfo
 	{
 public:
 	FileConstInfo(CPPCompile* c, ValPtr v)
-		: CPP_GlobalInfo(), name(cast_intrusive<FileVal>(v)->Get()->Name())
+		: CompoundConstInfo(c, v), name(cast_intrusive<FileVal>(v)->Get()->Name())
 		{ }
 
 	std::string Initializer() const override
@@ -338,11 +335,11 @@ private:
 	std::string name;
 	};
 
-class FuncConstInfo : public CPP_GlobalInfo
+class FuncConstInfo : public CompoundConstInfo
 	{
 public:
 	FuncConstInfo(CPPCompile* _c, ValPtr v)
-		: CPP_GlobalInfo(), c(_c), f(v->AsFuncVal()) { }
+		: CompoundConstInfo(_c, v), c(_c), f(v->AsFuncVal()) { }
 
 	std::string Initializer() const override;
 

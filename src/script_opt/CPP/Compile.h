@@ -149,6 +149,8 @@ public:
 	std::shared_ptr<CPP_GlobalInfo> RegisterType(const TypePtr& t);
 	int TypeOffset(const TypePtr& t)
 		{ return GI_Offset(RegisterType(t)); }
+	int TypeCohort(const TypePtr& t)
+		{ return GI_Cohort(RegisterType(t)); }
 
 	std::shared_ptr<CPP_GlobalInfo> RegisterConst(const ValPtr& vp);
 
@@ -908,6 +910,8 @@ private:
 
 	int GI_Offset(const std::shared_ptr<CPP_GlobalInfo>& gi) const
 		{ return gi ? gi->Offset() : -1; }
+	int GI_Cohort(const std::shared_ptr<CPP_GlobalInfo>& gi) const
+		{ return gi ? gi->InitCohort() : 0; }
 
 	// Generate code to initialize the mappings for record field
 	// offsets for field accesses into regions of records that
