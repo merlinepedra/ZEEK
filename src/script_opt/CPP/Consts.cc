@@ -16,15 +16,8 @@ string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
 
 	if ( IsNativeType(vp->GetType()) )
 		return NativeToGT(GenVal(vp), vp->GetType(), GEN_VAL_PTR);
-
-	auto gi = RegisterConst(vp);
-
-	// Make sure the value pointer, which might be transient
-	// in construction, sticks around so we can track its
-	// value.
-	cv_indices.push_back(vp);
-
-	return gi->Name();
+	else
+		return RegisterConst(vp)->Name();
 	}
 
 void CPPCompile::AddConstant(const ConstExpr* c)
@@ -35,6 +28,11 @@ void CPPCompile::AddConstant(const ConstExpr* c)
 
 std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
 	{
+	// Make sure the value pointer, which might be transient
+	// in construction, sticks around so we can track its
+	// value.
+	cv_indices.push_back(vp);
+
 	auto v = vp.get();
 
 	if ( const_vals.count(v) > 0 )

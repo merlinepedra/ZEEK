@@ -182,9 +182,12 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 		init_cohort = max(init_cohort, gi->InitCohort());
 		indices += Fmt(gi->Offset()) + ", ";
 
-		gi = c->RegisterConst(tv_i.second);
-		init_cohort = max(init_cohort, gi->InitCohort());
-		vals += Fmt(gi->Offset()) + ", ";
+		if ( tv_i.second )
+			{
+			gi = c->RegisterConst(tv_i.second);
+			init_cohort = max(init_cohort, gi->InitCohort());
+			vals += Fmt(gi->Offset()) + ", ";
+			}
 		}
 	}
 
