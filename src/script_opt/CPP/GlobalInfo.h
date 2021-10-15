@@ -117,10 +117,10 @@ protected:
 	};
 
 
-class BoolConstantInfo : public CPP_GlobalInfo
+class BoolConstInfo : public CPP_GlobalInfo
 	{
 public:
-	BoolConstantInfo(ValPtr v) : b(v->AsBool()) { }
+	BoolConstInfo(ValPtr v) : b(v->AsBool()) { }
 
 	std::string Initializer() const override
 		{
@@ -131,10 +131,10 @@ private:
 	bool b;
 	};
 
-class IntConstantInfo : public CPP_GlobalInfo
+class IntConstInfo : public CPP_GlobalInfo
 	{
 public:
-	IntConstantInfo(ValPtr v) : i(v->AsInt()) { }
+	IntConstInfo(ValPtr v) : i(v->AsInt()) { }
 
 	std::string Initializer() const override
 		{
@@ -145,10 +145,10 @@ private:
 	bro_int_t i;
 	};
 
-class CountConstantInfo : public CPP_GlobalInfo
+class CountConstInfo : public CPP_GlobalInfo
 	{
 public:
-	CountConstantInfo(ValPtr v) : u(v->AsCount()) { }
+	CountConstInfo(ValPtr v) : u(v->AsCount()) { }
 
 	std::string Initializer() const override
 		{
@@ -159,10 +159,10 @@ private:
 	bro_uint_t u;
 	};
 
-class EnumConstantInfo : public CPP_GlobalInfo
+class EnumConstInfo : public CPP_GlobalInfo
 	{
 public:
-	EnumConstantInfo(CPPCompile* c, ValPtr v);
+	EnumConstInfo(CPPCompile* c, ValPtr v);
 
 	std::string Initializer() const override
 		{
@@ -174,10 +174,10 @@ private:
 	int e_val;
 	};
 
-class DoubleConstantInfo : public CPP_GlobalInfo
+class DoubleConstInfo : public CPP_GlobalInfo
 	{
 public:
-	DoubleConstantInfo(ValPtr v) : d(v->AsDouble()) { }
+	DoubleConstInfo(ValPtr v) : d(v->AsDouble()) { }
 
 	std::string Initializer() const override
 		{
@@ -188,10 +188,10 @@ private:
 	double d;
 	};
 
-class TimeConstantInfo : public CPP_GlobalInfo
+class TimeConstInfo : public CPP_GlobalInfo
 	{
 public:
-	TimeConstantInfo(ValPtr v) : d(v->AsTime()) { }
+	TimeConstInfo(ValPtr v) : d(v->AsTime()) { }
 
 	std::string Initializer() const override
 		{
@@ -202,10 +202,10 @@ private:
 	double d;
 	};
 
-class IntervalConstantInfo : public CPP_GlobalInfo
+class IntervalConstInfo : public CPP_GlobalInfo
 	{
 public:
-	IntervalConstantInfo(ValPtr v) : d(v->AsInterval()) { }
+	IntervalConstInfo(ValPtr v) : d(v->AsInterval()) { }
 
 	std::string Initializer() const override
 		{
@@ -216,10 +216,10 @@ private:
 	double d;
 	};
 
-class StringConstantInfo : public CPP_GlobalInfo
+class StringConstInfo : public CPP_GlobalInfo
 	{
 public:
-	StringConstantInfo(ValPtr v);
+	StringConstInfo(ValPtr v);
 
 	std::string Initializer() const override;
 
@@ -228,10 +228,10 @@ private:
 	int len;
 	};
 
-class PatternConstantInfo : public CPP_GlobalInfo
+class PatternConstInfo : public CPP_GlobalInfo
 	{
 public:
-	PatternConstantInfo(ValPtr v);
+	PatternConstInfo(ValPtr v);
 
 	std::string Initializer() const override;
 
@@ -240,10 +240,10 @@ private:
 	int is_case_insensitive;
 	};
 
-class DescConstantInfo : public CPP_GlobalInfo
+class DescConstInfo : public CPP_GlobalInfo
 	{
 public:
-	DescConstantInfo(ValPtr v);
+	DescConstInfo(ValPtr v);
 
 	std::string Initializer() const override;
 
@@ -251,10 +251,10 @@ private:
 	std::string init;
 	};
 
-class PortConstantInfo : public CPP_GlobalInfo
+class PortConstInfo : public CPP_GlobalInfo
 	{
 public:
-	PortConstantInfo(ValPtr v) : p(static_cast<UnsignedValImplementation*>(v->AsPortVal())->Get()) { }
+	PortConstInfo(ValPtr v) : p(static_cast<UnsignedValImplementation*>(v->AsPortVal())->Get()) { }
 
 	std::string Initializer() const override
 		{
@@ -265,10 +265,10 @@ private:
 	bro_uint_t p;
 	};
 
-class ListConstantInfo : public CPP_GlobalInfo
+class ListConstInfo : public CPP_GlobalInfo
 	{
 public:
-	ListConstantInfo(CPPCompile* c, ValPtr v);
+	ListConstInfo(CPPCompile* c, ValPtr v);
 
 	std::string Initializer() const override;
 
@@ -276,10 +276,10 @@ private:
 	std::string vals;
 	};
 
-class VectorConstantInfo : public CPP_GlobalInfo
+class VectorConstInfo : public CPP_GlobalInfo
 	{
 public:
-	VectorConstantInfo(CPPCompile* c, ValPtr v);
+	VectorConstInfo(CPPCompile* c, ValPtr v);
 
 	std::string Initializer() const override
 		{
@@ -291,10 +291,10 @@ private:
 	std::string vals;
 	};
 
-class RecordConstantInfo : public CPP_GlobalInfo
+class RecordConstInfo : public CPP_GlobalInfo
 	{
 public:
-	RecordConstantInfo(CPPCompile* c, ValPtr v);
+	RecordConstInfo(CPPCompile* c, ValPtr v);
 
 	std::string Initializer() const override
 		{
@@ -306,10 +306,10 @@ private:
 	std::string vals;
 	};
 
-class TableConstantInfo : public CPP_GlobalInfo
+class TableConstInfo : public CPP_GlobalInfo
 	{
 public:
-	TableConstantInfo(CPPCompile* c, ValPtr v);
+	TableConstInfo(CPPCompile* c, ValPtr v);
 
 	std::string Initializer() const override
 		{
@@ -322,10 +322,10 @@ private:
 	std::string vals;
 	};
 
-class FileConstantInfo : public CPP_GlobalInfo
+class FileConstInfo : public CPP_GlobalInfo
 	{
 public:
-	FileConstantInfo(CPPCompile* c, ValPtr v)
+	FileConstInfo(CPPCompile* c, ValPtr v)
 		: CPP_GlobalInfo(), name(cast_intrusive<FileVal>(v)->Get()->Name())
 		{ }
 
@@ -338,10 +338,10 @@ private:
 	std::string name;
 	};
 
-class FuncConstantInfo : public CPP_GlobalInfo
+class FuncConstInfo : public CPP_GlobalInfo
 	{
 public:
-	FuncConstantInfo(CPPCompile* _c, ValPtr v)
+	FuncConstInfo(CPPCompile* _c, ValPtr v)
 		: CPP_GlobalInfo(), c(_c), f(v->AsFuncVal()) { }
 
 	std::string Initializer() const override;

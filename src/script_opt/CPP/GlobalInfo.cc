@@ -57,14 +57,14 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
-EnumConstantInfo::EnumConstantInfo(CPPCompile* c, ValPtr v)
+EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)
 	{
 	auto ev = v->AsEnumVal();
 	e_type = c->TypeOffset(ev->GetType());
 	e_val = v->AsEnum();
 	}
 
-StringConstantInfo::StringConstantInfo(ValPtr v)
+StringConstInfo::StringConstInfo(ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto s = v->AsString();
@@ -74,12 +74,12 @@ StringConstantInfo::StringConstantInfo(ValPtr v)
 	rep = CPPEscape(b, len);
 	}
 
-string StringConstantInfo::Initializer() const
+string StringConstInfo::Initializer() const
 	{
 	return string("CPP_StringConst(") + Fmt(len) + ", " + rep + ")";
 	}
 
-PatternConstantInfo::PatternConstantInfo(ValPtr v)
+PatternConstInfo::PatternConstInfo(ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto re = v->AsPatternVal()->Get();
@@ -87,12 +87,12 @@ PatternConstantInfo::PatternConstantInfo(ValPtr v)
 	is_case_insensitive = re->IsCaseInsensitive();
 	}
 
-string PatternConstantInfo::Initializer() const
+string PatternConstInfo::Initializer() const
 	{
 	return string("CPP_PatternConst(") + pattern + ", " + Fmt(is_case_insensitive) + ")";
 	}
 
-DescConstantInfo::DescConstantInfo(ValPtr v)
+DescConstInfo::DescConstInfo(ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	ODesc d;
@@ -100,12 +100,12 @@ DescConstantInfo::DescConstantInfo(ValPtr v)
 	init = d.Description();
 	}
 
-string DescConstantInfo::Initializer() const
+string DescConstInfo::Initializer() const
 	{
 	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
 	}
 
-ListConstantInfo::ListConstantInfo(CPPCompile* c, ValPtr v)
+ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto lv = cast_intrusive<ListVal>(v);
@@ -119,12 +119,12 @@ ListConstantInfo::ListConstantInfo(CPPCompile* c, ValPtr v)
 		}
 	}
 
-string ListConstantInfo::Initializer() const
+string ListConstInfo::Initializer() const
 	{
 	return string("CPP_ListConst({ " + vals + "})");
 	}
 
-VectorConstantInfo::VectorConstantInfo(CPPCompile* c, ValPtr v)
+VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto vv = cast_intrusive<VectorVal>(v);
@@ -140,7 +140,7 @@ VectorConstantInfo::VectorConstantInfo(CPPCompile* c, ValPtr v)
 		}
 	}
 
-RecordConstantInfo::RecordConstantInfo(CPPCompile* c, ValPtr v)
+RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto r = cast_intrusive<RecordVal>(v);
@@ -165,7 +165,7 @@ RecordConstantInfo::RecordConstantInfo(CPPCompile* c, ValPtr v)
 		}
 	}
 
-TableConstantInfo::TableConstantInfo(CPPCompile* c, ValPtr v)
+TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto tv = cast_intrusive<TableVal>(v);

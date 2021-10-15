@@ -172,7 +172,7 @@ private:
 	//
 
 	friend class CPP_GlobalsInfo;
-	friend class ListConstantInfo;
+	friend class ListConstInfo;
 	friend class BaseTypeInfo;
 	friend class AttrInfo;
 	friend class AttrsInfo;

@@ -98,75 +98,75 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 	switch ( tag )
 		{
                 case TYPE_BOOL:
-			gi = make_shared<BoolConstantInfo>(vp);
+			gi = make_shared<BoolConstInfo>(vp);
 			break;
 
                 case TYPE_INT:
-			gi = make_shared<IntConstantInfo>(vp);
+			gi = make_shared<IntConstInfo>(vp);
 			break;
 
                 case TYPE_COUNT:
-			gi = make_shared<CountConstantInfo>(vp);
+			gi = make_shared<CountConstInfo>(vp);
 			break;
 
                 case TYPE_ENUM:
-			gi = make_shared<EnumConstantInfo>(this, vp);
+			gi = make_shared<EnumConstInfo>(this, vp);
 			break;
 
                 case TYPE_DOUBLE:
-			gi = make_shared<DoubleConstantInfo>(vp);
+			gi = make_shared<DoubleConstInfo>(vp);
 			break;
 
                 case TYPE_TIME:
-			gi = make_shared<TimeConstantInfo>(vp);
+			gi = make_shared<TimeConstInfo>(vp);
 			break;
 
                 case TYPE_INTERVAL:
-			gi = make_shared<IntervalConstantInfo>(vp);
+			gi = make_shared<IntervalConstInfo>(vp);
 			break;
 
                 case TYPE_STRING:
-			gi = make_shared<StringConstantInfo>(vp);
+			gi = make_shared<StringConstInfo>(vp);
 			break;
 
                 case TYPE_PATTERN:
-			gi = make_shared<PatternConstantInfo>(vp);
+			gi = make_shared<PatternConstInfo>(vp);
 			break;
 
                 case TYPE_ADDR:
-			gi = make_shared<DescConstantInfo>(vp);
+			gi = make_shared<DescConstInfo>(vp);
 			break;
 
                 case TYPE_SUBNET:
-			gi = make_shared<DescConstantInfo>(vp);
+			gi = make_shared<DescConstInfo>(vp);
 			break;
 
                 case TYPE_PORT:
-			gi = make_shared<PortConstantInfo>(vp);
+			gi = make_shared<PortConstInfo>(vp);
 			break;
 
                 case TYPE_LIST:
-			gi = make_shared<ListConstantInfo>(this, vp);
+			gi = make_shared<ListConstInfo>(this, vp);
 			break;
 
                 case TYPE_VECTOR:
-			gi = make_shared<VectorConstantInfo>(this, vp);
+			gi = make_shared<VectorConstInfo>(this, vp);
 			break;
 
                 case TYPE_RECORD:
-			gi = make_shared<RecordConstantInfo>(this, vp);
+			gi = make_shared<RecordConstInfo>(this, vp);
 			break;
 
                 case TYPE_TABLE:
-			gi = make_shared<TableConstantInfo>(this, vp);
+			gi = make_shared<TableConstInfo>(this, vp);
 			break;
 
                 case TYPE_FILE:
-			gi = make_shared<FileConstantInfo>(this, vp);
+			gi = make_shared<FileConstInfo>(this, vp);
 			break;
 
                 case TYPE_FUNC:
-			gi = make_shared<FuncConstantInfo>(this, vp);
+			gi = make_shared<FuncConstInfo>(this, vp);
 
 			// We can't generate the initialization now because it
 			// depends on first having compiled the associated body,
