@@ -114,7 +114,7 @@ CompoundConstInfo::CompoundConstInfo(CPPCompile* c, ValPtr v)
 	}
 
 ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
-	: CompoundConstInfo(c, v)
+	: CompoundConstInfo()
 	{
 	auto lv = cast_intrusive<ListVal>(v);
 	auto n = lv->Length();
@@ -129,7 +129,7 @@ ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
 
 string ListConstInfo::Initializer() const
 	{
-	return string("CPP_ListConst(" + Fmt(type) + ", { " + vals + "})");
+	return string("CPP_ListConst({ " + vals + "})");
 	}
 
 VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)

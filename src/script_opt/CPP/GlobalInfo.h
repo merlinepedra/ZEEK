@@ -269,6 +269,7 @@ class CompoundConstInfo : public CPP_GlobalInfo
 	{
 public:
 	CompoundConstInfo(CPPCompile* c, ValPtr v);
+	CompoundConstInfo() { type = 0; }
 
 protected:
 	int type;
