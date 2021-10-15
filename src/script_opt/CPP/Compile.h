@@ -152,7 +152,7 @@ public:
 	int TypeCohort(const TypePtr& t)
 		{ return GI_Cohort(RegisterType(t)); }
 
-	std::shared_ptr<CPP_GlobalInfo> RegisterConst(const ValPtr& vp);
+	std::shared_ptr<CPP_GlobalInfo> RegisterConstant(const ValPtr& vp);
 
 	// Tracks a use of the given set of attributes, including
 	// initialization dependencies and the generation of any

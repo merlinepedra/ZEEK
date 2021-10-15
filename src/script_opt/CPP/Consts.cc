@@ -17,16 +17,16 @@ string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
 	if ( IsNativeType(vp->GetType()) )
 		return NativeToGT(GenVal(vp), vp->GetType(), GEN_VAL_PTR);
 	else
-		return RegisterConst(vp)->Name();
+		return RegisterConstant(vp)->Name();
 	}
 
 void CPPCompile::AddConstant(const ConstExpr* c)
 	{
 	if ( ! IsNativeType(c->GetType()) )
-		RegisterConst(c->ValuePtr());
+		RegisterConstant(c->ValuePtr());
 	}
 
-shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
+shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	{
 	// Make sure the value pointer, which might be transient
 	// in construction, sticks around so we can track its

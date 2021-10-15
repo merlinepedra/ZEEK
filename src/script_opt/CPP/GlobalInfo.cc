@@ -121,7 +121,7 @@ ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
 
 	for ( auto i = 0; i < n; ++i )
 		{
-		auto gi = c->RegisterConst(lv->Idx(i));
+		auto gi = c->RegisterConstant(lv->Idx(i));
 		init_cohort = max(init_cohort, gi->InitCohort());
 		vals += Fmt(gi->Offset()) + ", ";
 		}
@@ -140,7 +140,7 @@ VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
 
 	for ( auto i = 0; i < n; ++i )
 		{
-		auto gi = c->RegisterConst(vv->ValAt(i));
+		auto gi = c->RegisterConstant(vv->ValAt(i));
 		init_cohort = max(init_cohort, gi->InitCohort());
 		vals += Fmt(gi->Offset()) + ", ";
 		}
@@ -160,7 +160,7 @@ RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
 
 		if ( r_i )
 			{
-			auto gi = c->RegisterConst(r_i);
+			auto gi = c->RegisterConstant(r_i);
 			init_cohort = max(init_cohort, gi->InitCohort());
 			vals += Fmt(gi->Offset());
 			}
@@ -178,13 +178,13 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 
 	for ( auto& tv_i : tv->ToMap() )
 		{
-		auto gi = c->RegisterConst(tv_i.first);
+		auto gi = c->RegisterConstant(tv_i.first);
 		init_cohort = max(init_cohort, gi->InitCohort());
 		indices += Fmt(gi->Offset()) + ", ";
 
 		if ( tv_i.second )
 			{
-			gi = c->RegisterConst(tv_i.second);
+			gi = c->RegisterConstant(tv_i.second);
 			init_cohort = max(init_cohort, gi->InitCohort());
 			vals += Fmt(gi->Offset()) + ", ";
 			}
