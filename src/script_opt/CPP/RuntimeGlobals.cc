@@ -30,7 +30,26 @@ PatternValPtr CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec)
 	return make_intrusive<PatternVal>(re);
 	}
 
-TypePtr CPP_EnumType::Generate(std::vector<TypePtr>& global_vec) const
+
+AttrPtr CPP_Attr::Generate(std::vector<AttrPtr>& global_vec) const
+	{
+	if ( expr2 )
+		return make_intrusive<Attr>(tag, *expr2);
+	else
+		return make_intrusive<Attr>(tag, expr1);
+	}
+
+AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
+	{
+	vector<AttrPtr> a_list;
+	for ( auto a : attrs )
+		a_list.push_back(CPP__Attr__[a]);
+
+	return make_intrusive<Attributes>(a_list, nullptr, false, false);
+	}
+
+
+TypePtr CPP_EnumType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
 	auto et = get_enum_type__CPP(name);
 
@@ -41,7 +60,7 @@ TypePtr CPP_EnumType::Generate(std::vector<TypePtr>& global_vec) const
 	return et;
 	}
 
-TypePtr CPP_TableType::Generate(std::vector<TypePtr>& global_vec) const
+TypePtr CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
 	if ( yield >= 0 )
 		return make_intrusive<SetType>(cast_intrusive<TypeList>(global_vec[indices]), nullptr);
@@ -49,7 +68,7 @@ TypePtr CPP_TableType::Generate(std::vector<TypePtr>& global_vec) const
 	return make_intrusive<TableType>(cast_intrusive<TypeList>(global_vec[indices]), global_vec[yield]);
 	}
 
-TypePtr CPP_FuncType::Generate(std::vector<TypePtr>& global_vec) const
+TypePtr CPP_FuncType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
 	auto p = cast_intrusive<RecordType>(global_vec[params]);
 	auto y = yield >= 0 ? global_vec[yield] : nullptr;
@@ -65,7 +84,7 @@ TypePtr CPP_RecordType::PreInit() const
 		return get_record_type__CPP(name.c_str());
 	}
 
-TypePtr CPP_RecordType::Generate(std::vector<TypePtr>& global_vec, int offset) const
+TypePtr CPP_RecordType::DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
 	{
 	auto t = global_vec[offset];
 	auto r = t->AsRecordType();
@@ -91,23 +110,6 @@ TypePtr CPP_RecordType::Generate(std::vector<TypePtr>& global_vec, int offset) c
 		}
 
 	return t;
-	}
-
-AttrPtr CPP_Attr::Generate(std::vector<AttrPtr>& global_vec) const
-	{
-	if ( expr2 )
-		return make_intrusive<Attr>(tag, *expr2);
-	else
-		return make_intrusive<Attr>(tag, expr1);
-	}
-
-AttributesPtr CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
-	{
-	vector<AttrPtr> a_list;
-	for ( auto a : attrs )
-		a_list.push_back(CPP__Attr__[a]);
-
-	return make_intrusive<Attributes>(a_list, nullptr, false, false);
 	}
 
 

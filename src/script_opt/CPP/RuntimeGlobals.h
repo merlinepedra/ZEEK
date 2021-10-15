@@ -168,7 +168,20 @@ public:
 	CPP_AbstractType() { }
 	CPP_AbstractType(std::string _name) : name(std::move(_name)) { }
 
+	TypePtr Generate(std::vector<TypePtr>& global_vec, int offset) const override
+		{
+		auto t = DoGenerate(global_vec, offset);
+		if ( ! name.empty() )
+			register_type__CPP(t, name);
+		return t;
+		}
+
 protected:
+	virtual TypePtr DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
+		{ return DoGenerate(global_vec); }
+	virtual TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const
+		{ return nullptr; }
+
 	std::string name;
 	};
 
@@ -178,7 +191,7 @@ public:
 	CPP_BaseType(TypeTag t)
 		: CPP_AbstractType(), tag(t) { }
 
-	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override
 		{ return base_type(tag); }
 
 private:
@@ -192,7 +205,7 @@ public:
 		: CPP_AbstractType(_name), elems(std::move(_elems)), vals(std::move(_vals)) { }
 
 	// TypePtr PreInit() const override { return get_enum_type__CPP(name); }
-	TypePtr Generate(std::vector<TypePtr>& global_vec) const override;
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override;
 
 private:
 	std::vector<std::string> elems;
@@ -204,7 +217,7 @@ class CPP_OpaqueType : public CPP_AbstractType
 public:
 	CPP_OpaqueType(std::string _name) : CPP_AbstractType(_name) { }
 
-	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override
 		{ return make_intrusive<OpaqueType>(name); }
 	};
 
@@ -214,7 +227,7 @@ public:
 	CPP_TypeType(int _tt_offset)
 		: CPP_AbstractType(), tt_offset(_tt_offset) { }
 
-	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override
 		{ return make_intrusive<TypeType>(global_vec[tt_offset]); }
 
 private:
@@ -227,7 +240,7 @@ public:
 	CPP_VectorType(int _yt_offset)
 		: CPP_AbstractType(), yt_offset(_yt_offset) { }
 
-	TypePtr Generate(std::vector<TypePtr>& global_vec) const override
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override
 		{ return make_intrusive<VectorType>(global_vec[yt_offset]); }
 
 private:
@@ -241,7 +254,7 @@ public:
 		: CPP_AbstractType(), types(std::move(_types)) { }
 
 	TypePtr PreInit() const override { return make_intrusive<TypeList>(); }
-	TypePtr Generate(std::vector<TypePtr>& global_vec, int offset) const override
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override
 		{
 		const auto& tl = cast_intrusive<TypeList>(global_vec[offset]);
 
@@ -261,7 +274,7 @@ public:
 	CPP_TableType(int _indices, int _yield)
 		: CPP_AbstractType(), indices(std::move(_indices)), yield(_yield) { }
 
-	TypePtr Generate(std::vector<TypePtr>& global_vec) const override;
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override;
 
 private:
 	int indices;
@@ -274,7 +287,7 @@ public:
 	CPP_FuncType(int _params, int _yield, FunctionFlavor _flavor)
 		: CPP_AbstractType(), params(std::move(_params)), yield(_yield), flavor(_flavor) { }
 
-	TypePtr Generate(std::vector<TypePtr>& global_vec) const override;
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec) const override;
 
 private:
 	int params;
@@ -289,7 +302,7 @@ public:
 		: CPP_AbstractType(), field_names(std::move(_field_names)), field_types(_field_types), field_attrs(_field_attrs) { }
 
 	TypePtr PreInit() const override;
-	TypePtr Generate(std::vector<TypePtr>& global_vec, int offset) const override;
+	TypePtr DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override;
 
 private:
 	std::vector<std::string> field_names;
