@@ -188,8 +188,19 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 		}
 	}
 
-std::string FuncConstInfo::Initializer() const
+string FuncConstInfo::Initializer() const
 	{
+	auto f = fv->AsFunc();
+	const auto& fn = f->Name();
+
+	const auto& bodies = f->GetBodies();
+
+	string hashes;
+
+	for ( const auto& b : bodies )
+		hashes += Fmt(c->BodyHash(b.stmts.get())) + ", ";
+
+	return string("CPP_FuncConst(\"") + fn + "\", " + Fmt(type) + ", { " + hashes + "})";
 	}
 
 
@@ -209,7 +220,7 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 		auto expr_type = gi->Name();
 
 		if ( ! CPPCompile::IsSimpleInitExpr(a_e) )
-			expr2 = std::string("&") + c->InitExprName(a_e);
+			expr2 = string("&") + c->InitExprName(a_e);
 
 		else if ( a_e->Tag() == EXPR_CONST )
 			expr1 = string("make_intrusive<ConstExpr>(") + c->GenExpr(a_e, CPPCompile::GEN_VAL_PTR) + ")";

@@ -233,6 +233,16 @@ string CPPCompile::BodyName(const FuncInfo& func)
 	return fname + "__" + Fmt(static_cast<int>(i));
 	}
 
+p_hash_type CPPCompile::BodyHash(const Stmt* body)
+	{
+	ASSERT(body_names.count(body) > 0);
+
+	auto& body_name = body_names[body];
+	ASSERT(body_hashes.count(body_name) > 0);
+
+	return body_hashes[body_name];
+	}
+
 string CPPCompile::GenArgs(const RecordTypePtr& params, const Expr* e)
 	{
 	const auto& exprs = e->AsListExpr()->Exprs();

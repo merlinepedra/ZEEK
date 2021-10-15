@@ -175,6 +175,7 @@ private:
 
 	friend class CPP_GlobalsInfo;
 	friend class ListConstInfo;
+	friend class FuncConstInfo;
 	friend class BaseTypeInfo;
 	friend class AttrInfo;
 	friend class AttrsInfo;
@@ -428,6 +429,11 @@ private:
 
 	// Returns the C++ name to use for a given function body.
 	std::string BodyName(const FuncInfo& func);
+
+	// Returns the hash associated with a given function body.
+	// It's a fatal error to call this for a body that hasn't
+	// been compiled.
+	p_hash_type BodyHash(const Stmt* body);
 
 	// Generate the arguments to be used when calling a C++-generated
 	// function.
