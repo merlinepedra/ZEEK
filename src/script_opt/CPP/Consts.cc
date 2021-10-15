@@ -14,45 +14,32 @@ string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
 	if ( ! vp )
 		return "nullptr";
 
-	if ( AddConstant(vp) )
-		{
-		auto v = vp.get();
-		AddInit(parent);
-		NoteInitDependency(parent, v);
-
-		// Make sure the value pointer, which might be transient
-		// in construction, sticks around so we can track its
-		// value.
-		cv_indices.push_back(vp);
-
-		return const_vals[v];
-		}
-	else
+	if ( IsNativeType(vp->GetType()) )
 		return NativeToGT(GenVal(vp), vp->GetType(), GEN_VAL_PTR);
+
+	auto gi = RegisterConst(vp);
+
+	// Make sure the value pointer, which might be transient
+	// in construction, sticks around so we can track its
+	// value.
+	cv_indices.push_back(vp);
+
+	return gi->Name();
 	}
 
 void CPPCompile::AddConstant(const ConstExpr* c)
 	{
-	auto v = c->ValuePtr();
-
-	if ( AddConstant(v) )
-		{
-		AddInit(c);
-		NoteInitDependency(c, v.get());
-		}
+	if ( ! IsNativeType(c->GetType()) )
+		RegisterConst(c->ValuePtr());
 	}
 
-bool CPPCompile::AddConstant(const ValPtr& vp)
+std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConst(const ValPtr& vp)
 	{
 	auto v = vp.get();
 
-	if ( IsNativeType(v->GetType()) )
-		// These we instantiate directly.
-		return false;
-
 	if ( const_vals.count(v) > 0 )
 		// Already did this one.
-		return true;
+		return const_vals[v];
 
 	// Formulate a key that's unique per distinct constant.
 
@@ -82,13 +69,7 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 	if ( constants.count(c_desc) > 0 )
 		{
 		const_vals[v] = constants[c_desc];
-
-		auto orig_v = constants_to_vals[c_desc];
-		ASSERT(v != orig_v);
-		AddInit(v);
-		NoteInitDependency(v, orig_v);
-
-		return true;
+		return const_vals[v];
 		}
 
 	auto tag = t->Tag();
@@ -181,8 +162,9 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 			break;
 		}
 
-	const_name = const_info[tag]->NextName();
 	const_info[tag]->AddInstance(gi);
+	const_vals[v] = constants[c_desc] = gi;
+	constants_to_vals[c_desc] = v;
 
 #if 0
 		case TYPE_TABLE:
@@ -215,9 +197,6 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
 #endif
-
-	const_vals[v] = constants[c_desc] = const_name;
-	constants_to_vals[c_desc] = v;
 
 #if 0
 	switch ( tag )
@@ -275,7 +254,7 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		}
 #endif
 
-	return true;
+	return gi;
 	}
 
 void CPPCompile::AddListConstant(const ValPtr& v, string& const_name)

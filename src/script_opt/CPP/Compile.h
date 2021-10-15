@@ -150,7 +150,7 @@ public:
 	int TypeOffset(const TypePtr& t)
 		{ return GI_Offset(RegisterType(t)); }
 
-	std::shared_ptr<CPP_GlobalInfo> RegisterConst(const ValPtr& c);
+	std::shared_ptr<CPP_GlobalInfo> RegisterConst(const ValPtr& vp);
 
 	// Tracks a use of the given set of attributes, including
 	// initialization dependencies and the generation of any
@@ -489,7 +489,6 @@ private:
 	// constant at run-time initialization, false if can be instantiated
 	// directly as a C++ constant.
 	void AddConstant(const ConstExpr* c);
-	bool AddConstant(const ValPtr& v);
 
 	// Build particular types of C++ variables (with the given name)
 	// to hold constants initialized at run-time.
@@ -501,15 +500,16 @@ private:
 	// Maps (non-native) constants to associated C++ globals.
 	std::unordered_map<const ConstExpr*, std::string> const_exprs;
 
-	// Maps the values of (non-native) constants to associated C++ globals.
-	std::unordered_map<const Val*, std::string> const_vals;
+	// Maps the values of (non-native) constants to associated global
+	// information.
+	std::unordered_map<const Val*, std::shared_ptr<CPP_GlobalInfo>> const_vals;
 
 	// Used for memory management associated with const_vals's index.
 	std::vector<ValPtr> cv_indices;
 
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.
-	std::unordered_map<std::string, std::string> constants;
+	std::unordered_map<std::string, std::shared_ptr<CPP_GlobalInfo>> constants;
 
 	std::set<std::shared_ptr<CPP_GlobalsInfo>> all_global_info;
 

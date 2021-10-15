@@ -232,7 +232,7 @@ string CPPCompile::GenConstExpr(const ConstExpr* c, GenType gt)
 	const auto& t = c->GetType();
 
 	if ( ! IsNativeType(t) )
-		return NativeToGT(const_vals[c->Value()], t, gt);
+		return NativeToGT(const_vals[c->Value()]->Name(), t, gt);
 
 	return NativeToGT(GenVal(c->ValuePtr()), t, gt);
 	}
