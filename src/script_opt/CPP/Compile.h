@@ -511,11 +511,7 @@ private:
 
 	std::set<std::shared_ptr<CPP_GlobalsInfo>> all_global_info;
 
-	std::shared_ptr<CPP_GlobalsInfo> str_constants;
-	std::shared_ptr<CPP_GlobalsInfo> re_constants;
-	std::shared_ptr<CPP_GlobalsInfo> addr_constants;
-	std::shared_ptr<CPP_GlobalsInfo> subnet_constants;
-	std::shared_ptr<CPP_GlobalsInfo> list_constants;
+	std::unordered_map<TypeTag, std::shared_ptr<CPP_GlobalsInfo>> const_info;
 	std::shared_ptr<CPP_GlobalsInfo> type_info;
 	std::shared_ptr<CPP_GlobalsInfo> attr_info;
 	std::shared_ptr<CPP_GlobalsInfo> attrs_info;

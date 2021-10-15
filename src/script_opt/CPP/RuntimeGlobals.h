@@ -11,11 +11,33 @@
 namespace zeek::detail
 	{
 
+using BoolValPtr = IntrusivePtr<BoolVal>;
+using IntValPtr = IntrusivePtr<IntVal>;
+using CountValPtr = IntrusivePtr<CountVal>;
+using DoubleValPtr = IntrusivePtr<DoubleVal>;
+using TimeValPtr = IntrusivePtr<TimeVal>;
+using IntervalValPtr = IntrusivePtr<IntervalVal>;
+using FileValPtr = IntrusivePtr<FileVal>;
+
+extern std::vector<BoolValPtr> CPP__Bool__;
+extern std::vector<IntValPtr> CPP__Int__;
+extern std::vector<CountValPtr> CPP__Count__;
+extern std::vector<EnumValPtr> CPP__Enum__;
+extern std::vector<DoubleValPtr> CPP__Double__;
+extern std::vector<TimeValPtr> CPP__Time__;
+extern std::vector<IntervalValPtr> CPP__Interval__;
 extern std::vector<StringValPtr> CPP__String__;
 extern std::vector<PatternValPtr> CPP__Pattern__;
 extern std::vector<AddrValPtr> CPP__Addr__;
 extern std::vector<SubNetValPtr> CPP__SubNet__;
+extern std::vector<PortValPtr> CPP__Port__;
 extern std::vector<ListValPtr> CPP__List__;
+extern std::vector<RecordValPtr> CPP__Record__;
+extern std::vector<TableValPtr> CPP__Table__;
+extern std::vector<VectorValPtr> CPP__Vector__;
+extern std::vector<FuncValPtr> CPP__Func__;
+extern std::vector<FileValPtr> CPP__File__;
+
 extern std::vector<TypePtr> CPP__Type__;
 extern std::vector<AttrPtr> CPP__Attr__;
 extern std::vector<AttributesPtr> CPP__Attributes__;

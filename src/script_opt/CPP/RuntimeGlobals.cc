@@ -11,11 +11,25 @@ using namespace std;
 namespace zeek::detail
 	{
 
+std::vector<BoolValPtr> CPP__Bool__;
+std::vector<IntValPtr> CPP__Int__;
+std::vector<CountValPtr> CPP__Count__;
+std::vector<EnumValPtr> CPP__Enum__;
+std::vector<DoubleValPtr> CPP__Double__;
+std::vector<TimeValPtr> CPP__Time__;
+std::vector<IntervalValPtr> CPP__Interval__;
 std::vector<StringValPtr> CPP__String__;
 std::vector<PatternValPtr> CPP__Pattern__;
 std::vector<AddrValPtr> CPP__Addr__;
 std::vector<SubNetValPtr> CPP__SubNet__;
+std::vector<PortValPtr> CPP__Port__;
 std::vector<ListValPtr> CPP__List__;
+std::vector<RecordValPtr> CPP__Record__;
+std::vector<TableValPtr> CPP__Table__;
+std::vector<VectorValPtr> CPP__Vector__;
+std::vector<FuncValPtr> CPP__Func__;
+std::vector<FileValPtr> CPP__File__;
+
 std::vector<TypePtr> CPP__Type__;
 std::vector<AttrPtr> CPP__Attr__;
 std::vector<AttributesPtr> CPP__Attributes__;

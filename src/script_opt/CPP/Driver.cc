@@ -64,11 +64,25 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 		fclose(addl_f);
 		}
 
-	str_constants = InitGlobalInfo("String", "ValPtr");
-	re_constants = InitGlobalInfo("Pattern", "ValPtr");
-	addr_constants = InitGlobalInfo("Addr", "ValPtr");
-	subnet_constants = InitGlobalInfo("SubNet", "ValPtr");
-	list_constants = InitGlobalInfo("List", "ValPtr");
+	const_info[TYPE_BOOL] = InitGlobalInfo("Bool", "ValPtr");
+	const_info[TYPE_INT] = InitGlobalInfo("Int", "ValPtr");
+	const_info[TYPE_COUNT] = InitGlobalInfo("Count", "ValPtr");
+	const_info[TYPE_ENUM] = InitGlobalInfo("Enum", "ValPtr");
+	const_info[TYPE_DOUBLE] = InitGlobalInfo("Double", "ValPtr");
+	const_info[TYPE_TIME] = InitGlobalInfo("Time", "ValPtr");
+	const_info[TYPE_INTERVAL] = InitGlobalInfo("Interval", "ValPtr");
+	const_info[TYPE_STRING] = InitGlobalInfo("String", "ValPtr");
+	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
+	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr");
+	const_info[TYPE_SUBNET] = InitGlobalInfo("SubNet", "ValPtr");
+	const_info[TYPE_PORT] = InitGlobalInfo("Port", "ValPtr");
+	const_info[TYPE_LIST] = InitGlobalInfo("List", "ValPtr");
+	const_info[TYPE_VECTOR] = InitGlobalInfo("Vector", "ValPtr");
+	const_info[TYPE_RECORD] = InitGlobalInfo("Record", "ValPtr");
+	const_info[TYPE_TABLE] = InitGlobalInfo("Table", "ValPtr");
+	const_info[TYPE_FUNC] = InitGlobalInfo("Func", "ValPtr");
+	const_info[TYPE_FILE] = InitGlobalInfo("File", "ValPtr");
+
 	type_info = InitGlobalInfo("Type", "Ptr");
 	attr_info = InitGlobalInfo("Attr", "Ptr");
 	attrs_info = InitGlobalInfo("Attributes", "Ptr");

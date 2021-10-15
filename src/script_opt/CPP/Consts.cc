@@ -91,44 +91,159 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		return true;
 		}
 
-	string const_name;
-
 	auto tag = t->Tag();
+	auto const_name = const_info[tag]->NextName();
+	std::shared_ptr<CPP_GlobalInfo> gi;
 
-	if ( tag == TYPE_STRING )
+	switch ( tag )
 		{
-		const_name = str_constants->NextName();
-		str_constants->AddInstance(make_shared<StringConstantInfo>(vp));
+                case TYPE_BOOL:
+			gi = make_shared<BoolConstantInfo>(vp);
+			break;
+
+                case TYPE_INT:
+			gi = make_shared<IntConstantInfo>(vp);
+			break;
+
+                case TYPE_COUNT:
+			gi = make_shared<CountConstantInfo>(vp);
+			break;
+
+                case TYPE_ENUM:
+			gi = make_shared<EnumConstantInfo>(this, vp);
+			break;
+
+                case TYPE_DOUBLE:
+			gi = make_shared<DoubleConstantInfo>(vp);
+			break;
+
+                case TYPE_TIME:
+			gi = make_shared<TimeConstantInfo>(vp);
+			break;
+
+                case TYPE_INTERVAL:
+			gi = make_shared<IntervalConstantInfo>(vp);
+			break;
+
+                case TYPE_STRING:
+			gi = make_shared<StringConstantInfo>(vp);
+			break;
+
+                case TYPE_PATTERN:
+			gi = make_shared<PatternConstantInfo>(vp);
+			break;
+
+                case TYPE_ADDR:
+			gi = make_shared<DescConstantInfo>(vp);
+			break;
+
+                case TYPE_SUBNET:
+			gi = make_shared<DescConstantInfo>(vp);
+			break;
+
+                case TYPE_PORT:
+			gi = make_shared<PortConstantInfo>(vp);
+			break;
+
+                case TYPE_LIST:
+			gi = make_shared<ListConstantInfo>(this, vp);
+			break;
+
+                case TYPE_VECTOR:
+			gi = make_shared<VectorConstantInfo>(this, vp);
+			break;
+
+                case TYPE_RECORD:
+			gi = make_shared<RecordConstantInfo>(this, vp);
+			break;
+
+                case TYPE_TABLE:
+			gi = make_shared<TableConstantInfo>(this, vp);
+			break;
+
+                case TYPE_FILE:
+			gi = make_shared<FileConstantInfo>(this, vp);
+			break;
+
+                case TYPE_FUNC:
+			gi = make_shared<FuncConstantInfo>(this, vp);
+
+			// We can't generate the initialization now because it
+			// depends on first having compiled the associated body,
+			// so we know its hash.  So for now we just note it
+			// to deal with later.
+			func_vars[v->AsFuncVal()] = const_name;
+
+			break;
+
+		default:
+			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
+			break;
 		}
-	else if ( tag == TYPE_PATTERN )
-		{
-		const_name = re_constants->NextName();
-		re_constants->AddInstance(make_shared<PatternConstantInfo>(vp));
+
+	const_name = const_info[tag]->NextName();
+	const_info[tag]->AddInstance(gi);
+
+#if 0
+		case TYPE_RECORD:
+			AddRecordConstant(vp, const_name);
+			break;
+
+		case TYPE_TABLE:
+			AddTableConstant(vp, const_name);
+			break;
+
+		case TYPE_VECTOR:
+			AddVectorConstant(vp, const_name);
+			break;
+
+		case TYPE_FUNC:
+			Emit("FuncValPtr %s;", const_name);
+
+			// We can't generate the initialization now because it
+			// depends on first having compiled the associated body,
+			// so we know its hash.  So for now we just note it
+			// to deal with later.
+			func_vars[v->AsFuncVal()] = const_name;
+			break;
+
+		case TYPE_FILE:
+				{
+				Emit("FileValPtr %s;", const_name);
+
+				auto f = cast_intrusive<FileVal>(vp)->Get();
+
+				AddInit(v, const_name,
+				        string("make_intrusive<FileVal>(") + "make_intrusive<File>(\"" + f->Name() +
+				            "\", \"w\"))");
+				}
+			break;
+
+		default:
+			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
-	else if ( tag == TYPE_ADDR )
-		{
-		const_name = addr_constants->NextName();
-		addr_constants->AddInstance(make_shared<DescConstantInfo>(vp));
-		}
-	else if ( tag == TYPE_SUBNET )
-		{
-		const_name = subnet_constants->NextName();
-		subnet_constants->AddInstance(make_shared<DescConstantInfo>(vp));
-		}
-	else if ( tag == TYPE_LIST )
-		{
-		const_name = list_constants->NextName();
-		list_constants->AddInstance(make_shared<ListConstantInfo>(this, vp));
-		}
-	else
-		// Need a C++ global for this constant.
-		const_name = string("CPP__const__") + Fmt(int(constants.size()));
+#endif
 
 	const_vals[v] = constants[c_desc] = const_name;
 	constants_to_vals[c_desc] = v;
 
+#if 0
 	switch ( tag )
 		{
+                case TYPE_BOOL:
+                        return string("val_mgr->Bool(") + expr + ")";
+
+                case TYPE_INT:
+                        return string("val_mgr->Int(") + expr + ")";
+
+                case TYPE_COUNT:
+                        return string("val_mgr->Count(") + expr + ")";
+
+                case TYPE_PORT:
+                        return string("val_mgr->Port(") + expr + ")";
+
+                case TYPE_ENUM:
+
 		case TYPE_STRING:
 		case TYPE_PATTERN:
 		case TYPE_ADDR:
@@ -174,6 +289,7 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 		default:
 			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
 		}
+#endif
 
 	return true;
 	}
