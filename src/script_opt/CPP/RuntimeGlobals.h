@@ -147,32 +147,6 @@ private:
 	int is_case_insensitive;
 	};
 
-class CPP_AddrConst : public CPP_Global<AddrValPtr>
-	{
-public:
-	CPP_AddrConst(const char* _init)
-		: init(_init) { }
-
-	AddrValPtr Generate() const override
-		{ return make_intrusive<AddrVal>(init); }
-
-private:
-	const char* init;
-	};
-
-class CPP_SubNetConst : public CPP_Global<SubNetValPtr>
-	{
-public:
-	CPP_SubNetConst(const char* _init)
-		: init(_init) { }
-
-	SubNetValPtr Generate() const override
-		{ return make_intrusive<SubNetVal>(init); }
-
-private:
-	const char* init;
-	};
-
 class CPP_ListConst : public CPP_Global<ListValPtr>
 	{
 public:

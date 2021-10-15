@@ -57,8 +57,8 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
-DescConstInfo::DescConstInfo(ValPtr v)
-	: CPP_GlobalInfo()
+DescConstInfo::DescConstInfo(std::string _name, ValPtr v)
+	: CPP_GlobalInfo(), name(std::move(_name))
 	{
 	ODesc d;
 	v->Describe(&d);
@@ -67,7 +67,7 @@ DescConstInfo::DescConstInfo(ValPtr v)
 
 string DescConstInfo::Initializer() const
 	{
-	return string("CPP_") + gls->Tag() + "Const(\"" + init + "\")";
+	return string("CPP_BasicConst<") + name + "ValPtr, const char*, " + name + "Val>(\"" + init + "\")";
 	}
 
 EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)

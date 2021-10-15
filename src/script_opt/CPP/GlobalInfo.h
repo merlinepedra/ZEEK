@@ -137,11 +137,12 @@ private:
 class DescConstInfo : public CPP_GlobalInfo
 	{
 public:
-	DescConstInfo(ValPtr v);
+	DescConstInfo(std::string _name, ValPtr v);
 
 	std::string Initializer() const override;
 
 private:
+	std::string name;
 	std::string init;
 	};
 
