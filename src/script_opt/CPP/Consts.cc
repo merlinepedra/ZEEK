@@ -176,22 +176,6 @@ bool CPPCompile::AddConstant(const ValPtr& vp)
 	return true;
 	}
 
-void CPPCompile::AddPatternConstant(const ValPtr& v, string& const_name)
-	{
-	Emit("PatternValPtr %s;", const_name);
-
-	auto re = v->AsPatternVal()->Get();
-
-	AddInit(v, string("{ auto re = new RE_Matcher(") + CPPEscape(re->OrigText()) + ");");
-
-	if ( re->IsCaseInsensitive() )
-		AddInit(v, "re->MakeCaseInsensitive();");
-
-	AddInit(v, "re->Compile();");
-	AddInit(v, const_name, "make_intrusive<PatternVal>(re)");
-	AddInit(v, "}");
-	}
-
 void CPPCompile::AddListConstant(const ValPtr& v, string& const_name)
 	{
 	Emit("ListValPtr %s;", const_name);

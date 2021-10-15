@@ -312,7 +312,6 @@ void CPPCompile::GenEpilog()
 	// if present.
 	for ( const auto& t : types_OBS.DistinctKeys() )
 		{
-		ExpandTypeVar(t);
 		if ( update )
 			types_OBS.LogIfNew(t, addl_tag, hm.HashFile());
 		}

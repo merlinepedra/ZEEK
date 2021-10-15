@@ -62,7 +62,7 @@ TypePtr CPP_EnumType::DoGenerate(std::vector<TypePtr>& global_vec) const
 
 TypePtr CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
-	if ( yield >= 0 )
+	if ( yield < 0 )
 		return make_intrusive<SetType>(cast_intrusive<TypeList>(global_vec[indices]), nullptr);
 
 	return make_intrusive<TableType>(cast_intrusive<TypeList>(global_vec[indices]), global_vec[yield]);

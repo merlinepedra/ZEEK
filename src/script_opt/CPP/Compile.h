@@ -292,7 +292,7 @@ private:
 	const char* IDName(const ID& id) { return IDName(&id); }
 	const char* IDName(const IDPtr& id) { return IDName(id.get()); }
 	const char* IDName(const ID* id) { return IDNameStr(id).c_str(); }
-	const std::string& IDNameStr(const ID* id) const;
+	const std::string& IDNameStr(const ID* id);
 
 	// Returns a canonicalized version of a variant of a global made
 	// distinct by the given suffix.
@@ -490,7 +490,6 @@ private:
 
 	// Build particular types of C++ variables (with the given name)
 	// to hold constants initialized at run-time.
-	void AddPatternConstant(const ValPtr& v, std::string& const_name);
 	void AddListConstant(const ValPtr& v, std::string& const_name);
 	void AddRecordConstant(const ValPtr& v, std::string& const_name);
 	void AddTableConstant(const ValPtr& v, std::string& const_name);
@@ -742,24 +741,6 @@ private:
 	// given script type 't', converts it as needed to the given GenType.
 	std::string GenericValPtrToGT(const std::string& expr, const TypePtr& t, GenType gt);
 
-	// For a given type, generates the code necessary to initialize
-	// it at run time.  The term "expand" in the method's name refers
-	// to the fact that the type has already been previously declared
-	// (necessary to facilitate defining recursive types), so this method
-	// generates the "meat" of the type but not its original declaration.
-	void ExpandTypeVar(const TypePtr& t);
-
-	// Methods for expanding specific such types.  "tn" is the name
-	// of the C++ variable used for the particular type.
-	void ExpandListTypeVar(const TypePtr& t, std::string& tn);
-	void ExpandRecordTypeVar(const TypePtr& t, std::string& tn);
-	void ExpandEnumTypeVar(const TypePtr& t, std::string& tn);
-	void ExpandTableTypeVar(const TypePtr& t, std::string& tn);
-	void ExpandFuncTypeVar(const TypePtr& t, std::string& tn);
-
-	// The following assumes we're populating a type_decl_list called "tl".
-	std::string GenTypeDecl(const TypeDecl* td);
-
 	// Returns the name of a C++ variable that will hold a TypePtr
 	// of the appropriate flavor.  't' does not need to be a type
 	// representative.
@@ -777,12 +758,6 @@ private:
 	const char* TypeName(const TypePtr& t);
 	const char* FullTypeName(const TypePtr& t);
 	const char* TypeType(const TypePtr& t);
-
-	// Helper methods for RegisterType().
-	void RegisterListType(const TypePtr& t);
-	void RegisterTableType(const TypePtr& t);
-	void RegisterRecordType(const TypePtr& t);
-	void RegisterFuncType(const TypePtr& t);
 
 	// Access to a type's underlying values.
 	const char* NativeAccessor(const TypePtr& t);
@@ -916,20 +891,6 @@ private:
 		NoteInitDependency(o1, o2.get());
 		}
 	void NoteInitDependency(const Obj* o1, const Obj* o2);
-
-	// Records an initialization dependency of the given object
-	// on the given type, unless the type is a record.  We need
-	// this notion to protect against circular dependencies in
-	// the face of recursive records.
-	void NoteNonRecordInitDependency(const Obj* o, const TypePtr& t)
-		{
-		if ( t && t->Tag() != TYPE_RECORD )
-			NoteInitDependency(o, TypeRep(t));
-		}
-	void NoteNonRecordInitDependency(const IntrusivePtr<Obj> o, const TypePtr& t)
-		{
-		NoteNonRecordInitDependency(o.get(), t);
-		}
 
 	// Analyzes the initialization dependencies to ensure that they're
 	// consistent, i.e., every object that either depends on another,

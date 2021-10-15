@@ -107,7 +107,7 @@ void CPPCompile::CreateGlobal(const ID* g)
 			Emit("EventHandlerPtr %s_ev;", globals[gn]);
 
 		const auto& t = g->GetType();
-		NoteInitDependency(g, TypeRep(t));
+		RegisterType(t);
 
 		auto exported = g->IsExport() ? "true" : "false";
 
@@ -210,18 +210,19 @@ void CPPCompile::RegisterEvent(string ev_name)
 	body_events[body_name].emplace_back(move(ev_name));
 	}
 
-const string& CPPCompile::IDNameStr(const ID* id) const
+const string& CPPCompile::IDNameStr(const ID* id)
 	{
 	if ( id->IsGlobal() )
 		{
 		auto g = string(id->Name());
-		ASSERT(globals.count(g) > 0);
-		return ((CPPCompile*)(this))->globals[g];
+		if ( globals.count(g) == 0 )
+			CreateGlobal(id);
+		return globals[g];
 		}
 
 	ASSERT(locals.count(id) > 0);
 
-	return ((CPPCompile*)(this))->locals[id];
+	return locals[id];
 	}
 
 string CPPCompile::LocalName(const ID* l) const

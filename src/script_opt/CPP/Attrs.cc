@@ -64,6 +64,10 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttr(const AttrPtr& attr)
 			AddInit(e);
 			NoteInitDependency(attr, e);
 
+			auto& t = e->GetType();
+			RegisterType(t);
+			NoteInitDependency(e, t);
+
 			auto e_rep = init_exprs.GetRep(e);
 			if ( e_rep != e.get() )
 				NoteInitDependency(e.get(), e_rep);
