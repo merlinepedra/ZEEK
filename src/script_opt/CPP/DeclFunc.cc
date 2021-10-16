@@ -166,6 +166,7 @@ void CPPCompile::BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf, const
 	// initialization.  That way GenFuncVarInits() can generate
 	// initializations with the assurance that the associated body
 	// hashes will have been registered.
+	// ### FIXME
 	AddInit(body.get());
 	NoteInitDependency(body.get(), l);
 

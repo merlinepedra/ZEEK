@@ -146,13 +146,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 
                 case TYPE_FUNC:
 			gi = make_shared<FuncConstInfo>(this, vp);
-
-			// We can't generate the initialization now because it
-			// depends on first having compiled the associated body,
-			// so we know its hash.  So for now we just note it
-			// to deal with later.
-			func_vars[v->AsFuncVal()] = const_name;
-
 			break;
 
 		default:
@@ -165,16 +158,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	constants_to_vals[c_desc] = v;
 
 #if 0
-		case TYPE_FUNC:
-			Emit("FuncValPtr %s;", const_name);
-
-			// We can't generate the initialization now because it
-			// depends on first having compiled the associated body,
-			// so we know its hash.  So for now we just note it
-			// to deal with later.
-			func_vars[v->AsFuncVal()] = const_name;
-			break;
-
 		case TYPE_FILE:
 				{
 				Emit("FileValPtr %s;", const_name);
@@ -195,35 +178,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 #if 0
 	switch ( tag )
 		{
-                case TYPE_BOOL:
-                        return string("val_mgr->Bool(") + expr + ")";
-
-                case TYPE_INT:
-                        return string("val_mgr->Int(") + expr + ")";
-
-                case TYPE_COUNT:
-                        return string("val_mgr->Count(") + expr + ")";
-
-                case TYPE_PORT:
-                        return string("val_mgr->Port(") + expr + ")";
-
-		case TYPE_STRING:
-		case TYPE_PATTERN:
-		case TYPE_ADDR:
-		case TYPE_SUBNET:
-		case TYPE_LIST:
-			AddInit(vp);
-			break;
-
-		case TYPE_FUNC:
-			Emit("FuncValPtr %s;", const_name);
-
-			// We can't generate the initialization now because it
-			// depends on first having compiled the associated body,
-			// so we know its hash.  So for now we just note it
-			// to deal with later.
-			func_vars[v->AsFuncVal()] = const_name;
-			break;
 
 		case TYPE_FILE:
 				{

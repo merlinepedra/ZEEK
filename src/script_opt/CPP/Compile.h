@@ -834,10 +834,6 @@ private:
 	// to the given value *if* on start-up it doesn't already have a value.
 	void GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v);
 
-	// Generates code to initialize all of the function-valued globals
-	// (i.e., those pointing to lambdas).
-	void GenFuncVarInits();
-
 	// Generates the "pre-initialization" for a given type.  For
 	// extensible types (records, enums, lists), these are empty
 	// versions that we'll later populate.

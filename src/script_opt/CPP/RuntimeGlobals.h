@@ -237,6 +237,21 @@ private:
 	std::vector<CPP_AbstractValElem> t_vals;
 	};
 
+class CPP_FuncConst : public CPP_Global<FuncValPtr>
+	{
+public:
+	CPP_FuncConst(const char* _name, int _type, std::vector<p_hash_type> _hashes)
+		: name(_name), type(_type), hashes(std::move(_hashes)) { }
+
+	FuncValPtr Generate() const override
+		{ return lookup_func__CPP(name, hashes, CPP__Type__[type]); }
+
+private:
+	std::string name;
+	int type;
+	std::vector<p_hash_type> hashes;
+	};
+
 
 class CPP_Attr : public CPP_Global<AttrPtr>
 	{

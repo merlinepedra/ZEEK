@@ -243,8 +243,6 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	Emit("};");
 
-	GenFuncVarInits();
-
 	GenEpilog();
 	}
 

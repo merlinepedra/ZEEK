@@ -151,49 +151,6 @@ void CPPCompile::GenGlobalInit(const ID* g, string& gl, const ValPtr& v)
 		AddInit(g, "\t" + gl + "->SetVal(" + init_val + ");");
 	}
 
-void CPPCompile::GenFuncVarInits()
-	{
-	for ( const auto& fv_init : func_vars )
-		{
-		auto& fv = fv_init.first;
-		auto& const_name = fv_init.second;
-
-		auto f = fv->AsFunc();
-		const auto& fn = f->Name();
-		const auto& ft = f->GetType();
-
-		NoteInitDependency(fv, TypeRep(ft));
-
-		const auto& bodies = f->GetBodies();
-
-		string hashes = "{";
-
-		for ( const auto& b : bodies )
-			{
-			auto body = b.stmts.get();
-
-			ASSERT(body_names.count(body) > 0);
-
-			auto& body_name = body_names[body];
-			ASSERT(body_hashes.count(body_name) > 0);
-
-			NoteInitDependency(fv, body);
-
-			if ( hashes.size() > 1 )
-				hashes += ", ";
-
-			hashes += Fmt(body_hashes[body_name]);
-			}
-
-		hashes += "}";
-
-		auto init =
-			string("lookup_func__CPP(\"") + fn + "\", " + hashes + ", " + GenTypeName(ft) + ")";
-
-		AddInit(fv, const_name, init);
-		}
-	}
-
 void CPPCompile::GenPreInit(const Type* t)
 	{
 	string pre_init;
