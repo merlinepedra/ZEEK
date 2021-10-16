@@ -250,6 +250,34 @@ string AttrsInfo::Initializer() const
 	return string("CPP_Attrs({ ") + attr_list + "})";
 	}
 
+GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, std::string _CPP_name)
+	: CPP_GlobalInfo(), CPP_name(std::move(_CPP_name))
+	{
+	Zeek_name = g->Name();
+
+	auto gi = c->RegisterType(g->GetType());
+	init_cohort = max(init_cohort, gi->InitCohort() + 1);
+	type = gi->Offset();
+
+	gi = c->RegisterAttributes(g->GetAttrs());
+	if ( gi )
+		{
+		init_cohort = max(init_cohort, gi->InitCohort() + 1);
+		attrs = gi->Offset();
+		}
+	else
+		attrs = -1;
+
+	exported = g->IsExport();
+
+	val = ValElem(c, g->GetVal());
+	}
+
+string GlobalInitInfo::Initializer() const
+	{
+	return string("CPP_GlobalInit(") + CPP_name + ", \"" + Zeek_name + "\", " + Fmt(type) + ", " + Fmt(attrs) + ", " + val + ", " + Fmt(exported) + ")";
+	}
+
 
 string BaseTypeInfo::Initializer() const
 	{

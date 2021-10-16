@@ -83,7 +83,7 @@ void CPPCompile::CreateGlobal(const ID* g)
 	if ( pfs.Globals().count(g) == 0 )
 		{
 		// Only used in the context of calls.  If it's compilable,
-		// the we'll call it directly.
+		// then we'll call it directly.
 		if ( compilable_funcs.count(gn) > 0 )
 			{
 			AddGlobal(gn, "zf", true);
@@ -102,9 +102,10 @@ void CPPCompile::CreateGlobal(const ID* g)
 		Emit("IDPtr %s;", globals[gn]);
 
 		if ( pfs.Events().count(gn) > 0 )
-			// This is an event that's also used as
-			// a variable.
+			// This is an event that's also used as a variable.
 			Emit("EventHandlerPtr %s_ev;", globals[gn]);
+
+		global_inits.emplace_back(GlobalInitInfo(this, g, globals[gn]));
 
 		const auto& t = g->GetType();
 		RegisterType(t);

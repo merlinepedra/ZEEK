@@ -136,6 +136,8 @@ void CPPCompile::GenGlobalInit(const ID* g, string& gl, const ValPtr& v)
 
 	auto& attrs = g->GetAttrs();
 
+	// ### global_inits.emplace_back(GlobalInitInfo(g, gl, init_val, AttributesOffset(attrs)));
+
 	AddInit(g, string("if ( ! ") + gl + "->HasVal() )");
 
 	if ( attrs )
@@ -393,6 +395,18 @@ void CPPCompile::InitializeBiFs()
 
 	for ( const auto& b : BiFs )
 		Emit("CPP_LookupBiF(%s, \"%s\"),", b.first, b.second);
+
+	EndBlock(true);
+	}
+
+void CPPCompile::InitializeGlobals()
+	{
+	Emit("std::vector<CPP_GlobalInit> CPP__global_inits__ = ");
+
+	StartBlock();
+
+	for ( const auto& gi : global_inits )
+		Emit("%s,", gi.Initializer());
 
 	EndBlock(true);
 	}

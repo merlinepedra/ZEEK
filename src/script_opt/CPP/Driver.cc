@@ -354,6 +354,9 @@ void CPPCompile::GenEpilog()
 	InitializeBiFs();
 
 	NL();
+	InitializeGlobals();
+
+	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();
@@ -377,6 +380,10 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("for ( auto& b : CPP__BiF_lookups__ )");
 	Emit("\tb.ResolveBiF();");
+
+	NL();
+	Emit("for ( auto& gi : CPP__global_inits__ )");
+	Emit("\tgi.Init();");
 
 	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");

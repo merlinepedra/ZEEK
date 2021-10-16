@@ -216,4 +216,17 @@ int CPP_EnumMapping::ComputeOffset() const
 	}
 
 
+void CPP_GlobalInit::Init() const
+	{
+	global = lookup_global__CPP(name, CPP__Type__[type], exported);
+
+	if ( ! global->HasVal() )
+		{
+		global->SetVal(val.Get());
+		if ( attrs >= 0 )
+			global->SetAttrs(CPP__Attributes__[attrs]);
+		}
+	}
+
+
 	} // zeek::detail

@@ -313,6 +313,23 @@ protected:
 	};
 
 
+class GlobalInitInfo : public CPP_GlobalInfo
+	{
+public:
+	GlobalInitInfo(CPPCompile* c, const ID* g, std::string CPP_name);
+
+	std::string Initializer() const override;
+
+protected:
+	std::string Zeek_name;
+	std::string CPP_name;
+	int type;
+	int attrs;
+	std::string val;
+	bool exported;
+	};
+
+
 class AbstractTypeInfo : public CPP_GlobalInfo
 	{
 public:

@@ -570,18 +570,30 @@ public:
 		: bif_func(_bif_func), bif_name(std::move(_bif_name))
 		{ }
 
-	void ResolveBiF() const { bif_func = zeek::detail::lookup_bif__CPP(bif_name.c_str()); }
+	void ResolveBiF() const { bif_func = lookup_bif__CPP(bif_name.c_str()); }
 
 protected:
 	zeek::Func*& bif_func;
 	std::string bif_name;
 	};
 
-	} // zeek::detail
+class CPP_GlobalInit
+	{
+public:
+	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, CPP_AbstractValElem _val, bool _exported)
+		: global(_global), name(_name), type(_type), attrs(_attrs), val(std::move(_val)), exported(_exported)
+		{ }
 
-// get_enum_type__CPP(" + char* + ");
-// get_record_type__CPP(" + char* + ");
-// get_record_type__CPP(nullptr);
-// 
-// make_intrusive<FuncType>(cast_intrusive<RecordType>(TYPEINDEX), TYPEINDEX|nullpt
-// r, FLAVOR);
+	void Init() const;
+
+protected:
+	IDPtr& global;
+	const char* name;
+	int type;
+	int attrs;
+	CPP_AbstractValElem val;
+	bool exported;
+	};
+
+
+	} // zeek::detail

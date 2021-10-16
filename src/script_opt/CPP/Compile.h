@@ -327,6 +327,9 @@ private:
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
 
+	// Tracks initializations for globals.
+	std::vector<GlobalInitInfo> global_inits;
+
 	// Similar for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;
 
@@ -919,6 +922,9 @@ private:
 
 	// Generate code to initialize BiFs.
 	void InitializeBiFs();
+
+	// Generate code to initialize Zeek globals.
+	void InitializeGlobals();
 
 	// Generate the initialization hook for this set of compiled code.
 	void GenInitHook();
