@@ -115,6 +115,9 @@ CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v)
 
 std::string CompoundConstInfo::ValElem(ValPtr v)
 	{
+	if ( ! v )
+		return string("CPP_AbstractValElem()");
+
 	auto gi = c->RegisterConstant(v);
 	init_cohort = max(init_cohort, gi->InitCohort() + 1);
 
@@ -156,20 +159,7 @@ RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
 	type = c->TypeOffset(r->GetType());
 
 	for ( auto i = 0; i < n; ++i )
-		{
-		const auto& r_i = r->GetField(i);
-
-		if ( r_i )
-			{
-			auto gi = c->RegisterConstant(r_i);
-			init_cohort = max(init_cohort, gi->InitCohort());
-			vals += Fmt(gi->Offset());
-			}
-		else
-			vals += Fmt(-1);
-
-		vals += ", ";
-		}
+		vals += ValElem(r->GetField(i)) + ", ";
 	}
 
 TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)

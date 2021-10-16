@@ -177,7 +177,8 @@ public:
 	CPP_ValElem(std::vector<T>& _vec, int _offset)
 		: vec(_vec), offset(_offset) { }
 
-	ValPtr Get() const override { return vec[offset]; }
+	ValPtr Get() const override
+		{ return offset >= 0 ? vec[offset] : nullptr; }
 
 private:
 	std::vector<T>& vec;
@@ -207,6 +208,19 @@ public:
 private:
 	int v_type;
 	std::vector<CPP_AbstractValElem> v_vals;
+	};
+
+class CPP_RecordConst : public CPP_Global<RecordValPtr>
+	{
+public:
+	CPP_RecordConst(int type, std::vector<CPP_AbstractValElem> vals)
+		: r_type(type), r_vals(std::move(vals)) { }
+
+	RecordValPtr Generate() const override;
+
+private:
+	int r_type;
+	std::vector<CPP_AbstractValElem> r_vals;
 	};
 
 

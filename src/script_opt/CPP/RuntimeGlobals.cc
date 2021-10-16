@@ -66,6 +66,17 @@ VectorValPtr CPP_VectorConst::Generate() const
 	return vv;
 	}
 
+RecordValPtr CPP_RecordConst::Generate() const
+	{
+	auto rt = cast_intrusive<RecordType>(CPP__Type__[r_type]);
+	auto rv = make_intrusive<RecordVal>(rt);
+
+	for ( auto i = 0U; i < r_vals.size(); ++i )
+		rv->Assign(i, r_vals[i].Get());
+
+	return rv;
+	}
+
 
 AttrPtr CPP_Attr::Generate() const
 	{
