@@ -159,6 +159,20 @@ private:
 	std::vector<ValPtr> vals;
 	};
 
+class CPP_EnumConst : public CPP_Global<EnumValPtr>
+	{
+public:
+	CPP_EnumConst(int type, int val)
+		: e_type(type), e_val(val) { }
+
+	EnumValPtr Generate() const override
+		{ return make_enum__CPP(CPP__Type__[e_type], e_val); }
+
+private:
+	int e_type;
+	int e_val;
+	};
+
 
 class CPP_Attr : public CPP_Global<AttrPtr>
 	{

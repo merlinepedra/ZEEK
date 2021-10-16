@@ -211,8 +211,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
                 case TYPE_PORT:
                         return string("val_mgr->Port(") + expr + ")";
 
-                case TYPE_ENUM:
-
 		case TYPE_STRING:
 		case TYPE_PATTERN:
 		case TYPE_ADDR:
