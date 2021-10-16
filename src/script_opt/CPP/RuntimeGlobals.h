@@ -72,7 +72,7 @@ public:
 			num_globals += cohort.size();
 			}
 
-		global_vec.reserve(num_globals);
+		global_vec.resize(num_globals);
 
 		DoPreInits();
 		}
