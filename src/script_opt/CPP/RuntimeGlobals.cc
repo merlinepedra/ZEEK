@@ -89,12 +89,13 @@ TableValPtr CPP_TableConst::Generate() const
 	}
 
 
-AttrPtr CPP_Attr::Generate() const
+ExprPtr CPP_RecordAttrExpr::Build() const
 	{
-	if ( expr2 )
-		return make_intrusive<Attr>(tag, *expr2);
-	else
-		return make_intrusive<Attr>(tag, expr1);
+	auto t = CPP__Type__[type];
+	auto rt = cast_intrusive<RecordType>(t);
+	auto empty_vals = make_intrusive<ListExpr>();
+	auto construct = make_intrusive<RecordConstructorExpr>(empty_vals);
+	return make_intrusive<RecordCoerceExpr>(construct, rt);
 	}
 
 AttributesPtr CPP_Attrs::Generate() const

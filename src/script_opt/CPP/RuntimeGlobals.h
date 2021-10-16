@@ -266,18 +266,73 @@ private:
 	};
 
 
+class CPP_AbstractAttrExpr
+	{
+public:
+	CPP_AbstractAttrExpr() {}
+	virtual ~CPP_AbstractAttrExpr() {}
+
+	virtual ExprPtr Build() const { return nullptr; }
+	};
+
+class CPP_ConstAttrExpr : public CPP_AbstractAttrExpr
+	{
+public:
+	CPP_ConstAttrExpr(CPP_AbstractValElem _v) : v(std::move(_v)) {}
+
+	ExprPtr Build() const override
+		{ return make_intrusive<ConstExpr>(v.Get()); }
+
+private:
+	CPP_AbstractValElem v;
+	};
+
+class CPP_NameAttrExpr : public CPP_AbstractAttrExpr
+	{
+public:
+	CPP_NameAttrExpr(IDPtr* _id_addr) : id_addr(_id_addr) {}
+
+	ExprPtr Build() const override
+		{ return make_intrusive<NameExpr>(*id_addr); }
+
+private:
+	IDPtr* id_addr;
+	};
+
+class CPP_RecordAttrExpr : public CPP_AbstractAttrExpr
+	{
+public:
+	CPP_RecordAttrExpr(int _type) : type(_type) {}
+
+	ExprPtr Build() const override;
+
+private:
+	int type;
+	};
+
+class CPP_CallAttrExpr : public CPP_AbstractAttrExpr
+	{
+public:
+	CPP_CallAttrExpr(CallExprPtr* _call) : call(_call) {}
+
+	ExprPtr Build() const override { return *call; }
+
+private:
+	CallExprPtr* call;
+	};
+
 class CPP_Attr : public CPP_Global<AttrPtr>
 	{
 public:
-	CPP_Attr(AttrTag t, ExprPtr e1, CallExprPtr* e2)
-		: tag(t), expr1(e1), expr2(e2) { }
+	CPP_Attr(AttrTag t, CPP_AbstractAttrExpr _expr)
+		: tag(t), expr(std::move(_expr)) { }
 
-	AttrPtr Generate() const override;
+	AttrPtr Generate() const override
+		{ return make_intrusive<Attr>(tag, expr.Build()); }
 
 private:
 	AttrTag tag;
-	ExprPtr expr1;
-	CallExprPtr* expr2;
+	CPP_AbstractAttrExpr expr;
 	};
 
 class CPP_Attrs : public CPP_Global<AttributesPtr>

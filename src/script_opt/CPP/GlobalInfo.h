@@ -106,6 +106,8 @@ public:
 	virtual std::string Initializer() const = 0;
 
 protected:
+	std::string ValElem(CPPCompile* c, ValPtr v);
+
 	std::string name;
 	std::string type;
 
@@ -208,8 +210,6 @@ public:
 	CompoundConstInfo(CPPCompile* _c) : c(_c) { type = 0; }
 
 protected:
-	std::string ValElem(ValPtr v);
-
 	CPPCompile* c;
 	int type;
 	std::string vals;
@@ -298,7 +298,7 @@ public:
 
 protected:
 	std::string tag;
-	std::string expr1, expr2;
+	std::string e_init;
 	};
 
 class AttrsInfo : public CPP_GlobalInfo

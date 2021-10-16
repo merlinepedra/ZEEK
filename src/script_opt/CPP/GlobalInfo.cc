@@ -57,6 +57,18 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
+std::string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
+	{
+	if ( ! v )
+		return string("CPP_AbstractValElem()");
+
+	auto gi = c->RegisterConstant(v);
+	init_cohort = max(init_cohort, gi->InitCohort() + 1);
+
+	auto gl = gi->MainGlobal();
+	return string("CPP_ValElem<") + gl->CPPType() + ">(" + gl->GlobalsName() + ", " + Fmt(gi->Offset()) + ")";
+	}
+
 DescConstInfo::DescConstInfo(std::string _name, ValPtr v)
 	: CPP_GlobalInfo(), name(std::move(_name))
 	{
@@ -113,18 +125,6 @@ CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v)
 	init_cohort = c->TypeCohort(t) + 1;
 	}
 
-std::string CompoundConstInfo::ValElem(ValPtr v)
-	{
-	if ( ! v )
-		return string("CPP_AbstractValElem()");
-
-	auto gi = c->RegisterConstant(v);
-	init_cohort = max(init_cohort, gi->InitCohort() + 1);
-
-	auto gl = gi->MainGlobal();
-	return string("CPP_ValElem<") + gl->CPPType() + ">(" + gl->GlobalsName() + ", " + Fmt(gi->Offset()) + ")";
-	}
-
 ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
 	: CompoundConstInfo(_c)
 	{
@@ -132,7 +132,7 @@ ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
 	auto n = lv->Length();
 
 	for ( auto i = 0; i < n; ++i )
-		vals += ValElem(lv->Idx(i)) + ", ";
+		vals += ValElem(c, lv->Idx(i)) + ", ";
 	}
 
 string ListConstInfo::Initializer() const
@@ -147,7 +147,7 @@ VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
 	auto n = vv->Size();
 
 	for ( auto i = 0; i < n; ++i )
-		vals += ValElem(vv->ValAt(i)) + ", ";
+		vals += ValElem(c, vv->ValAt(i)) + ", ";
 	}
 
 RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
@@ -159,7 +159,7 @@ RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
 	type = c->TypeOffset(r->GetType());
 
 	for ( auto i = 0; i < n; ++i )
-		vals += ValElem(r->GetField(i)) + ", ";
+		vals += ValElem(c, r->GetField(i)) + ", ";
 	}
 
 TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
@@ -169,8 +169,8 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 
 	for ( auto& tv_i : tv->ToMap() )
 		{
-		indices += ValElem(tv_i.first) + ", ";
-		vals += ValElem(tv_i.second) + ", ";
+		indices += ValElem(c, tv_i.first) + ", ";
+		vals += ValElem(c, tv_i.second) + ", ";
 		}
 	}
 
@@ -196,8 +196,6 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 	tag = c->AttrName(attr->Tag());
 	auto a_e = attr->GetExpr();
 
-	expr1 = expr2 = "nullptr";
-
 	if ( a_e )
 		{
 		auto gi = c->RegisterType(a_e->GetType());
@@ -206,27 +204,28 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 		auto expr_type = gi->Name();
 
 		if ( ! CPPCompile::IsSimpleInitExpr(a_e) )
-			expr2 = string("&") + c->InitExprName(a_e);
+			e_init = string("CPP_CallAttrExpr(&") + c->InitExprName(a_e) + ")";
 
 		else if ( a_e->Tag() == EXPR_CONST )
-			expr1 = string("make_intrusive<ConstExpr>(") + c->GenExpr(a_e, CPPCompile::GEN_VAL_PTR) + ")";
+			e_init = string("CPP_ConstAttrExpr(") + ValElem(c, a_e->AsConstExpr()->ValuePtr()) + ")";
 
 		else if ( a_e->Tag() == EXPR_NAME )
-                        expr1 = string("make_intrusive<NameExpr>(") + c->GlobalName(a_e) + ")";
+			e_init = string("CPP_NameAttrExpr(&") + c->GlobalName(a_e) + ")";
 
 		else
 			{
 			ASSERT(a_e->Tag() == EXPR_RECORD_COERCE);
-                        expr1 = "make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>(";
-			expr1 += "make_intrusive<ListExpr>()), cast_intrusive<RecordType>(";
-			expr1 += expr_type + "))";
+			e_init = string("CPP_RecordAttrExpr(") + gi->Name() + ")";
 			}
 		}
+
+	else
+		e_init = "CPP_AbstractAttrExpr()";
 	}
 
 string AttrInfo::Initializer() const
 	{
-	return string("CPP_Attr(") + tag + ", " + expr1 + ", " + expr2 + ")";
+	return string("CPP_Attr(") + tag + ", " + e_init + ")";
 	}
 
 AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)
