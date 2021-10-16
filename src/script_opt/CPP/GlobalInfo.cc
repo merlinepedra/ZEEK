@@ -105,28 +105,31 @@ string PatternConstInfo::Initializer() const
 	return string("CPP_PatternConst(") + pattern + ", " + Fmt(is_case_insensitive) + ")";
 	}
 
-CompoundConstInfo::CompoundConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_GlobalInfo()
+CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v)
+	: CPP_GlobalInfo(), c(_c)
 	{
 	auto& t = v->GetType();
 	type = c->TypeOffset(t);
 	init_cohort = c->TypeCohort(t) + 1;
 	}
 
-ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
-	: CompoundConstInfo()
+std::string CompoundConstInfo::ValElem(ValPtr v)
+	{
+	auto gi = c->RegisterConstant(v);
+	init_cohort = max(init_cohort, gi->InitCohort() + 1);
+
+	auto gl = gi->MainGlobal();
+	return string("CPP_ValElem<") + gl->CPPType() + ">(" + gl->GlobalsName() + ", " + Fmt(gi->Offset()) + ")";
+	}
+
+ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
+	: CompoundConstInfo(_c)
 	{
 	auto lv = cast_intrusive<ListVal>(v);
 	auto n = lv->Length();
 
 	for ( auto i = 0; i < n; ++i )
-		{
-		auto gi = c->RegisterConstant(lv->Idx(i));
-		init_cohort = max(init_cohort, gi->InitCohort() + 1);
-
-		auto gl = gi->MainGlobal();
-		vals += string("CPP_ListConstElem<") + gl->CPPType() + ">(" + gl->GlobalsName() + ", " + Fmt(gi->Offset()) + "), ";
-		}
+		vals += ValElem(lv->Idx(i)) + ", ";
 	}
 
 string ListConstInfo::Initializer() const
@@ -141,11 +144,7 @@ VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
 	auto n = vv->Size();
 
 	for ( auto i = 0; i < n; ++i )
-		{
-		auto gi = c->RegisterConstant(vv->ValAt(i));
-		init_cohort = max(init_cohort, gi->InitCohort());
-		vals += Fmt(gi->Offset()) + ", ";
-		}
+		vals += ValElem(vv->ValAt(i)) + ", ";
 	}
 
 RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)

@@ -55,6 +55,17 @@ ListValPtr CPP_ListConst::Generate() const
 	return l;
 	}
 
+VectorValPtr CPP_VectorConst::Generate() const
+	{
+	auto vt = cast_intrusive<VectorType>(CPP__Type__[v_type]);
+	auto vv = make_intrusive<VectorVal>(vt);
+
+	for ( auto& v : v_vals )
+		vv->Append(v.Get());
+
+	return vv;
+	}
+
 
 AttrPtr CPP_Attr::Generate() const
 	{

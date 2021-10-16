@@ -205,9 +205,12 @@ class CompoundConstInfo : public CPP_GlobalInfo
 	{
 public:
 	CompoundConstInfo(CPPCompile* c, ValPtr v);
-	CompoundConstInfo() { type = 0; }
+	CompoundConstInfo(CPPCompile* _c) : c(_c) { type = 0; }
 
 protected:
+	std::string ValElem(ValPtr v);
+
+	CPPCompile* c;
 	int type;
 	std::string vals;
 	};
