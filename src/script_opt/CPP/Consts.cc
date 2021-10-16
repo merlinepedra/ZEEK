@@ -165,10 +165,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	constants_to_vals[c_desc] = v;
 
 #if 0
-		case TYPE_TABLE:
-			AddTableConstant(vp, const_name);
-			break;
-
 		case TYPE_FUNC:
 			Emit("FuncValPtr %s;", const_name);
 
@@ -219,10 +215,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 			AddInit(vp);
 			break;
 
-		case TYPE_TABLE:
-			AddTableConstant(vp, const_name);
-			break;
-
 		case TYPE_FUNC:
 			Emit("FuncValPtr %s;", const_name);
 
@@ -251,56 +243,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 #endif
 
 	return gi;
-	}
-
-void CPPCompile::AddRecordConstant(const ValPtr& v, string& const_name)
-	{
-	const auto& t = v->GetType();
-
-	Emit("RecordValPtr %s;", const_name);
-
-	NoteInitDependency(v, TypeRep(t));
-
-	AddInit(v, const_name,
-	        string("make_intrusive<RecordVal>(") + "cast_intrusive<RecordType>(" + GenTypeName(t) +
-	            "))");
-
-	auto r = cast_intrusive<RecordVal>(v);
-	auto n = r->NumFields();
-
-	for ( auto i = 0u; i < n; ++i )
-		{
-		const auto& r_i = r->GetField(i);
-
-		if ( r_i )
-			{
-			auto r_i_c = BuildConstant(v, r_i);
-			AddInit(v, const_name + "->Assign(" + Fmt(static_cast<int>(i)) + ", " + r_i_c + ");");
-			}
-		}
-	}
-
-void CPPCompile::AddTableConstant(const ValPtr& v, string& const_name)
-	{
-	const auto& t = v->GetType();
-
-	Emit("TableValPtr %s;", const_name);
-
-	NoteInitDependency(v, TypeRep(t));
-
-	AddInit(v, const_name,
-	        string("make_intrusive<TableVal>(") + "cast_intrusive<TableType>(" + GenTypeName(t) +
-	            "))");
-
-	auto tv = cast_intrusive<TableVal>(v);
-	auto tv_map = tv->ToMap();
-
-	for ( auto& tv_i : tv_map )
-		{
-		auto ind = BuildConstant(v, tv_i.first);
-		auto val = BuildConstant(v, tv_i.second);
-		AddInit(v, const_name + "->Assign(" + ind + ", " + val + ");");
-		}
 	}
 
 	} // zeek::detail

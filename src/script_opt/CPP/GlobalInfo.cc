@@ -169,16 +169,8 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 
 	for ( auto& tv_i : tv->ToMap() )
 		{
-		auto gi = c->RegisterConstant(tv_i.first);
-		init_cohort = max(init_cohort, gi->InitCohort());
-		indices += Fmt(gi->Offset()) + ", ";
-
-		if ( tv_i.second )
-			{
-			gi = c->RegisterConstant(tv_i.second);
-			init_cohort = max(init_cohort, gi->InitCohort());
-			vals += Fmt(gi->Offset()) + ", ";
-			}
+		indices += ValElem(tv_i.first) + ", ";
+		vals += ValElem(tv_i.second) + ", ";
 		}
 	}
 

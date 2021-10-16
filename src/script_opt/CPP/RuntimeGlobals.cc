@@ -77,6 +77,17 @@ RecordValPtr CPP_RecordConst::Generate() const
 	return rv;
 	}
 
+TableValPtr CPP_TableConst::Generate() const
+	{
+	auto tt = cast_intrusive<TableType>(CPP__Type__[t_type]);
+	auto tv = make_intrusive<TableVal>(tt);
+
+	for ( auto i = 0U; i < t_vals.size(); ++i )
+		tv->Assign(t_indices[i].Get(), t_vals[i].Get());
+
+	return tv;
+	}
+
 
 AttrPtr CPP_Attr::Generate() const
 	{

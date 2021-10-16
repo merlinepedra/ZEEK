@@ -223,6 +223,20 @@ private:
 	std::vector<CPP_AbstractValElem> r_vals;
 	};
 
+class CPP_TableConst : public CPP_Global<TableValPtr>
+	{
+public:
+	CPP_TableConst(int type, std::vector<CPP_AbstractValElem> indices, std::vector<CPP_AbstractValElem> vals)
+		: t_type(type), t_indices(std::move(indices)), t_vals(std::move(vals)) { }
+
+	TableValPtr Generate() const override;
+
+private:
+	int t_type;
+	std::vector<CPP_AbstractValElem> t_indices;
+	std::vector<CPP_AbstractValElem> t_vals;
+	};
+
 
 class CPP_Attr : public CPP_Global<AttrPtr>
 	{
