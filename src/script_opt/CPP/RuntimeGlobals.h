@@ -120,6 +120,19 @@ private:
 	T2 v;
 	};
 
+class CPP_PortConst : public CPP_Global<PortValPtr>
+	{
+public:
+	CPP_PortConst(int _raw_p)
+		: raw_p(_raw_p) { }
+
+	PortValPtr Generate() const override
+		{ return make_intrusive<PortVal>(raw_p); }
+
+private:
+	uint32_t raw_p;
+	};
+
 class CPP_StringConst : public CPP_Global<StringValPtr>
 	{
 public:
