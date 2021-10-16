@@ -253,28 +253,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	return gi;
 	}
 
-void CPPCompile::AddListConstant(const ValPtr& v, string& const_name)
-	{
-	Emit("ListValPtr %s;", const_name);
-
-	// No initialization dependency on the main type since we don't
-	// use the underlying TypeList.  However, we *do* use the types of
-	// the elements.
-
-	AddInit(v, const_name, string("make_intrusive<ListVal>(TYPE_ANY)"));
-
-	auto lv = cast_intrusive<ListVal>(v);
-	auto n = lv->Length();
-
-	for ( auto i = 0; i < n; ++i )
-		{
-		const auto& l_i = lv->Idx(i);
-		auto l_i_c = BuildConstant(v, l_i);
-		AddInit(v, const_name + "->Append(" + l_i_c + ");");
-		NoteInitDependency(v, TypeRep(l_i->GetType()));
-		}
-	}
-
 void CPPCompile::AddRecordConstant(const ValPtr& v, string& const_name)
 	{
 	const auto& t = v->GetType();
@@ -322,29 +300,6 @@ void CPPCompile::AddTableConstant(const ValPtr& v, string& const_name)
 		auto ind = BuildConstant(v, tv_i.first);
 		auto val = BuildConstant(v, tv_i.second);
 		AddInit(v, const_name + "->Assign(" + ind + ", " + val + ");");
-		}
-	}
-
-void CPPCompile::AddVectorConstant(const ValPtr& v, string& const_name)
-	{
-	const auto& t = v->GetType();
-
-	Emit("VectorValPtr %s;", const_name);
-
-	NoteInitDependency(v, TypeRep(t));
-
-	AddInit(v, const_name,
-	        string("make_intrusive<VectorVal>(") + "cast_intrusive<VectorType>(" + GenTypeName(t) +
-	            "))");
-
-	auto vv = cast_intrusive<VectorVal>(v);
-	auto n = vv->Size();
-
-	for ( auto i = 0u; i < n; ++i )
-		{
-		const auto& v_i = vv->ValAt(i);
-		auto v_i_c = BuildConstant(v, v_i);
-		AddInit(v, const_name + "->Append(" + v_i_c + ");");
 		}
 	}
 

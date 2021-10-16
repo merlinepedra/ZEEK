@@ -500,10 +500,8 @@ private:
 
 	// Build particular types of C++ variables (with the given name)
 	// to hold constants initialized at run-time.
-	void AddListConstant(const ValPtr& v, std::string& const_name);
 	void AddRecordConstant(const ValPtr& v, std::string& const_name);
 	void AddTableConstant(const ValPtr& v, std::string& const_name);
-	void AddVectorConstant(const ValPtr& v, std::string& const_name);
 
 	// Maps (non-native) constants to associated C++ globals.
 	std::unordered_map<const ConstExpr*, std::string> const_exprs;
