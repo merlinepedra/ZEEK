@@ -147,16 +147,39 @@ private:
 	int is_case_insensitive;
 	};
 
+class CPP_AbstractListConstElem
+	{
+public:
+	CPP_AbstractListConstElem() {}
+	virtual ~CPP_AbstractListConstElem() {}
+
+	virtual ValPtr Get() const { return nullptr; }
+	};
+
+template <class T>
+class CPP_ListConstElem : public CPP_AbstractListConstElem
+	{
+public:
+	CPP_ListConstElem(std::vector<T>& _vec, int _offset)
+		: vec(_vec), offset(_offset) { }
+
+	ValPtr Get() const override { return vec[offset]; }
+
+private:
+	std::vector<T>& vec;
+	int offset;
+	};
+
 class CPP_ListConst : public CPP_Global<ListValPtr>
 	{
 public:
-	CPP_ListConst(std::vector<ValPtr> _vals)
-		: vals(_vals) { }
+	CPP_ListConst(std::vector<CPP_AbstractListConstElem> _vals)
+		: vals(std::move(_vals)) { }
 
 	ListValPtr Generate() const override;
 
 private:
-	std::vector<ValPtr> vals;
+	std::vector<CPP_AbstractListConstElem> vals;
 	};
 
 class CPP_EnumConst : public CPP_Global<EnumValPtr>

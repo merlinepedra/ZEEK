@@ -94,6 +94,8 @@ public:
 	// global in the generated code.
 	std::string Name() const { return gls ? gls->Name(offset) : name; }
 
+	const CPP_GlobalsInfo* MainGlobal() { return gls; }
+
 	int InitCohort() const { return init_cohort; }
 
 	// Returns a C++ declaration for this global.  Not used if

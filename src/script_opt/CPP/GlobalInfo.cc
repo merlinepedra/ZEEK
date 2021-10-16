@@ -122,8 +122,10 @@ ListConstInfo::ListConstInfo(CPPCompile* c, ValPtr v)
 	for ( auto i = 0; i < n; ++i )
 		{
 		auto gi = c->RegisterConstant(lv->Idx(i));
-		init_cohort = max(init_cohort, gi->InitCohort());
-		vals += Fmt(gi->Offset()) + ", ";
+		init_cohort = max(init_cohort, gi->InitCohort() + 1);
+
+		auto gl = gi->MainGlobal();
+		vals += string("CPP_ListConstElem<") + gl->CPPType() + ">(" + gl->GlobalsName() + ", " + Fmt(gi->Offset()) + "), ";
 		}
 	}
 

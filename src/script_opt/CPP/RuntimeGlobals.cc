@@ -50,7 +50,7 @@ ListValPtr CPP_ListConst::Generate() const
 	auto l = make_intrusive<ListVal>(TYPE_ANY);
 
 	for ( auto& v : vals )
-		l->Append(v);
+		l->Append(v.Get());
 
 	return l;
 	}
