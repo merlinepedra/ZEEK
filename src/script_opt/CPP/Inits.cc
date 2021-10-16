@@ -243,7 +243,8 @@ void CPPCompile::AddInit(const Obj* o)
 
 void CPPCompile::NoteInitDependency(const Obj* o1, const Obj* o2)
 	{
-	obj_deps[o1].emplace(o2);
+	// obj_deps[o1].emplace(o2);
+	return;
 	}
 
 void CPPCompile::CheckInitConsistency(unordered_set<const Obj*>& to_do)
