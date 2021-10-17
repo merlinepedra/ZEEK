@@ -14,7 +14,7 @@ namespace zeek::detail
 
 using namespace std;
 
-void CPPCompile::GenInitExpr(const ExprPtr& e)
+std::shared_ptr<CPP_GlobalInfo> CPPCompile::GenInitExpr(const ExprPtr& e)
 	{
 	NL();
 
@@ -40,7 +40,6 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 	     "FUNC_FLAVOR_FUNCTION);",
 	     GenTypeName(t));
 
-	NoteInitDependency(e, TypeRep(t));
 	EndBlock();
 
 	Emit("ValPtr Invoke(zeek::Args* args, Frame* parent) const override final");
@@ -63,11 +62,12 @@ void CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	Emit("CallExprPtr %s;", ename);
 
-	NoteInitDependency(e, TypeRep(t));
-	AddInit(e, ename,
-	        string("make_intrusive<CallExpr>(make_intrusive<ConstExpr>(make_intrusive<FuncVal>("
-	               "make_intrusive<") +
-	            name + "_cl>())), make_intrusive<ListExpr>(), false)");
+	auto wrapper_cl = string("wrapper_") + name + "_cl";
+
+	auto gi = make_shared<CallExprInitInfo>(this, ename, wrapper_cl, t);
+	call_exprs_info->AddInstance(gi);
+
+	return gi;
 	}
 
 bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e)
@@ -99,261 +99,6 @@ bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e)
 string CPPCompile::InitExprName(const ExprPtr& e)
 	{
 	return init_exprs.KeyName(e);
-	}
-
-void CPPCompile::GenGlobalInit(const ID* g, string& gl, const ValPtr& v)
-	{
-	const auto& t = v->GetType();
-	auto tag = t->Tag();
-
-	if ( tag == TYPE_FUNC )
-		// This should get initialized by recognizing hash of
-		// the function's body.
-		return;
-
-	string init_val;
-	if ( tag == TYPE_OPAQUE )
-		{
-		// We can only generate these by reproducing the expression
-		// (presumably a function call) used to create the value.
-		// That isn't fully sound, since if the global's value
-		// was redef'd in terms of its original value (e.g.,
-		// "redef x = f(x)"), then we'll wind up with a broken
-		// expression.  It's difficult to detect that in full
-		// generality, so um Don't Do That.  (Note that this
-		// only affects execution of standalone compiled code,
-		// where the original scripts are replaced by load-stubs.
-		// If the scripts are available, then the HasVal() test
-		// we generate will mean we don't wind up using this
-		// expression anyway.)
-
-		// Use the final initialization expression.
-		auto& init_exprs = g->GetOptInfo()->GetInitExprs();
-		init_val = GenExpr(init_exprs.back(), GEN_VAL_PTR, false);
-		}
-	else
-		init_val = BuildConstant(g, v);
-
-	auto& attrs = g->GetAttrs();
-
-	// ### global_inits.emplace_back(GlobalInitInfo(g, gl, init_val, AttributesOffset(attrs)));
-
-	AddInit(g, string("if ( ! ") + gl + "->HasVal() )");
-
-	if ( attrs )
-		{
-		RegisterAttributes(attrs);
-
-		AddInit(g, "\t{");
-		AddInit(g, "\t" + gl + "->SetVal(" + init_val + ");");
-		AddInit(g, "\t" + gl + "->SetAttrs(" + AttrsName(attrs) + ");");
-		AddInit(g, "\t}");
-		}
-	else
-		AddInit(g, "\t" + gl + "->SetVal(" + init_val + ");");
-	}
-
-void CPPCompile::GenPreInit(const Type* t)
-	{
-	string pre_init;
-
-	switch ( t->Tag() )
-		{
-		case TYPE_ADDR:
-		case TYPE_ANY:
-		case TYPE_BOOL:
-		case TYPE_COUNT:
-		case TYPE_DOUBLE:
-		case TYPE_ERROR:
-		case TYPE_INT:
-		case TYPE_INTERVAL:
-		case TYPE_PATTERN:
-		case TYPE_PORT:
-		case TYPE_STRING:
-		case TYPE_SUBNET:
-		case TYPE_TIME:
-		case TYPE_TIMER:
-		case TYPE_VOID:
-			pre_init = string("base_type(") + TypeTagName(t->Tag()) + ")";
-			break;
-
-		case TYPE_ENUM:
-			pre_init = string("get_enum_type__CPP(\"") + t->GetName() + "\")";
-			break;
-
-		case TYPE_FILE:
-			pre_init =
-				string("make_intrusive<FileType>(") + GenTypeName(t->AsFileType()->Yield()) + ")";
-			break;
-
-		case TYPE_OPAQUE:
-			pre_init = string("make_intrusive<OpaqueType>(\"") + t->AsOpaqueType()->Name() + "\")";
-			break;
-
-		case TYPE_RECORD:
-				{
-				string name;
-
-				if ( t->GetName() != "" )
-					name = string("\"") + t->GetName() + string("\"");
-				else
-					name = "nullptr";
-
-				pre_init = string("get_record_type__CPP(") + name + ")";
-				}
-			break;
-
-		case TYPE_LIST:
-			pre_init = string("make_intrusive<TypeList>()");
-			break;
-
-		case TYPE_TYPE:
-		case TYPE_VECTOR:
-		case TYPE_TABLE:
-		case TYPE_FUNC:
-			// Nothing to do for these, pre-initialization-wise.
-			return;
-
-		default:
-			reporter->InternalError("bad type in CPPCompile::GenType");
-		}
-
-	pre_inits.emplace_back(GenTypeName(t) + " = " + pre_init + ";");
-	}
-
-void CPPCompile::GenPreInits()
-	{
-	NL();
-	Emit("void pre_init__CPP()");
-
-	StartBlock();
-	for ( const auto& i : pre_inits )
-		Emit(i);
-	EndBlock();
-	}
-
-void CPPCompile::AddInit(const Obj* o, const string& init)
-	{
-	obj_inits[o].emplace_back(init);
-	}
-
-void CPPCompile::AddInit(const Obj* o)
-	{
-	if ( obj_inits.count(o) == 0 )
-		obj_inits[o] = {};
-	}
-
-void CPPCompile::NoteInitDependency(const Obj* o1, const Obj* o2)
-	{
-	// obj_deps[o1].emplace(o2);
-	return;
-	}
-
-void CPPCompile::CheckInitConsistency(unordered_set<const Obj*>& to_do)
-	{
-	for ( const auto& od : obj_deps )
-		{
-		const auto& o = od.first;
-
-		if ( to_do.count(o) == 0 )
-			{
-			fprintf(stderr, "object not in to_do: %s\n", obj_desc(o).c_str());
-			exit(1);
-			}
-
-		for ( const auto& d : od.second )
-			{
-			if ( to_do.count(d) == 0 )
-				{
-				fprintf(stderr, "dep object for %s not in to_do: %s\n", obj_desc(o).c_str(),
-				        obj_desc(d).c_str());
-				exit(1);
-				}
-			}
-		}
-	}
-
-int CPPCompile::GenDependentInits(unordered_set<const Obj*>& to_do)
-	{
-	int n = 0;
-
-	// The basic approach is fairly brute force: find elements of
-	// to_do that don't have any pending dependencies; generate those;
-	// and remove them from the to_do list, freeing up other to_do entries
-	// to now not having any pending dependencies.  Iterate until there
-	// are no more to-do items.
-	while ( to_do.size() > 0 )
-		{
-		unordered_set<const Obj*> cohort;
-
-		for ( const auto& o : to_do )
-			{
-			const auto& od = obj_deps.find(o);
-
-			bool has_pending_dep = false;
-
-			if ( od != obj_deps.end() )
-				{
-				for ( const auto& d : od->second )
-					if ( to_do.count(d) > 0 )
-						{
-						has_pending_dep = true;
-						break;
-						}
-				}
-
-			if ( has_pending_dep )
-				continue;
-
-			cohort.insert(o);
-			}
-
-		ASSERT(cohort.size() > 0);
-
-		GenInitCohort(++n, cohort);
-
-		for ( const auto& o : cohort )
-			{
-			ASSERT(to_do.count(o) > 0);
-			to_do.erase(o);
-			}
-		}
-
-	return n;
-	}
-
-void CPPCompile::GenInitCohort(int nc, unordered_set<const Obj*>& cohort)
-	{
-	NL();
-	Emit("void init_%s__CPP()", Fmt(nc));
-	StartBlock();
-
-	// If any script/BiF functions are used for initializing globals,
-	// the code generated from that will expect the presence of a
-	// frame pointer, even if nil.
-	Emit("Frame* f__CPP = nullptr;");
-
-	// The following is just for making the output readable/pretty:
-	// add space between initializations for distinct objects, taking
-	// into account that some objects have empty initializations.
-	bool did_an_init = false;
-
-	for ( auto o : cohort )
-		{
-		if ( did_an_init )
-			{
-			NL();
-			did_an_init = false;
-			}
-
-		for ( const auto& i : obj_inits.find(o)->second )
-			{
-			Emit("%s", i);
-			did_an_init = true;
-			}
-		}
-
-	EndBlock();
 	}
 
 void CPPCompile::InitializeFieldMappings()
@@ -405,8 +150,8 @@ void CPPCompile::InitializeGlobals()
 
 	StartBlock();
 
-	for ( const auto& gi : global_inits )
-		Emit("%s,", gi.Initializer());
+	for ( const auto& gi : global_gis )
+		Emit("%s,", gi.second->Initializer());
 
 	EndBlock(true);
 	}
@@ -436,11 +181,13 @@ void CPPCompile::GenStandaloneActivation()
 	{
 	NL();
 
+#if 0
 	Emit("void standalone_activation__CPP()");
 	StartBlock();
 	for ( auto& a : activations )
 		Emit(a);
 	EndBlock();
+#endif
 
 	NL();
 	Emit("void standalone_init__CPP()");

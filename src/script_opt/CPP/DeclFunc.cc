@@ -133,7 +133,6 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 	body_hashes[fname] = h;
 	body_priorities[fname] = priority;
 	body_names.emplace(body.get(), fname);
-	names_to_bodies.emplace(fname, body.get());
 
 	total_hash = merge_p_hashes(total_hash, h);
 	}
@@ -150,25 +149,12 @@ void CPPCompile::BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf, const
 		}
 
 	// Generate initialization to create and register the lambda.
-	auto literal_name = string("\"") + l->Name() + "\"";
-	auto instantiate = string("make_intrusive<") + fname + "_cl>(" + literal_name + ")";
+	auto h = pf->HashVal();
+	auto nl = lambda_ids->length();
+	bool has_captures = nl > 0;
 
-	int nl = lambda_ids->length();
-	auto h = Fmt(pf->HashVal());
-	auto has_captures = nl > 0 ? "true" : "false";
-	auto l_init = string("register_lambda__CPP(") + instantiate + ", " + h + ", \"" + l->Name() +
-	              "\", " + GenTypeName(ft) + ", " + has_captures + ");";
-
-	AddInit(l, l_init);
-	NoteInitDependency(l, TypeRep(ft));
-
-	// Make the lambda's body's initialization depend on the lambda's
-	// initialization.  That way GenFuncVarInits() can generate
-	// initializations with the assurance that the associated body
-	// hashes will have been registered.
-	// ### FIXME
-	AddInit(body.get());
-	NoteInitDependency(body.get(), l);
+	auto gi = make_shared<LambdaRegistrationInfo>(this, l->Name(), ft, fname + "_cl", h, has_captures);
+	lambda_reg_info->AddInstance(gi);
 
 	// Generate method to extract the lambda captures from a deserialized
 	// Frame object.

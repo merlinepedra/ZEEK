@@ -33,6 +33,7 @@ std::vector<FileValPtr> CPP__File__;
 std::vector<TypePtr> CPP__Type__;
 std::vector<AttrPtr> CPP__Attr__;
 std::vector<AttributesPtr> CPP__Attributes__;
+std::vector<CallExprPtr> CPP__CallExpr__;
 
 PatternValPtr CPP_PatternConst::Generate() const
 	{

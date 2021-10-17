@@ -167,6 +167,17 @@ public:
 	int AttrOffset(const AttrPtr& attr)
 		{ return GI_Offset(RegisterAttr(attr)); }
 
+	// Generates code to construct a CallExpr that can be used to
+	// evaluate the expression 'e' as an initializer (typically
+	// for a record &default attribute).
+	std::shared_ptr<CPP_GlobalInfo> GenInitExpr(const ExprPtr& e);
+
+	std::shared_ptr<CPP_GlobalInfo> GetInitInfo(const ID* g)
+		{
+		ASSERT(global_gis.count(g) > 0);
+		return global_gis[g];
+		}
+
 private:
 	// Start of methods related to driving the overall compilation
 	// process.
@@ -330,6 +341,10 @@ private:
 	// Tracks initializations for globals.
 	std::vector<GlobalInitInfo> global_inits;
 
+	// Retrieves the initialization information associated with the
+	// given global.
+	std::unordered_map<const ID*, std::shared_ptr<CPP_GlobalInfo>> global_gis;
+
 	// Similar for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;
 
@@ -457,9 +472,6 @@ private:
 	// Maps function bodies to the names we use for them.
 	std::unordered_map<const Stmt*, std::string> body_names;
 
-	// Reverse mapping.
-	std::unordered_map<std::string, const Stmt*> names_to_bodies;
-
 	// Maps function names to hashes of bodies.
 	std::unordered_map<std::string, p_hash_type> body_hashes;
 
@@ -521,6 +533,8 @@ private:
 	std::shared_ptr<CPP_GlobalsInfo> type_info;
 	std::shared_ptr<CPP_GlobalsInfo> attr_info;
 	std::shared_ptr<CPP_GlobalsInfo> attrs_info;
+	std::shared_ptr<CPP_GlobalsInfo> call_exprs_info;
+	std::shared_ptr<CPP_GlobalsInfo> lambda_reg_info;
 
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.
@@ -532,11 +546,6 @@ private:
 	// dependencies for later Val*'s that are able to reuse the same
 	// constant.
 	std::unordered_map<std::string, const Val*> constants_to_vals;
-
-	// Function variables that we need to create dynamically for
-	// initializing globals, coupled with the name of their associated
-	// constant.
-	std::unordered_map<FuncVal*, std::string> func_vars;
 
 	//
 	// End of methods related to generating code for script constants.
@@ -796,10 +805,6 @@ private:
 	void GenAttrs(const AttributesPtr& attrs);
 	std::string GenAttrExpr(const ExprPtr& e);
 
-	// Returns the name of the C++ variable that will hold the given
-	// attributes at run-time.
-	std::string AttrsName(const AttributesPtr& attrs);
-
 	// Returns a string representation of the name associated with
 	// different attribute tags (e.g., "ATTR_DEFAULT").
 	static const char* AttrName(AttrTag t);
@@ -819,11 +824,6 @@ private:
 	// See Inits.cc for definitions.
 	//
 
-	// Generates code to construct a CallExpr that can be used to
-	// evaluate the expression 'e' as an initializer (typically
-	// for a record &default attribute).
-	void GenInitExpr(const ExprPtr& e);
-
 	// True if the given expression is simple enough that we can
 	// generate code to evaluate it directly, and don't need to
 	// create a separate function per GenInitExpr().
@@ -832,79 +832,6 @@ private:
 	// Returns the name of a function used to evaluate an
 	// initialization expression.
 	std::string InitExprName(const ExprPtr& e);
-
-	// Generates code to initializes the global 'g' (with C++ name "gl")
-	// to the given value *if* on start-up it doesn't already have a value.
-	void GenGlobalInit(const ID* g, std::string& gl, const ValPtr& v);
-
-	// Generates the "pre-initialization" for a given type.  For
-	// extensible types (records, enums, lists), these are empty
-	// versions that we'll later populate.
-	void GenPreInit(const Type* t);
-
-	// Generates a function that executes the pre-initializations.
-	void GenPreInits();
-
-	// The following all track that for a given object, code associated
-	// with initializing it.  Multiple calls for the same object append
-	// additional lines of code (the order of the calls is preserved).
-	//
-	// Versions with "lhs" and "rhs" arguments provide an initialization
-	// of the form "lhs = rhs;", as a convenience.
-	void AddInit(const IntrusivePtr<Obj>& o, const std::string& lhs, const std::string& rhs)
-		{
-		AddInit(o.get(), lhs + " = " + rhs + ";");
-		}
-	void AddInit(const Obj* o, const std::string& lhs, const std::string& rhs)
-		{
-		AddInit(o, lhs + " = " + rhs + ";");
-		}
-	void AddInit(const IntrusivePtr<Obj>& o, const std::string& init) { AddInit(o.get(), init); }
-	void AddInit(const Obj* o, const std::string& init);
-
-	// We do consistency checking of initialization dependencies by
-	// looking for depended-on objects have initializations.  Sometimes
-	// it's unclear whether the object will actually require
-	// initialization, in which case we add an empty initialization
-	// for it so that the consistency-checking is happy.
-	void AddInit(const IntrusivePtr<Obj>& o) { AddInit(o.get()); }
-	void AddInit(const Obj* o);
-
-	// This is akin to an initialization, but done separately
-	// (upon "activation") so it can include initializations that
-	// rely on parsing having finished (in particular, BiFs having
-	// been registered).  Only used when generating  standalone code.
-	void AddActivation(std::string a) { activations.emplace_back(a); }
-
-	// Records the fact that the initialization of object o1 depends
-	// on that of object o2.
-	void NoteInitDependency(const IntrusivePtr<Obj>& o1, const IntrusivePtr<Obj>& o2)
-		{
-		NoteInitDependency(o1.get(), o2.get());
-		}
-	void NoteInitDependency(const IntrusivePtr<Obj>& o1, const Obj* o2)
-		{
-		NoteInitDependency(o1.get(), o2);
-		}
-	void NoteInitDependency(const Obj* o1, const IntrusivePtr<Obj>& o2)
-		{
-		NoteInitDependency(o1, o2.get());
-		}
-	void NoteInitDependency(const Obj* o1, const Obj* o2);
-
-	// Analyzes the initialization dependencies to ensure that they're
-	// consistent, i.e., every object that either depends on another,
-	// or is itself depended on, appears in the "to_do" set.
-	void CheckInitConsistency(std::unordered_set<const Obj*>& to_do);
-
-	// Generate initializations for the items in the "to_do" set,
-	// in accordance with their dependencies.  Returns 'n', the
-	// number of initialization functions generated.  They should
-	// be called in order, from 1 to n.
-	int GenDependentInits(std::unordered_set<const Obj*>& to_do);
-
-	// Generates a function for initializing the nc'th cohort.
-	void GenInitCohort(int nc, std::unordered_set<const Obj*>& cohort);
 
 	int GI_Offset(const std::shared_ptr<CPP_GlobalInfo>& gi) const
 		{ return gi ? gi->Offset() : -1; }
@@ -936,14 +863,6 @@ private:
 	// use, and prints to stdout a Zeek script that can load all of
 	// what we compiled.
 	void GenLoad();
-
-	// A list of pre-initializations (those potentially required by
-	// other initializations, and that themselves have no dependencies).
-	std::vector<std::string> pre_inits;
-
-	// A list of "activations" (essentially, post-initializations).
-	// See AddActivation() above.
-	std::vector<std::string> activations;
 
 	// A list of BiFs to look up during initialization.  First
 	// string is the name of the C++ global holding the BiF, the

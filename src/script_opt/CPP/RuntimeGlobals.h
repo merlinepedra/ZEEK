@@ -41,6 +41,7 @@ extern std::vector<FileValPtr> CPP__File__;
 extern std::vector<TypePtr> CPP__Type__;
 extern std::vector<AttrPtr> CPP__Attr__;
 extern std::vector<AttributesPtr> CPP__Attributes__;
+extern std::vector<CallExprPtr> CPP__CallExpr__;
 
 template <class T>
 class CPP_Global
@@ -290,13 +291,13 @@ private:
 class CPP_NameAttrExpr : public CPP_AbstractAttrExpr
 	{
 public:
-	CPP_NameAttrExpr(IDPtr* _id_addr) : id_addr(_id_addr) {}
+	CPP_NameAttrExpr(IDPtr& _id_addr) : id_addr(_id_addr) {}
 
 	ExprPtr Build() const override
-		{ return make_intrusive<NameExpr>(*id_addr); }
+		{ return make_intrusive<NameExpr>(id_addr); }
 
 private:
-	IDPtr* id_addr;
+	IDPtr& id_addr;
 	};
 
 class CPP_RecordAttrExpr : public CPP_AbstractAttrExpr
@@ -313,12 +314,12 @@ private:
 class CPP_CallAttrExpr : public CPP_AbstractAttrExpr
 	{
 public:
-	CPP_CallAttrExpr(CallExprPtr* _call) : call(_call) {}
+	CPP_CallAttrExpr(int _call) : call(_call) {}
 
-	ExprPtr Build() const override { return *call; }
+	ExprPtr Build() const override { return CPP__CallExpr__[call]; }
 
 private:
-	CallExprPtr* call;
+	int call;
 	};
 
 class CPP_Attr : public CPP_Global<AttrPtr>
@@ -593,6 +594,64 @@ protected:
 	int attrs;
 	CPP_AbstractValElem val;
 	bool exported;
+	};
+
+class CPP_AbstractCallExprInit : CPP_Global<CallExprPtr>
+	{
+public:
+	CPP_AbstractCallExprInit() {}
+	};
+
+template <class T>
+class CPP_CallExprInit : CPP_AbstractCallExprInit
+	{
+public:
+	CPP_CallExprInit(CallExprPtr& _e_var)
+		: e_var(_e_var)
+		{ }
+
+	CallExprPtr Generate() const override
+		{
+		auto wrapper_class = make_intrusive<T>();
+		auto func_val = make_intrusive<FuncVal>(wrapper_class);
+		auto func_expr = make_intrusive<ConstExpr>(func_val);
+		auto empty_args = make_intrusive<ListExpr>();
+
+		e_var = make_intrusive<CallExpr>(func_expr, empty_args);
+		return e_var;
+		}
+
+protected:
+	CallExprPtr& e_var;
+	};
+
+class CPP_AbstractLambdaRegistration : CPP_Global<bool>
+	{
+public:
+	bool Generate() const override { return false; }
+	};
+
+template <class T>
+class CPP_LambdaRegistration : CPP_AbstractLambdaRegistration
+	{
+public:
+	CPP_LambdaRegistration(const char* _name, int _func_type, p_hash_type _h, bool _has_captures)
+		: name(_name), func_type(_func_type), h(_h), has_captures(_has_captures)
+		{ }
+
+	bool Generate() const override
+		{
+		auto l = make_intrusive<T>(name);
+		auto& ft = CPP__Type__[func_type];
+		register_lambda__CPP(l, h, name, ft, has_captures);
+		return true;
+		}
+
+protected:
+	const char* name;
+	int func_type;
+	p_hash_type h;
+	bool has_captures;
 	};
 
 

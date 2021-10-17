@@ -157,45 +157,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	const_vals[v] = constants[c_desc] = gi;
 	constants_to_vals[c_desc] = v;
 
-#if 0
-		case TYPE_FILE:
-				{
-				Emit("FileValPtr %s;", const_name);
-
-				auto f = cast_intrusive<FileVal>(vp)->Get();
-
-				AddInit(v, const_name,
-				        string("make_intrusive<FileVal>(") + "make_intrusive<File>(\"" + f->Name() +
-				            "\", \"w\"))");
-				}
-			break;
-
-		default:
-			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
-		}
-#endif
-
-#if 0
-	switch ( tag )
-		{
-
-		case TYPE_FILE:
-				{
-				Emit("FileValPtr %s;", const_name);
-
-				auto f = cast_intrusive<FileVal>(vp)->Get();
-
-				AddInit(v, const_name,
-				        string("make_intrusive<FileVal>(") + "make_intrusive<File>(\"" + f->Name() +
-				            "\", \"w\"))");
-				}
-			break;
-
-		default:
-			reporter->InternalError("bad constant type in CPPCompile::AddConstant");
-		}
-#endif
-
 	return gi;
 	}
 

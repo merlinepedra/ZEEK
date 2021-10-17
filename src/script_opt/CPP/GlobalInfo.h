@@ -5,6 +5,7 @@
 
 #include "zeek/Val.h"
 #include "zeek/File.h"
+#include "zeek/script_opt/ProfileFunc.h"
 
 #pragma once
 
@@ -40,9 +41,12 @@ public:
 
 	int Size() const { return size; }
 	int MaxCohort() const { return static_cast<int>(instances.size()) - 1; }
+	int CohortSize(int c) const
+		{ return c > MaxCohort() ? 0 : instances[c].size(); }
 
 	const std::string& Tag() const { return tag; }
 	const std::string& CPPType() const { return CPP_type; }
+	void SetCPPType(std::string ct) { CPP_type = std::move(ct); }
 
 	void AddInstance(std::shared_ptr<CPP_GlobalInfo> g);
 
@@ -327,6 +331,35 @@ protected:
 	int attrs;
 	std::string val;
 	bool exported;
+	};
+
+
+class CallExprInitInfo : public CPP_GlobalInfo
+	{
+public:
+	CallExprInitInfo(CPPCompile* c, std::string e_name, std::string wrapper_class, TypePtr t);
+
+	std::string Initializer() const override;
+
+protected:
+	std::string e_name;
+	std::string wrapper_class;
+	};
+
+
+class LambdaRegistrationInfo : public CPP_GlobalInfo
+	{
+public:
+	LambdaRegistrationInfo(CPPCompile* c, std::string name, FuncTypePtr ft, std::string wrapper_class, p_hash_type h, bool has_captures);
+
+	std::string Initializer() const override;
+
+protected:
+	std::string name;
+	int func_type;
+	std::string wrapper_class;
+	p_hash_type h;
+	bool has_captures;
 	};
 
 

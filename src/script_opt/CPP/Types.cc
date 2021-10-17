@@ -345,8 +345,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 	type_info->AddInstance(gi);
 	processed_types[t] = gi;
 
-	AddInit(t);
-
 	return gi;
 	}
 

@@ -86,6 +86,10 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	type_info = InitGlobalInfo("Type", "Ptr");
 	attr_info = InitGlobalInfo("Attr", "Ptr");
 	attrs_info = InitGlobalInfo("Attributes", "Ptr");
+	call_exprs_info = InitGlobalInfo("CallExpr", "Ptr");
+
+	lambda_reg_info = InitGlobalInfo("LambdaRegistration", "");
+	lambda_reg_info->SetCPPType("bool");
 
 	Compile(report_uncompilable);
 	}
@@ -170,21 +174,6 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	for ( auto& g : pfs.AllGlobals() )
 		CreateGlobal(g);
-
-	// Now that the globals are created, register their attributes,
-	// if any, and generate their initialization for use in standalone
-	// scripts.  We can't do these in CreateGlobal() because at that
-	// point it's possible that some of the globals refer to other
-	// globals not-yet-created.
-	for ( auto& g : pfs.AllGlobals() )
-		{
-		RegisterAttributes(g->GetAttrs());
-		if ( g->HasVal() )
-			{
-			auto gn = string(g->Name());
-			GenGlobalInit(g, globals[gn], g->GetVal());
-			}
-		}
 
 	for ( const auto& e : pfs.Events() )
 		if ( AddGlobal(e, "gl", false) )
@@ -291,11 +280,6 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 
 	Emit("\tCPP_RegisterBodyT<%s>(\"%s\", %s, %s, %s),", f + "_cl", f, Fmt(p), Fmt(h), events);
 
-	auto init = string("register_body__CPP(make_intrusive<") + f + "_cl>(\"" + f + "\"), " +
-	            Fmt(p) + ", " + Fmt(h) + ", " + events + ");";
-
-	AddInit(names_to_bodies[f], init);
-
 	if ( update )
 		{
 		fprintf(hm.HashFile(), "func\n%s%s\n", scope_prefix(addl_tag).c_str(), f.c_str());
@@ -307,20 +291,6 @@ void CPPCompile::GenEpilog()
 	{
 	NL();
 
-	for ( const auto& e : init_exprs.DistinctKeys() )
-		{
-		GenInitExpr(e);
-		if ( update )
-			init_exprs.LogIfNew(e, addl_tag, hm.HashFile());
-		}
-
-	for ( const auto& a : attributes.DistinctKeys() )
-		{
-		GenAttrs(a);
-		if ( update )
-			attributes.LogIfNew(a, addl_tag, hm.HashFile());
-		}
-
 	// Generate the guts of compound types, and preserve type names
 	// if present.
 	for ( const auto& t : types_OBS.DistinctKeys() )
@@ -329,17 +299,12 @@ void CPPCompile::GenEpilog()
 			types_OBS.LogIfNew(t, addl_tag, hm.HashFile());
 		}
 
-	GenPreInits();
-
 	for ( auto gi : all_global_info )
 		gi->GenerateInitializers(this);
 
 	unordered_set<const Obj*> to_do;
 	for ( const auto& oi : obj_inits )
 		to_do.insert(oi.first);
-
-	CheckInitConsistency(to_do);
-	auto nc = GenDependentInits(to_do);
 
 	if ( standalone )
 		GenStandaloneActivation();
@@ -362,11 +327,6 @@ void CPPCompile::GenEpilog()
 	StartBlock();
 
 	Emit("enum_mapping.resize(%s);\n", Fmt(int(enum_names.size())));
-	Emit("pre_init__CPP();");
-
-	NL();
-	for ( auto i = 1; i <= nc; ++i )
-		Emit("init_%s__CPP();", Fmt(i));
 
 	int max_cohort = 0;
 	for ( auto gi : all_global_info )
@@ -374,8 +334,9 @@ void CPPCompile::GenEpilog()
 
 	for ( auto c = 0; c <= max_cohort; ++c )
 		for ( auto gi : all_global_info )
-			Emit("%s.InitializeCohort(%s);",
-			     gi->InitializersName(), Fmt(c));
+			if ( gi->CohortSize(c) > 0 )
+				Emit("%s.InitializeCohort(%s);",
+				     gi->InitializersName(), Fmt(c));
 
 	NL();
 	Emit("for ( auto& b : CPP__BiF_lookups__ )");

@@ -1,0 +1,6 @@
+beware of lambda func val's depending on bodies being register - there's
+no cohort mechanism in place to address this
+
+globals of type opaque being initialized for standalone may need
+attribute-expression-style CallExpr expressions to call generate the
+initialization

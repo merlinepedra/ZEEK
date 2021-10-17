@@ -18,27 +18,23 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttributes(const AttributesPtr& a
 		return processed_attrs[a];
 
 	attributes.AddKey(attrs);
-	AddInit(attrs);
 
 	// The cast is just so we can make an IntrusivePtr.
 	auto a_rep = const_cast<Attributes*>(attributes.GetRep(attrs));
 	if ( a_rep != a )
 		{
-		NoteInitDependency(a, a_rep);
 		AttributesPtr a_rep_ptr = {NewRef{}, a_rep};
 		processed_attrs[a] = RegisterAttributes(a_rep_ptr);
 		return processed_attrs[a];
 		}
 
 	for ( const auto& a : attrs->GetAttrs() )
-		{
 		(void)RegisterAttr(a);
-		NoteInitDependency(attrs, a);
-		}
 
 	shared_ptr<CPP_GlobalInfo> gi = make_shared<AttrsInfo>(this, attrs);
 	attrs_info->AddInstance(gi);
 	processed_attrs[a] = gi;
+
 	return gi;
 	}
 
@@ -49,34 +45,14 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttr(const AttrPtr& attr)
 	if ( processed_attr.count(a) > 0 )
 		return processed_attr[a];
 
-	AddInit(attr);
-
 	const auto& e = a->GetExpr();
-	if ( e )
-		{
-		if ( IsSimpleInitExpr(e) )
-			// Make sure any dependencies it has get noted.
-			(void)GenExpr(e, GEN_VAL_PTR);
+	if ( e && ! IsSimpleInitExpr(e) )
+		init_exprs.AddKey(e);
 
-		else
-			{
-			init_exprs.AddKey(e);
-			AddInit(e);
-			NoteInitDependency(attr, e);
-
-			auto& t = e->GetType();
-			RegisterType(t);
-			NoteInitDependency(e, t);
-
-			auto e_rep = init_exprs.GetRep(e);
-			if ( e_rep != e.get() )
-				NoteInitDependency(e.get(), e_rep);
-			}
-		}
-
-	shared_ptr<CPP_GlobalInfo> gi = make_shared<AttrInfo>(this, attr);
+	auto gi = make_shared<AttrInfo>(this, attr);
 	attr_info->AddInstance(gi);
 	processed_attr[a] = gi;
+
 	return gi;
 	}
 
@@ -105,75 +81,6 @@ void CPPCompile::BuildAttrs(const AttributesPtr& attrs, string& attr_tags, strin
 
 	attr_tags = string("{") + attr_tags + "}";
 	attr_vals = string("{") + attr_vals + "}";
-	}
-
-void CPPCompile::GenAttrs(const AttributesPtr& attrs)
-	{
-	NL();
-
-	Emit("AttributesPtr %s", AttrsName(attrs));
-
-	StartBlock();
-
-	const auto& avec = attrs->GetAttrs();
-	Emit("auto attrs = std::vector<AttrPtr>();");
-
-	AddInit(attrs);
-
-	for ( const auto& attr : avec )
-		{
-		const auto& e = attr->GetExpr();
-
-		if ( ! e )
-			{
-			Emit("attrs.emplace_back(make_intrusive<Attr>(%s));", AttrName(attr->Tag()));
-			continue;
-			}
-
-		NoteInitDependency(attrs, e);
-		AddInit(e);
-
-		string e_arg;
-		if ( IsSimpleInitExpr(e) )
-			e_arg = GenAttrExpr(e);
-		else
-			e_arg = InitExprName(e);
-
-		Emit("attrs.emplace_back(make_intrusive<Attr>(%s, %s));", AttrName(attr->Tag()), e_arg);
-		}
-
-	Emit("return make_intrusive<Attributes>(attrs, nullptr, true, false);");
-
-	EndBlock();
-	}
-
-string CPPCompile::GenAttrExpr(const ExprPtr& e)
-	{
-	switch ( e->Tag() )
-		{
-		case EXPR_CONST:
-			return string("make_intrusive<ConstExpr>(") + GenExpr(e, GEN_VAL_PTR) + ")";
-
-		case EXPR_NAME:
-			NoteInitDependency(e, e->AsNameExpr()->IdPtr());
-			return string("make_intrusive<NameExpr>(") + globals[e->AsNameExpr()->Id()->Name()] +
-			       ")";
-
-		case EXPR_RECORD_COERCE:
-			NoteInitDependency(e, TypeRep(e->GetType()));
-			return string("make_intrusive<RecordCoerceExpr>(make_intrusive<RecordConstructorExpr>("
-			              "make_intrusive<ListExpr>()), cast_intrusive<RecordType>(") +
-			       GenTypeName(e->GetType()) + "))";
-
-		default:
-			reporter->InternalError("bad expr tag in CPPCompile::GenAttrs");
-			return "###";
-		}
-	}
-
-string CPPCompile::AttrsName(const AttributesPtr& a)
-	{
-	return attributes.KeyName(a) + "()";
 	}
 
 const char* CPPCompile::AttrName(AttrTag t)

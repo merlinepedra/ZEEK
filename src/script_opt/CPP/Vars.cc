@@ -105,16 +105,7 @@ void CPPCompile::CreateGlobal(const ID* g)
 			// This is an event that's also used as a variable.
 			Emit("EventHandlerPtr %s_ev;", globals[gn]);
 
-		global_inits.emplace_back(GlobalInitInfo(this, g, globals[gn]));
-
-		const auto& t = g->GetType();
-		RegisterType(t);
-
-		auto exported = g->IsExport() ? "true" : "false";
-
-		AddInit(g, globals[gn],
-		        string("lookup_global__CPP(\"") + gn + "\", " + GenTypeName(t) + ", " + exported +
-		            ")");
+		global_gis[g] = make_shared<GlobalInitInfo>(this, g, globals[gn]);
 		}
 
 	if ( is_bif )
@@ -173,13 +164,6 @@ void CPPCompile::AddBiF(const ID* b, bool is_var)
 
 	ASSERT(BiFs.count(globals[n]) == 0);
 	BiFs[globals[n]] = bn;
-
-	auto lookup = string("lookup_bif__CPP(\"") + bn + "\")";
-
-	if ( standalone )
-		AddActivation(globals[n] + " = " + lookup + ";");
-	else
-		AddInit(b, globals[n], lookup);
 	}
 
 bool CPPCompile::AddGlobal(const string& g, const char* suffix, bool track)

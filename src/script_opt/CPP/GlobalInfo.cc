@@ -204,13 +204,22 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 		auto expr_type = gi->Name();
 
 		if ( ! CPPCompile::IsSimpleInitExpr(a_e) )
-			e_init = string("CPP_CallAttrExpr(&") + c->InitExprName(a_e) + ")";
+			{
+			gi = c->GenInitExpr(a_e);
+			init_cohort = max(init_cohort, gi->InitCohort() + 1);
+			e_init = string("CPP_CallAttrExpr(") + Fmt(gi->Offset()) + ")";
+			}
 
 		else if ( a_e->Tag() == EXPR_CONST )
 			e_init = string("CPP_ConstAttrExpr(") + ValElem(c, a_e->AsConstExpr()->ValuePtr()) + ")";
 
 		else if ( a_e->Tag() == EXPR_NAME )
-			e_init = string("CPP_NameAttrExpr(&") + c->GlobalName(a_e) + ")";
+			{
+			auto g = a_e->AsNameExpr()->Id();
+			auto gi = c->GetInitInfo(g);
+			init_cohort = max(init_cohort, gi->InitCohort() + 1);
+			e_init = string("CPP_NameAttrExpr(") + c->GlobalName(a_e) + ")";
+			}
 
 		else
 			{
@@ -276,6 +285,33 @@ GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, std::string _CPP_name
 string GlobalInitInfo::Initializer() const
 	{
 	return string("CPP_GlobalInit(") + CPP_name + ", \"" + Zeek_name + "\", " + Fmt(type) + ", " + Fmt(attrs) + ", " + val + ", " + Fmt(exported) + ")";
+	}
+
+
+CallExprInitInfo::CallExprInitInfo(CPPCompile* c, std::string _e_name, std::string _wrapper_class, TypePtr t)
+	: e_name(move(_e_name)), wrapper_class(move(_wrapper_class))
+	{
+	auto gi = c->RegisterType(t);
+	init_cohort = max(init_cohort, gi->InitCohort() + 1);
+	}
+
+string CallExprInitInfo::Initializer() const
+	{
+	return string("CPP_CallExprInit<") + wrapper_class + ">(" + e_name + ")";
+	}
+
+
+LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, std::string _name, FuncTypePtr ft, std::string _wrapper_class, p_hash_type _h, bool _has_captures)
+	: name(move(_name)), wrapper_class(move(_wrapper_class)), h(_h), has_captures(_has_captures)
+	{
+	auto gi = c->RegisterType(ft);
+	init_cohort = max(init_cohort, gi->InitCohort() + 1);
+	func_type = gi->Offset();
+	}
+
+string LambdaRegistrationInfo::Initializer() const
+	{
+	return string("CPP_LambdaRegistration<") + wrapper_class + ">(\"" + name + "\", " + Fmt(func_type) + ", " + Fmt(h) + ", " + (has_captures ? "true" : "false")  + ")";
 	}
 
 
