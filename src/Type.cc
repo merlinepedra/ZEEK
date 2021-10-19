@@ -1893,11 +1893,35 @@ bool same_type(const Type& arg_t1, const Type& arg_t2, bool is_init, bool match_
 			return true;
 
 		case TYPE_ENUM:
+			{
+			auto et1 = static_cast<const EnumType*>(t1);
+			auto et2 = static_cast<const EnumType*>(t2);
+
+			const EnumType* big = et1;
+			const EnumType* small = et2;
+
+			if ( et2->Length() > et1->Length() )
+				{
+				big = et2;
+				small = et1;
+				}
+
+			auto big_names = big->Names();
+			auto small_names = small->Names();
+
+			for ( const auto& entry : small_names )
+				{
+				bro_int_t value = big->Lookup(zeek::detail::current_module, entry.first.c_str());
+				if ( value == -1)
+					return false;
+				}
+
 			// We should probably check to see whether all of the
 			// enumerations are present and in the same location.
 			// FIXME: Yes, but perhaps we should better return
 			// true per default?
 			return true;
+			}
 
 		case TYPE_OPAQUE:
 			{

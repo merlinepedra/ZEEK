@@ -784,6 +784,8 @@ public:
 	// access it.
 	void AddNameInternal(const std::string& full_name, bro_int_t val);
 
+	size_t Length() const { return names.size(); }
+
 protected:
 	void AddNameInternal(const std::string& module_name, const char* name, bro_int_t val,
 	                     bool is_export);
