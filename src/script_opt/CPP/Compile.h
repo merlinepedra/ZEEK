@@ -154,6 +154,8 @@ public:
 
 	std::shared_ptr<CPP_GlobalInfo> RegisterConstant(const ValPtr& vp);
 
+	std::shared_ptr<CPP_GlobalInfo> RegisterGlobal(const ID* g);
+
 	// Tracks a use of the given set of attributes, including
 	// initialization dependencies and the generation of any
 	// associated expressions.
@@ -167,16 +169,18 @@ public:
 	int AttrOffset(const AttrPtr& attr)
 		{ return GI_Offset(RegisterAttr(attr)); }
 
-	// Generates code to construct a CallExpr that can be used to
-	// evaluate the expression 'e' as an initializer (typically
-	// for a record &default attribute).
-	std::shared_ptr<CPP_GlobalInfo> GenInitExpr(const ExprPtr& e);
-
-	std::shared_ptr<CPP_GlobalInfo> GetInitInfo(const ID* g)
-		{
-		ASSERT(global_gis.count(g) > 0);
-		return global_gis[g];
-		}
+	// Tracks expressions used in attributes (such as &default=<expr>).
+	//
+	// We need to generate code to evaluate these, via CallExpr's
+	// that invoke functions that return the value of the expression.
+	// However, we can't generate that code when first encountering
+	// the attribute because doing so will need to refer to the names
+	// of types, and initially those are unavailable (because the type's
+	// representatives, per pfs.RepTypes(), might not have yet been
+	// tracked).  So instead we track the associated CallExprInitInfo
+	// objects, and after all types have been tracked, then spin
+	// through them to generate the code.
+	std::shared_ptr<CPP_GlobalInfo> RegisterInitExpr(const ExprPtr& e);
 
 private:
 	// Start of methods related to driving the overall compilation
@@ -536,6 +540,8 @@ private:
 	std::shared_ptr<CPP_GlobalsInfo> call_exprs_info;
 	std::shared_ptr<CPP_GlobalsInfo> lambda_reg_info;
 
+	std::vector<std::shared_ptr<CallExprInitInfo>> init_infos;
+
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.
 	std::vector<int> str_lens;
@@ -826,8 +832,11 @@ private:
 
 	// True if the given expression is simple enough that we can
 	// generate code to evaluate it directly, and don't need to
-	// create a separate function per GenInitExpr().
+	// create a separate function per RegisterInitExpr() to track
+	// it, followed by GenInitExpr() for the actual generation.
 	static bool IsSimpleInitExpr(const ExprPtr& e);
+
+	void GenInitExpr(std::shared_ptr<CallExprInitInfo> ce_init);
 
 	// Returns the name of a function used to evaluate an
 	// initialization expression.

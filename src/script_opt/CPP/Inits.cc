@@ -14,12 +14,26 @@ namespace zeek::detail
 
 using namespace std;
 
-std::shared_ptr<CPP_GlobalInfo> CPPCompile::GenInitExpr(const ExprPtr& e)
+std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterInitExpr(const ExprPtr& e)
+	{
+	auto ename = InitExprName(e);
+	auto wrapper_cl = string("wrapper_") + ename + "_cl";
+
+	auto gi = make_shared<CallExprInitInfo>(this, e, ename, wrapper_cl);
+	call_exprs_info->AddInstance(gi);
+	init_infos.emplace_back(gi);
+
+	return gi;
+	}
+
+void CPPCompile::GenInitExpr(std::shared_ptr<CallExprInitInfo> ce_init)
 	{
 	NL();
 
+	const auto& e = ce_init->GetExpr();
 	const auto& t = e->GetType();
-	auto ename = InitExprName(e);
+	const auto& ename = ce_init->Name();
+	const auto& wc = ce_init->WrapperClass();
 
 	// First, create a CPPFunc that we can compile to compute 'e'.
 	auto name = string("wrapper_") + ename;
@@ -29,11 +43,11 @@ std::shared_ptr<CPP_GlobalInfo> CPPCompile::GenInitExpr(const ExprPtr& e)
 
 	// Create the Func subclass that can be used in a CallExpr to
 	// evaluate 'e'.
-	Emit("class %s_cl : public CPPFunc", name);
+	Emit("class %s : public CPPFunc", wc);
 	StartBlock();
 
 	Emit("public:");
-	Emit("%s_cl() : CPPFunc(\"%s\", %s)", name, name, e->IsPure() ? "true" : "false");
+	Emit("%s() : CPPFunc(\"%s\", %s)", wc, name, e->IsPure() ? "true" : "false");
 
 	StartBlock();
 	Emit("type = make_intrusive<FuncType>(make_intrusive<RecordType>(new type_decl_list()), %s, "
@@ -61,13 +75,6 @@ std::shared_ptr<CPP_GlobalInfo> CPPCompile::GenInitExpr(const ExprPtr& e)
 	EndBlock();
 
 	Emit("CallExprPtr %s;", ename);
-
-	auto wrapper_cl = string("wrapper_") + name + "_cl";
-
-	auto gi = make_shared<CallExprInitInfo>(this, ename, wrapper_cl, t);
-	call_exprs_info->AddInstance(gi);
-
-	return gi;
 	}
 
 bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e)

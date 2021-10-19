@@ -205,7 +205,7 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 
 		if ( ! CPPCompile::IsSimpleInitExpr(a_e) )
 			{
-			gi = c->GenInitExpr(a_e);
+			gi = c->RegisterInitExpr(a_e);
 			init_cohort = max(init_cohort, gi->InitCohort() + 1);
 			e_init = string("CPP_CallAttrExpr(") + Fmt(gi->Offset()) + ")";
 			}
@@ -216,7 +216,7 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 		else if ( a_e->Tag() == EXPR_NAME )
 			{
 			auto g = a_e->AsNameExpr()->Id();
-			auto gi = c->GetInitInfo(g);
+			auto gi = c->RegisterGlobal(g);
 			init_cohort = max(init_cohort, gi->InitCohort() + 1);
 			e_init = string("CPP_NameAttrExpr(") + c->GlobalName(a_e) + ")";
 			}
@@ -288,10 +288,10 @@ string GlobalInitInfo::Initializer() const
 	}
 
 
-CallExprInitInfo::CallExprInitInfo(CPPCompile* c, std::string _e_name, std::string _wrapper_class, TypePtr t)
-	: e_name(move(_e_name)), wrapper_class(move(_wrapper_class))
+CallExprInitInfo::CallExprInitInfo(CPPCompile* c, ExprPtr _e, std::string _e_name, std::string _wrapper_class)
+	: e(move(_e)), e_name(move(_e_name)), wrapper_class(move(_wrapper_class))
 	{
-	auto gi = c->RegisterType(t);
+	auto gi = c->RegisterType(e->GetType());
 	init_cohort = max(init_cohort, gi->InitCohort() + 1);
 	}
 

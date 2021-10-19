@@ -116,6 +116,22 @@ void CPPCompile::CreateGlobal(const ID* g)
 	global_vars.emplace(g);
 	}
 
+std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterGlobal(const ID* g)
+	{
+	if ( global_gis.count(g) == 0 )
+		{
+		auto gn = string(g->Name());
+
+		if ( globals.count(gn) == 0 )
+			// Create a name for it.
+			(void)IDNameStr(g);
+
+		global_gis[g] = make_shared<GlobalInitInfo>(this, g, globals[gn]);
+		}
+
+	return global_gis[g];
+	}
+
 void CPPCompile::UpdateGlobalHashes()
 	{
 	for ( auto& g : pfs.AllGlobals() )

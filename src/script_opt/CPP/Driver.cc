@@ -89,7 +89,7 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	call_exprs_info = InitGlobalInfo("CallExpr", "Ptr");
 
 	lambda_reg_info = InitGlobalInfo("LambdaRegistration", "");
-	lambda_reg_info->SetCPPType("bool");
+	lambda_reg_info->SetCPPType("void*");
 
 	Compile(report_uncompilable);
 	}
@@ -153,6 +153,7 @@ void CPPCompile::Compile(bool report_uncompilable)
 		{
 		TypePtr tp{NewRef{}, (Type*)(t)};
 		types_OBS.AddKey(tp, pfs.HashType(t));
+		(void)RegisterType(tp);
 		}
 
 	// ### This doesn't work for -O add-C++
@@ -289,6 +290,14 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 
 void CPPCompile::GenEpilog()
 	{
+	NL();
+	for ( const auto& ie : init_infos )
+		{
+		GenInitExpr(ie);
+		if ( update )
+			init_exprs.LogIfNew(ie->GetExpr(), addl_tag, hm.HashFile());
+		}
+
 	NL();
 
 	// Generate the guts of compound types, and preserve type names

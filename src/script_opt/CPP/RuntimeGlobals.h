@@ -42,6 +42,7 @@ extern std::vector<TypePtr> CPP__Type__;
 extern std::vector<AttrPtr> CPP__Attr__;
 extern std::vector<AttributesPtr> CPP__Attributes__;
 extern std::vector<CallExprPtr> CPP__CallExpr__;
+extern std::vector<void*> CPP__LambdaRegistration__;
 
 template <class T>
 class CPP_Global
@@ -596,14 +597,14 @@ protected:
 	bool exported;
 	};
 
-class CPP_AbstractCallExprInit : CPP_Global<CallExprPtr>
+class CPP_AbstractCallExprInit : public CPP_Global<CallExprPtr>
 	{
 public:
 	CPP_AbstractCallExprInit() {}
 	};
 
 template <class T>
-class CPP_CallExprInit : CPP_AbstractCallExprInit
+class CPP_CallExprInit : public CPP_AbstractCallExprInit
 	{
 public:
 	CPP_CallExprInit(CallExprPtr& _e_var)
@@ -625,26 +626,26 @@ protected:
 	CallExprPtr& e_var;
 	};
 
-class CPP_AbstractLambdaRegistration : CPP_Global<bool>
+class CPP_AbstractLambdaRegistration : public CPP_Global<void*>
 	{
 public:
-	bool Generate() const override { return false; }
+	void* Generate() const override { return nullptr; }
 	};
 
 template <class T>
-class CPP_LambdaRegistration : CPP_AbstractLambdaRegistration
+class CPP_LambdaRegistration : public CPP_AbstractLambdaRegistration
 	{
 public:
 	CPP_LambdaRegistration(const char* _name, int _func_type, p_hash_type _h, bool _has_captures)
 		: name(_name), func_type(_func_type), h(_h), has_captures(_has_captures)
 		{ }
 
-	bool Generate() const override
+	void* Generate() const override
 		{
 		auto l = make_intrusive<T>(name);
 		auto& ft = CPP__Type__[func_type];
 		register_lambda__CPP(l, h, name, ft, has_captures);
-		return true;
+		return nullptr;
 		}
 
 protected:

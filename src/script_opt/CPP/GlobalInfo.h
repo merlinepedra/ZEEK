@@ -337,11 +337,16 @@ protected:
 class CallExprInitInfo : public CPP_GlobalInfo
 	{
 public:
-	CallExprInitInfo(CPPCompile* c, std::string e_name, std::string wrapper_class, TypePtr t);
+	CallExprInitInfo(CPPCompile* c, ExprPtr e, std::string e_name, std::string wrapper_class);
 
 	std::string Initializer() const override;
 
+	const ExprPtr& GetExpr() const { return e; }
+	const std::string& Name() const { return e_name; }
+	const std::string& WrapperClass() const { return wrapper_class; }
+
 protected:
+	ExprPtr e;
 	std::string e_name;
 	std::string wrapper_class;
 	};
