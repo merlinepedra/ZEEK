@@ -4243,9 +4243,7 @@ ValPtr ScheduleExpr::Eval(Frame* f) const
 	if ( when->GetType()->Tag() == TYPE_INTERVAL )
 		dt += run_state::network_time;
 
-	auto args = eval_list(f, event->Args());
-
-	if ( args )
+	if ( auto args = eval_list(f, event->Args()) )
 		timer_mgr->Add(new ScheduleTimer(event->Handler(), std::move(*args), dt));
 
 	return nullptr;
@@ -4764,10 +4762,11 @@ ValPtr EventExpr::Eval(Frame* f) const
 	if ( IsError() )
 		return nullptr;
 
-	auto v = eval_list(f, args.get());
-
 	if ( handler )
+		{
+		auto v = eval_list(f, args.get());
 		event_mgr.Enqueue(handler, std::move(*v));
+		}
 
 	return nullptr;
 	}
