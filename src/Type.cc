@@ -1675,11 +1675,8 @@ void EnumType::Describe(ODesc* d) const
 	else
 		{
 		d->Add(type_name(t));
-		if ( ! d->IsShort() )
-			{
-			d->SP();
-			d->Add(GetName());
-			}
+		d->SP();
+		d->Add(GetName());
 		}
 	}
 
