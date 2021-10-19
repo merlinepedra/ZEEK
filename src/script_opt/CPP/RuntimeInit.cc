@@ -193,6 +193,27 @@ FuncValPtr lookup_func__CPP(string name, vector<p_hash_type> hashes, const TypeP
 	{
 	auto ft = cast_intrusive<FuncType>(t);
 
+	if ( hashes.empty() )
+		{
+		// This happens for functions that have at least one
+		// uncompilable body.
+		auto gl = lookup_ID(name.c_str(), GLOBAL_MODULE_NAME, false, false, false);
+		if ( ! gl )
+			{
+			reporter->CPPRuntimeError("non-compiled function %s missing", name.c_str());
+			exit(1);
+			}
+
+		auto v = gl->GetVal();
+		if ( ! v || v->GetType()->Tag() != TYPE_FUNC )
+			{
+			reporter->CPPRuntimeError("non-compiled function %s has an invalid value", name.c_str());
+			exit(1);
+			}
+
+		return cast_intrusive<FuncVal>(v);
+		}
+
 	vector<StmtPtr> bodies;
 	vector<int> priorities;
 

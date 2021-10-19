@@ -134,9 +134,13 @@ void CPPCompile::Compile(bool report_uncompilable)
 		const char* reason;
 		if ( IsCompilable(func, &reason) )
 			compilable_funcs.insert(BodyName(func));
-		else if ( reason && report_uncompilable )
-			fprintf(stderr, "%s cannot be compiled to C++ due to %s\n", func.Func()->Name(),
-			        reason);
+		else
+			{
+			if ( reason && report_uncompilable )
+				fprintf(stderr, "%s cannot be compiled to C++ due to %s\n", func.Func()->Name(),
+			                reason);
+			not_fully_compilable.insert(func.Func()->Name());
+			}
 
 		auto h = func.Profile()->HashVal();
 		if ( hm.HasHash(h) )

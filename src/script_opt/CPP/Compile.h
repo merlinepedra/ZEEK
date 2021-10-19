@@ -182,6 +182,9 @@ public:
 	// through them to generate the code.
 	std::shared_ptr<CPP_GlobalInfo> RegisterInitExpr(const ExprPtr& e);
 
+	bool NotFullyCompilable(const std::string& fname) const
+		{ return not_fully_compilable.count(fname) > 0; }
+
 private:
 	// Start of methods related to driving the overall compilation
 	// process.
@@ -237,8 +240,12 @@ private:
 	// it including some functionality we don't currently support
 	// for compilation.
 	//
-	// Indexed by the name of the function.
+	// Indexed by the C++ name of the function.
 	std::unordered_set<std::string> compilable_funcs;
+
+	// Tracks which functions/hooks/events have at least one non-compilable
+	// body.  Indexed by the Zeek name of function.
+	std::unordered_set<std::string> not_fully_compilable;
 
 	// Maps functions (not hooks or events) to upstream compiled names.
 	std::unordered_map<std::string, std::string> hashed_funcs;
