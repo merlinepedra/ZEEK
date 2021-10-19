@@ -547,7 +547,7 @@ private:
 	std::shared_ptr<CPP_GlobalsInfo> call_exprs_info;
 	std::shared_ptr<CPP_GlobalsInfo> lambda_reg_info;
 
-	std::vector<std::shared_ptr<CallExprInitInfo>> init_infos;
+	std::unordered_map<std::string, std::shared_ptr<CallExprInitInfo>> init_infos;
 
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.

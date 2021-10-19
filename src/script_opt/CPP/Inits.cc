@@ -14,14 +14,18 @@ namespace zeek::detail
 
 using namespace std;
 
-std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterInitExpr(const ExprPtr& e)
+std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterInitExpr(const ExprPtr& ep)
 	{
-	auto ename = InitExprName(e);
+	auto ename = InitExprName(ep);
+
+	if ( init_infos.count(ename) )
+		return init_infos[ename];
+
 	auto wrapper_cl = string("wrapper_") + ename + "_cl";
 
-	auto gi = make_shared<CallExprInitInfo>(this, e, ename, wrapper_cl);
+	auto gi = make_shared<CallExprInitInfo>(this, ep, ename, wrapper_cl);
 	call_exprs_info->AddInstance(gi);
-	init_infos.emplace_back(gi);
+	init_infos[ename] = gi;
 
 	return gi;
 	}

@@ -295,8 +295,9 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 void CPPCompile::GenEpilog()
 	{
 	NL();
-	for ( const auto& ie : init_infos )
+	for ( const auto& ii : init_infos )
 		{
+		auto& ie = ii.second;
 		GenInitExpr(ie);
 		if ( update )
 			init_exprs.LogIfNew(ie->GetExpr(), addl_tag, hm.HashFile());
