@@ -59,14 +59,25 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 
 std::string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 	{
-	if ( ! v )
-		return string("CPP_AbstractValElem()");
+	string init_type;
+	string init_args;
 
-	auto gi = c->RegisterConstant(v);
-	init_cohort = max(init_cohort, gi->InitCohort() + 1);
+	if ( v )
+		{
+		auto gi = c->RegisterConstant(v);
+		init_cohort = max(init_cohort, gi->InitCohort() + 1);
+		auto gl = gi->MainGlobal();
 
-	auto gl = gi->MainGlobal();
-	return string("CPP_ValElem<") + gl->CPPType() + ">(" + gl->GlobalsName() + ", " + Fmt(gi->Offset()) + ")";
+		init_type = string("CPP_ValElem<") + gl->CPPType() + ">";
+		init_args = gl->GlobalsName() + ", " + Fmt(gi->Offset());
+		}
+	else
+		{
+		init_type = string("CPP_AbstractValElem");
+		// default empty init_args works fine.
+		}
+
+	return string("std::make_shared<") + init_type + ">(" + init_args + ")";
 	}
 
 DescConstInfo::DescConstInfo(std::string _name, ValPtr v)

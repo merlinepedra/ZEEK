@@ -200,56 +200,59 @@ private:
 	int offset;
 	};
 
+using ValElemPtr = std::shared_ptr<CPP_AbstractValElem>;
+using ValElemVec = std::vector<ValElemPtr>;
+
 class CPP_ListConst : public CPP_Global<ListValPtr>
 	{
 public:
-	CPP_ListConst(std::vector<CPP_AbstractValElem> _vals)
+	CPP_ListConst(ValElemVec _vals)
 		: vals(std::move(_vals)) { }
 
 	ListValPtr Generate() const override;
 
 private:
-	std::vector<CPP_AbstractValElem> vals;
+	ValElemVec vals;
 	};
 
 class CPP_VectorConst : public CPP_Global<VectorValPtr>
 	{
 public:
-	CPP_VectorConst(int type, std::vector<CPP_AbstractValElem> vals)
+	CPP_VectorConst(int type, ValElemVec vals)
 		: v_type(type), v_vals(std::move(vals)) { }
 
 	VectorValPtr Generate() const override;
 
 private:
 	int v_type;
-	std::vector<CPP_AbstractValElem> v_vals;
+	ValElemVec v_vals;
 	};
 
 class CPP_RecordConst : public CPP_Global<RecordValPtr>
 	{
 public:
-	CPP_RecordConst(int type, std::vector<CPP_AbstractValElem> vals)
+	CPP_RecordConst(int type, ValElemVec vals)
 		: r_type(type), r_vals(std::move(vals)) { }
 
 	RecordValPtr Generate() const override;
 
 private:
 	int r_type;
-	std::vector<CPP_AbstractValElem> r_vals;
+	ValElemVec r_vals;
 	};
 
 class CPP_TableConst : public CPP_Global<TableValPtr>
 	{
 public:
-	CPP_TableConst(int type, std::vector<CPP_AbstractValElem> indices, std::vector<CPP_AbstractValElem> vals)
+	CPP_TableConst(int type, ValElemVec indices, ValElemVec vals)
 		: t_type(type), t_indices(std::move(indices)), t_vals(std::move(vals)) { }
 
 	TableValPtr Generate() const override;
 
 private:
 	int t_type;
-	std::vector<CPP_AbstractValElem> t_indices;
-	std::vector<CPP_AbstractValElem> t_vals;
+	ValElemVec t_indices;
+	ValElemVec t_vals;
 	};
 
 class CPP_FuncConst : public CPP_Global<FuncValPtr>
@@ -280,13 +283,13 @@ public:
 class CPP_ConstAttrExpr : public CPP_AbstractAttrExpr
 	{
 public:
-	CPP_ConstAttrExpr(CPP_AbstractValElem _v) : v(std::move(_v)) {}
+	CPP_ConstAttrExpr(ValElemPtr _v) : v(std::move(_v)) {}
 
 	ExprPtr Build() const override
-		{ return make_intrusive<ConstExpr>(v.Get()); }
+		{ return make_intrusive<ConstExpr>(v->Get()); }
 
 private:
-	CPP_AbstractValElem v;
+	ValElemPtr v;
 	};
 
 class CPP_NameAttrExpr : public CPP_AbstractAttrExpr
@@ -582,7 +585,7 @@ protected:
 class CPP_GlobalInit
 	{
 public:
-	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, CPP_AbstractValElem _val, bool _exported)
+	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, std::shared_ptr<CPP_AbstractValElem> _val, bool _exported)
 		: global(_global), name(_name), type(_type), attrs(_attrs), val(std::move(_val)), exported(_exported)
 		{ }
 
@@ -593,7 +596,7 @@ protected:
 	const char* name;
 	int type;
 	int attrs;
-	CPP_AbstractValElem val;
+	std::shared_ptr<CPP_AbstractValElem> val;
 	bool exported;
 	};
 

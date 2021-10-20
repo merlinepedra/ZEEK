@@ -230,7 +230,7 @@ void CPPCompile::Compile(bool report_uncompilable)
 		}
 
 	NL();
-	Emit("std::vector<CPP_RegisterBody> CPP__bodies_to_register = {");
+	Emit("std::vector<std::shared_ptr<CPP_RegisterBody>> CPP__bodies_to_register = {");
 
 	for ( const auto& f : compiled_funcs )
 		RegisterCompiledBody(f);
@@ -283,7 +283,7 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 		// same binary).
 		h = merge_p_hashes(h, p_hash(cf_locs[f]));
 
-	Emit("\tCPP_RegisterBodyT<%s>(\"%s\", %s, %s, %s),", f + "_cl", f, Fmt(p), Fmt(h), events);
+	Emit("\tstd::make_shared<CPP_RegisterBodyT<%s>>(\"%s\", %s, %s, std::vector<std::string>(%s)),", f + "_cl", f, Fmt(p), Fmt(h), events);
 
 	if ( update )
 		{
@@ -362,7 +362,7 @@ void CPPCompile::GenEpilog()
 
 	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");
-	Emit("\tb.Register();");
+	Emit("\tb->Register();");
 
 	// Populate mappings for dynamic offsets.
 	NL();
