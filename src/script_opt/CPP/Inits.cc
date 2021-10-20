@@ -162,7 +162,7 @@ void CPPCompile::InitializeGlobals()
 	StartBlock();
 
 	for ( const auto& gi : global_gis )
-		Emit("%s,", gi.second->Initializer());
+		Emit("%s(%s),", gi.second->InitializerType(), gi.second->InitializerVal());
 
 	EndBlock(true);
 	}

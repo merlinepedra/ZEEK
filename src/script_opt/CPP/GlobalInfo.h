@@ -106,8 +106,11 @@ public:
 	// the global is part of a CPP_Globals object.
 	std::string Declare() const { return type + " " + Name() + ";"; }
 
-	// Returns a C++ initialization for creating this global.
-	virtual std::string Initializer() const = 0;
+	// Returns the type used for this initializer.
+	virtual std::string InitializerType() const = 0;
+
+	// Returns the value used for creating this global.
+	virtual std::string InitializerVal() const = 0;
 
 protected:
 	std::string ValElem(CPPCompile* c, ValPtr v);
@@ -131,10 +134,13 @@ public:
 	BasicConstInfo(std:: string _name, std::string _cpp_type, std::string _val)
 		: name(std::move(_name)), cpp_type(std::move(_cpp_type)), val(std::move(_val)) { }
 
-	std::string Initializer() const override
+	std::string InitializerType() const override
 		{
-		return std::string("CPP_BasicConst<") + name + "ValPtr, " + cpp_type + ", " + name + "Val>(" + val + ")";
+		return std::string("CPP_BasicConst<") + name + "ValPtr, " + cpp_type + ", " + name + "Val>";
 		}
+
+	std::string InitializerVal() const override
+		{ return val; }
 
 private:
 	std::string name;
@@ -147,7 +153,8 @@ class DescConstInfo : public CPP_GlobalInfo
 public:
 	DescConstInfo(std::string _name, ValPtr v);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override;
+	std::string InitializerVal() const override { return init; }
 
 private:
 	std::string name;
@@ -159,10 +166,11 @@ class EnumConstInfo : public CPP_GlobalInfo
 public:
 	EnumConstInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override
-		{
-		return std::string("CPP_EnumConst(") + std::to_string(e_type) + ", " + std::to_string(e_val) + ")";
-		}
+	std::string InitializerType() const override
+		{ return "CPP_EnumConst"; }
+
+	std::string InitializerVal() const override
+		{ return std::to_string(e_type) + ", " + std::to_string(e_val); }
 
 private:
 	int e_type;
@@ -174,7 +182,10 @@ class StringConstInfo : public CPP_GlobalInfo
 public:
 	StringConstInfo(ValPtr v);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_StringConst"; }
+	std::string InitializerVal() const override
+		{ return std::to_string(len) + ", " + rep; }
 
 private:
 	std::string rep;
@@ -186,7 +197,11 @@ class PatternConstInfo : public CPP_GlobalInfo
 public:
 	PatternConstInfo(ValPtr v);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_PatternConst"; }
+
+	std::string InitializerVal() const override
+		{ return pattern + ", " + std::to_string(is_case_insensitive); }
 
 private:
 	std::string pattern;
@@ -198,10 +213,11 @@ class PortConstInfo : public CPP_GlobalInfo
 public:
 	PortConstInfo(ValPtr v) : p(static_cast<UnsignedValImplementation*>(v->AsPortVal())->Get()) { }
 
-	std::string Initializer() const override
-		{
-		return std::string("CPP_PortConst(") + std::to_string(p) + ")";
-		}
+	std::string InitializerType() const override
+		{ return "CPP_PortConst"; }
+
+	std::string InitializerVal() const override
+		{ return std::to_string(p); }
 
 private:
 	bro_uint_t p;
@@ -224,7 +240,11 @@ class ListConstInfo : public CompoundConstInfo
 public:
 	ListConstInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_ListConst"; }
+
+	std::string InitializerVal() const override
+		{ return std::string("ValElemVec({ ") + vals + "})"; }
 	};
 
 class VectorConstInfo : public CompoundConstInfo
@@ -232,10 +252,11 @@ class VectorConstInfo : public CompoundConstInfo
 public:
 	VectorConstInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override
-		{
-		return std::string("CPP_VectorConst(") + std::to_string(type) + ", { " + vals + "})";
-		}
+	std::string InitializerType() const override
+		{ return "CPP_VectorConst"; }
+
+	std::string InitializerVal() const override
+		{ return std::to_string(type) + ", ValElemVec({ " + vals + "})"; }
 	};
 
 class RecordConstInfo : public CompoundConstInfo
@@ -243,10 +264,11 @@ class RecordConstInfo : public CompoundConstInfo
 public:
 	RecordConstInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override
-		{
-		return std::string("CPP_RecordConst(") + std::to_string(type) + ", { " + vals + "})";
-		}
+	std::string InitializerType() const override
+		{ return "CPP_RecordConst"; }
+
+	std::string InitializerVal() const override
+		{ return std::to_string(type) + ", ValElemVec({ " + vals + "})"; }
 	};
 
 class TableConstInfo : public CompoundConstInfo
@@ -254,9 +276,12 @@ class TableConstInfo : public CompoundConstInfo
 public:
 	TableConstInfo(CPPCompile* c, ValPtr v);
 
-	std::string Initializer() const override
+	std::string InitializerType() const override
+		{ return "CPP_TableConst"; }
+
+	std::string InitializerVal() const override
 		{
-		return std::string("CPP_TableConst(") + std::to_string(type) + ", { " + indices + "}, { " + vals + "})";
+		return std::to_string(type) + ", ValElemVec({ " + indices + "}), ValElemVec({ " + vals + "})";
 		}
 
 private:
@@ -270,10 +295,11 @@ public:
 		: CompoundConstInfo(c, v), name(cast_intrusive<FileVal>(v)->Get()->Name())
 		{ }
 
-	std::string Initializer() const override
-		{
-		return std::string("CPP_FileConst(\"") + name + "\")";
-		}
+	std::string InitializerType() const override
+		{ return "CPP_FileConst"; }
+
+	std::string InitializerVal() const override
+		{ return std::string("\"") + name + "\""; }
 
 private:
 	std::string name;
@@ -285,7 +311,9 @@ public:
 	FuncConstInfo(CPPCompile* _c, ValPtr v)
 		: CompoundConstInfo(_c, v), fv(v->AsFuncVal()) { }
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_FuncConst"; }
+	std::string InitializerVal() const override;
 
 private:
 	FuncVal* fv;
@@ -297,7 +325,12 @@ class AttrInfo : public CPP_GlobalInfo
 public:
 	AttrInfo(CPPCompile* c, const AttrPtr& attr);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_Attr"; }
+	std::string InitializerVal() const override
+		{
+		return tag + ", std::make_shared<" + e_init_type + ">(" + e_init_args + ")";
+		}
 
 protected:
 	std::string tag;
@@ -310,7 +343,9 @@ class AttrsInfo : public CPP_GlobalInfo
 public:
 	AttrsInfo(CPPCompile* c, const AttributesPtr& attrs);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_Attrs"; }
+	std::string InitializerVal() const override;
 
 protected:
 	std::vector<int> attrs;
@@ -322,7 +357,9 @@ class GlobalInitInfo : public CPP_GlobalInfo
 public:
 	GlobalInitInfo(CPPCompile* c, const ID* g, std::string CPP_name);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_GlobalInit"; }
+	std::string InitializerVal() const override;
 
 protected:
 	std::string Zeek_name;
@@ -339,7 +376,9 @@ class CallExprInitInfo : public CPP_GlobalInfo
 public:
 	CallExprInitInfo(CPPCompile* c, ExprPtr e, std::string e_name, std::string wrapper_class);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return std::string("CPP_CallExprInit<") + wrapper_class + ">"; }
+	std::string InitializerVal() const override { return e_name; }
 
 	const ExprPtr& GetExpr() const { return e; }
 	const std::string& Name() const { return e_name; }
@@ -357,7 +396,9 @@ class LambdaRegistrationInfo : public CPP_GlobalInfo
 public:
 	LambdaRegistrationInfo(CPPCompile* c, std::string name, FuncTypePtr ft, std::string wrapper_class, p_hash_type h, bool has_captures);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return std::string("CPP_LambdaRegistration<") + wrapper_class + ">"; }
+	std::string InitializerVal() const override;
 
 protected:
 	std::string name;
@@ -382,7 +423,10 @@ class BaseTypeInfo : public AbstractTypeInfo
 public:
 	BaseTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_BaseType"; }
+
+	std::string InitializerVal() const override;
 	};
 
 class EnumTypeInfo : public AbstractTypeInfo
@@ -390,7 +434,10 @@ class EnumTypeInfo : public AbstractTypeInfo
 public:
 	EnumTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_EnumType"; }
+
+	std::string InitializerVal() const override;
 	};
 
 class OpaqueTypeInfo : public AbstractTypeInfo
@@ -398,7 +445,11 @@ class OpaqueTypeInfo : public AbstractTypeInfo
 public:
 	OpaqueTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_OpaqueType"; }
+
+	std::string InitializerVal() const override
+		{ return std::string("\"") + t->GetName() + "\""; }
 	};
 
 
@@ -417,7 +468,9 @@ class TypeTypeInfo : public CompoundTypeInfo
 public:
 	TypeTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_TypeType"; }
+	std::string InitializerVal() const override;
 
 private:
 	TypePtr tt;
@@ -428,7 +481,9 @@ class VectorTypeInfo : public CompoundTypeInfo
 public:
 	VectorTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_VectorType"; }
+	std::string InitializerVal() const override;
 
 private:
 	TypePtr yield;
@@ -439,7 +494,9 @@ class ListTypeInfo : public CompoundTypeInfo
 public:
 	ListTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_TypeList"; }
+	std::string InitializerVal() const override;
 
 private:
 	const std::vector<TypePtr>& types;
@@ -450,7 +507,9 @@ class TableTypeInfo : public CompoundTypeInfo
 public:
 	TableTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_TableType"; }
+	std::string InitializerVal() const override;
 
 private:
 	int indices;
@@ -462,7 +521,9 @@ class FuncTypeInfo : public CompoundTypeInfo
 public:
 	FuncTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_FuncType"; }
+	std::string InitializerVal() const override;
 
 private:
 	FunctionFlavor flavor;
@@ -475,7 +536,9 @@ class RecordTypeInfo : public CompoundTypeInfo
 public:
 	RecordTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string Initializer() const override;
+	std::string InitializerType() const override
+		{ return "CPP_RecordType"; }
+	std::string InitializerVal() const override;
 
 private:
 	std::vector<std::string> field_names;

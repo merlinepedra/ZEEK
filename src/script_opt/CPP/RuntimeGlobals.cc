@@ -116,7 +116,7 @@ TypePtr CPP_EnumType::DoGenerate() const
 
 	if ( et->Names().empty() )
 		for ( auto i = 0U; i < elems.size(); ++i )
-			et->AddNameInternal(elems[i], vals[i]);
+			et->AddNameInternal(string(elems[i]), vals[i]);
 
 	return et;
 	}
@@ -157,7 +157,7 @@ TypePtr CPP_RecordType::DoGenerate(std::vector<TypePtr>& global_vec, int offset)
 		int n = field_names.size();
 		for ( auto i = 0; i < n; ++i )
 			{
-			auto id = util::copy_string(field_names[i].c_str());
+			auto id = util::copy_string(field_names[i]);
 			auto type = global_vec[field_types[i]];
 
 			AttributesPtr attrs;

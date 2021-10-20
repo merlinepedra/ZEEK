@@ -47,7 +47,7 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 		c->Emit("{");
 
 		for ( auto& co : cohort )
-			c->Emit("%s,", co->Initializer());
+			c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), co->InitializerVal());
 
 		c->Emit("},");
 		}
@@ -57,7 +57,7 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
-std::string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
+string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 	{
 	string init_type;
 	string init_args;
@@ -80,17 +80,17 @@ std::string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 	return string("std::make_shared<") + init_type + ">(" + init_args + ")";
 	}
 
-DescConstInfo::DescConstInfo(std::string _name, ValPtr v)
-	: CPP_GlobalInfo(), name(std::move(_name))
+DescConstInfo::DescConstInfo(string _name, ValPtr v)
+	: CPP_GlobalInfo(), name(move(_name))
 	{
 	ODesc d;
 	v->Describe(&d);
-	init = d.Description();
+	init = string("\"") + d.Description() + "\"";
 	}
 
-string DescConstInfo::Initializer() const
+string DescConstInfo::InitializerType() const
 	{
-	return string("CPP_BasicConst<") + name + "ValPtr, const char*, " + name + "Val>(\"" + init + "\")";
+	return string("CPP_BasicConst<") + name + "ValPtr, const char*, " + name + "Val>";
 	}
 
 EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)
@@ -110,22 +110,12 @@ StringConstInfo::StringConstInfo(ValPtr v)
 	rep = CPPEscape(b, len);
 	}
 
-string StringConstInfo::Initializer() const
-	{
-	return string("CPP_StringConst(") + Fmt(len) + ", " + rep + ")";
-	}
-
 PatternConstInfo::PatternConstInfo(ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto re = v->AsPatternVal()->Get();
 	pattern = CPPEscape(re->OrigText());
 	is_case_insensitive = re->IsCaseInsensitive();
-	}
-
-string PatternConstInfo::Initializer() const
-	{
-	return string("CPP_PatternConst(") + pattern + ", " + Fmt(is_case_insensitive) + ")";
 	}
 
 CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v)
@@ -144,11 +134,6 @@ ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
 
 	for ( auto i = 0; i < n; ++i )
 		vals += ValElem(c, lv->Idx(i)) + ", ";
-	}
-
-string ListConstInfo::Initializer() const
-	{
-	return string("CPP_ListConst({ " + vals + "})");
 	}
 
 VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
@@ -185,7 +170,7 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 		}
 	}
 
-string FuncConstInfo::Initializer() const
+string FuncConstInfo::InitializerVal() const
 	{
 	auto f = fv->AsFunc();
 	const auto& fn = f->Name();
@@ -200,7 +185,7 @@ string FuncConstInfo::Initializer() const
 			hashes += Fmt(c->BodyHash(b.stmts.get())) + ", ";
 		}
 
-	return string("CPP_FuncConst(\"") + fn + "\", " + Fmt(type) + ", { " + hashes + "})";
+	return string("\"") + fn + "\", " + Fmt(type) + ", std::vector<p_hash_type>({ " + hashes + "})";
 	}
 
 
@@ -253,11 +238,6 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 		e_init_type = "CPP_AbstractAttrExpr";
 	}
 
-string AttrInfo::Initializer() const
-	{
-	return string("CPP_Attr(") + tag + ", std::make_shared<" + e_init_type + ">(" + e_init_args + "))";
-	}
-
 AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)
 	: CPP_GlobalInfo()
 	{
@@ -270,18 +250,18 @@ AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)
 		}
 	}
 
-string AttrsInfo::Initializer() const
+string AttrsInfo::InitializerVal() const
 	{
 	string attr_list;
 
 	for ( auto a : attrs )
 		attr_list += Fmt(a) + ", ";
 
-	return string("CPP_Attrs({ ") + attr_list + "})";
+	return string("std::vector<int>({ ") + attr_list + "})";
 	}
 
-GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, std::string _CPP_name)
-	: CPP_GlobalInfo(), CPP_name(std::move(_CPP_name))
+GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, string _CPP_name)
+	: CPP_GlobalInfo(), CPP_name(move(_CPP_name))
 	{
 	Zeek_name = g->Name();
 
@@ -303,26 +283,21 @@ GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, std::string _CPP_name
 	val = ValElem(c, g->GetVal());
 	}
 
-string GlobalInitInfo::Initializer() const
+string GlobalInitInfo::InitializerVal() const
 	{
-	return string("CPP_GlobalInit(") + CPP_name + ", \"" + Zeek_name + "\", " + Fmt(type) + ", " + Fmt(attrs) + ", " + val + ", " + Fmt(exported) + ")";
+	return CPP_name + ", \"" + Zeek_name + "\", " + Fmt(type) + ", " + Fmt(attrs) + ", " + val + ", " + Fmt(exported);
 	}
 
 
-CallExprInitInfo::CallExprInitInfo(CPPCompile* c, ExprPtr _e, std::string _e_name, std::string _wrapper_class)
+CallExprInitInfo::CallExprInitInfo(CPPCompile* c, ExprPtr _e, string _e_name, string _wrapper_class)
 	: e(move(_e)), e_name(move(_e_name)), wrapper_class(move(_wrapper_class))
 	{
 	auto gi = c->RegisterType(e->GetType());
 	init_cohort = max(init_cohort, gi->InitCohort() + 1);
 	}
 
-string CallExprInitInfo::Initializer() const
-	{
-	return string("CPP_CallExprInit<") + wrapper_class + ">(" + e_name + ")";
-	}
 
-
-LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, std::string _name, FuncTypePtr ft, std::string _wrapper_class, p_hash_type _h, bool _has_captures)
+LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, string _name, FuncTypePtr ft, string _wrapper_class, p_hash_type _h, bool _has_captures)
 	: name(move(_name)), wrapper_class(move(_wrapper_class)), h(_h), has_captures(_has_captures)
 	{
 	auto gi = c->RegisterType(ft);
@@ -330,18 +305,17 @@ LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, std::string _name,
 	func_type = gi->Offset();
 	}
 
-string LambdaRegistrationInfo::Initializer() const
+string LambdaRegistrationInfo::InitializerVal() const
 	{
-	return string("CPP_LambdaRegistration<") + wrapper_class + ">(\"" + name + "\", " + Fmt(func_type) + ", " + Fmt(h) + ", " + (has_captures ? "true" : "false")  + ")";
+	return string("\"") + name + "\", " + Fmt(func_type) + ", " + Fmt(h) + ", " + (has_captures ? "true" : "false");
 	}
 
-
-string BaseTypeInfo::Initializer() const
+string BaseTypeInfo::InitializerVal() const
 	{
-	return string("CPP_BaseType(") + CPPCompile::TypeTagName(t->Tag()) + ")";
+	return CPPCompile::TypeTagName(t->Tag());
 	}
 
-string EnumTypeInfo::Initializer() const
+string EnumTypeInfo::InitializerVal() const
 	{
 	string elem_list, val_list;
 	auto et = t->AsEnumType();
@@ -352,12 +326,7 @@ string EnumTypeInfo::Initializer() const
 		val_list += Fmt(int(name_pair.second)) + ", ";
 		}
 
-	return string("CPP_EnumType(\"") + t->GetName() + "\", { " + elem_list + "}, { " + val_list + "})";
-	}
-
-string OpaqueTypeInfo::Initializer() const
-	{
-	return string("CPP_OpaqueType(\"") + t->GetName() + "\")";
+	return string("\"") + t->GetName() + "\", std::vector<const char*>({ " + elem_list + "}), std::vector<int>({ " + val_list + "})";
 	}
 
 
@@ -370,9 +339,14 @@ TypeTypeInfo::TypeTypeInfo(CPPCompile* _c, TypePtr _t)
 		init_cohort = gi->InitCohort();
 	}
 
-string TypeTypeInfo::Initializer() const
+string TypeTypeInfo::InitializerVal() const
 	{
-	return string("CPP_TypeType(") + Fmt(c->TypeOffset(tt)) + ")";
+	return to_string(c->TypeOffset(tt));
+	}
+
+string VectorTypeInfo::InitializerVal() const
+	{
+	return to_string(c->TypeOffset(yield));
 	}
 
 VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -382,11 +356,6 @@ VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
 	auto gi = c->RegisterType(yield);
 	if ( gi )
 		init_cohort = gi->InitCohort();
-	}
-
-string VectorTypeInfo::Initializer() const
-	{
-	return string("CPP_VectorType(") + Fmt(c->TypeOffset(yield)) + ")";
 	}
 
 ListTypeInfo::ListTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -400,13 +369,13 @@ ListTypeInfo::ListTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string ListTypeInfo::Initializer() const
+string ListTypeInfo::InitializerVal() const
 	{
 	string type_list;
 	for ( auto& t : types )
 		type_list += Fmt(c->TypeOffset(t)) + ", ";
 
-	return string("CPP_TypeList({ ") + type_list + "})";
+	return string("std::vector<int>({ ") + type_list + "})";
 	}
 
 TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -429,10 +398,10 @@ TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string TableTypeInfo::Initializer() const
+string TableTypeInfo::InitializerVal() const
 	{
 	auto y = Fmt(yield ? c->TypeOffset(yield) : -1);
-	return string("CPP_TableType(") + Fmt(indices) + ", " + y + ")";
+	return Fmt(indices) + ", " + y;
 	}
 
 FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -456,7 +425,7 @@ FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string FuncTypeInfo::Initializer() const
+string FuncTypeInfo::InitializerVal() const
 	{
 	string fl_name;
 	if ( flavor == FUNC_FLAVOR_FUNCTION )
@@ -468,7 +437,7 @@ string FuncTypeInfo::Initializer() const
 
 	auto y = Fmt(yield ? c->TypeOffset(yield) : -1);
 
-	return string("CPP_FuncType(") + Fmt(c->TypeOffset(params)) + ", " + y + ", " + fl_name + ")";
+	return Fmt(c->TypeOffset(params)) + ", " + y + ", " + fl_name;
 	}
 
 RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -501,7 +470,7 @@ RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string RecordTypeInfo::Initializer() const
+string RecordTypeInfo::InitializerVal() const
 	{
 	string names, types, attrs;
 
@@ -520,7 +489,7 @@ string RecordTypeInfo::Initializer() const
 	for ( auto& a : field_attrs )
 		attrs += Fmt(a) + ", ";
 
-	return string("CPP_RecordType({ ") + names + "}, { " + types + "}, { " + attrs + "})";
+	return string("std::vector<const char*>({ ") + names + "}), std::vector<int>({ " + types + "}), std::vector<int>({ " + attrs + "})";
 	}
 
 	} // zeek::detail

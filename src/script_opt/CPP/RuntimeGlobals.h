@@ -63,7 +63,7 @@ template <class T>
 class CPP_Globals
 	{
 public:
-	CPP_Globals(std::vector<T>& _global_vec, std::vector<std::vector<CPP_Global<T>>> _inits)
+	CPP_Globals(std::vector<T>& _global_vec, std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> _inits)
 		: global_vec(_global_vec), inits(std::move(_inits))
 		{
 		int num_globals = 0;
@@ -85,7 +85,7 @@ public:
 
 		for ( const auto& i : inits[cohort] )
 			{
-			global_vec[offset] = i.Generate(global_vec, offset);
+			global_vec[offset] = i->Generate(global_vec, offset);
 			++offset;
 			}
 		}
@@ -97,14 +97,14 @@ private:
 
 		for ( const auto& cohort : inits )
 			for ( const auto& i : cohort )
-				global_vec[offset++] = i.PreInit();
+				global_vec[offset++] = i->PreInit();
 		}
 
 	std::vector<T>& global_vec;
 
 	// Indexed first by cohort, and then iterated over to get all
 	// of the initializers for that cohort.
-	std::vector<std::vector<CPP_Global<T>>> inits;
+	std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> inits;
 
 	std::vector<int> cohort_offsets;
 	};
@@ -396,14 +396,14 @@ private:
 class CPP_EnumType : public CPP_AbstractType
 	{
 public:
-	CPP_EnumType(std::string _name, std::vector<std::string> _elems, std::vector<int> _vals)
+	CPP_EnumType(std::string _name, std::vector<const char*> _elems, std::vector<int> _vals)
 		: CPP_AbstractType(_name), elems(std::move(_elems)), vals(std::move(_vals)) { }
 
 	// TypePtr PreInit() const override { return get_enum_type__CPP(name); }
 	TypePtr DoGenerate() const override;
 
 private:
-	std::vector<std::string> elems;
+	std::vector<const char*> elems;
 	std::vector<int> vals;
 	};
 
@@ -493,14 +493,14 @@ private:
 class CPP_RecordType : public CPP_AbstractType
 	{
 public:
-	CPP_RecordType(std::vector<std::string> _field_names, std::vector<int> _field_types, std::vector<int> _field_attrs)
+	CPP_RecordType(std::vector<const char*> _field_names, std::vector<int> _field_types, std::vector<int> _field_attrs)
 		: CPP_AbstractType(), field_names(std::move(_field_names)), field_types(_field_types), field_attrs(_field_attrs) { }
 
 	TypePtr PreInit() const override;
 	TypePtr DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override;
 
 private:
-	std::vector<std::string> field_names;
+	std::vector<const char*> field_names;
 	std::vector<int> field_types;
 	std::vector<int> field_attrs;
 	};
