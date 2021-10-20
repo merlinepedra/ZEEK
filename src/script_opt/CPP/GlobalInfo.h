@@ -301,7 +301,8 @@ public:
 
 protected:
 	std::string tag;
-	std::string e_init;
+	std::string e_init_type;
+	std::string e_init_args;
 	};
 
 class AttrsInfo : public CPP_GlobalInfo

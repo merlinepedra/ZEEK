@@ -221,34 +221,41 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 			{
 			gi = c->RegisterInitExpr(a_e);
 			init_cohort = max(init_cohort, gi->InitCohort() + 1);
-			e_init = string("CPP_CallAttrExpr(") + Fmt(gi->Offset()) + ")";
+			e_init_type = "CPP_CallAttrExpr";
+			e_init_args = Fmt(gi->Offset());
 			}
 
 		else if ( a_e->Tag() == EXPR_CONST )
-			e_init = string("CPP_ConstAttrExpr(") + ValElem(c, a_e->AsConstExpr()->ValuePtr()) + ")";
+			{
+			e_init_type = "CPP_ConstAttrExpr";
+			e_init_args = ValElem(c, a_e->AsConstExpr()->ValuePtr());
+			}
 
 		else if ( a_e->Tag() == EXPR_NAME )
 			{
 			auto g = a_e->AsNameExpr()->Id();
 			auto gi = c->RegisterGlobal(g);
 			init_cohort = max(init_cohort, gi->InitCohort() + 1);
-			e_init = string("CPP_NameAttrExpr(") + c->GlobalName(a_e) + ")";
+
+			e_init_type = "CPP_NameAttrExpr";
+			e_init_args = c->GlobalName(a_e);
 			}
 
 		else
 			{
 			ASSERT(a_e->Tag() == EXPR_RECORD_COERCE);
-			e_init = string("CPP_RecordAttrExpr(") + gi->Name() + ")";
+			e_init_type = "CPP_RecordAttrExpr";
+			e_init_args = gi->Name();
 			}
 		}
 
 	else
-		e_init = "CPP_AbstractAttrExpr()";
+		e_init_type = "CPP_AbstractAttrExpr";
 	}
 
 string AttrInfo::Initializer() const
 	{
-	return string("CPP_Attr(") + tag + ", " + e_init + ")";
+	return string("CPP_Attr(") + tag + ", std::make_shared<" + e_init_type + ">(" + e_init_args + "))";
 	}
 
 AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)

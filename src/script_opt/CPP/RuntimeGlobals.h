@@ -280,6 +280,8 @@ public:
 	virtual ExprPtr Build() const { return nullptr; }
 	};
 
+using AbstractAttrPtr = std::shared_ptr<CPP_AbstractAttrExpr>;
+
 class CPP_ConstAttrExpr : public CPP_AbstractAttrExpr
 	{
 public:
@@ -329,15 +331,15 @@ private:
 class CPP_Attr : public CPP_Global<AttrPtr>
 	{
 public:
-	CPP_Attr(AttrTag t, CPP_AbstractAttrExpr _expr)
+	CPP_Attr(AttrTag t, AbstractAttrPtr _expr)
 		: tag(t), expr(std::move(_expr)) { }
 
 	AttrPtr Generate() const override
-		{ return make_intrusive<Attr>(tag, expr.Build()); }
+		{ return make_intrusive<Attr>(tag, expr->Build()); }
 
 private:
 	AttrTag tag;
-	CPP_AbstractAttrExpr expr;
+	AbstractAttrPtr expr;
 	};
 
 class CPP_Attrs : public CPP_Global<AttributesPtr>
