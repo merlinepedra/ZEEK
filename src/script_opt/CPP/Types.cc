@@ -94,7 +94,7 @@ string CPPCompile::GenericValPtrToGT(const string& expr, const TypePtr& t, GenTy
 string CPPCompile::GenTypeName(const Type* t)
 	{
 	ASSERT(processed_types.count(TypeRep(t)) > 0);
-	return types_OBS.KeyName(TypeRep(t));
+	return types.KeyName(TypeRep(t));
 	}
 
 const char* CPPCompile::TypeTagName(TypeTag tag)
@@ -345,7 +345,7 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 	type_info->AddInstance(gi);
 	processed_types[t] = gi;
 
-	types_OBS.AddGlobalInfo(t, gi);
+	types.AddGlobalInfo(t, gi);
 
 	return gi;
 	}
