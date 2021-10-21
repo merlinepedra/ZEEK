@@ -341,11 +341,9 @@ void CPPCompile::GenEpilog()
 
 	StartBlock();
 
-	Emit("enum_mapping.resize(%s);\n", Fmt(int(enum_names.size())));
-
-	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");
 	Emit("\tb->Register();");
+	NL();
 
 	int max_cohort = 0;
 	for ( auto gi : all_global_info )
