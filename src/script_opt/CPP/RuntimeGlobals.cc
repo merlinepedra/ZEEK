@@ -35,6 +35,7 @@ std::vector<AttrPtr> CPP__Attr__;
 std::vector<AttributesPtr> CPP__Attributes__;
 std::vector<CallExprPtr> CPP__CallExpr__;
 std::vector<void*> CPP__LambdaRegistration__;
+std::vector<void*> CPP__GlobalID__;
 
 void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	{
@@ -226,7 +227,7 @@ int CPP_EnumMapping::ComputeOffset() const
 	}
 
 
-void CPP_GlobalInit::Init() const
+void CPP_GlobalInit::Generate(std::vector<void*>& /* global_vec */) const
 	{
 	global = lookup_global__CPP(name, CPP__Type__[type], exported);
 

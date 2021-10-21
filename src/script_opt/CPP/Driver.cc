@@ -89,7 +89,7 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	call_exprs_info = InitGlobalInfo("CallExpr", "Ptr");
 
 	lambda_reg_info = InitGlobalInfo("LambdaRegistration", "");
-	lambda_reg_info->SetCPPType("void*");
+	global_id_info = InitGlobalInfo("GlobalID", "");
 
 	Compile(report_uncompilable);
 	}
@@ -103,6 +103,10 @@ shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const ch
 	{
 	auto gi = make_shared<CPP_GlobalsInfo>(tag, type);
 	all_global_info.insert(gi);
+
+	if ( type[0] == '\0' )
+		gi->SetCPPType("void*");
+
 	return gi;
 	}
 
@@ -333,9 +337,6 @@ void CPPCompile::GenEpilog()
 	InitializeBiFs();
 
 	NL();
-	InitializeGlobals();
-
-	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();
@@ -355,10 +356,6 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("for ( auto& b : CPP__BiF_lookups__ )");
 	Emit("\tb.ResolveBiF();");
-
-	NL();
-	Emit("for ( auto& gi : CPP__global_inits__ )");
-	Emit("\tgi.Init();");
 
 	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");

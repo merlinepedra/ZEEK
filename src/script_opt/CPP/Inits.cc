@@ -155,18 +155,6 @@ void CPPCompile::InitializeBiFs()
 	EndBlock(true);
 	}
 
-void CPPCompile::InitializeGlobals()
-	{
-	Emit("std::vector<CPP_GlobalInit> CPP__global_inits__ = ");
-
-	StartBlock();
-
-	for ( const auto& gi : global_gis )
-		Emit("%s(%s),", gi.second->InitializerType(), gi.second->InitializerVal());
-
-	EndBlock(true);
-	}
-
 void CPPCompile::GenInitHook()
 	{
 	NL();

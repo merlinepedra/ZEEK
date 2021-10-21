@@ -43,6 +43,7 @@ extern std::vector<AttrPtr> CPP__Attr__;
 extern std::vector<AttributesPtr> CPP__Attributes__;
 extern std::vector<CallExprPtr> CPP__CallExpr__;
 extern std::vector<void*> CPP__LambdaRegistration__;
+extern std::vector<void*> CPP__GlobalID__;
 
 template <class T>
 class CPP_Global
@@ -568,14 +569,14 @@ protected:
 	std::string bif_name;
 	};
 
-class CPP_GlobalInit
+class CPP_GlobalInit : public CPP_Global<void*>
 	{
 public:
-	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, std::shared_ptr<CPP_AbstractValElem> _val, bool _exported)
-		: global(_global), name(_name), type(_type), attrs(_attrs), val(std::move(_val)), exported(_exported)
+	CPP_GlobalInit(int _offset, IDPtr& _global, const char* _name, int _type, int _attrs, std::shared_ptr<CPP_AbstractValElem> _val, bool _exported)
+		: CPP_Global<void*>(_offset), global(_global), name(_name), type(_type), attrs(_attrs), val(std::move(_val)), exported(_exported)
 		{ }
 
-	void Init() const;
+	void Generate(std::vector<void*>& /* global_vec */) const override;
 
 protected:
 	IDPtr& global;

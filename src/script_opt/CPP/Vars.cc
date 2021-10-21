@@ -105,7 +105,9 @@ void CPPCompile::CreateGlobal(const ID* g)
 			// This is an event that's also used as a variable.
 			Emit("EventHandlerPtr %s_ev;", globals[gn]);
 
-		global_gis[g] = make_shared<GlobalInitInfo>(this, g, globals[gn]);
+		auto gi = make_shared<GlobalInitInfo>(this, g, globals[gn]);
+		global_id_info->AddInstance(gi);
+		global_gis[g] = gi;
 		}
 
 	if ( is_bif )
@@ -126,7 +128,9 @@ std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterGlobal(const ID* g)
 			// Create a name for it.
 			(void)IDNameStr(g);
 
-		global_gis[g] = make_shared<GlobalInitInfo>(this, g, globals[gn]);
+		auto gi = make_shared<GlobalInitInfo>(this, g, globals[gn]);
+		global_id_info->AddInstance(gi);
+		global_gis[g] = gi;
 		}
 
 	return global_gis[g];
