@@ -258,6 +258,9 @@ void CPPCompile::GenProlog()
 	Emit("std::vector<int> field_mapping;");
 	Emit("std::vector<int> enum_mapping;");
 	NL();
+
+	DeclareDynCPPStmt();
+	NL();
 	}
 
 void CPPCompile::RegisterCompiledBody(const string& f)
@@ -306,6 +309,45 @@ void CPPCompile::GenEpilog()
 		if ( update )
 			init_exprs.LogIfNew(ie->GetExpr(), addl_tag, hm.HashFile());
 		}
+
+	NL();
+	Emit("ValPtr CPPDynStmt::Exec(Frame* f, StmtFlowType& flow)");
+	StartBlock();
+	Emit("flow = FLOW_RETURN;");
+	Emit("switch ( type )");
+	StartBlock();
+	for ( auto i = 0U; i < func_casting_glue.size(); ++i )
+		{
+		Emit("case %s:", to_string(i));
+		StartBlock();
+		auto& glue = func_casting_glue[i];
+
+		auto invoke = string("(*(") + glue.cast + ")(func))(" + glue.args + ")";
+
+		if ( glue.is_hook )
+			{
+			Emit("if ( ! %s )", invoke);
+			StartBlock();
+			Emit("flow = FLOW_BREAK;");
+			EndBlock();
+			Emit("return nullptr;");
+			}
+
+		else if ( IsNativeType(glue.yield) )
+			GenInvokeBody(invoke, glue.yield);
+
+		else
+			Emit("return %s;", invoke);
+
+		EndBlock();
+		}
+
+	Emit("default:");
+	Emit("\treporter->InternalError(\"invalid type in CPPDynStmt::Exec\");");
+	Emit("\treturn nullptr;");
+
+	EndBlock();
+	EndBlock();
 
 	NL();
 

@@ -34,10 +34,8 @@ void CPPCompile::CompileLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	DefineBody(l_id->GetType<FuncType>(), pf, lname, body, &ids, FUNC_FLAVOR_FUNCTION);
 	}
 
-void CPPCompile::GenInvokeBody(const string& fname, const TypePtr& t, const string& args)
+void CPPCompile::GenInvokeBody(const string& call, const TypePtr& t)
 	{
-	auto call = fname + "(" + args + ")";
-
 	if ( ! t || t->Tag() == TYPE_VOID )
 		{
 		Emit("%s;", call);

@@ -386,6 +386,8 @@ private:
 	                     const StmtPtr& body, int priority, const LambdaExpr* l,
 	                     FunctionFlavor flavor);
 
+	void DeclareDynCPPStmt();
+
 	// Generates the declarations (and in-line definitions) associated
 	// with compiling a lambda.
 	void BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname,
@@ -401,10 +403,31 @@ private:
 	// the given type, lambda captures (if non-nil), and profile.
 	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf);
 
+	void GatherParamTypes(std::vector<std::string>& p_types, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf);
+	void GatherParamNames(std::vector<std::string>& p_names, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf);
+
 	// Inspects the given profile to find the i'th parameter (starting
 	// at 0).  Returns nil if the profile indicates that that parameter
 	// is not used by the function.
 	const ID* FindParam(int i, const ProfileFunc* pf);
+
+	struct DispatchInfo
+		{
+		std::string cast;
+		std::string args;
+		bool is_hook;
+		TypePtr yield;
+		};
+
+	// An array of cast/invocation pairs used to generate the CPPDynStmt
+	// Exec method.
+	std::vector<DispatchInfo> func_casting_glue;
+
+	// Maps casting strings to indices into func_casting_glue.
+	std::unordered_map<std::string, int> casting_index;
+
+	// Maps functions (using their C++ name) to their casting strings.
+	std::unordered_map<std::string, std::string> func_index;
 
 	// Names for lambda capture ID's.  These require a separate space
 	// that incorporates the lambda's name, to deal with nested lambda's
@@ -433,7 +456,9 @@ private:
 
 	// Generates the body of the Invoke() method (which supplies the
 	// "glue" between for calling the C++-generated code).
-	void GenInvokeBody(const std::string& fname, const TypePtr& t, const std::string& args);
+	void GenInvokeBody(const std::string& fname, const TypePtr& t, const std::string& args)
+		{ GenInvokeBody(fname + "(" + args + ")", t); }
+	void GenInvokeBody(const std::string& call, const TypePtr& t);
 
 	// Generates the code for the body of a script function with
 	// the given type, profile, C++ name, AST, lambda captures

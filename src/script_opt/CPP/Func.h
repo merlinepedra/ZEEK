@@ -75,29 +75,6 @@ protected:
 
 using CPPStmtPtr = IntrusivePtr<CPPStmt>;
 
-// A version of CPPStmt that manages a function pointer and dynamically
-// casts it to a given type to call it via Exec().  CPPCompile generates
-// a custom Exec method to support this dispatch.  All of this is ugly,
-// and only needed because clang goes nuts (super slow) in the face of
-// thousands of templates in a given context (initializers, or a function
-// body).
-class CPPDynStmt : public CPPStmt
-	{
-public:
-	CPPDynStmt(const char* _name, void* _func, int _type) : CPPStmt(_name), func(_func), type(_type) { }
-
-	ValPtr Exec(Frame* f, StmtFlowType& flow) override final;
-
-private:
-	// The function to call in Exec().
-	void* func;
-
-	// Used via a switch in the dynamically-generated Exec() method
-	// to cast func to the write type, and to call it with the
-	// right arguments pulled out of the frame.
-	int type;
-	};
-
 // For script-level lambdas, a ScriptFunc subclass that knows how to
 // deal with its captures for serialization.  Different from CPPFunc in
 // that CPPFunc is for lambdas generated directly by the compiler,

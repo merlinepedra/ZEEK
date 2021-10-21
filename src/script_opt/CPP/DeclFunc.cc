@@ -51,7 +51,32 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 	in_hook = flavor == FUNC_FLAVOR_HOOK;
 	const IDPList* lambda_ids = l ? &l->OuterIDs() : nullptr;
 
+	string args = BindArgs(ft, lambda_ids);
+
 	auto yt_decl = in_hook ? "bool" : FullTypeName(yt);
+
+	vector<string> p_types;
+	GatherParamTypes(p_types, ft, lambda_ids, pf);
+
+	string cast = string(yt_decl) + "(*)(";
+	for ( auto& pt : p_types )
+		cast += pt + ", ";
+	cast += string("Frame*)");
+
+	func_index[fname] = cast;
+
+	if ( casting_index.count(cast) == 0 )
+		{
+		casting_index[cast] = func_casting_glue.size();
+
+		DispatchInfo di;
+		di.cast = cast;
+		di.args = args;
+		di.is_hook = in_hook;
+		di.yield = yt;
+
+		func_casting_glue.emplace_back(di);
+		}
 
 	NL();
 	Emit("static %s %s(%s);", yt_decl, fname, ParamDecl(ft, lambda_ids, pf));
@@ -92,7 +117,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 
 	if ( in_hook )
 		{
-		Emit("if ( ! %s(%s) )", fname, BindArgs(ft, lambda_ids));
+		Emit("if ( ! %s(%s) )", fname, args);
 		StartBlock();
 		Emit("flow = FLOW_BREAK;");
 		EndBlock();
@@ -100,10 +125,10 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 		}
 
 	else if ( IsNativeType(yt) )
-		GenInvokeBody(fname, yt, BindArgs(ft, lambda_ids));
+		GenInvokeBody(fname, yt, args);
 
 	else
-		Emit("return %s(%s);", fname, BindArgs(ft, lambda_ids));
+		Emit("return %s(%s);", fname, args);
 
 	EndBlock();
 
@@ -135,6 +160,29 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 	body_names.emplace(body.get(), fname);
 
 	total_hash = merge_p_hashes(total_hash, h);
+	}
+
+void CPPCompile::DeclareDynCPPStmt()
+	{
+	Emit("// A version of CPPStmt that manages a function pointer and");
+	Emit("// dynamically casts it to a given type to call it via Exec().");
+	Emit("// We will later generate a custom Exec method to support this");
+	Emit("// dispatch.  All of this is ugly, and only needed because clang");
+	Emit("// goes nuts (super slow) in the face of thousands of templates");
+	Emit("// in a given context (initializers, or a function body).");
+	Emit("class CPPDynStmt : public CPPStmt");
+	Emit("\t{");
+	Emit("public:");
+	Emit("\tCPPDynStmt(const char* _name, void* _func, int _type) : CPPStmt(_name), func(_func), type(_type) { }");
+	Emit("\tValPtr Exec(Frame* f, StmtFlowType& flow) override final;");
+	Emit("private:");
+	Emit("\t// The function to call in Exec().");
+	Emit("\tvoid* func;");
+	Emit("\t// Used via a switch in the dynamically-generated Exec() method");
+	Emit("\t// to cast func to the write type, and to call it with the");
+	Emit("\t// right arguments pulled out of the frame.");
+	Emit("\tint type;");
+	Emit("\t};");
 	}
 
 void CPPCompile::BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf, const string& fname,
@@ -224,17 +272,69 @@ string CPPCompile::BindArgs(const FuncTypePtr& ft, const IDPList* lambda_ids)
 string CPPCompile::ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
                              const ProfileFunc* pf)
 	{
-	const auto& params = ft->Params();
-	int n = params->NumFields();
+	vector<string> p_types;
+	vector<string> p_names;
+
+	GatherParamTypes(p_types, ft, lambda_ids, pf);
+	GatherParamNames(p_names, ft, lambda_ids, pf);
+
+	ASSERT(p_types.size() == p_names.size());
 
 	string decl;
+
+	for ( auto i = 0U; i < p_types.size(); ++i )
+		decl += p_types[i] + " " + p_names[i] + ", ";
+
+	// Add in the declaration of the frame.
+	return decl + "Frame* f__CPP";
+	}
+
+void CPPCompile::GatherParamTypes(vector<string>& p_types, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf)
+	{
+	const auto& params = ft->Params();
+	int n = params->NumFields();
 
 	for ( auto i = 0; i < n; ++i )
 		{
 		const auto& t = params->GetFieldType(i);
 		auto tn = FullTypeName(t);
 		auto param_id = FindParam(i, pf);
-		string fn;
+
+		if ( IsNativeType(t) )
+			// Native types are always pass-by-value.
+			p_types.emplace_back(tn);
+		else
+			{
+			if ( param_id && pf->Assignees().count(param_id) > 0 )
+				// We modify the parameter.
+				p_types.emplace_back(tn);
+			else
+				// Not modified, so pass by const reference.
+				p_types.emplace_back(string("const ") + tn + "&");
+			}
+		}
+
+	if ( lambda_ids )
+		// Add the captures as additional parameters.
+		for ( auto& id : *lambda_ids )
+			{
+			const auto& t = id->GetType();
+			auto tn = FullTypeName(t);
+
+			// Allow the captures to be modified.
+			p_types.emplace_back(string(tn) + "& ");
+			}
+	}
+
+void CPPCompile::GatherParamNames(vector<string>& p_names, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf)
+	{
+	const auto& params = ft->Params();
+	int n = params->NumFields();
+
+	for ( auto i = 0; i < n; ++i )
+		{
+		const auto& t = params->GetFieldType(i);
+		auto param_id = FindParam(i, pf);
 
 		if ( param_id )
 			{
@@ -242,50 +342,22 @@ string CPPCompile::ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
 				// We'll need to translate the parameter
 				// from its current representation to
 				// type "any".
-				fn = string("any_param__CPP_") + Fmt(i);
+				p_names.emplace_back(string("any_param__CPP_") + Fmt(i));
 			else
-				fn = LocalName(param_id);
+				p_names.emplace_back(LocalName(param_id));
 			}
 		else
-			// Parameters that are unused don't wind up
-			// in the ProfileFunc.  Rather than dig their
-			// name out of the function's declaration, we
-			// explicitly name them to reflect that they're
-			// unused.
-			fn = string("unused_param__CPP_") + Fmt(i);
-
-		if ( IsNativeType(t) )
-			// Native types are always pass-by-value.
-			decl = decl + tn + " " + fn;
-		else
-			{
-			if ( param_id && pf->Assignees().count(param_id) > 0 )
-				// We modify the parameter.
-				decl = decl + tn + " " + fn;
-			else
-				// Not modified, so pass by const reference.
-				decl = decl + "const " + tn + "& " + fn;
-			}
-
-		decl += ", ";
+			// Parameters that are unused don't wind up in the
+			//  ProfileFunc.  Rather than dig their name out of
+			// the function's declaration, we explicitly name
+			// them to reflect that they're unused.
+			p_names.emplace_back(string("unused_param__CPP_") + Fmt(i));
 		}
 
 	if ( lambda_ids )
-		{
 		// Add the captures as additional parameters.
 		for ( auto& id : *lambda_ids )
-			{
-			auto name = lambda_names[id];
-			const auto& t = id->GetType();
-			auto tn = FullTypeName(t);
-
-			// Allow the captures to be modified.
-			decl = decl + tn + "& " + name + ", ";
-			}
-		}
-
-	// Add in the declaration of the frame.
-	return decl + "Frame* f__CPP";
+			p_names.emplace_back(lambda_names[id]);
 	}
 
 const ID* CPPCompile::FindParam(int i, const ProfileFunc* pf)
