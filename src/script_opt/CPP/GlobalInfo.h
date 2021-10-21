@@ -308,8 +308,7 @@ private:
 class FuncConstInfo : public CompoundConstInfo
 	{
 public:
-	FuncConstInfo(CPPCompile* _c, ValPtr v)
-		: CompoundConstInfo(_c, v), fv(v->AsFuncVal()) { }
+	FuncConstInfo(CPPCompile* _c, ValPtr v);
 
 	std::string InitializerType() const override
 		{ return "CPP_FuncConst"; }

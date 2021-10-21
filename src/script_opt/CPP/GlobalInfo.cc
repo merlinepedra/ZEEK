@@ -177,6 +177,18 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 		}
 	}
 
+FuncConstInfo::FuncConstInfo(CPPCompile* _c, ValPtr v)
+	: CompoundConstInfo(_c, v), fv(v->AsFuncVal())
+	{
+	// This is slightly hacky.  There's a chance that this constant
+	// depends on a lambda being registered.  Here we use the knowledge
+	// that LambdaRegistrationInfo sets its cohort to 1 more than
+	// the function type, so we can ensure any possible lambda has
+	// been registered by setting ours to 2 more.  CompoundConstInfo
+	// has already set our cohort to 1 more.
+	++init_cohort;
+	}
+
 string FuncConstInfo::InitializerVal() const
 	{
 	auto f = fv->AsFunc();
