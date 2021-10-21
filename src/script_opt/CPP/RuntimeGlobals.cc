@@ -136,7 +136,14 @@ void CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec) const
 void CPP_FuncType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
 	auto p = cast_intrusive<RecordType>(global_vec[params]);
-	auto y = yield >= 0 ? global_vec[yield] : nullptr;
+
+	TypePtr y;
+
+	if ( yield >= 0 )
+		y = global_vec[yield];
+
+	else if ( flavor == FUNC_FLAVOR_FUNCTION || flavor == FUNC_FLAVOR_HOOK )
+		y = base_type(TYPE_VOID);
 
 	global_vec[offset] = make_intrusive<FuncType>(p, y, flavor);
 	}
