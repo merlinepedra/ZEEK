@@ -610,6 +610,7 @@ public:
 		auto empty_args = make_intrusive<ListExpr>();
 
 		e_var = make_intrusive<CallExpr>(func_expr, empty_args);
+		global_vec[offset] = e_var;
 		}
 
 protected:
