@@ -51,6 +51,10 @@ template <class T> string CPPTracker<T>::KeyName(const T* key)
 	auto hash = map[key];
 	ASSERT(hash != 0);
 
+	auto rep = reps[hash];
+	if ( gi_s.count(rep) > 0 )
+		return gi_s[rep]->Name();
+
 	auto index = map2[hash];
 
 	string scope;
