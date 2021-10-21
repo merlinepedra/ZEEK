@@ -343,6 +343,10 @@ void CPPCompile::GenEpilog()
 
 	Emit("enum_mapping.resize(%s);\n", Fmt(int(enum_names.size())));
 
+	NL();
+	Emit("for ( auto& b : CPP__bodies_to_register )");
+	Emit("\tb->Register();");
+
 	int max_cohort = 0;
 	for ( auto gi : all_global_info )
 		max_cohort = std::max(max_cohort, gi->MaxCohort());
@@ -356,10 +360,6 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("for ( auto& b : CPP__BiF_lookups__ )");
 	Emit("\tb.ResolveBiF();");
-
-	NL();
-	Emit("for ( auto& b : CPP__bodies_to_register )");
-	Emit("\tb->Register();");
 
 	// Populate mappings for dynamic offsets.
 	NL();
