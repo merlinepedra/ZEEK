@@ -103,7 +103,9 @@ string DescConstInfo::InitializerType() const
 EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)
 	{
 	auto ev = v->AsEnumVal();
-	e_type = c->TypeOffset(ev->GetType());
+	auto& ev_t = ev->GetType();
+	e_type = c->TypeOffset(ev_t);
+	init_cohort = c->TypeCohort(ev_t) + 1;
 	e_val = v->AsEnum();
 	}
 
