@@ -63,6 +63,14 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 		cast += pt + ", ";
 	cast += string("Frame*)");
 
+	// We need to distinguish between hooks and non-hooks that happen
+	// to have matching type signatures.  They'll be equivalent if they
+	// have identical cast's.  To keep them separate, we cheat and
+	// make hook casts different, string-wise, without altering their
+	// semantics.
+	if ( in_hook )
+		cast += " ";
+
 	func_index[fname] = cast;
 
 	if ( casting_index.count(cast) == 0 )
