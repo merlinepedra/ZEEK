@@ -36,7 +36,7 @@ std::vector<AttributesPtr> CPP__Attributes__;
 std::vector<CallExprPtr> CPP__CallExpr__;
 std::vector<void*> CPP__LambdaRegistration__;
 
-PatternValPtr CPP_PatternConst::Generate() const
+void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	{
 	auto re = new RE_Matcher(pattern);
 	if ( is_case_insensitive )
@@ -44,20 +44,20 @@ PatternValPtr CPP_PatternConst::Generate() const
 
 	re->Compile();
 
-	return make_intrusive<PatternVal>(re);
+	global_vec[offset] = make_intrusive<PatternVal>(re);
 	}
 
-ListValPtr CPP_ListConst::Generate() const
+void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec) const
 	{
 	auto l = make_intrusive<ListVal>(TYPE_ANY);
 
 	for ( auto& v : vals )
 		l->Append(v->Get());
 
-	return l;
+	global_vec[offset] = l;
 	}
 
-VectorValPtr CPP_VectorConst::Generate() const
+void CPP_VectorConst::Generate(std::vector<VectorValPtr>& global_vec) const
 	{
 	auto vt = cast_intrusive<VectorType>(CPP__Type__[v_type]);
 	auto vv = make_intrusive<VectorVal>(vt);
@@ -65,10 +65,10 @@ VectorValPtr CPP_VectorConst::Generate() const
 	for ( auto& v : v_vals )
 		vv->Append(v->Get());
 
-	return vv;
+	global_vec[offset] = vv;
 	}
 
-RecordValPtr CPP_RecordConst::Generate() const
+void CPP_RecordConst::Generate(std::vector<RecordValPtr>& global_vec) const
 	{
 	auto rt = cast_intrusive<RecordType>(CPP__Type__[r_type]);
 	auto rv = make_intrusive<RecordVal>(rt);
@@ -76,10 +76,10 @@ RecordValPtr CPP_RecordConst::Generate() const
 	for ( auto i = 0U; i < r_vals.size(); ++i )
 		rv->Assign(i, r_vals[i]->Get());
 
-	return rv;
+	global_vec[offset] = rv;
 	}
 
-TableValPtr CPP_TableConst::Generate() const
+void CPP_TableConst::Generate(std::vector<TableValPtr>& global_vec) const
 	{
 	auto tt = cast_intrusive<TableType>(CPP__Type__[t_type]);
 	auto tv = make_intrusive<TableVal>(tt);
@@ -87,7 +87,7 @@ TableValPtr CPP_TableConst::Generate() const
 	for ( auto i = 0U; i < t_vals.size(); ++i )
 		tv->Assign(t_indices[i]->Get(), t_vals[i]->Get());
 
-	return tv;
+	global_vec[offset] = tv;
 	}
 
 
@@ -100,17 +100,17 @@ ExprPtr CPP_RecordAttrExpr::Build() const
 	return make_intrusive<RecordCoerceExpr>(construct, rt);
 	}
 
-AttributesPtr CPP_Attrs::Generate() const
+void CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
 	{
 	vector<AttrPtr> a_list;
 	for ( auto a : attrs )
 		a_list.push_back(CPP__Attr__[a]);
 
-	return make_intrusive<Attributes>(a_list, nullptr, false, false);
+	global_vec[offset] = make_intrusive<Attributes>(a_list, nullptr, false, false);
 	}
 
 
-TypePtr CPP_EnumType::DoGenerate() const
+void CPP_EnumType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
 	auto et = get_enum_type__CPP(name);
 
@@ -118,37 +118,40 @@ TypePtr CPP_EnumType::DoGenerate() const
 		for ( auto i = 0U; i < elems.size(); ++i )
 			et->AddNameInternal(string(elems[i]), vals[i]);
 
-	return et;
+	global_vec[offset] = et;
 	}
 
-TypePtr CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec) const
+void CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
-	if ( yield < 0 )
-		return make_intrusive<SetType>(cast_intrusive<TypeList>(global_vec[indices]), nullptr);
+	TypePtr t;
 
-	return make_intrusive<TableType>(cast_intrusive<TypeList>(global_vec[indices]), global_vec[yield]);
+	if ( yield < 0 )
+		t = make_intrusive<SetType>(cast_intrusive<TypeList>(global_vec[indices]), nullptr);
+	else
+		t = make_intrusive<TableType>(cast_intrusive<TypeList>(global_vec[indices]), global_vec[yield]);
+
+	global_vec[offset] = t;
 	}
 
-TypePtr CPP_FuncType::DoGenerate(std::vector<TypePtr>& global_vec) const
+void CPP_FuncType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
 	auto p = cast_intrusive<RecordType>(global_vec[params]);
 	auto y = yield >= 0 ? global_vec[yield] : nullptr;
 
-	return make_intrusive<FuncType>(p, y, flavor);
+	global_vec[offset] = make_intrusive<FuncType>(p, y, flavor);
 	}
 
-TypePtr CPP_RecordType::PreInit() const
+void CPP_RecordType::PreInit(std::vector<TypePtr>& global_vec) const
 	{
 	if ( name.empty() )
-		return get_record_type__CPP(nullptr);
+		global_vec[offset] = get_record_type__CPP(nullptr);
 	else
-		return get_record_type__CPP(name.c_str());
+		global_vec[offset] = get_record_type__CPP(name.c_str());
 	}
 
-TypePtr CPP_RecordType::DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
+void CPP_RecordType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	{
-	auto t = global_vec[offset];
-	auto r = t->AsRecordType();
+	auto r = global_vec[offset]->AsRecordType();
 	ASSERT(r);
 
 	if ( r->NumFields() == 0 )
@@ -169,8 +172,6 @@ TypePtr CPP_RecordType::DoGenerate(std::vector<TypePtr>& global_vec, int offset)
 
 		r->AddFieldsDirectly(tl);
 		}
-
-	return t;
 	}
 
 
