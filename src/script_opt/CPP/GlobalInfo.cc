@@ -47,7 +47,14 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 		c->Emit("{");
 
 		for ( auto& co : cohort )
-			c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), co->InitializerVal());
+			{
+			auto iv = co->InitializerVal();
+			string full_init = Fmt(co->Offset());
+			if ( ! iv.empty() )
+				full_init += string(", ") + iv;
+
+			c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), full_init);
+			}
 
 		c->Emit("},");
 		}

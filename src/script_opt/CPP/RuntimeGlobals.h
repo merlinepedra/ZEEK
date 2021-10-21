@@ -87,7 +87,7 @@ private:
 		{
 		for ( const auto& cohort : inits )
 			for ( const auto& i : cohort )
-				i->PreInit(this);
+				i->PreInit(global_vec);
 		}
 
 	std::vector<T>& global_vec;
