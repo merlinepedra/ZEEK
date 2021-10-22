@@ -193,6 +193,7 @@ private:
 
 	friend class CPP_GlobalsInfo;
 	friend class CPP_BasicConstGlobalsInfo;
+	friend class IndicesManager;
 	friend class ListConstInfo;
 	friend class FuncConstInfo;
 	friend class BaseTypeInfo;
@@ -549,6 +550,8 @@ private:
 	// directly as a C++ constant.
 	void AddConstant(const ConstExpr* c);
 
+	IndicesManager& IndMgr() { return indices_mgr; }
+
 	// Maps (non-native) constants to associated C++ globals.
 	std::unordered_map<const ConstExpr*, std::string> const_exprs;
 
@@ -574,6 +577,8 @@ private:
 	std::shared_ptr<CPP_GlobalsInfo> global_id_info;
 
 	std::unordered_map<std::string, std::shared_ptr<CallExprInitInfo>> init_infos;
+
+	IndicesManager indices_mgr;
 
 	// Parallel vectors tracking the lengths and C++-compatible
 	// representations of string constants.

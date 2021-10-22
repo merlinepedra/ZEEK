@@ -655,4 +655,7 @@ protected:
 	};
 
 
+extern void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set);
+
+
 	} // zeek::detail

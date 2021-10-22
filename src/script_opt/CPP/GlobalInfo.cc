@@ -74,6 +74,25 @@ void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP
 	}
 
 
+void CPP_BasicConstGlobalsInfo::GenerateInitializers(CPPCompile* c)
+	{
+	vector<int> offsets_set;
+
+	for ( auto& cohort : instances )
+		{
+		vector<int> offsets;
+		offsets.reserve(cohort.size());
+		for ( auto& co : cohort )
+			offsets.push_back(co->Offset());
+
+		offsets_set.push_back(c->IndMgr().AddIndices(offsets));
+		}
+
+	c->IndMgr().AddIndices(offsets_set);
+
+	CPP_GlobalsInfo::GenerateInitializers(c);
+	}
+
 void CPP_BasicConstGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
 	{
 	for ( auto& co : cohort )
@@ -547,6 +566,35 @@ void RecordTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	ivs.emplace_back(string("std::vector<const char*>({ ") + names + "})");
 	ivs.emplace_back(string("std::vector<int>({ ") + types + "})");
 	ivs.emplace_back(string("std::vector<int>({ ") + attrs + "})");
+	}
+
+
+void IndicesManager::Generate(CPPCompile* c)
+	{
+	c->Emit("int CPP__Indices__init[] =");
+	c->StartBlock();
+
+	int nset = 0;
+	for ( auto& is : indices_set )
+		{
+		auto line = to_string(is.size()) + " /* " + to_string(nset++) + " */, ";
+		auto n = 1;
+		for ( auto i : is )
+			{
+			line += to_string(i) + ", ";
+			if ( ++n % 10 == 0 )
+				{
+				c->Emit(line);
+				line.clear();
+				}
+			}
+
+		if ( line.size() > 0)
+			c->Emit(line);
+		}
+
+	c->Emit("-1");
+	c->EndBlock(true);
 	}
 
 	} // zeek::detail

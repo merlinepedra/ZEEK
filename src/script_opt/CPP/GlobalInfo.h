@@ -84,6 +84,7 @@ public:
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
 
+	void GenerateInitializers(CPPCompile* c) override;
 	std::string GlobalsType() const override { return CPP_type2; }
 
 private:
@@ -595,5 +596,23 @@ private:
 	std::vector<int> field_attrs;
 	};
 
+
+class IndicesManager
+	{
+public:
+	IndicesManager() { }
+
+	int AddIndices(std::vector<int> indices)
+		{
+		int n = indices_set.size();
+		indices_set.emplace_back(std::move(indices));
+		return n;
+		}
+
+	void Generate(CPPCompile* c);
+
+private:
+	std::vector<std::vector<int>> indices_set;
+	};
 
 	} // zeek::detail

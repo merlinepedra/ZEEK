@@ -240,4 +240,35 @@ void CPP_GlobalInit::Generate(std::vector<void*>& /* global_vec */) const
 	}
 
 
+void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set)
+	{
+	// First figure out how many groups of indices there are, so we
+	// can pre-allocate the outer vector.
+	auto i_ptr = inits;
+	int num_inits = 0;
+	while ( *i_ptr >= 0 )
+		{
+		++num_inits;
+		int n = *i_ptr;
+		i_ptr += n + 1;
+		}
+
+	indices_set.reserve(num_inits);
+
+	i_ptr = inits;
+	while ( *i_ptr >= 0 )
+		{
+		int n = *i_ptr;
+		++i_ptr;
+		std::vector<int> indices;
+		indices.reserve(n);
+		for ( int i = 0; i < n; ++i )
+			indices.push_back(i_ptr[i]);
+		i_ptr += n;
+
+		indices_set.emplace_back(move(indices));
+		}
+	}
+
+
 	} // zeek::detail
