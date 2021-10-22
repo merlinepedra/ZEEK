@@ -265,9 +265,6 @@ void CPPCompile::GenProlog()
 	Emit("std::vector<int> enum_mapping;");
 	NL();
 
-	Emit("std::vector<std::vector<int>> CPP__Indices;");
-	NL();
-
 	DeclareDynCPPStmt();
 	NL();
 	}
@@ -397,7 +394,7 @@ void CPPCompile::GenEpilog()
 
 	StartBlock();
 
-	Emit("generate_indices_set(CPP__Indices__init, CPP__Indices);");
+	Emit("generate_indices_set(CPP__Indices__init, CPP__Indices__);");
 	NL();
 
 	Emit("for ( auto& b : CPP__bodies_to_register )");

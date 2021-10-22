@@ -63,6 +63,8 @@ protected:
 	// The outer vector is indexed by initialization cohort.
 	std::vector<std::vector<std::shared_ptr<CPP_GlobalInfo>>> instances;
 
+	int offset_set = 0;
+
 	// Tag used to distinguish a particular set of constants.
 	std::string tag;
 

@@ -37,6 +37,8 @@ std::vector<CallExprPtr> CPP__CallExpr__;
 std::vector<void*> CPP__LambdaRegistration__;
 std::vector<void*> CPP__GlobalID__;
 
+std::vector<std::vector<int>> CPP__Indices__;
+
 void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	{
 	auto re = new RE_Matcher(pattern);

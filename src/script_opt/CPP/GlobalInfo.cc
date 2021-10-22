@@ -38,7 +38,7 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 
 	auto gt = GlobalsType();
 
-	c->Emit("%s %s = %s(%s, ", gt, InitializersName(), gt, base_name);
+	c->Emit("%s %s = %s(%s, %s,", gt, InitializersName(), gt, base_name, Fmt(offset_set));
 
 	c->IndentUp();
 	c->Emit("{");
@@ -76,7 +76,7 @@ void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP
 
 void CPP_BasicConstGlobalsInfo::GenerateInitializers(CPPCompile* c)
 	{
-	vector<int> offsets_set;
+	vector<int> offsets_vec;
 
 	for ( auto& cohort : instances )
 		{
@@ -85,10 +85,10 @@ void CPP_BasicConstGlobalsInfo::GenerateInitializers(CPPCompile* c)
 		for ( auto& co : cohort )
 			offsets.push_back(co->Offset());
 
-		offsets_set.push_back(c->IndMgr().AddIndices(offsets));
+		offsets_vec.push_back(c->IndMgr().AddIndices(offsets));
 		}
 
-	c->IndMgr().AddIndices(offsets_set);
+	offset_set = c->IndMgr().AddIndices(offsets_vec);
 
 	CPP_GlobalsInfo::GenerateInitializers(c);
 	}
@@ -577,7 +577,9 @@ void IndicesManager::Generate(CPPCompile* c)
 	int nset = 0;
 	for ( auto& is : indices_set )
 		{
-		auto line = to_string(is.size()) + " /* " + to_string(nset++) + " */, ";
+		auto line = string("/* ") + to_string(nset++) + " */ ";
+		line += to_string(is.size()) + ", ";
+
 		auto n = 1;
 		for ( auto i : is )
 			{

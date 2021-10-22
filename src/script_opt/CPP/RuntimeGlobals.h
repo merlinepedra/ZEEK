@@ -45,6 +45,8 @@ extern std::vector<CallExprPtr> CPP__CallExpr__;
 extern std::vector<void*> CPP__LambdaRegistration__;
 extern std::vector<void*> CPP__GlobalID__;
 
+extern std::vector<std::vector<int>> CPP__Indices__;
+
 template <class T>
 class CPP_Global
 	{
@@ -64,7 +66,7 @@ template <class T>
 class CPP_Globals
 	{
 public:
-	CPP_Globals(std::vector<T>& _global_vec, std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> _inits)
+	CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> _inits)
 		: global_vec(_global_vec), inits(std::move(_inits))
 		{
 		int num_globals = 0;
@@ -102,21 +104,24 @@ template <class T1, typename T2, class T3>
 class CPP_BasicConsts
 	{
 public:
-	CPP_BasicConsts(std::vector<T1>& _global_vec, std::vector<T2> _inits)
-		: global_vec(_global_vec), inits(std::move(_inits))
+	CPP_BasicConsts(std::vector<T1>& _global_vec, int _offsets_set, std::vector<T2> _inits)
+		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
-		global_vec.reserve(inits.size());
+		global_vec.resize(inits.size());
 		}
 
 	void InitializeCohort(int cohort)
 		{
 		ASSERT(cohort == 0);
-		for ( auto i : inits )
-			global_vec.emplace_back(make_intrusive<T3>(i));
+		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+		std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+		for ( auto i = 0U; i < inits.size(); ++i )
+			global_vec[cohort_offsets[i]] = make_intrusive<T3>(inits[i]);
 		}
 
 private:
 	std::vector<T1>& global_vec;
+	int offsets_set;
 	std::vector<T2> inits;
 	};
 
@@ -548,8 +553,8 @@ private:
 class CPP_RegisterBody
 	{
 public:
-	CPP_RegisterBody(std::string _func_name, void* func, int _type_signature, int _priority, p_hash_type _h, std::vector<std::string> _events)
-		: func_name(std::move(_func_name)), type_signature(_type_signature), priority(_priority), h(_h), events(std::move(_events))
+	CPP_RegisterBody(std::string _func_name, void* _func, int _type_signature, int _priority, p_hash_type _h, std::vector<std::string> _events)
+		: func_name(std::move(_func_name)), func(_func), type_signature(_type_signature), priority(_priority), h(_h), events(std::move(_events))
 		{ }
 	virtual ~CPP_RegisterBody() { }
 
