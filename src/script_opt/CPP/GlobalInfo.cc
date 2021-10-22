@@ -48,10 +48,15 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 
 		for ( auto& co : cohort )
 			{
-			auto iv = co->InitializerVal();
+			vector<string> ivs;
+			co->InitializerVals(ivs);
+
 			string full_init = Fmt(co->Offset());
-			if ( ! iv.empty() )
-				full_init += string(", ") + iv;
+			if ( ! ivs.empty() )
+				{
+				for ( auto& iv : ivs )
+					full_init += string(", ") + iv;
+				}
 
 			c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), full_init);
 			}
@@ -191,7 +196,7 @@ FuncConstInfo::FuncConstInfo(CPPCompile* _c, ValPtr v)
 	++init_cohort;
 	}
 
-string FuncConstInfo::InitializerVal() const
+void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
 	auto f = fv->AsFunc();
 	const auto& fn = f->Name();
@@ -206,7 +211,9 @@ string FuncConstInfo::InitializerVal() const
 			hashes += Fmt(c->BodyHash(b.stmts.get())) + ", ";
 		}
 
-	return string("\"") + fn + "\", " + Fmt(type) + ", std::vector<p_hash_type>({ " + hashes + "})";
+	ivs.emplace_back(string("\"") + fn + "\"");
+	ivs.emplace_back(Fmt(type));
+	ivs.emplace_back(string("std::vector<p_hash_type>({ ") + hashes + "})");
 	}
 
 
@@ -271,14 +278,14 @@ AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)
 		}
 	}
 
-string AttrsInfo::InitializerVal() const
+void AttrsInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
 	string attr_list;
 
 	for ( auto a : attrs )
 		attr_list += Fmt(a) + ", ";
 
-	return string("std::vector<int>({ ") + attr_list + "})";
+	ivs.emplace_back(string("std::vector<int>({ ") + attr_list + "})");
 	}
 
 GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, string _CPP_name)
@@ -304,9 +311,14 @@ GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, string _CPP_name)
 	val = ValElem(c, g->GetVal());
 	}
 
-string GlobalInitInfo::InitializerVal() const
+void GlobalInitInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
-	return CPP_name + ", \"" + Zeek_name + "\", " + Fmt(type) + ", " + Fmt(attrs) + ", " + val + ", " + Fmt(exported);
+	ivs.push_back(CPP_name);
+	ivs.push_back(string("\"") + Zeek_name + "\"");
+	ivs.push_back(Fmt(type));
+	ivs.push_back(Fmt(attrs));
+	ivs.push_back(val);
+	ivs.push_back(Fmt(exported));
 	}
 
 
@@ -326,17 +338,20 @@ LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, string _name, Func
 	func_type = gi->Offset();
 	}
 
-string LambdaRegistrationInfo::InitializerVal() const
+void LambdaRegistrationInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
-	return string("\"") + name + "\", " + Fmt(func_type) + ", " + Fmt(h) + ", " + (has_captures ? "true" : "false");
+	ivs.emplace_back(string("\"") + name + "\"");
+	ivs.emplace_back(Fmt(func_type));
+	ivs.emplace_back(Fmt(h));
+	ivs.emplace_back(has_captures ? "true" : "false");
 	}
 
-string BaseTypeInfo::InitializerVal() const
+void BaseTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
-	return CPPCompile::TypeTagName(t->Tag());
+	ivs.emplace_back(CPPCompile::TypeTagName(t->Tag()));
 	}
 
-string EnumTypeInfo::InitializerVal() const
+void EnumTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
 	string elem_list, val_list;
 	auto et = t->AsEnumType();
@@ -347,7 +362,9 @@ string EnumTypeInfo::InitializerVal() const
 		val_list += Fmt(int(name_pair.second)) + ", ";
 		}
 
-	return string("\"") + t->GetName() + "\", std::vector<const char*>({ " + elem_list + "}), std::vector<int>({ " + val_list + "})";
+	ivs.emplace_back(string("\"") + t->GetName() + "\"");
+	ivs.emplace_back(string("std::vector<const char*>({ ") + elem_list + "})");
+	ivs.emplace_back(string("std::vector<int>({ ") + val_list + "})");
 	}
 
 
@@ -360,14 +377,14 @@ TypeTypeInfo::TypeTypeInfo(CPPCompile* _c, TypePtr _t)
 		init_cohort = gi->InitCohort();
 	}
 
-string TypeTypeInfo::InitializerVal() const
+void TypeTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
-	return to_string(c->TypeOffset(tt));
+	ivs.emplace_back(to_string(c->TypeOffset(tt)));
 	}
 
-string VectorTypeInfo::InitializerVal() const
+void VectorTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
-	return to_string(c->TypeOffset(yield));
+	ivs.emplace_back(to_string(c->TypeOffset(yield)));
 	}
 
 VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -390,13 +407,13 @@ ListTypeInfo::ListTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string ListTypeInfo::InitializerVal() const
+void ListTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
 	string type_list;
 	for ( auto& t : types )
 		type_list += Fmt(c->TypeOffset(t)) + ", ";
 
-	return string("std::vector<int>({ ") + type_list + "})";
+	ivs.emplace_back(string("std::vector<int>({ ") + type_list + "})");
 	}
 
 TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -419,10 +436,10 @@ TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string TableTypeInfo::InitializerVal() const
+void TableTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
-	auto y = Fmt(yield ? c->TypeOffset(yield) : -1);
-	return Fmt(indices) + ", " + y;
+	ivs.emplace_back(Fmt(indices));
+	ivs.emplace_back(Fmt(yield ? c->TypeOffset(yield) : -1));
 	}
 
 FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -446,7 +463,7 @@ FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string FuncTypeInfo::InitializerVal() const
+void FuncTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
 	string fl_name;
 	if ( flavor == FUNC_FLAVOR_FUNCTION )
@@ -456,9 +473,9 @@ string FuncTypeInfo::InitializerVal() const
 	else if ( flavor == FUNC_FLAVOR_HOOK )
 		fl_name = "FUNC_FLAVOR_HOOK";
 
-	auto y = Fmt(yield ? c->TypeOffset(yield) : -1);
-
-	return Fmt(c->TypeOffset(params)) + ", " + y + ", " + fl_name;
+	ivs.emplace_back(Fmt(c->TypeOffset(params)));
+	ivs.emplace_back(Fmt(yield ? c->TypeOffset(yield) : -1));
+	ivs.emplace_back(fl_name);
 	}
 
 RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -491,7 +508,7 @@ RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-string RecordTypeInfo::InitializerVal() const
+void RecordTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
 	{
 	string names, types, attrs;
 
@@ -510,7 +527,9 @@ string RecordTypeInfo::InitializerVal() const
 	for ( auto& a : field_attrs )
 		attrs += Fmt(a) + ", ";
 
-	return string("std::vector<const char*>({ ") + names + "}), std::vector<int>({ " + types + "}), std::vector<int>({ " + attrs + "})";
+	ivs.emplace_back(string("std::vector<const char*>({ ") + names + "})");
+	ivs.emplace_back(string("std::vector<int>({ ") + types + "})");
+	ivs.emplace_back(string("std::vector<int>({ ") + attrs + "})");
 	}
 
 	} // zeek::detail
