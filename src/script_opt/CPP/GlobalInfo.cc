@@ -34,6 +34,8 @@ string CPP_GlobalsInfo::Declare() const
 
 void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	{
+	BuildOffsetSet(c);
+
 	c->NL();
 
 	auto gt = GlobalsType();
@@ -55,26 +57,7 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
-void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
-	{
-	for ( auto& co : cohort )
-		{
-		vector<string> ivs;
-		co->InitializerVals(ivs);
-
-		string full_init = Fmt(co->Offset());
-		if ( ! ivs.empty() )
-			{
-			for ( auto& iv : ivs )
-				full_init += string(", ") + iv;
-			}
-
-		c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), full_init);
-		}
-	}
-
-
-void CPP_BasicConstGlobalsInfo::GenerateInitializers(CPPCompile* c)
+void CPP_GlobalsInfo::BuildOffsetSet(CPPCompile* c)
 	{
 	vector<int> offsets_vec;
 
@@ -89,9 +72,31 @@ void CPP_BasicConstGlobalsInfo::GenerateInitializers(CPPCompile* c)
 		}
 
 	offset_set = c->IndMgr().AddIndices(offsets_vec);
-
-	CPP_GlobalsInfo::GenerateInitializers(c);
 	}
+
+void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
+	{
+	for ( auto& co : cohort )
+		{
+		vector<string> ivs;
+		co->InitializerVals(ivs);
+
+		string full_init;
+		bool did_one = false;
+		for ( auto& iv : ivs )
+			{
+			if ( did_one )
+				full_init += ", ";
+			else
+				did_one = true;
+
+			full_init += iv;
+			}
+
+		c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), full_init);
+		}
+	}
+
 
 void CPP_BasicConstGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
 	{
@@ -135,11 +140,6 @@ DescConstInfo::DescConstInfo(CPPCompile* c, string _name, ValPtr v)
 	v->Describe(&d);
 	auto s = c->TrackString(d.Description());
 	init = Fmt(s);
-	}
-
-string DescConstInfo::InitializerType() const
-	{
-	return string("CPP_BasicConst<") + name + "ValPtr, const char*, " + name + "Val>";
 	}
 
 EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)

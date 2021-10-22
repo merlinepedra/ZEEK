@@ -211,7 +211,7 @@ private:
 	friend class AttrInfo;
 	friend class AttrsInfo;
 
-	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type, const char* c_type = nullptr);
+	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type, const char* c_type = nullptr, bool is_basic = true);
 
 	// Main driver, invoked by constructor.
 	void Compile(bool report_uncompilable);

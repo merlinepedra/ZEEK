@@ -157,7 +157,7 @@ void CPPCompile::InitializeBiFs()
 
 void CPPCompile::InitializeStrings()
 	{
-	Emit("std::vector<const char*> CPP__Strings__ =");
+	Emit("std::vector<const char*> CPP__Strings__init =");
 
 	StartBlock();
 

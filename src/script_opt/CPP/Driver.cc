@@ -73,8 +73,8 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	const_info[TYPE_INTERVAL] = InitGlobalInfo("Interval", "ValPtr", "double");
 	const_info[TYPE_STRING] = InitGlobalInfo("String", "ValPtr");
 	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
-	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr");
-	const_info[TYPE_SUBNET] = InitGlobalInfo("SubNet", "ValPtr");
+	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr", "int", false);
+	const_info[TYPE_SUBNET] = InitGlobalInfo("SubNet", "ValPtr", "int", false);
 	const_info[TYPE_PORT] = InitGlobalInfo("Port", "ValPtr");
 	const_info[TYPE_LIST] = InitGlobalInfo("List", "ValPtr");
 	const_info[TYPE_VECTOR] = InitGlobalInfo("Vector", "ValPtr");
@@ -99,12 +99,12 @@ CPPCompile::~CPPCompile()
 	fclose(write_file);
 	}
 
-shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const char* type, const char* c_type)
+shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const char* type, const char* c_type, bool is_basic)
 	{
 	shared_ptr<CPP_GlobalsInfo> gi;
 
 	if ( c_type )
-		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type);
+		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type, is_basic);
 	else
 		gi = make_shared<CPP_GlobalsInfo>(tag, type);
 
@@ -398,6 +398,7 @@ void CPPCompile::GenEpilog()
 	StartBlock();
 
 	Emit("generate_indices_set(CPP__Indices__init, CPP__Indices__);");
+	Emit("CPP__Strings__ = CPP__Strings__init; // this can go away with alternative scoping");
 	NL();
 
 	Emit("for ( auto& b : CPP__bodies_to_register )");

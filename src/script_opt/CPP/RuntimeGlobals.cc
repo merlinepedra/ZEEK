@@ -40,7 +40,7 @@ std::vector<void*> CPP__GlobalID__;
 std::vector<std::vector<int>> CPP__Indices__;
 std::vector<const char*> CPP__Strings__;
 
-void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
+void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec, int offset) const
 	{
 	auto re = new RE_Matcher(pattern);
 	if ( is_case_insensitive )
@@ -51,7 +51,7 @@ void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	global_vec[offset] = make_intrusive<PatternVal>(re);
 	}
 
-void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec) const
+void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec, int offset) const
 	{
 	auto l = make_intrusive<ListVal>(TYPE_ANY);
 
@@ -61,7 +61,7 @@ void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec) const
 	global_vec[offset] = l;
 	}
 
-void CPP_VectorConst::Generate(std::vector<VectorValPtr>& global_vec) const
+void CPP_VectorConst::Generate(std::vector<VectorValPtr>& global_vec, int offset) const
 	{
 	auto vt = cast_intrusive<VectorType>(CPP__Type__[v_type]);
 	auto vv = make_intrusive<VectorVal>(vt);
@@ -72,7 +72,7 @@ void CPP_VectorConst::Generate(std::vector<VectorValPtr>& global_vec) const
 	global_vec[offset] = vv;
 	}
 
-void CPP_RecordConst::Generate(std::vector<RecordValPtr>& global_vec) const
+void CPP_RecordConst::Generate(std::vector<RecordValPtr>& global_vec, int offset) const
 	{
 	auto rt = cast_intrusive<RecordType>(CPP__Type__[r_type]);
 	auto rv = make_intrusive<RecordVal>(rt);
@@ -83,7 +83,7 @@ void CPP_RecordConst::Generate(std::vector<RecordValPtr>& global_vec) const
 	global_vec[offset] = rv;
 	}
 
-void CPP_TableConst::Generate(std::vector<TableValPtr>& global_vec) const
+void CPP_TableConst::Generate(std::vector<TableValPtr>& global_vec, int offset) const
 	{
 	auto tt = cast_intrusive<TableType>(CPP__Type__[t_type]);
 	auto tv = make_intrusive<TableVal>(tt);
@@ -104,7 +104,7 @@ ExprPtr CPP_RecordAttrExpr::Build() const
 	return make_intrusive<RecordCoerceExpr>(construct, rt);
 	}
 
-void CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
+void CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec, int offset) const
 	{
 	vector<AttrPtr> a_list;
 	for ( auto a : attrs )
@@ -114,7 +114,7 @@ void CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec) const
 	}
 
 
-void CPP_EnumType::DoGenerate(std::vector<TypePtr>& global_vec) const
+void CPP_EnumType::DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
 	{
 	auto et = get_enum_type__CPP(name);
 
@@ -125,7 +125,7 @@ void CPP_EnumType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	global_vec[offset] = et;
 	}
 
-void CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec) const
+void CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
 	{
 	TypePtr t;
 
@@ -137,7 +137,7 @@ void CPP_TableType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	global_vec[offset] = t;
 	}
 
-void CPP_FuncType::DoGenerate(std::vector<TypePtr>& global_vec) const
+void CPP_FuncType::DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
 	{
 	auto p = cast_intrusive<RecordType>(global_vec[params]);
 
@@ -152,7 +152,7 @@ void CPP_FuncType::DoGenerate(std::vector<TypePtr>& global_vec) const
 	global_vec[offset] = make_intrusive<FuncType>(p, y, flavor);
 	}
 
-void CPP_RecordType::PreInit(std::vector<TypePtr>& global_vec) const
+void CPP_RecordType::PreInit(std::vector<TypePtr>& global_vec, int offset) const
 	{
 	if ( name.empty() )
 		global_vec[offset] = get_record_type__CPP(nullptr);
@@ -160,7 +160,7 @@ void CPP_RecordType::PreInit(std::vector<TypePtr>& global_vec) const
 		global_vec[offset] = get_record_type__CPP(name.c_str());
 	}
 
-void CPP_RecordType::DoGenerate(std::vector<TypePtr>& global_vec) const
+void CPP_RecordType::DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
 	{
 	auto r = global_vec[offset]->AsRecordType();
 	ASSERT(r);
@@ -230,7 +230,7 @@ int CPP_EnumMapping::ComputeOffset() const
 	}
 
 
-void CPP_GlobalInit::Generate(std::vector<void*>& /* global_vec */) const
+void CPP_GlobalInit::Generate(std::vector<void*>& /* global_vec */, int /* offset */) const
 	{
 	global = lookup_global__CPP(name, CPP__Type__[type], exported);
 

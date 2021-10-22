@@ -53,6 +53,8 @@ public:
 	virtual void GenerateInitializers(CPPCompile* c);
 
 protected:
+	void BuildOffsetSet(CPPCompile* c);
+
 	virtual std::string GlobalsType() const
 		{ return std::string("CPP_Globals<") + CPPType() + ">"; }
 
@@ -78,15 +80,17 @@ protected:
 class CPP_BasicConstGlobalsInfo : public CPP_GlobalsInfo
 	{
 public:
-	CPP_BasicConstGlobalsInfo(std::string _tag, std::string type, std::string c_type)
+	CPP_BasicConstGlobalsInfo(std::string _tag, std::string type, std::string c_type, bool is_basic = true)
 		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
 		{
-		CPP_type2 = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
+		if ( is_basic )
+			CPP_type2 = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
+		else
+			CPP_type2 = std::string("CPP_") + tag + "Consts";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
 
-	void GenerateInitializers(CPPCompile* c) override;
 	std::string GlobalsType() const override { return CPP_type2; }
 
 private:
@@ -129,7 +133,7 @@ public:
 	std::string Declare() const { return type + " " + Name() + ";"; }
 
 	// Returns the type used for this initializer.
-	virtual std::string InitializerType() const = 0;
+	virtual std::string InitializerType() const { return "<shouldn't-be-used>"; }
 
 	// Returns values used for creating this global, one element
 	// per constructor parameter.
@@ -157,11 +161,6 @@ public:
 	BasicConstInfo(std:: string _name, std::string _cpp_type, std::string _val)
 		: name(std::move(_name)), cpp_type(std::move(_cpp_type)), val(std::move(_val)) { }
 
-	std::string InitializerType() const override
-		{
-		return std::string("CPP_BasicConst<") + name + "ValPtr, " + cpp_type + ", " + name + "Val>";
-		}
-
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{ ivs.emplace_back(val); }
 
@@ -176,7 +175,6 @@ class DescConstInfo : public CPP_GlobalInfo
 public:
 	DescConstInfo(CPPCompile* c, std::string _name, ValPtr v);
 
-	std::string InitializerType() const override;
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{ ivs.emplace_back(init); }
 
