@@ -390,6 +390,9 @@ void CPPCompile::GenEpilog()
 	indices_mgr.Generate(this);
 
 	NL();
+	InitializeStrings();
+
+	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();

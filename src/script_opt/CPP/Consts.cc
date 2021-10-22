@@ -101,11 +101,11 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 			break;
 
                 case TYPE_ADDR:
-			gi = make_shared<DescConstInfo>("Addr", vp);
+			gi = make_shared<DescConstInfo>(this, "Addr", vp);
 			break;
 
                 case TYPE_SUBNET:
-			gi = make_shared<DescConstInfo>("SubNet", vp);
+			gi = make_shared<DescConstInfo>(this, "SubNet", vp);
 			break;
 
                 case TYPE_ENUM:
@@ -155,7 +155,6 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 
 	const_info[tag]->AddInstance(gi);
 	const_vals[v] = constants[c_desc] = gi;
-	constants_to_vals[c_desc] = v;
 
 	return gi;
 	}

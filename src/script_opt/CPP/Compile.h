@@ -182,6 +182,17 @@ public:
 	// through them to generate the code.
 	std::shared_ptr<CPP_GlobalInfo> RegisterInitExpr(const ExprPtr& e);
 
+	int TrackString(std::string s)
+		{
+		if ( tracked_strings.count(s) == 0 )
+			{
+			tracked_strings[s] = ordered_tracked_strings.size();
+			ordered_tracked_strings.emplace_back(s);
+			}
+
+		return tracked_strings[s];
+		}
+
 	bool NotFullyCompilable(const std::string& fname) const
 		{ return not_fully_compilable.count(fname) > 0; }
 
@@ -580,16 +591,8 @@ private:
 
 	IndicesManager indices_mgr;
 
-	// Parallel vectors tracking the lengths and C++-compatible
-	// representations of string constants.
-	std::vector<int> str_lens;
-	std::vector<std::string> str_reps;
-
-	// Maps the same representations to the Val* associated with their
-	// original creation.  This enables us to construct initialization
-	// dependencies for later Val*'s that are able to reuse the same
-	// constant.
-	std::unordered_map<std::string, const Val*> constants_to_vals;
+	std::vector<std::string> ordered_tracked_strings;
+	std::unordered_map<std::string, int> tracked_strings;
 
 	//
 	// End of methods related to generating code for script constants.
@@ -896,6 +899,9 @@ private:
 
 	// Generate code to initialize BiFs.
 	void InitializeBiFs();
+
+	// Generate code to initialize strings that we track.
+	void InitializeStrings();
 
 	// Generate the initialization hook for this set of compiled code.
 	void GenInitHook();

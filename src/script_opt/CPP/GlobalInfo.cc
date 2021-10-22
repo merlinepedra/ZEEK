@@ -128,12 +128,13 @@ string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 	return string("std::make_shared<") + init_type + ">(" + init_args + ")";
 	}
 
-DescConstInfo::DescConstInfo(string _name, ValPtr v)
+DescConstInfo::DescConstInfo(CPPCompile* c, string _name, ValPtr v)
 	: CPP_GlobalInfo(), name(move(_name))
 	{
 	ODesc d;
 	v->Describe(&d);
-	init = string("\"") + d.Description() + "\"";
+	auto s = c->TrackString(d.Description());
+	init = Fmt(s);
 	}
 
 string DescConstInfo::InitializerType() const

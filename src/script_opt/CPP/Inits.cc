@@ -155,6 +155,18 @@ void CPPCompile::InitializeBiFs()
 	EndBlock(true);
 	}
 
+void CPPCompile::InitializeStrings()
+	{
+	Emit("std::vector<const char*> CPP__Strings__ =");
+
+	StartBlock();
+
+	for ( const auto& s : ordered_tracked_strings )
+		Emit("\"%s\",", s);
+
+	EndBlock(true);
+	}
+
 void CPPCompile::GenInitHook()
 	{
 	NL();

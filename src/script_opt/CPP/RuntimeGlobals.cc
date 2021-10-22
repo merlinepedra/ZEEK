@@ -38,6 +38,7 @@ std::vector<void*> CPP__LambdaRegistration__;
 std::vector<void*> CPP__GlobalID__;
 
 std::vector<std::vector<int>> CPP__Indices__;
+std::vector<const char*> CPP__Strings__;
 
 void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec) const
 	{

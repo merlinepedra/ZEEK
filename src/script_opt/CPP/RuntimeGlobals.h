@@ -46,6 +46,7 @@ extern std::vector<void*> CPP__LambdaRegistration__;
 extern std::vector<void*> CPP__GlobalID__;
 
 extern std::vector<std::vector<int>> CPP__Indices__;
+extern std::vector<const char*> CPP__Strings__;
 
 template <class T>
 class CPP_Global

@@ -174,7 +174,7 @@ private:
 class DescConstInfo : public CPP_GlobalInfo
 	{
 public:
-	DescConstInfo(std::string _name, ValPtr v);
+	DescConstInfo(CPPCompile* c, std::string _name, ValPtr v);
 
 	std::string InitializerType() const override;
 	void InitializerVals(std::vector<std::string>& ivs) const override
