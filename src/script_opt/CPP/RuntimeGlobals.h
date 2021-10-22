@@ -154,6 +154,19 @@ public:
 		}
 	};
 
+template <class T1, typename T2, class T3>
+class CPP_BasicConst : public CPP_Global<T1>
+	{
+public:
+	CPP_BasicConst(T2 _v) : CPP_Global<T1>(), v(_v) { }
+
+	void Generate(std::vector<T1>& global_vec, int offset) const override
+		{ this->global_vec[offset] = make_intrusive<T3>(v); }
+
+private:
+	T2 v;
+	};
+
 class CPP_AddrConsts : public CPP_AbstractBasicConsts<AddrValPtr, int>
 	{
 public:
@@ -178,19 +191,6 @@ public:
 		{
 		this->global_vec[offset] = make_intrusive<SubNetVal>(CPP__Strings__[this->inits[index]]);
 		}
-	};
-
-template <class T1, typename T2, class T3>
-class CPP_BasicConst : public CPP_Global<T1>
-	{
-public:
-	CPP_BasicConst(T2 _v) : CPP_Global<T1>(), v(_v) { }
-
-	void Generate(std::vector<T1>& global_vec, int offset) const override
-		{ this->global_vec[offset] = make_intrusive<T3>(v); }
-
-private:
-	T2 v;
 	};
 
 class CPP_PortConst : public CPP_Global<PortValPtr>
