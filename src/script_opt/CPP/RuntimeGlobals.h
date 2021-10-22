@@ -99,6 +99,28 @@ private:
 	};
 
 template <class T1, typename T2, class T3>
+class CPP_BasicConsts
+	{
+public:
+	CPP_BasicConsts(std::vector<T1>& _global_vec, std::vector<T2> _inits)
+		: global_vec(_global_vec), inits(std::move(_inits))
+		{
+		global_vec.reserve(inits.size());
+		}
+
+	void InitializeCohort(int cohort)
+		{
+		ASSERT(cohort == 0);
+		for ( auto i : inits )
+			global_vec.emplace_back(make_intrusive<T3>(i));
+		}
+
+private:
+	std::vector<T1>& global_vec;
+	std::vector<T2> inits;
+	};
+
+template <class T1, typename T2, class T3>
 class CPP_BasicConst : public CPP_Global<T1>
 	{
 public:

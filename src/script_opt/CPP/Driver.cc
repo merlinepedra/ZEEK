@@ -64,13 +64,13 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 		fclose(addl_f);
 		}
 
-	const_info[TYPE_BOOL] = InitGlobalInfo("Bool", "ValPtr");
-	const_info[TYPE_INT] = InitGlobalInfo("Int", "ValPtr");
-	const_info[TYPE_COUNT] = InitGlobalInfo("Count", "ValPtr");
+	const_info[TYPE_BOOL] = InitGlobalInfo("Bool", "ValPtr", "bool");
+	const_info[TYPE_INT] = InitGlobalInfo("Int", "ValPtr", "bro_int_t");
+	const_info[TYPE_COUNT] = InitGlobalInfo("Count", "ValPtr", "bro_uint_t");
 	const_info[TYPE_ENUM] = InitGlobalInfo("Enum", "ValPtr");
-	const_info[TYPE_DOUBLE] = InitGlobalInfo("Double", "ValPtr");
-	const_info[TYPE_TIME] = InitGlobalInfo("Time", "ValPtr");
-	const_info[TYPE_INTERVAL] = InitGlobalInfo("Interval", "ValPtr");
+	const_info[TYPE_DOUBLE] = InitGlobalInfo("Double", "ValPtr", "double");
+	const_info[TYPE_TIME] = InitGlobalInfo("Time", "ValPtr", "double");
+	const_info[TYPE_INTERVAL] = InitGlobalInfo("Interval", "ValPtr", "double");
 	const_info[TYPE_STRING] = InitGlobalInfo("String", "ValPtr");
 	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
 	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr");
@@ -99,9 +99,15 @@ CPPCompile::~CPPCompile()
 	fclose(write_file);
 	}
 
-shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const char* type)
+shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const char* type, const char* c_type)
 	{
-	auto gi = make_shared<CPP_GlobalsInfo>(tag, type);
+	shared_ptr<CPP_GlobalsInfo> gi;
+
+	if ( c_type )
+		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type);
+	else
+		gi = make_shared<CPP_GlobalsInfo>(tag, type);
+
 	all_global_info.insert(gi);
 
 	if ( type[0] == '\0' )

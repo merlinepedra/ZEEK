@@ -48,13 +48,16 @@ public:
 	const std::string& CPPType() const { return CPP_type; }
 	void SetCPPType(std::string ct) { CPP_type = std::move(ct); }
 
-	void AddInstance(std::shared_ptr<CPP_GlobalInfo> g);
-
-	std::string Declare() const;
-
-	void GenerateInitializers(CPPCompile* c);
+	virtual void AddInstance(std::shared_ptr<CPP_GlobalInfo> g);
+	virtual std::string Declare() const;
+	virtual void GenerateInitializers(CPPCompile* c);
 
 protected:
+	virtual std::string GlobalsType() const
+		{ return std::string("CPP_Globals<") + CPPType() + ">"; }
+
+	virtual void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort);
+
 	int size = 0;	// total number of globals
 
 	// The outer vector is indexed by initialization cohort.
@@ -70,6 +73,22 @@ protected:
 	std::string CPP_type;
 	};
 
+class CPP_BasicConstGlobalsInfo : public CPP_GlobalsInfo
+	{
+public:
+	CPP_BasicConstGlobalsInfo(std::string _tag, std::string type, std::string c_type)
+		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
+		{
+		CPP_type2 = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
+		}
+
+	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
+
+	std::string GlobalsType() const override { return CPP_type2; }
+
+private:
+	std::string CPP_type2;
+	};
 
 class CPP_GlobalInfo
 	{

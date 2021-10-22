@@ -85,7 +85,7 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 			break;
 
                 case TYPE_COUNT:
-			gi = make_shared<BasicConstInfo>("Count", "bro_uint_t", to_string(vp->AsCount()));
+			gi = make_shared<BasicConstInfo>("Count", "bro_uint_t", to_string(vp->AsCount()) + "ULL");
 			break;
 
                 case TYPE_DOUBLE:

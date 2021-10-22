@@ -192,13 +192,14 @@ private:
 	//
 
 	friend class CPP_GlobalsInfo;
+	friend class CPP_BasicConstGlobalsInfo;
 	friend class ListConstInfo;
 	friend class FuncConstInfo;
 	friend class BaseTypeInfo;
 	friend class AttrInfo;
 	friend class AttrsInfo;
 
-	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type);
+	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type, const char* c_type = nullptr);
 
 	// Main driver, invoked by constructor.
 	void Compile(bool report_uncompilable);

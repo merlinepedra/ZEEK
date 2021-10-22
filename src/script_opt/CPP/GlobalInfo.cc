@@ -36,8 +36,9 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	{
 	c->NL();
 
-	c->Emit("CPP_Globals<%s> %s = CPP_Globals<%s>(%s, ", CPPType(),
-	        InitializersName(), CPPType(), base_name);
+	auto gt = GlobalsType();
+
+	c->Emit("%s %s = %s(%s, ", gt, InitializersName(), gt, base_name);
 
 	c->IndentUp();
 	c->Emit("{");
@@ -45,22 +46,7 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	for ( auto& cohort : instances )
 		{
 		c->Emit("{");
-
-		for ( auto& co : cohort )
-			{
-			vector<string> ivs;
-			co->InitializerVals(ivs);
-
-			string full_init = Fmt(co->Offset());
-			if ( ! ivs.empty() )
-				{
-				for ( auto& iv : ivs )
-					full_init += string(", ") + iv;
-				}
-
-			c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), full_init);
-			}
-
+		BuildCohort(c, cohort);
 		c->Emit("},");
 		}
 
@@ -68,6 +54,37 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->IndentDown();
 	c->Emit(");");
 	}
+
+void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
+	{
+	for ( auto& co : cohort )
+		{
+		vector<string> ivs;
+		co->InitializerVals(ivs);
+
+		string full_init = Fmt(co->Offset());
+		if ( ! ivs.empty() )
+			{
+			for ( auto& iv : ivs )
+				full_init += string(", ") + iv;
+			}
+
+		c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), full_init);
+		}
+	}
+
+
+void CPP_BasicConstGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
+	{
+	for ( auto& co : cohort )
+		{
+		vector<string> ivs;
+		co->InitializerVals(ivs);
+		ASSERT(ivs.size() == 1);
+		c->Emit(ivs[0] + ",");
+		}
+	}
+
 
 string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 	{
