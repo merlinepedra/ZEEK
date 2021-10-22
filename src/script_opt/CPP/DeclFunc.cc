@@ -22,7 +22,7 @@ void CPPCompile::DeclareFunc(const FuncInfo& func)
 	const auto& body = func.Body();
 	auto priority = func.Priority();
 
-	DeclareSubclass(f->GetType(), pf, fname, body, priority, nullptr, f->Flavor());
+	CreateFunction(f->GetType(), pf, fname, body, priority, nullptr, f->Flavor());
 
 	if ( f->GetBodies().size() == 1 )
 		compiled_simple_funcs[f->Name()] = fname;
@@ -40,12 +40,12 @@ void CPPCompile::DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf)
 	for ( auto id : ids )
 		lambda_names[id] = LocalName(id);
 
-	DeclareSubclass(l_id->GetType<FuncType>(), pf, lname, body, 0, l, FUNC_FLAVOR_FUNCTION);
+	CreateFunction(l_id->GetType<FuncType>(), pf, lname, body, 0, l, FUNC_FLAVOR_FUNCTION);
 	}
 
-void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const string& fname,
-                                 const StmtPtr& body, int priority, const LambdaExpr* l,
-                                 FunctionFlavor flavor)
+void CPPCompile::CreateFunction(const FuncTypePtr& ft, const ProfileFunc* pf, const string& fname,
+                                const StmtPtr& body, int priority, const LambdaExpr* l,
+                                FunctionFlavor flavor)
 	{
 	const auto& yt = ft->Yield();
 	in_hook = flavor == FUNC_FLAVOR_HOOK;
@@ -85,6 +85,43 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 
 		func_casting_glue.emplace_back(di);
 		}
+
+	if ( lambda_ids )
+		{
+		DeclareSubclass(ft, pf, fname, args, lambda_ids);
+		BuildLambda(ft, pf, fname, body, l, lambda_ids);
+		EndBlock(true);
+		}
+	else
+		{
+		Emit("static %s %s(%s);", yt_decl, fname, ParamDecl(ft, lambda_ids, pf));
+
+		// Track this function as known to have been compiled.
+		// We don't track lambda bodies as compiled because they
+		// can't be instantiated directly without also supplying
+		// the captures.  In principle we could make an exception
+		// for lambdas that don't take any arguments, but that
+		// seems potentially more confusing than beneficial.
+		compiled_funcs.emplace(fname);
+
+		auto loc_f = script_specific_filename(body);
+		cf_locs[fname] = loc_f;
+		}
+
+	auto h = pf->HashVal();
+
+	body_hashes[fname] = h;
+	body_priorities[fname] = priority;
+	body_names.emplace(body.get(), fname);
+
+	total_hash = merge_p_hashes(total_hash, h);
+	}
+
+void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const string& fname, const string& args, const IDPList* lambda_ids)
+	{
+	const auto& yt = ft->Yield();
+
+	auto yt_decl = in_hook ? "bool" : FullTypeName(yt);
 
 	NL();
 	Emit("static %s %s(%s);", yt_decl, fname, ParamDecl(ft, lambda_ids, pf));
@@ -139,35 +176,6 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 		Emit("return %s(%s);", fname, args);
 
 	EndBlock();
-
-	if ( lambda_ids )
-		BuildLambda(ft, pf, fname, body, l, lambda_ids);
-	else
-		{
-		// Track this function as known to have been compiled.
-		// We don't track lambda bodies as compiled because they
-		// can't be instantiated directly without also supplying
-		// the captures.  In principle we could make an exception
-		// for lambdas that don't take any arguments, but that
-		// seems potentially more confusing than beneficial.
-		compiled_funcs.emplace(fname);
-
-		auto loc_f = script_specific_filename(body);
-		cf_locs[fname] = loc_f;
-
-		// Some guidance for those looking through the generated code.
-		Emit("// compiled body for: %s", loc_f);
-		}
-
-	EndBlock(true);
-
-	auto h = pf->HashVal();
-
-	body_hashes[fname] = h;
-	body_priorities[fname] = priority;
-	body_names.emplace(body.get(), fname);
-
-	total_hash = merge_p_hashes(total_hash, h);
 	}
 
 void CPPCompile::DeclareDynCPPStmt()

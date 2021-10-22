@@ -382,9 +382,11 @@ private:
 	// "fname" its C++ name, "body" its AST, "l" if non-nil its
 	// corresponding lambda expression, and "flavor" whether it's
 	// a hook/event/function.
-	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname,
-	                     const StmtPtr& body, int priority, const LambdaExpr* l,
-	                     FunctionFlavor flavor);
+	void CreateFunction(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname,
+	                    const StmtPtr& body, int priority, const LambdaExpr* l,
+	                    FunctionFlavor flavor);
+
+	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname, const std::string& args, const IDPList* lambda_ids);
 
 	void DeclareDynCPPStmt();
 
