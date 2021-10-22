@@ -234,7 +234,7 @@ void CPPCompile::Compile(bool report_uncompilable)
 		}
 
 	NL();
-	Emit("std::vector<std::shared_ptr<CPP_RegisterBody>> CPP__bodies_to_register = {");
+	Emit("std::vector<CPP_RegisterBody> CPP__bodies_to_register = {");
 
 	for ( const auto& f : compiled_funcs )
 		RegisterCompiledBody(f);
@@ -290,7 +290,9 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 		// same binary).
 		h = merge_p_hashes(h, p_hash(cf_locs[f]));
 
-	Emit("\tstd::make_shared<CPP_RegisterBodyT<%s>>(\"%s\", %s, %s, std::vector<std::string>(%s)),", f + "_cl", f, Fmt(p), Fmt(h), events);
+	ASSERT(func_index.count(f) > 0);
+	auto type_signature = casting_index[func_index[f]];
+	Emit("\tCPP_RegisterBody(\"%s\", (void*) %s, %s, %s, %s, std::vector<std::string>(%s)),", f, f, Fmt(type_signature), Fmt(p), Fmt(h), events);
 
 	if ( update )
 		{
@@ -314,7 +316,7 @@ void CPPCompile::GenEpilog()
 	Emit("ValPtr CPPDynStmt::Exec(Frame* f, StmtFlowType& flow)");
 	StartBlock();
 	Emit("flow = FLOW_RETURN;");
-	Emit("switch ( type )");
+	Emit("switch ( type_signature )");
 	StartBlock();
 	for ( auto i = 0U; i < func_casting_glue.size(); ++i )
 		{
@@ -384,7 +386,10 @@ void CPPCompile::GenEpilog()
 	StartBlock();
 
 	Emit("for ( auto& b : CPP__bodies_to_register )");
-	Emit("\tb->Register();");
+	StartBlock();
+	Emit("auto f = make_intrusive<CPPDynStmt>(b.func_name.c_str(), b.func, b.type_signature);");
+	Emit("register_body__CPP(f, b.priority, b.h, b.events);");
+	EndBlock();
 	NL();
 
 	int max_cohort = 0;

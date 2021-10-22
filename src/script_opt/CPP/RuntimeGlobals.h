@@ -526,33 +526,19 @@ private:
 class CPP_RegisterBody
 	{
 public:
-	CPP_RegisterBody(std::string _func_name, int _priority, p_hash_type _h, std::vector<std::string> _events)
-		: func_name(std::move(_func_name)), priority(_priority), h(_h), events(std::move(_events))
+	CPP_RegisterBody(std::string _func_name, void* func, int _type_signature, int _priority, p_hash_type _h, std::vector<std::string> _events)
+		: func_name(std::move(_func_name)), type_signature(_type_signature), priority(_priority), h(_h), events(std::move(_events))
 		{ }
 	virtual ~CPP_RegisterBody() { }
 
 	virtual void Register() const { }
 
-protected:
 	std::string func_name;
+	void* func;
+	int type_signature;
 	int priority;
 	p_hash_type h;
 	std::vector<std::string> events;
-	};
-
-template <class T>
-class CPP_RegisterBodyT : public CPP_RegisterBody
-	{
-public:
-	CPP_RegisterBodyT(std::string _func_name, int _priority, p_hash_type _h, std::vector<std::string> _events)
-		: CPP_RegisterBody(_func_name, _priority, _h, _events)
-		{ }
-
-	void Register() const override
-		{
-		auto f = make_intrusive<T>(func_name.c_str());
-		register_body__CPP(f, priority, h, events);
-		}
 	};
 
 class CPP_LookupBiF

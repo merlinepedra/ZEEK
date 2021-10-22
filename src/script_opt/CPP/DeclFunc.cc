@@ -181,7 +181,7 @@ void CPPCompile::DeclareDynCPPStmt()
 	Emit("class CPPDynStmt : public CPPStmt");
 	Emit("\t{");
 	Emit("public:");
-	Emit("\tCPPDynStmt(const char* _name, void* _func, int _type) : CPPStmt(_name), func(_func), type(_type) { }");
+	Emit("\tCPPDynStmt(const char* _name, void* _func, int _type_signature) : CPPStmt(_name), func(_func), type_signature(_type_signature) { }");
 	Emit("\tValPtr Exec(Frame* f, StmtFlowType& flow) override final;");
 	Emit("private:");
 	Emit("\t// The function to call in Exec().");
@@ -189,7 +189,7 @@ void CPPCompile::DeclareDynCPPStmt()
 	Emit("\t// Used via a switch in the dynamically-generated Exec() method");
 	Emit("\t// to cast func to the write type, and to call it with the");
 	Emit("\t// right arguments pulled out of the frame.");
-	Emit("\tint type;");
+	Emit("\tint type_signature;");
 	Emit("\t};");
 	}
 
