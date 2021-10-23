@@ -98,6 +98,22 @@ void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP
 	}
 
 
+void CPP_CompoundGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
+	{
+	for ( auto& co : cohort )
+		{
+		vector<string> ivs;
+		co->InitializerVals(ivs);
+
+		string init_line;
+		for ( auto& iv : ivs )
+			init_line += iv + ", ";
+
+		c->Emit("{ %s },", init_line);
+		}
+	}
+
+
 void CPP_BasicConstGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
 	{
 	for ( auto& co : cohort )

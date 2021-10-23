@@ -105,6 +105,8 @@ shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const ch
 
 	if ( c_type )
 		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type, is_basic);
+	else if ( util::streq(tag, "Enum") )
+		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
 	else
 		gi = make_shared<CPP_GlobalsInfo>(tag, type);
 

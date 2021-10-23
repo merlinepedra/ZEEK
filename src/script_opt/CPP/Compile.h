@@ -204,6 +204,7 @@ private:
 
 	friend class CPP_GlobalsInfo;
 	friend class CPP_BasicConstGlobalsInfo;
+	friend class CPP_CompoundGlobalsInfo;
 	friend class IndicesManager;
 	friend class ListConstInfo;
 	friend class FuncConstInfo;

@@ -108,6 +108,65 @@ private:
 	std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> inits;
 	};
 
+template <class T>
+class CPP_GlobalsNEW
+	{
+public:
+	CPP_GlobalsNEW(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::vector<int>>> _inits)
+		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
+		{
+		int num_globals = 0;
+
+		for ( const auto& cohort : inits )
+			num_globals += cohort.size();
+
+		global_vec.resize(num_globals);
+
+		for ( auto i = 0; i < num_globals; ++i )
+			PreInit(i);
+		}
+
+	void InitializeCohort(int cohort)
+		{
+		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+		auto& co = inits[cohort];
+		std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+		for ( auto i = 0U; i < co.size(); ++i )
+			Generate(global_vec, cohort_offsets[i], co[i]);
+		}
+
+protected:
+	virtual void PreInit(int i)
+		{
+		}
+
+	virtual void Generate(int offset, std::vector<int>& init_vals)
+		{
+		}
+
+	void Generate(std::vector<EnumValPtr>& gvec, int offset, std::vector<int>& init_vals)
+		{
+		int t = init_vals[0];
+		int v = init_vals[1];
+		gvec[offset] = make_enum__CPP(CPP__Type__[t], v);
+		}
+
+	std::vector<T>& global_vec;
+	int offsets_set;
+
+	// Indexed first by cohort, and then iterated over to get all
+	// of the initializers for that cohort.
+	std::vector<std::vector<std::vector<int>>> inits;
+	};
+
+class CPP_EnumGlobals : public CPP_GlobalsNEW<EnumValPtr>
+	{
+public:
+	CPP_EnumGlobals(std::vector<EnumValPtr>& _global_vec, int _offsets_set, std::vector<std::vector<std::vector<int>>> _inits)
+		: CPP_GlobalsNEW<EnumValPtr>(_global_vec, _offsets_set, std::move(_inits))
+		{ }
+	};
+
 template <class T1, typename T2>
 class CPP_AbstractBasicConsts
 	{
@@ -191,6 +250,22 @@ public:
 		{
 		this->global_vec[offset] = make_intrusive<SubNetVal>(CPP__Strings__[this->inits[index]]);
 		}
+	};
+
+class CPP_EnumConsts : public CPP_AbstractBasicConsts<EnumValPtr, int>
+	{
+public:
+	CPP_EnumConsts(std::vector<EnumValPtr>& _global_vec, int _offsets_set, std::vector<int> _inits, std::vector<int> _vals)
+		: CPP_AbstractBasicConsts<EnumValPtr, int>(_global_vec, _offsets_set, std::move(_inits)), vals(std::move(_vals))
+		{ }
+
+	void InitElem(int offset, int index) override
+		{
+		this->global_vec[offset] = make_enum__CPP(CPP__Type__[this->inits[index]], vals[index]);
+		}
+
+protected:
+	std::vector<int> vals;
 	};
 
 class CPP_StringConst : public CPP_Global<StringValPtr>

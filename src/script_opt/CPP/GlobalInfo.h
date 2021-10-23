@@ -97,6 +97,24 @@ private:
 	std::string CPP_type2;
 	};
 
+class CPP_CompoundGlobalsInfo : public CPP_GlobalsInfo
+	{
+public:
+	CPP_CompoundGlobalsInfo(std::string _tag, std::string type)
+		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
+		{
+		// CPP_type2 = std::string("CPP_GlobalsNEW<") + CPPType() + ">";
+		CPP_type2 = std::string("CPP_EnumGlobals");
+		}
+
+	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
+
+	std::string GlobalsType() const override { return CPP_type2; }
+
+private:
+	std::string CPP_type2;
+	};
+
 class CPP_GlobalInfo
 	{
 public:
