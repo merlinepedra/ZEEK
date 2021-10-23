@@ -167,14 +167,14 @@ EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)
 	e_val = v->AsEnum();
 	}
 
-StringConstInfo::StringConstInfo(ValPtr v)
+StringConstInfo::StringConstInfo(CPPCompile* c, ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto s = v->AsString();
 	const char* b = (const char*)(s->Bytes());
 
 	len = s->Len();
-	rep = CPPEscape(b, len);
+	chars = c->TrackString(CPPEscape(b, len));
 	}
 
 PatternConstInfo::PatternConstInfo(ValPtr v)

@@ -77,7 +77,7 @@ void unlock_file(const string& fname, FILE* f)
 
 string CPPEscape(const char* b, int len)
 	{
-	string res = "\"";
+	string res;
 
 	for ( int i = 0; i < len; ++i )
 		{
@@ -128,7 +128,7 @@ string CPPEscape(const char* b, int len)
 			}
 		}
 
-	return res + "\"";
+	return res;
 	}
 
 	} // zeek::detail

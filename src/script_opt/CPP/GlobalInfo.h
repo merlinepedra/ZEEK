@@ -103,8 +103,7 @@ public:
 	CPP_CompoundGlobalsInfo(std::string _tag, std::string type)
 		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
 		{
-		// CPP_type2 = std::string("CPP_GlobalsNEW<") + CPPType() + ">";
-		CPP_type2 = std::string("CPP_EnumGlobals");
+		CPP_type2 = std::string("CPP_GlobalsNEW<") + CPPType() + ">";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
@@ -206,9 +205,6 @@ class EnumConstInfo : public CPP_GlobalInfo
 public:
 	EnumConstInfo(CPPCompile* c, ValPtr v);
 
-	std::string InitializerType() const override
-		{ return "CPP_EnumConst"; }
-
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
 		ivs.emplace_back(std::to_string(e_type));
@@ -223,18 +219,16 @@ private:
 class StringConstInfo : public CPP_GlobalInfo
 	{
 public:
-	StringConstInfo(ValPtr v);
+	StringConstInfo(CPPCompile* c, ValPtr v);
 
-	std::string InitializerType() const override
-		{ return "CPP_StringConst"; }
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
+		ivs.emplace_back(std::to_string(chars));
 		ivs.emplace_back(std::to_string(len));
-		ivs.emplace_back(rep);
 		}
 
 private:
-	std::string rep;
+	int chars;
 	int len;
 	};
 
@@ -248,7 +242,7 @@ public:
 
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
-		ivs.emplace_back(pattern);
+		ivs.emplace_back(std::string("\"") + pattern + "\"");
 		ivs.emplace_back(std::to_string(is_case_insensitive));
 		}
 

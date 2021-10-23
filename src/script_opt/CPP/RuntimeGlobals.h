@@ -140,15 +140,18 @@ protected:
 		{
 		}
 
-	virtual void Generate(int offset, std::vector<int>& init_vals)
-		{
-		}
-
 	void Generate(std::vector<EnumValPtr>& gvec, int offset, std::vector<int>& init_vals)
 		{
-		int t = init_vals[0];
-		int v = init_vals[1];
-		gvec[offset] = make_enum__CPP(CPP__Type__[t], v);
+		auto& e_type = CPP__Type__[init_vals[0]];
+		int val = init_vals[1];
+		gvec[offset] = make_enum__CPP(e_type, val);
+		}
+
+	void Generate(std::vector<StringValPtr>& gvec, int offset, std::vector<int>& init_vals)
+		{
+		auto chars = CPP__Strings__[init_vals[0]];
+		int len = init_vals[1];
+		gvec[offset] = make_intrusive<StringVal>(len, chars);
 		}
 
 	std::vector<T>& global_vec;
@@ -157,14 +160,6 @@ protected:
 	// Indexed first by cohort, and then iterated over to get all
 	// of the initializers for that cohort.
 	std::vector<std::vector<std::vector<int>>> inits;
-	};
-
-class CPP_EnumGlobals : public CPP_GlobalsNEW<EnumValPtr>
-	{
-public:
-	CPP_EnumGlobals(std::vector<EnumValPtr>& _global_vec, int _offsets_set, std::vector<std::vector<std::vector<int>>> _inits)
-		: CPP_GlobalsNEW<EnumValPtr>(_global_vec, _offsets_set, std::move(_inits))
-		{ }
 	};
 
 template <class T1, typename T2>
@@ -250,36 +245,6 @@ public:
 		{
 		this->global_vec[offset] = make_intrusive<SubNetVal>(CPP__Strings__[this->inits[index]]);
 		}
-	};
-
-class CPP_EnumConsts : public CPP_AbstractBasicConsts<EnumValPtr, int>
-	{
-public:
-	CPP_EnumConsts(std::vector<EnumValPtr>& _global_vec, int _offsets_set, std::vector<int> _inits, std::vector<int> _vals)
-		: CPP_AbstractBasicConsts<EnumValPtr, int>(_global_vec, _offsets_set, std::move(_inits)), vals(std::move(_vals))
-		{ }
-
-	void InitElem(int offset, int index) override
-		{
-		this->global_vec[offset] = make_enum__CPP(CPP__Type__[this->inits[index]], vals[index]);
-		}
-
-protected:
-	std::vector<int> vals;
-	};
-
-class CPP_StringConst : public CPP_Global<StringValPtr>
-	{
-public:
-	CPP_StringConst(int _len, const char* _chars)
-		: CPP_Global<StringValPtr>(), len(_len), chars(_chars) { }
-
-	void Generate(std::vector<StringValPtr>& global_vec, int offset) const override
-		{ global_vec[offset] = make_intrusive<StringVal>(len, chars); }
-
-private:
-	int len;
-	const char* chars;
 	};
 
 class CPP_PatternConst : public CPP_Global<PatternValPtr>
