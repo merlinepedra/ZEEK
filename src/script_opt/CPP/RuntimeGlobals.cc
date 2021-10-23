@@ -40,17 +40,6 @@ std::vector<void*> CPP__GlobalID__;
 std::vector<std::vector<int>> CPP__Indices__;
 std::vector<const char*> CPP__Strings__;
 
-void CPP_PatternConst::Generate(std::vector<PatternValPtr>& global_vec, int offset) const
-	{
-	auto re = new RE_Matcher(pattern);
-	if ( is_case_insensitive )
-		re->MakeCaseInsensitive();
-
-	re->Compile();
-
-	global_vec[offset] = make_intrusive<PatternVal>(re);
-	}
-
 void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec, int offset) const
 	{
 	auto l = make_intrusive<ListVal>(TYPE_ANY);

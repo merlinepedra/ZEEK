@@ -117,7 +117,7 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 			break;
 
                 case TYPE_PATTERN:
-			gi = make_shared<PatternConstInfo>(vp);
+			gi = make_shared<PatternConstInfo>(this, vp);
 			break;
 
                 case TYPE_PORT:

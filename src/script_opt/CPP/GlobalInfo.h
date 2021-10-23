@@ -235,19 +235,16 @@ private:
 class PatternConstInfo : public CPP_GlobalInfo
 	{
 public:
-	PatternConstInfo(ValPtr v);
-
-	std::string InitializerType() const override
-		{ return "CPP_PatternConst"; }
+	PatternConstInfo(CPPCompile* c, ValPtr v);
 
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
-		ivs.emplace_back(std::string("\"") + pattern + "\"");
+		ivs.emplace_back(std::to_string(pattern));
 		ivs.emplace_back(std::to_string(is_case_insensitive));
 		}
 
 private:
-	std::string pattern;
+	int pattern;
 	int is_case_insensitive;
 	};
 

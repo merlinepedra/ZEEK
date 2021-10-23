@@ -154,6 +154,17 @@ protected:
 		gvec[offset] = make_intrusive<StringVal>(len, chars);
 		}
 
+	void Generate(std::vector<PatternValPtr>& gvec, int offset, std::vector<int>& init_vals)
+		{
+		auto re = new RE_Matcher(CPP__Strings__[init_vals[0]]);
+		if ( init_vals[1] )
+			re->MakeCaseInsensitive();
+
+		re->Compile();
+
+		gvec[offset] = make_intrusive<PatternVal>(re);
+		}
+
 	std::vector<T>& global_vec;
 	int offsets_set;
 
@@ -245,19 +256,6 @@ public:
 		{
 		this->global_vec[offset] = make_intrusive<SubNetVal>(CPP__Strings__[this->inits[index]]);
 		}
-	};
-
-class CPP_PatternConst : public CPP_Global<PatternValPtr>
-	{
-public:
-	CPP_PatternConst(const char* _pattern, int _is_case_insensitive)
-		: CPP_Global<PatternValPtr>(), pattern(_pattern), is_case_insensitive(_is_case_insensitive) { }
-
-	void Generate(std::vector<PatternValPtr>& global_vec, int offset) const override;
-
-private:
-	const char* pattern;
-	int is_case_insensitive;
 	};
 
 class CPP_EnumConst : public CPP_Global<EnumValPtr>

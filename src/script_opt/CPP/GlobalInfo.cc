@@ -177,11 +177,11 @@ StringConstInfo::StringConstInfo(CPPCompile* c, ValPtr v)
 	chars = c->TrackString(CPPEscape(b, len));
 	}
 
-PatternConstInfo::PatternConstInfo(ValPtr v)
+PatternConstInfo::PatternConstInfo(CPPCompile* c, ValPtr v)
 	: CPP_GlobalInfo()
 	{
 	auto re = v->AsPatternVal()->Get();
-	pattern = CPPEscape(re->OrigText());
+	pattern = c->TrackString(CPPEscape(re->OrigText()));
 	is_case_insensitive = re->IsCaseInsensitive();
 	}
 

@@ -73,8 +73,8 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 
 	const_info[TYPE_ENUM] = InitGlobalInfo("Enum", "ValPtr");
 	const_info[TYPE_STRING] = InitGlobalInfo("String", "ValPtr");
-
 	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
+
 	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr", "int", false);
 	const_info[TYPE_SUBNET] = InitGlobalInfo("SubNet", "ValPtr", "int", false);
 	const_info[TYPE_PORT] = InitGlobalInfo("Port", "ValPtr", "uint32_t");
@@ -108,7 +108,8 @@ shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const ch
 	if ( c_type )
 		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type, is_basic);
 	else if ( util::streq(tag, "Enum") ||
-	          util::streq(tag, "String") )
+	          util::streq(tag, "String") ||
+	          util::streq(tag, "Pattern") )
 		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
 	else
 		gi = make_shared<CPP_GlobalsInfo>(tag, type);
