@@ -193,7 +193,7 @@ private:
 	std::vector<T>& global_vec;
 	};
 
-extern std::map<TypeTag, CPP_AbstractGlobalAccessor> CPP__Consts__;
+extern std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 
 
 template <class T1, typename T2>
@@ -302,7 +302,7 @@ public:
 		: tag(_tag), offset(_offset) { }
 
 	ValPtr Get() const
-		{ return offset >= 0 ? CPP__Consts__[tag].Get(offset) : nullptr; }
+		{ return offset >= 0 ? CPP__Consts__[tag]->Get(offset) : nullptr; }
 
 private:
 	TypeTag tag;

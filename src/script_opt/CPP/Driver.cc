@@ -410,7 +410,7 @@ void CPPCompile::GenEpilog()
 	for ( const auto& ci : const_info )
 		{
 		auto& gi = ci.second;
-		Emit("CPP__Consts__.emplace(%s, CPP_GlobalAccessor<%s>(%s));", TypeTagName(ci.first), gi->CPPType(), gi->GlobalsName());
+		Emit("CPP__Consts__.emplace(%s, std::make_shared<CPP_GlobalAccessor<%s>>(%s));", TypeTagName(ci.first), gi->CPPType(), gi->GlobalsName());
 		}
 
 	NL();

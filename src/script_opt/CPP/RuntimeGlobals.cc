@@ -40,7 +40,7 @@ std::vector<void*> CPP__GlobalID__;
 std::vector<std::vector<int>> CPP__Indices__;
 std::vector<const char*> CPP__Strings__;
 
-std::map<TypeTag, CPP_AbstractGlobalAccessor> CPP__Consts__;
+std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 
 void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec, int offset) const
 	{
