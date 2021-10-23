@@ -173,6 +173,29 @@ protected:
 	std::vector<std::vector<std::vector<int>>> inits;
 	};
 
+
+class CPP_AbstractGlobalAccessor
+	{
+public:
+	virtual ~CPP_AbstractGlobalAccessor() {}
+	virtual ValPtr Get(int index) const { return nullptr; }
+	};
+
+template <class T>
+class CPP_GlobalAccessor : public CPP_AbstractGlobalAccessor
+	{
+public:
+	CPP_GlobalAccessor(std::vector<T>& _global_vec) : global_vec(_global_vec) {}
+
+	ValPtr Get(int index) const override { return global_vec[index]; }
+
+private:
+	std::vector<T>& global_vec;
+	};
+
+extern std::map<TypeTag, CPP_AbstractGlobalAccessor> CPP__Consts__;
+
+
 template <class T1, typename T2>
 class CPP_AbstractBasicConsts
 	{
@@ -272,32 +295,21 @@ private:
 	int e_val;
 	};
 
-class CPP_AbstractValElem
+class CPP_ValElem
 	{
 public:
-	CPP_AbstractValElem() {}
-	virtual ~CPP_AbstractValElem() {}
+	CPP_ValElem(TypeTag _tag, int _offset)
+		: tag(_tag), offset(_offset) { }
 
-	virtual ValPtr Get() const { return nullptr; }
-	};
-
-template <class T>
-class CPP_ValElem : public CPP_AbstractValElem
-	{
-public:
-	CPP_ValElem(std::vector<T>& _vec, int _offset)
-		: vec(_vec), offset(_offset) { }
-
-	ValPtr Get() const override
-		{ return offset >= 0 ? vec[offset] : nullptr; }
+	ValPtr Get() const
+		{ return offset >= 0 ? CPP__Consts__[tag].Get(offset) : nullptr; }
 
 private:
-	std::vector<T>& vec;
+	TypeTag tag;
 	int offset;
 	};
 
-using ValElemPtr = std::shared_ptr<CPP_AbstractValElem>;
-using ValElemVec = std::vector<ValElemPtr>;
+using ValElemVec = std::vector<CPP_ValElem>;
 
 class CPP_ListConst : public CPP_Global<ListValPtr>
 	{
@@ -381,13 +393,13 @@ using AbstractAttrPtr = std::shared_ptr<CPP_AbstractAttrExpr>;
 class CPP_ConstAttrExpr : public CPP_AbstractAttrExpr
 	{
 public:
-	CPP_ConstAttrExpr(ValElemPtr _v) : v(std::move(_v)) {}
+	CPP_ConstAttrExpr(CPP_ValElem _v) : v(std::move(_v)) {}
 
 	ExprPtr Build() const override
-		{ return make_intrusive<ConstExpr>(v->Get()); }
+		{ return make_intrusive<ConstExpr>(v.Get()); }
 
 private:
-	ValElemPtr v;
+	CPP_ValElem v;
 	};
 
 class CPP_NameAttrExpr : public CPP_AbstractAttrExpr
@@ -664,7 +676,7 @@ protected:
 class CPP_GlobalInit : public CPP_Global<void*>
 	{
 public:
-	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, std::shared_ptr<CPP_AbstractValElem> _val, bool _exported)
+	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, CPP_ValElem _val, bool _exported)
 		: CPP_Global<void*>(), global(_global), name(_name), type(_type), attrs(_attrs), val(std::move(_val)), exported(_exported)
 		{ }
 
@@ -675,7 +687,7 @@ protected:
 	const char* name;
 	int type;
 	int attrs;
-	std::shared_ptr<CPP_AbstractValElem> val;
+	CPP_ValElem val;
 	bool exported;
 	};
 

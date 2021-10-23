@@ -40,12 +40,14 @@ std::vector<void*> CPP__GlobalID__;
 std::vector<std::vector<int>> CPP__Indices__;
 std::vector<const char*> CPP__Strings__;
 
+std::map<TypeTag, CPP_AbstractGlobalAccessor> CPP__Consts__;
+
 void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec, int offset) const
 	{
 	auto l = make_intrusive<ListVal>(TYPE_ANY);
 
 	for ( auto& v : vals )
-		l->Append(v->Get());
+		l->Append(v.Get());
 
 	global_vec[offset] = l;
 	}
@@ -56,7 +58,7 @@ void CPP_VectorConst::Generate(std::vector<VectorValPtr>& global_vec, int offset
 	auto vv = make_intrusive<VectorVal>(vt);
 
 	for ( auto& v : v_vals )
-		vv->Append(v->Get());
+		vv->Append(v.Get());
 
 	global_vec[offset] = vv;
 	}
@@ -67,7 +69,7 @@ void CPP_RecordConst::Generate(std::vector<RecordValPtr>& global_vec, int offset
 	auto rv = make_intrusive<RecordVal>(rt);
 
 	for ( auto i = 0U; i < r_vals.size(); ++i )
-		rv->Assign(i, r_vals[i]->Get());
+		rv->Assign(i, r_vals[i].Get());
 
 	global_vec[offset] = rv;
 	}
@@ -78,7 +80,7 @@ void CPP_TableConst::Generate(std::vector<TableValPtr>& global_vec, int offset) 
 	auto tv = make_intrusive<TableVal>(tt);
 
 	for ( auto i = 0U; i < t_vals.size(); ++i )
-		tv->Assign(t_indices[i]->Get(), t_vals[i]->Get());
+		tv->Assign(t_indices[i].Get(), t_vals[i].Get());
 
 	global_vec[offset] = tv;
 	}
@@ -225,7 +227,7 @@ void CPP_GlobalInit::Generate(std::vector<void*>& /* global_vec */, int /* offse
 
 	if ( ! global->HasVal() )
 		{
-		global->SetVal(val->Get());
+		global->SetVal(val.Get());
 		if ( attrs >= 0 )
 			global->SetAttrs(CPP__Attributes__[attrs]);
 		}

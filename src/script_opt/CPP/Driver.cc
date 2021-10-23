@@ -405,15 +405,22 @@ void CPPCompile::GenEpilog()
 
 	Emit("generate_indices_set(CPP__Indices__init, CPP__Indices__);");
 	Emit("CPP__Strings__ = CPP__Strings__init; // this can go away with alternative scoping");
-	NL();
 
+	NL();
+	for ( const auto& ci : const_info )
+		{
+		auto& gi = ci.second;
+		Emit("CPP__Consts__.emplace(%s, CPP_GlobalAccessor<%s>(%s));", TypeTagName(ci.first), gi->CPPType(), gi->GlobalsName());
+		}
+
+	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");
 	StartBlock();
 	Emit("auto f = make_intrusive<CPPDynStmt>(b.func_name.c_str(), b.func, b.type_signature);");
 	Emit("register_body__CPP(f, b.priority, b.h, b.events);");
 	EndBlock();
-	NL();
 
+	NL();
 	int max_cohort = 0;
 	for ( auto gi : all_global_info )
 		max_cohort = std::max(max_cohort, gi->MaxCohort());

@@ -123,6 +123,8 @@ const char* CPPCompile::TypeTagName(TypeTag tag)
 			return "TYPE_INT";
 		case TYPE_INTERVAL:
 			return "TYPE_INTERVAL";
+		case TYPE_LIST:
+			return "TYPE_LIST";
 		case TYPE_OPAQUE:
 			return "TYPE_OPAQUE";
 		case TYPE_PATTERN:
