@@ -253,9 +253,6 @@ class PortConstInfo : public CPP_GlobalInfo
 public:
 	PortConstInfo(ValPtr v) : p(static_cast<UnsignedValImplementation*>(v->AsPortVal())->Get()) { }
 
-	std::string InitializerType() const override
-		{ return "CPP_PortConst"; }
-
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
 		ivs.emplace_back(std::to_string(p) + "U");
