@@ -193,19 +193,6 @@ public:
 		}
 	};
 
-class CPP_PortConst : public CPP_Global<PortValPtr>
-	{
-public:
-	CPP_PortConst(int _raw_p)
-		: CPP_Global<PortValPtr>(), raw_p(_raw_p) { }
-
-	void Generate(std::vector<PortValPtr>& global_vec, int offset) const override
-		{ global_vec[offset] = make_intrusive<PortVal>(raw_p); }
-
-private:
-	uint32_t raw_p;
-	};
-
 class CPP_StringConst : public CPP_Global<StringValPtr>
 	{
 public:

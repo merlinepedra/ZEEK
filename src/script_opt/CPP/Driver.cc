@@ -75,7 +75,7 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
 	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr", "int", false);
 	const_info[TYPE_SUBNET] = InitGlobalInfo("SubNet", "ValPtr", "int", false);
-	const_info[TYPE_PORT] = InitGlobalInfo("Port", "ValPtr");
+	const_info[TYPE_PORT] = InitGlobalInfo("Port", "ValPtr", "uint32_t");
 	const_info[TYPE_LIST] = InitGlobalInfo("List", "ValPtr");
 	const_info[TYPE_VECTOR] = InitGlobalInfo("Vector", "ValPtr");
 	const_info[TYPE_RECORD] = InitGlobalInfo("Record", "ValPtr");

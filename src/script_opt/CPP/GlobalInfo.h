@@ -249,7 +249,7 @@ public:
 
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
-		ivs.emplace_back(std::to_string(p));
+		ivs.emplace_back(std::to_string(p) + "U");
 		}
 
 private:
