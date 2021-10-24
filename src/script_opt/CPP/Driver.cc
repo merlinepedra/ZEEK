@@ -394,6 +394,9 @@ void CPPCompile::GenEpilog()
 	InitializeStrings();
 
 	NL();
+	InitializeConsts();
+
+	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();

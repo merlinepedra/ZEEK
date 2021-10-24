@@ -133,7 +133,8 @@ string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 
 	if ( v )
 		{
-		auto gi = c->RegisterConstant(v);
+		int consts_offset;
+		auto gi = c->RegisterConstant(v, consts_offset);
 		init_cohort = max(init_cohort, gi->InitCohort() + 1);
 
 		init_type = c->TypeTagName(v->GetType()->Tag());

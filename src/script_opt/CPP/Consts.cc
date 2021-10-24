@@ -9,7 +9,7 @@ using namespace std;
 namespace zeek::detail
 	{
 
-shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
+shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp, int& consts_offset)
 	{
 	// Make sure the value pointer, which might be transient
 	// in construction, sticks around so we can track its
@@ -19,8 +19,11 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	auto v = vp.get();
 
 	if ( const_vals.count(v) > 0 )
+		{
 		// Already did this one.
+		consts_offset = const_offsets[v];
 		return const_vals[v];
+		}
 
 	// Formulate a key that's unique per distinct constant.
 
@@ -50,6 +53,7 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	if ( constants.count(c_desc) > 0 )
 		{
 		const_vals[v] = constants[c_desc];
+		consts_offset = const_offsets[v] = constants_offsets[c_desc];
 		return const_vals[v];
 		}
 
@@ -138,6 +142,9 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 
 	const_info[tag]->AddInstance(gi);
 	const_vals[v] = constants[c_desc] = gi;
+
+	consts_offset = const_offsets[v] = constants_offsets[c_desc] = consts.size();
+	consts.emplace_back(pair(tag, gi->Offset()));
 
 	return gi;
 	}

@@ -167,6 +167,18 @@ void CPPCompile::InitializeStrings()
 	EndBlock(true);
 	}
 
+void CPPCompile::InitializeConsts()
+	{
+	Emit("std::vector<CPP_ValElem> CPP__Consts__init =");
+
+	StartBlock();
+
+	for ( const auto& c : consts )
+		Emit("CPP_ValElem(%s, %s),", TypeTagName(c.first), Fmt(c.second));
+
+	EndBlock(true);
+	}
+
 void CPPCompile::GenInitHook()
 	{
 	NL();

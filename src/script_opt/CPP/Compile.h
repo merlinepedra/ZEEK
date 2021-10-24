@@ -152,7 +152,7 @@ public:
 	int TypeCohort(const TypePtr& t)
 		{ return GI_Cohort(RegisterType(t)); }
 
-	std::shared_ptr<CPP_GlobalInfo> RegisterConstant(const ValPtr& vp);
+	std::shared_ptr<CPP_GlobalInfo> RegisterConstant(const ValPtr& vp, int& consts_offset);
 
 	std::shared_ptr<CPP_GlobalInfo> RegisterGlobal(const ID* g);
 
@@ -553,6 +553,7 @@ private:
 	// Maps the values of (non-native) constants to associated global
 	// information.
 	std::unordered_map<const Val*, std::shared_ptr<CPP_GlobalInfo>> const_vals;
+	std::unordered_map<const Val*, int> const_offsets;
 
 	// Used for memory management associated with const_vals's index.
 	std::vector<ValPtr> cv_indices;
@@ -560,10 +561,13 @@ private:
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.
 	std::unordered_map<std::string, std::shared_ptr<CPP_GlobalInfo>> constants;
+	std::unordered_map<std::string, int> constants_offsets;
 
 	std::set<std::shared_ptr<CPP_GlobalsInfo>> all_global_info;
 
 	std::unordered_map<TypeTag, std::shared_ptr<CPP_GlobalsInfo>> const_info;
+	std::vector<std::pair<TypeTag, int>> consts;
+
 	std::shared_ptr<CPP_GlobalsInfo> type_info;
 	std::shared_ptr<CPP_GlobalsInfo> attr_info;
 	std::shared_ptr<CPP_GlobalsInfo> attrs_info;
@@ -886,6 +890,9 @@ private:
 
 	// Generate code to initialize strings that we track.
 	void InitializeStrings();
+
+	// Generate code to initialize indirect references to constants.
+	void InitializeConsts();
 
 	// Generate the initialization hook for this set of compiled code.
 	void GenInitHook();
