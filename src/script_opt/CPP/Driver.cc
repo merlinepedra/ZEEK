@@ -399,6 +399,9 @@ void CPPCompile::GenEpilog()
 	InitializeStrings();
 
 	NL();
+	InitializeHashes();
+
+	NL();
 	InitializeConsts();
 
 	NL();
@@ -409,6 +412,7 @@ void CPPCompile::GenEpilog()
 	Emit("generate_indices_set(CPP__Indices__init, CPP__Indices__);");
 	Emit("CPP__Strings__ = CPP__Strings__init; // this can go away with alternative scoping");
 	Emit("CPP__ConstVals__ = CPP__ConstVals__init; // this can go away with alternative scoping");
+	Emit("CPP__Hashes__ = CPP__Hashes__init; // this can go away with alternative scoping");
 
 	NL();
 	for ( const auto& ci : const_info )

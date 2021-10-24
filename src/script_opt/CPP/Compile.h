@@ -153,7 +153,6 @@ public:
 		{ return GI_Cohort(RegisterType(t)); }
 
 	std::shared_ptr<CPP_GlobalInfo> RegisterConstant(const ValPtr& vp, int& consts_offset);
-	std::shared_ptr<CPP_GlobalInfo> RegisterHash(p_hash_type h);
 
 	std::shared_ptr<CPP_GlobalInfo> RegisterGlobal(const ID* g);
 
@@ -192,6 +191,17 @@ public:
 			}
 
 		return tracked_strings[s];
+		}
+
+	int TrackHash(p_hash_type h)
+		{
+		if ( tracked_hashes.count(h) == 0 )
+			{
+			tracked_hashes[h] = ordered_tracked_hashes.size();
+			ordered_tracked_hashes.emplace_back(h);
+			}
+
+		return tracked_hashes[h];
 		}
 
 	bool NotFullyCompilable(const std::string& fname) const
@@ -583,6 +593,9 @@ private:
 	std::vector<std::string> ordered_tracked_strings;
 	std::unordered_map<std::string, int> tracked_strings;
 
+	std::vector<p_hash_type> ordered_tracked_hashes;
+	std::unordered_map<p_hash_type, int> tracked_hashes;
+
 	//
 	// End of methods related to generating code for script constants.
 
@@ -891,6 +904,9 @@ private:
 
 	// Generate code to initialize strings that we track.
 	void InitializeStrings();
+
+	// Generate code to initialize hashes that we track.
+	void InitializeHashes();
 
 	// Generate code to initialize indirect references to constants.
 	void InitializeConsts();

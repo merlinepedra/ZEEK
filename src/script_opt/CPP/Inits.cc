@@ -167,6 +167,18 @@ void CPPCompile::InitializeStrings()
 	EndBlock(true);
 	}
 
+void CPPCompile::InitializeHashes()
+	{
+	Emit("std::vector<p_hash_type> CPP__Hashes__init =");
+
+	StartBlock();
+
+	for ( const auto& h : ordered_tracked_hashes )
+		Emit(Fmt(h) + ",");
+
+	EndBlock(true);
+	}
+
 void CPPCompile::InitializeConsts()
 	{
 	Emit("std::vector<CPP_ValElem> CPP__ConstVals__init =");

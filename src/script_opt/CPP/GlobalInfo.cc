@@ -267,8 +267,8 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 		for ( const auto& b : bodies )
 			{
 			auto h = c->BodyHash(b.stmts.get());
-			auto hr = c->RegisterHash(h);
-			ivs.emplace_back(Fmt(hr->Offset()));
+			auto h_o = c->TrackHash(h);
+			ivs.emplace_back(Fmt(h_o));
 			}
 		}
 	}

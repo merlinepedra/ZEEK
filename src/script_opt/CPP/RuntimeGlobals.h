@@ -47,6 +47,7 @@ extern std::vector<void*> CPP__GlobalID__;
 
 extern std::vector<std::vector<int>> CPP__Indices__;
 extern std::vector<const char*> CPP__Strings__;
+extern std::vector<p_hash_type> CPP__Hashes__;
 
 template <class T>
 class CPP_Global
@@ -246,7 +247,12 @@ protected:
 		auto rv = make_intrusive<RecordVal>(rt);
 
 		while ( i < n )
-			rv->Assign(i, CPP__ConstVals__[init_vals[i++]].Get());
+			{
+			auto v = init_vals[i];
+			if ( v >= 0 )
+				rv->Assign(i - 1, CPP__ConstVals__[v].Get());
+			++i;
+			}
 
 		global_vec[offset] = rv;
 		}
@@ -263,7 +269,8 @@ protected:
 		while ( i < n )
 			{
 			auto index = CPP__ConstVals__[init_vals[i++]].Get();
-			auto value = CPP__ConstVals__[init_vals[i++]].Get();
+			auto v = init_vals[i++];
+			auto value = v >= 0 ? CPP__ConstVals__[v].Get() : nullptr;
 			tv->Assign(index, value);
 			}
 
@@ -293,7 +300,7 @@ protected:
 		std::vector<p_hash_type> hashes;
 
 		while ( i < n )
-			hashes.push_back(CPP__Count__[init_vals[i++]]->AsCount());
+			hashes.push_back(CPP__Hashes__[init_vals[i++]]);
 
 		global_vec[offset] = lookup_func__CPP(fn, hashes, CPP__Type__[t]);
 		}
@@ -408,13 +415,13 @@ using AbstractAttrPtr = std::shared_ptr<CPP_AbstractAttrExpr>;
 class CPP_ConstAttrExpr : public CPP_AbstractAttrExpr
 	{
 public:
-	CPP_ConstAttrExpr(CPP_ValElem _v) : v(std::move(_v)) {}
+	CPP_ConstAttrExpr(int _v) : v(_v) {}
 
 	ExprPtr Build() const override
-		{ return make_intrusive<ConstExpr>(v.Get()); }
+		{ return make_intrusive<ConstExpr>(CPP__ConstVals__[v].Get()); }
 
 private:
-	CPP_ValElem v;
+	int v;
 	};
 
 class CPP_NameAttrExpr : public CPP_AbstractAttrExpr
@@ -691,8 +698,8 @@ protected:
 class CPP_GlobalInit : public CPP_Global<void*>
 	{
 public:
-	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, CPP_ValElem _val, bool _exported)
-		: CPP_Global<void*>(), global(_global), name(_name), type(_type), attrs(_attrs), val(std::move(_val)), exported(_exported)
+	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, int _val, bool _exported)
+		: CPP_Global<void*>(), global(_global), name(_name), type(_type), attrs(_attrs), val(_val), exported(_exported)
 		{ }
 
 	void Generate(std::vector<void*>& /* global_vec */, int /* offset */) const override;
@@ -702,7 +709,7 @@ protected:
 	const char* name;
 	int type;
 	int attrs;
-	CPP_ValElem val;
+	int val;
 	bool exported;
 	};
 

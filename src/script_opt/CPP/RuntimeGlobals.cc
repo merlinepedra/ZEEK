@@ -39,6 +39,7 @@ std::vector<void*> CPP__GlobalID__;
 
 std::vector<std::vector<int>> CPP__Indices__;
 std::vector<const char*> CPP__Strings__;
+std::vector<p_hash_type> CPP__Hashes__;
 
 std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 std::vector<CPP_ValElem> CPP__ConstVals__;
@@ -183,9 +184,9 @@ void CPP_GlobalInit::Generate(std::vector<void*>& /* global_vec */, int /* offse
 	{
 	global = lookup_global__CPP(name, CPP__Type__[type], exported);
 
-	if ( ! global->HasVal() )
+	if ( ! global->HasVal() && val >= 0 )
 		{
-		global->SetVal(val.Get());
+		global->SetVal(CPP__ConstVals__[val].Get());
 		if ( attrs >= 0 )
 			global->SetAttrs(CPP__Attributes__[attrs]);
 		}
