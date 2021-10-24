@@ -109,7 +109,7 @@ void CPP_CompoundGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared
 		for ( auto& iv : ivs )
 			init_line += iv + ", ";
 
-		c->Emit("{ %s },", init_line);
+		c->Emit("{ %s},", init_line);
 		}
 	}
 
