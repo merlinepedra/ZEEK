@@ -41,49 +41,7 @@ std::vector<std::vector<int>> CPP__Indices__;
 std::vector<const char*> CPP__Strings__;
 
 std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
-
-void CPP_ListConst::Generate(std::vector<ListValPtr>& global_vec, int offset) const
-	{
-	auto l = make_intrusive<ListVal>(TYPE_ANY);
-
-	for ( auto& v : vals )
-		l->Append(v.Get());
-
-	global_vec[offset] = l;
-	}
-
-void CPP_VectorConst::Generate(std::vector<VectorValPtr>& global_vec, int offset) const
-	{
-	auto vt = cast_intrusive<VectorType>(CPP__Type__[v_type]);
-	auto vv = make_intrusive<VectorVal>(vt);
-
-	for ( auto& v : v_vals )
-		vv->Append(v.Get());
-
-	global_vec[offset] = vv;
-	}
-
-void CPP_RecordConst::Generate(std::vector<RecordValPtr>& global_vec, int offset) const
-	{
-	auto rt = cast_intrusive<RecordType>(CPP__Type__[r_type]);
-	auto rv = make_intrusive<RecordVal>(rt);
-
-	for ( auto i = 0U; i < r_vals.size(); ++i )
-		rv->Assign(i, r_vals[i].Get());
-
-	global_vec[offset] = rv;
-	}
-
-void CPP_TableConst::Generate(std::vector<TableValPtr>& global_vec, int offset) const
-	{
-	auto tt = cast_intrusive<TableType>(CPP__Type__[t_type]);
-	auto tv = make_intrusive<TableVal>(tt);
-
-	for ( auto i = 0U; i < t_vals.size(); ++i )
-		tv->Assign(t_indices[i].Get(), t_vals[i].Get());
-
-	global_vec[offset] = tv;
-	}
+std::vector<CPP_ValElem> CPP__ConstVals__;
 
 
 ExprPtr CPP_RecordAttrExpr::Build() const

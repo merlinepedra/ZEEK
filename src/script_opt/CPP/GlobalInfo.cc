@@ -136,17 +136,10 @@ string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 		int consts_offset;
 		auto gi = c->RegisterConstant(v, consts_offset);
 		init_cohort = max(init_cohort, gi->InitCohort() + 1);
-
-		init_type = c->TypeTagName(v->GetType()->Tag());
-		init_args = Fmt(gi->Offset());
+		return Fmt(consts_offset);
 		}
 	else
-		{
-		init_type = "TYPE_VOID";
-		init_args = Fmt(-1);
-		}
-
-	return string("CPP_ValElem(") + init_type + ", " + init_args + ")";
+		return Fmt(-1);
 	}
 
 DescConstInfo::DescConstInfo(CPPCompile* c, string _name, ValPtr v)
@@ -200,7 +193,7 @@ ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
 	auto n = lv->Length();
 
 	for ( auto i = 0; i < n; ++i )
-		vals += ValElem(c, lv->Idx(i)) + ", ";
+		vals.emplace_back(ValElem(c, lv->Idx(i)));
 	}
 
 VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
@@ -210,7 +203,7 @@ VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
 	auto n = vv->Size();
 
 	for ( auto i = 0; i < n; ++i )
-		vals += ValElem(c, vv->ValAt(i)) + ", ";
+		vals.emplace_back(ValElem(c, vv->ValAt(i)));
 	}
 
 RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
@@ -222,7 +215,7 @@ RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
 	type = c->TypeOffset(r->GetType());
 
 	for ( auto i = 0; i < n; ++i )
-		vals += ValElem(c, r->GetField(i)) + ", ";
+		vals.emplace_back(ValElem(c, r->GetField(i)));
 	}
 
 TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
@@ -232,9 +225,17 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
 
 	for ( auto& tv_i : tv->ToMap() )
 		{
-		indices += ValElem(c, tv_i.first) + ", ";
-		vals += ValElem(c, tv_i.second) + ", ";
+		vals.emplace_back(ValElem(c, tv_i.first));	// index
+		vals.emplace_back(ValElem(c, tv_i.second));	// value
 		}
+	}
+
+FileConstInfo::FileConstInfo(CPPCompile* c, ValPtr v)
+	: CompoundConstInfo(c, v)
+	{
+	auto fv = cast_intrusive<FileVal>(v);
+	auto fname = c->TrackString(fv->Get()->Name());
+	vals.emplace_back(Fmt(fname));
 	}
 
 FuncConstInfo::FuncConstInfo(CPPCompile* _c, ValPtr v)
@@ -254,6 +255,9 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 	auto f = fv->AsFunc();
 	const auto& fn = f->Name();
 
+	ivs.emplace_back(Fmt(type));
+	ivs.emplace_back(Fmt(c->TrackString(fn)));
+
 	string hashes;
 
 	if ( ! c->NotFullyCompilable(fn) )
@@ -261,12 +265,12 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 		const auto& bodies = f->GetBodies();
 
 		for ( const auto& b : bodies )
-			hashes += Fmt(c->BodyHash(b.stmts.get())) + ", ";
+			{
+			auto h = c->BodyHash(b.stmts.get());
+			auto hr = c->RegisterHash(h);
+			ivs.emplace_back(Fmt(hr->Offset()));
+			}
 		}
-
-	ivs.emplace_back(string("\"") + fn + "\"");
-	ivs.emplace_back(Fmt(type));
-	ivs.emplace_back(string("std::vector<p_hash_type>({ ") + hashes + "})");
 	}
 
 

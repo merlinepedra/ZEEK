@@ -77,7 +77,6 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 	const_info[TYPE_ENUM] = InitGlobalInfo("Enum", "ValPtr");
 	const_info[TYPE_STRING] = InitGlobalInfo("String", "ValPtr");
 	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
-
 	const_info[TYPE_LIST] = InitGlobalInfo("List", "ValPtr");
 	const_info[TYPE_VECTOR] = InitGlobalInfo("Vector", "ValPtr");
 	const_info[TYPE_RECORD] = InitGlobalInfo("Record", "ValPtr");
@@ -109,6 +108,12 @@ shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const ch
 		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type, is_basic);
 	else if ( util::streq(tag, "Enum") ||
 	          util::streq(tag, "String") ||
+	          util::streq(tag, "List") ||
+	          util::streq(tag, "Table") ||
+	          util::streq(tag, "Vector") ||
+	          util::streq(tag, "Record") ||
+	          util::streq(tag, "File") ||
+	          util::streq(tag, "Func") ||
 	          util::streq(tag, "Pattern") )
 		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
 	else
@@ -403,6 +408,7 @@ void CPPCompile::GenEpilog()
 
 	Emit("generate_indices_set(CPP__Indices__init, CPP__Indices__);");
 	Emit("CPP__Strings__ = CPP__Strings__init; // this can go away with alternative scoping");
+	Emit("CPP__ConstVals__ = CPP__ConstVals__init; // this can go away with alternative scoping");
 
 	NL();
 	for ( const auto& ci : const_info )

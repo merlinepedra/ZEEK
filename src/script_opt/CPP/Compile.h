@@ -153,6 +153,7 @@ public:
 		{ return GI_Cohort(RegisterType(t)); }
 
 	std::shared_ptr<CPP_GlobalInfo> RegisterConstant(const ValPtr& vp, int& consts_offset);
+	std::shared_ptr<CPP_GlobalInfo> RegisterHash(p_hash_type h);
 
 	std::shared_ptr<CPP_GlobalInfo> RegisterGlobal(const ID* g);
 

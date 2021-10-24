@@ -149,4 +149,11 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp, int& c
 	return gi;
 	}
 
+shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterHash(p_hash_type h)
+	{
+	auto gi = make_shared<BasicConstInfo>("Count", "bro_uint_t", Fmt(h));
+	const_info[TYPE_COUNT]->AddInstance(gi);
+	return gi;
+	}
+
 	} // zeek::detail

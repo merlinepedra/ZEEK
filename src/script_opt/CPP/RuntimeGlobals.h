@@ -108,11 +108,53 @@ private:
 	std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> inits;
 	};
 
+
+class CPP_AbstractGlobalAccessor
+	{
+public:
+	virtual ~CPP_AbstractGlobalAccessor() {}
+	virtual ValPtr Get(int index) const { return nullptr; }
+	};
+
+template <class T>
+class CPP_GlobalAccessor : public CPP_AbstractGlobalAccessor
+	{
+public:
+	CPP_GlobalAccessor(std::vector<T>& _global_vec) : global_vec(_global_vec) {}
+
+	ValPtr Get(int index) const override { return global_vec[index]; }
+
+private:
+	std::vector<T>& global_vec;
+	};
+
+extern std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
+
+
+class CPP_ValElem
+	{
+public:
+	CPP_ValElem(TypeTag _tag, int _offset)
+		: tag(_tag), offset(_offset) { }
+
+	ValPtr Get() const
+		{ return offset >= 0 ? CPP__Consts__[tag]->Get(offset) : nullptr; }
+
+private:
+	TypeTag tag;
+	int offset;
+	};
+
+extern std::vector<CPP_ValElem> CPP__ConstVals__;
+
+using ValElemVec = std::vector<int>;
+
+
 template <class T>
 class CPP_GlobalsNEW
 	{
 public:
-	CPP_GlobalsNEW(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::vector<int>>> _inits)
+	CPP_GlobalsNEW(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
 		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
 		int num_globals = 0;
@@ -140,21 +182,21 @@ protected:
 		{
 		}
 
-	void Generate(std::vector<EnumValPtr>& gvec, int offset, std::vector<int>& init_vals)
+	void Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
 		{
 		auto& e_type = CPP__Type__[init_vals[0]];
 		int val = init_vals[1];
 		gvec[offset] = make_enum__CPP(e_type, val);
 		}
 
-	void Generate(std::vector<StringValPtr>& gvec, int offset, std::vector<int>& init_vals)
+	void Generate(std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals)
 		{
 		auto chars = CPP__Strings__[init_vals[0]];
 		int len = init_vals[1];
 		gvec[offset] = make_intrusive<StringVal>(len, chars);
 		}
 
-	void Generate(std::vector<PatternValPtr>& gvec, int offset, std::vector<int>& init_vals)
+	void Generate(std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals)
 		{
 		auto re = new RE_Matcher(CPP__Strings__[init_vals[0]]);
 		if ( init_vals[1] )
@@ -165,6 +207,98 @@ protected:
 		gvec[offset] = make_intrusive<PatternVal>(re);
 		}
 
+	void Generate(std::vector<ListValPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto n = init_vals.size();
+		auto i = 0U;
+		auto t = init_vals[i++];	// not used
+
+		auto l = make_intrusive<ListVal>(TYPE_ANY);
+
+		while ( i < n )
+			l->Append(CPP__ConstVals__[init_vals[i++]].Get());
+
+		global_vec[offset] = l;
+		}
+
+	void Generate(std::vector<VectorValPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto n = init_vals.size();
+		auto i = 0U;
+		auto t = init_vals[i++];
+
+		auto vt = cast_intrusive<VectorType>(CPP__Type__[t]);
+		auto vv = make_intrusive<VectorVal>(vt);
+
+		while ( i < n )
+			vv->Append(CPP__ConstVals__[init_vals[i++]].Get());
+
+		global_vec[offset] = vv;
+		}
+
+	void Generate(std::vector<RecordValPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto n = init_vals.size();
+		auto i = 0U;
+		auto t = init_vals[i++];
+
+		auto rt = cast_intrusive<RecordType>(CPP__Type__[t]);
+		auto rv = make_intrusive<RecordVal>(rt);
+
+		while ( i < n )
+			rv->Assign(i, CPP__ConstVals__[init_vals[i++]].Get());
+
+		global_vec[offset] = rv;
+		}
+
+	void Generate(std::vector<TableValPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto n = init_vals.size();
+		auto i = 0U;
+		auto t = init_vals[i++];
+
+		auto tt = cast_intrusive<TableType>(CPP__Type__[t]);
+		auto tv = make_intrusive<TableVal>(tt);
+
+		while ( i < n )
+			{
+			auto index = CPP__ConstVals__[init_vals[i++]].Get();
+			auto value = CPP__ConstVals__[init_vals[i++]].Get();
+			tv->Assign(index, value);
+			}
+
+		global_vec[offset] = tv;
+		}
+
+	void Generate(std::vector<FileValPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto n = init_vals.size();
+		auto i = 0U;
+		auto t = init_vals[i++];	// not used
+
+		auto fn = CPP__Strings__[init_vals[i++]];
+		auto fv = make_intrusive<FileVal>(fn, "w");
+
+		global_vec[offset] = fv;
+		}
+
+	void Generate(std::vector<FuncValPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto n = init_vals.size();
+		auto i = 0U;
+		auto t = init_vals[i++];
+
+		auto fn = CPP__Strings__[init_vals[i++]];
+
+		std::vector<p_hash_type> hashes;
+
+		while ( i < n )
+			hashes.push_back(CPP__Count__[init_vals[i++]]->AsCount());
+
+		global_vec[offset] = lookup_func__CPP(fn, hashes, CPP__Type__[t]);
+		}
+
+private:
 	std::vector<T>& global_vec;
 	int offsets_set;
 
@@ -172,28 +306,6 @@ protected:
 	// of the initializers for that cohort.
 	std::vector<std::vector<std::vector<int>>> inits;
 	};
-
-
-class CPP_AbstractGlobalAccessor
-	{
-public:
-	virtual ~CPP_AbstractGlobalAccessor() {}
-	virtual ValPtr Get(int index) const { return nullptr; }
-	};
-
-template <class T>
-class CPP_GlobalAccessor : public CPP_AbstractGlobalAccessor
-	{
-public:
-	CPP_GlobalAccessor(std::vector<T>& _global_vec) : global_vec(_global_vec) {}
-
-	ValPtr Get(int index) const override { return global_vec[index]; }
-
-private:
-	std::vector<T>& global_vec;
-	};
-
-extern std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 
 
 template <class T1, typename T2>
@@ -279,103 +391,6 @@ public:
 		{
 		this->global_vec[offset] = make_intrusive<SubNetVal>(CPP__Strings__[this->inits[index]]);
 		}
-	};
-
-class CPP_EnumConst : public CPP_Global<EnumValPtr>
-	{
-public:
-	CPP_EnumConst(int type, int val)
-		: CPP_Global<EnumValPtr>(), e_type(type), e_val(val) { }
-
-	void Generate(std::vector<EnumValPtr>& global_vec, int offset) const override
-		{ global_vec[offset] = make_enum__CPP(CPP__Type__[e_type], e_val); }
-
-private:
-	int e_type;
-	int e_val;
-	};
-
-class CPP_ValElem
-	{
-public:
-	CPP_ValElem(TypeTag _tag, int _offset)
-		: tag(_tag), offset(_offset) { }
-
-	ValPtr Get() const
-		{ return offset >= 0 ? CPP__Consts__[tag]->Get(offset) : nullptr; }
-
-private:
-	TypeTag tag;
-	int offset;
-	};
-
-using ValElemVec = std::vector<CPP_ValElem>;
-
-class CPP_ListConst : public CPP_Global<ListValPtr>
-	{
-public:
-	CPP_ListConst(ValElemVec _vals)
-		: CPP_Global<ListValPtr>(), vals(std::move(_vals)) { }
-
-	void Generate(std::vector<ListValPtr>& global_vec, int offset) const override;
-
-private:
-	ValElemVec vals;
-	};
-
-class CPP_VectorConst : public CPP_Global<VectorValPtr>
-	{
-public:
-	CPP_VectorConst(int type, ValElemVec vals)
-		: CPP_Global<VectorValPtr>(), v_type(type), v_vals(std::move(vals)) { }
-
-	void Generate(std::vector<VectorValPtr>& global_vec, int offset) const override;
-
-private:
-	int v_type;
-	ValElemVec v_vals;
-	};
-
-class CPP_RecordConst : public CPP_Global<RecordValPtr>
-	{
-public:
-	CPP_RecordConst(int type, ValElemVec vals)
-		: CPP_Global<RecordValPtr>(), r_type(type), r_vals(std::move(vals)) { }
-
-	void Generate(std::vector<RecordValPtr>& global_vec, int offset) const override;
-
-private:
-	int r_type;
-	ValElemVec r_vals;
-	};
-
-class CPP_TableConst : public CPP_Global<TableValPtr>
-	{
-public:
-	CPP_TableConst(int type, ValElemVec indices, ValElemVec vals)
-		: CPP_Global<TableValPtr>(), t_type(type), t_indices(std::move(indices)), t_vals(std::move(vals)) { }
-
-	void Generate(std::vector<TableValPtr>& global_vec, int offset) const override;
-
-private:
-	int t_type;
-	ValElemVec t_indices;
-	ValElemVec t_vals;
-	};
-
-class CPP_FuncConst : public CPP_Global<FuncValPtr>
-	{
-public:
-	CPP_FuncConst(const char* _name, int _type, std::vector<p_hash_type> _hashes)
-		: CPP_Global<FuncValPtr>(), name(_name), type(_type), hashes(std::move(_hashes)) { }
-
-	void Generate(std::vector<FuncValPtr>& global_vec, int offset) const override
-		{ global_vec[offset] = lookup_func__CPP(name, hashes, CPP__Type__[type]); }
-
-private:
-	std::string name;
-	int type;
-	std::vector<p_hash_type> hashes;
 	};
 
 

@@ -169,7 +169,7 @@ void CPPCompile::InitializeStrings()
 
 void CPPCompile::InitializeConsts()
 	{
-	Emit("std::vector<CPP_ValElem> CPP__Consts__init =");
+	Emit("std::vector<CPP_ValElem> CPP__ConstVals__init =");
 
 	StartBlock();
 

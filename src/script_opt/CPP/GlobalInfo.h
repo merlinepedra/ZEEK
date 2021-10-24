@@ -268,92 +268,48 @@ public:
 	CompoundConstInfo(CPPCompile* c, ValPtr v);
 	CompoundConstInfo(CPPCompile* _c) : c(_c) { type = 0; }
 
+	void InitializerVals(std::vector<std::string>& ivs) const override
+		{
+		ivs.emplace_back(std::to_string(type));
+
+		for ( auto& v : vals )
+			ivs.push_back(v);
+		}
+
 protected:
 	CPPCompile* c;
 	int type;
-	std::string vals;
+	std::vector<std::string> vals;
 	};
 
 class ListConstInfo : public CompoundConstInfo
 	{
 public:
 	ListConstInfo(CPPCompile* c, ValPtr v);
-
-	std::string InitializerType() const override
-		{ return "CPP_ListConst"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{
-		ivs.emplace_back(std::string("ValElemVec({ ") + vals + "})");
-		}
 	};
 
 class VectorConstInfo : public CompoundConstInfo
 	{
 public:
 	VectorConstInfo(CPPCompile* c, ValPtr v);
-
-	std::string InitializerType() const override
-		{ return "CPP_VectorConst"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{
-		ivs.emplace_back(std::to_string(type));
-		ivs.emplace_back(std::string("ValElemVec({ ") + vals + "})");
-		}
 	};
 
 class RecordConstInfo : public CompoundConstInfo
 	{
 public:
 	RecordConstInfo(CPPCompile* c, ValPtr v);
-
-	std::string InitializerType() const override
-		{ return "CPP_RecordConst"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{
-		ivs.emplace_back(std::to_string(type));
-		ivs.emplace_back(std::string("ValElemVec({ ") + vals + "})");
-		}
 	};
 
 class TableConstInfo : public CompoundConstInfo
 	{
 public:
 	TableConstInfo(CPPCompile* c, ValPtr v);
-
-	std::string InitializerType() const override
-		{ return "CPP_TableConst"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{
-		ivs.emplace_back(std::to_string(type));
-		ivs.emplace_back(std::string("ValElemVec({ ") + indices + "})");
-		ivs.emplace_back(std::string("ValElemVec({ ") + vals + "})");
-		}
-
-private:
-	std::string indices;
 	};
 
 class FileConstInfo : public CompoundConstInfo
 	{
 public:
-	FileConstInfo(CPPCompile* c, ValPtr v)
-		: CompoundConstInfo(c, v), name(cast_intrusive<FileVal>(v)->Get()->Name())
-		{ }
-
-	std::string InitializerType() const override
-		{ return "CPP_FileConst"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{
-		ivs.emplace_back(std::string("\"") + name + "\"");
-		}
-
-private:
-	std::string name;
+	FileConstInfo(CPPCompile* c, ValPtr v);
 	};
 
 class FuncConstInfo : public CompoundConstInfo
@@ -361,8 +317,6 @@ class FuncConstInfo : public CompoundConstInfo
 public:
 	FuncConstInfo(CPPCompile* _c, ValPtr v);
 
-	std::string InitializerType() const override
-		{ return "CPP_FuncConst"; }
 	void InitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
