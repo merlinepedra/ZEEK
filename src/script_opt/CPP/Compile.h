@@ -545,24 +545,6 @@ private:
 	// See Consts.cc for definitions.
 	//
 
-	// Returns an instantiation of a constant - either as a native
-	// C++ constant, or as a C++ variable that will be bound to
-	// a Zeek value at run-time initialization - that is needed
-	// by the given "parent" object (which acquires an initialization
-	// dependency, if a C++ variable is needed).
-	std::string BuildConstant(IntrusivePtr<Obj> parent, const ValPtr& vp)
-		{
-		return BuildConstant(parent.get(), vp);
-		}
-	std::string BuildConstant(const Obj* parent, const ValPtr& vp);
-
-	// Called to create a constant appropriate for the given expression
-	// or, more directly, the given value.  The second method returns
-	// "true" if a C++ variable needed to be created to construct the
-	// constant at run-time initialization, false if can be instantiated
-	// directly as a C++ constant.
-	void AddConstant(const ConstExpr* c);
-
 	IndicesManager& IndMgr() { return indices_mgr; }
 
 	// Maps (non-native) constants to associated C++ globals.

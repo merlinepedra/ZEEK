@@ -9,23 +9,6 @@ using namespace std;
 namespace zeek::detail
 	{
 
-string CPPCompile::BuildConstant(const Obj* parent, const ValPtr& vp)
-	{
-	if ( ! vp )
-		return "nullptr";
-
-	if ( IsNativeType(vp->GetType()) )
-		return NativeToGT(GenVal(vp), vp->GetType(), GEN_VAL_PTR);
-	else
-		return RegisterConstant(vp)->Name();
-	}
-
-void CPPCompile::AddConstant(const ConstExpr* c)
-	{
-	if ( ! IsNativeType(c->GetType()) )
-		RegisterConstant(c->ValuePtr());
-	}
-
 shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp)
 	{
 	// Make sure the value pointer, which might be transient

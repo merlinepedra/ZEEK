@@ -181,11 +181,6 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	NL();
 
-	for ( const auto& c : pfs.Constants() )
-		AddConstant(c);
-
-	NL();
-
 #if 0
 	for ( auto gi : all_global_info )
 		Emit(gi->Declare());
