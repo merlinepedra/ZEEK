@@ -2,6 +2,7 @@
 
 #include "zeek/ZeekString.h"
 #include "zeek/Desc.h"
+#include "zeek/File.h"
 #include "zeek/RE.h"
 #include "zeek/script_opt/CPP/RunTimeGlobals.h"
 #include "zeek/script_opt/CPP/RunTimeInit.h"
@@ -43,6 +44,220 @@ std::vector<p_hash_type> CPP__Hashes__;
 
 std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 std::vector<CPP_ValElem> CPP__ConstVals__;
+
+
+template <class T>
+CPP_GlobalsNEW<T>::CPP_GlobalsNEW(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
+	: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
+	{
+	int num_globals = 0;
+
+	for ( const auto& cohort : inits )
+		num_globals += cohort.size();
+
+	global_vec.resize(num_globals);
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::InitializeCohort(int cohort)
+	{
+	if ( cohort == 0 )
+		PreInit();
+
+	std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+	auto& co = inits[cohort];
+	std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+	for ( auto i = 0U; i < co.size(); ++i )
+		Generate(global_vec, cohort_offsets[i], co[i]);
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
+	{
+	auto& e_type = CPP__Type__[init_vals[0]];
+	int val = init_vals[1];
+	gvec[offset] = make_enum__CPP(e_type, val);
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals)
+	{
+	auto chars = CPP__Strings__[init_vals[0]];
+	int len = init_vals[1];
+	gvec[offset] = make_intrusive<StringVal>(len, chars);
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals)
+	{
+	auto re = new RE_Matcher(CPP__Strings__[init_vals[0]]);
+	if ( init_vals[1] )
+		re->MakeCaseInsensitive();
+
+	re->Compile();
+
+	gvec[offset] = make_intrusive<PatternVal>(re);
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto n = init_vals.size();
+	auto i = 0U;
+
+	auto l = make_intrusive<ListVal>(TYPE_ANY);
+
+	while ( i < n )
+		l->Append(CPP__ConstVals__[init_vals[i++]].Get());
+
+	gvec[offset] = l;
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto n = init_vals.size();
+	auto i = 0U;
+	auto t = init_vals[i++];
+
+	auto vt = cast_intrusive<VectorType>(CPP__Type__[t]);
+	auto vv = make_intrusive<VectorVal>(vt);
+
+	while ( i < n )
+		vv->Append(CPP__ConstVals__[init_vals[i++]].Get());
+
+	gvec[offset] = vv;
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto n = init_vals.size();
+	auto i = 0U;
+	auto t = init_vals[i++];
+
+	auto rt = cast_intrusive<RecordType>(CPP__Type__[t]);
+	auto rv = make_intrusive<RecordVal>(rt);
+
+	while ( i < n )
+		{
+		auto v = init_vals[i];
+		if ( v >= 0 )
+			rv->Assign(i - 1, CPP__ConstVals__[v].Get());
+		++i;
+		}
+
+	gvec[offset] = rv;
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto n = init_vals.size();
+	auto i = 0U;
+	auto t = init_vals[i++];
+
+	auto tt = cast_intrusive<TableType>(CPP__Type__[t]);
+	auto tv = make_intrusive<TableVal>(tt);
+
+	while ( i < n )
+		{
+		auto index = CPP__ConstVals__[init_vals[i++]].Get();
+		auto v = init_vals[i++];
+		auto value = v >= 0 ? CPP__ConstVals__[v].Get() : nullptr;
+		tv->Assign(index, value);
+		}
+
+	gvec[offset] = tv;
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto n = init_vals.size();
+	auto i = 0U;
+	auto t = init_vals[i++];	// not used
+
+	auto fn = CPP__Strings__[init_vals[i++]];
+	auto fv = make_intrusive<FileVal>(make_intrusive<File>(fn, "w"));
+
+	gvec[offset] = fv;
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto n = init_vals.size();
+	auto i = 0U;
+	auto t = init_vals[i++];
+
+	auto fn = CPP__Strings__[init_vals[i++]];
+
+	std::vector<p_hash_type> hashes;
+
+	while ( i < n )
+		hashes.push_back(CPP__Hashes__[init_vals[i++]]);
+
+	gvec[offset] = lookup_func__CPP(fn, hashes, CPP__Type__[t]);
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto tag = static_cast<AttrTag>(init_vals[0]);
+	auto ae_tag = static_cast<AttrExprType>(init_vals[1]);
+
+	ExprPtr e;
+	auto e_arg = init_vals[2];
+
+	switch ( ae_tag )
+		{
+		case AE_NONE:
+			break;
+
+		case AE_CONST:
+			e = make_intrusive<ConstExpr>(CPP__ConstVals__[e_arg].Get());
+			break;
+
+		case AE_NAME:
+			{
+			auto name = CPP__Strings__[e_arg];
+			auto gl = lookup_ID(name, GLOBAL_MODULE_NAME, false, false, false);
+			ASSERT(gl);
+			e = make_intrusive<NameExpr>(gl);
+			break;
+			}
+
+		case AE_RECORD:
+			{
+			auto t = CPP__Type__[e_arg];
+			auto rt = cast_intrusive<RecordType>(t);
+			auto empty_vals = make_intrusive<ListExpr>();
+			auto construct = make_intrusive<RecordConstructorExpr>(empty_vals);
+			e = make_intrusive<RecordCoerceExpr>(construct, rt);
+			break;
+			}
+
+		case AE_CALL:
+			e = CPP__CallExpr__[e_arg];
+			break;
+		}
+
+	gvec[offset] = make_intrusive<Attr>(tag, e);
+	}
+
+template <class T>
+void CPP_GlobalsNEW<T>::Generate(std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const
+	{
+	auto n = init_vals.size();
+	auto i = 0U;
+
+	std::vector<AttrPtr> a_list;
+	while ( i < n )
+		a_list.emplace_back(CPP__Attr__[init_vals[i++]]);
+
+	gvec[offset] = make_intrusive<Attributes>(a_list, nullptr, false, false);
+	}
 
 
 void CPP_TypeGlobals::PreInit()
@@ -334,6 +549,22 @@ void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set
 		indices_set.emplace_back(move(indices));
 		}
 	}
+
+
+// Instantiate the templates we'll need.
+
+template class CPP_GlobalsNEW<EnumValPtr>;
+template class CPP_GlobalsNEW<StringValPtr>;
+template class CPP_GlobalsNEW<PatternValPtr>;
+template class CPP_GlobalsNEW<ListValPtr>;
+template class CPP_GlobalsNEW<VectorValPtr>;
+template class CPP_GlobalsNEW<RecordValPtr>;
+template class CPP_GlobalsNEW<TableValPtr>;
+template class CPP_GlobalsNEW<FileValPtr>;
+template class CPP_GlobalsNEW<FuncValPtr>;
+template class CPP_GlobalsNEW<AttrPtr>;
+template class CPP_GlobalsNEW<AttributesPtr>;
+template class CPP_GlobalsNEW<TypePtr>;
 
 
 	} // zeek::detail

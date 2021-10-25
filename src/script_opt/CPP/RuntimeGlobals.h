@@ -156,210 +156,30 @@ template <class T>
 class CPP_GlobalsNEW
 	{
 public:
-	CPP_GlobalsNEW(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
-		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
-		{
-		int num_globals = 0;
+	CPP_GlobalsNEW(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
 
-		for ( const auto& cohort : inits )
-			num_globals += cohort.size();
-
-		global_vec.resize(num_globals);
-		}
-
-	void InitializeCohort(int cohort)
-		{
-		if ( cohort == 0 )
-			PreInit();
-
-		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
-		auto& co = inits[cohort];
-		std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
-		for ( auto i = 0U; i < co.size(); ++i )
-			Generate(global_vec, cohort_offsets[i], co[i]);
-		}
+	void InitializeCohort(int cohort);
 
 protected:
 	virtual void PreInit() { }
 
-	void Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
-		{
-		auto& e_type = CPP__Type__[init_vals[0]];
-		int val = init_vals[1];
-		gvec[offset] = make_enum__CPP(e_type, val);
-		}
+	// Note, in the following we pass in the global_vec even though
+	// the method will have direct access to it, because we want to
+	// use overloading to dispatch to custom generation for different
+	// types of values.
+	void Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals);
+	void Generate(std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals);
+	void Generate(std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals);
+	void Generate(std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const;
 
-	void Generate(std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals)
-		{
-		auto chars = CPP__Strings__[init_vals[0]];
-		int len = init_vals[1];
-		gvec[offset] = make_intrusive<StringVal>(len, chars);
-		}
-
-	void Generate(std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals)
-		{
-		auto re = new RE_Matcher(CPP__Strings__[init_vals[0]]);
-		if ( init_vals[1] )
-			re->MakeCaseInsensitive();
-
-		re->Compile();
-
-		gvec[offset] = make_intrusive<PatternVal>(re);
-		}
-
-	void Generate(std::vector<ListValPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto n = init_vals.size();
-		auto i = 0U;
-
-		auto l = make_intrusive<ListVal>(TYPE_ANY);
-
-		while ( i < n )
-			l->Append(CPP__ConstVals__[init_vals[i++]].Get());
-
-		global_vec[offset] = l;
-		}
-
-	void Generate(std::vector<VectorValPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto n = init_vals.size();
-		auto i = 0U;
-		auto t = init_vals[i++];
-
-		auto vt = cast_intrusive<VectorType>(CPP__Type__[t]);
-		auto vv = make_intrusive<VectorVal>(vt);
-
-		while ( i < n )
-			vv->Append(CPP__ConstVals__[init_vals[i++]].Get());
-
-		global_vec[offset] = vv;
-		}
-
-	void Generate(std::vector<RecordValPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto n = init_vals.size();
-		auto i = 0U;
-		auto t = init_vals[i++];
-
-		auto rt = cast_intrusive<RecordType>(CPP__Type__[t]);
-		auto rv = make_intrusive<RecordVal>(rt);
-
-		while ( i < n )
-			{
-			auto v = init_vals[i];
-			if ( v >= 0 )
-				rv->Assign(i - 1, CPP__ConstVals__[v].Get());
-			++i;
-			}
-
-		global_vec[offset] = rv;
-		}
-
-	void Generate(std::vector<TableValPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto n = init_vals.size();
-		auto i = 0U;
-		auto t = init_vals[i++];
-
-		auto tt = cast_intrusive<TableType>(CPP__Type__[t]);
-		auto tv = make_intrusive<TableVal>(tt);
-
-		while ( i < n )
-			{
-			auto index = CPP__ConstVals__[init_vals[i++]].Get();
-			auto v = init_vals[i++];
-			auto value = v >= 0 ? CPP__ConstVals__[v].Get() : nullptr;
-			tv->Assign(index, value);
-			}
-
-		global_vec[offset] = tv;
-		}
-
-	void Generate(std::vector<FileValPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto n = init_vals.size();
-		auto i = 0U;
-		auto t = init_vals[i++];	// not used
-
-		auto fn = CPP__Strings__[init_vals[i++]];
-		auto fv = make_intrusive<FileVal>(fn, "w");
-
-		global_vec[offset] = fv;
-		}
-
-	void Generate(std::vector<FuncValPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto n = init_vals.size();
-		auto i = 0U;
-		auto t = init_vals[i++];
-
-		auto fn = CPP__Strings__[init_vals[i++]];
-
-		std::vector<p_hash_type> hashes;
-
-		while ( i < n )
-			hashes.push_back(CPP__Hashes__[init_vals[i++]]);
-
-		global_vec[offset] = lookup_func__CPP(fn, hashes, CPP__Type__[t]);
-		}
-
-	virtual void Generate(std::vector<AttrPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto tag = static_cast<AttrTag>(init_vals[0]);
-		auto ae_tag = static_cast<AttrExprType>(init_vals[1]);
-
-		ExprPtr e;
-		auto e_arg = init_vals[2];
-
-		switch ( ae_tag )
-			{
-			case AE_NONE:
-				break;
-
-			case AE_CONST:
-				e = make_intrusive<ConstExpr>(CPP__ConstVals__[e_arg].Get());
-				break;
-
-			case AE_NAME:
-				{
-				auto name = CPP__Strings__[e_arg];
-				auto gl = lookup_ID(name, GLOBAL_MODULE_NAME, false, false, false);
-				ASSERT(gl);
-				e = make_intrusive<NameExpr>(gl);
-				break;
-				}
-
-			case AE_RECORD:
-				{
-				auto t = CPP__Type__[e_arg];
-				auto rt = cast_intrusive<RecordType>(t);
-				auto empty_vals = make_intrusive<ListExpr>();
-				auto construct = make_intrusive<RecordConstructorExpr>(empty_vals);
-				e = make_intrusive<RecordCoerceExpr>(construct, rt);
-				break;
-				}
-
-			case AE_CALL:
-				e = CPP__CallExpr__[e_arg];
-				break;
-			}
-
-		global_vec[offset] = make_intrusive<Attr>(tag, e);
-		}
-
-	virtual void Generate(std::vector<AttributesPtr>& global_vec, int offset, ValElemVec& init_vals) const
-		{
-		auto n = init_vals.size();
-		auto i = 0U;
-
-		std::vector<AttrPtr> a_list;
-		while ( i < n )
-			a_list.emplace_back(CPP__Attr__[init_vals[i++]]);
-
-		global_vec[offset] = make_intrusive<Attributes>(a_list, nullptr, false, false);
-		}
-
-	virtual void Generate(std::vector<TypePtr>& global_vec, int offset, ValElemVec& init_vals) const
+	virtual void Generate(std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const
 		{
 		ASSERT(0);
 		}
