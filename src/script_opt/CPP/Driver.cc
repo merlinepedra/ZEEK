@@ -116,6 +116,9 @@ shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const ch
 	          util::streq(tag, "Func") ||
 	          util::streq(tag, "Pattern") )
 		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
+
+	else if ( util::streq(tag, "Type") )
+		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
 	else
 		gi = make_shared<CPP_GlobalsInfo>(tag, type);
 

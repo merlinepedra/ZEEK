@@ -432,14 +432,9 @@ TypeTypeInfo::TypeTypeInfo(CPPCompile* _c, TypePtr _t)
 		init_cohort = gi->InitCohort();
 	}
 
-void TypeTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
+void TypeTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
 	ivs.emplace_back(to_string(c->TypeOffset(tt)));
-	}
-
-void VectorTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
-	{
-	ivs.emplace_back(to_string(c->TypeOffset(yield)));
 	}
 
 VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -449,6 +444,11 @@ VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
 	auto gi = c->RegisterType(yield);
 	if ( gi )
 		init_cohort = gi->InitCohort();
+	}
+
+void VectorTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
+	{
+	ivs.emplace_back(to_string(c->TypeOffset(yield)));
 	}
 
 ListTypeInfo::ListTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -462,13 +462,11 @@ ListTypeInfo::ListTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-void ListTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
+void ListTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
 	string type_list;
 	for ( auto& t : types )
-		type_list += Fmt(c->TypeOffset(t)) + ", ";
-
-	ivs.emplace_back(string("std::vector<int>({ ") + type_list + "})");
+		ivs.emplace_back(Fmt(c->TypeOffset(t)));
 	}
 
 TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -491,7 +489,7 @@ TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-void TableTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
+void TableTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
 	ivs.emplace_back(Fmt(indices));
 	ivs.emplace_back(Fmt(yield ? c->TypeOffset(yield) : -1));
@@ -518,19 +516,11 @@ FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-void FuncTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
+void FuncTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
-	string fl_name;
-	if ( flavor == FUNC_FLAVOR_FUNCTION )
-		fl_name = "FUNC_FLAVOR_FUNCTION";
-	else if ( flavor == FUNC_FLAVOR_EVENT )
-		fl_name = "FUNC_FLAVOR_EVENT";
-	else if ( flavor == FUNC_FLAVOR_HOOK )
-		fl_name = "FUNC_FLAVOR_HOOK";
-
 	ivs.emplace_back(Fmt(c->TypeOffset(params)));
 	ivs.emplace_back(Fmt(yield ? c->TypeOffset(yield) : -1));
-	ivs.emplace_back(fl_name);
+	ivs.emplace_back(Fmt(static_cast<int>(flavor)));
 	}
 
 RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
@@ -563,28 +553,24 @@ RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
 		}
 	}
 
-void RecordTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
+void RecordTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
-	string names, types, attrs;
+	ivs.emplace_back(Fmt(c->TrackString(t->GetName())));
 
-	for ( auto& n : field_names )
-		names += string("\"") + n + "\", ";
+	auto n = field_names.size();
 
-	for ( auto& t : field_types )
+	for ( auto i = 0U; i < n; ++i )
 		{
+		ivs.emplace_back(Fmt(c->TrackString(field_names[i])));
+
 		// Because RecordType's can be recursively defined,
 		// during construction we couldn't reliably access
 		// the field type's offsets.  At this point, though,
 		// they should all be available.
-		types += Fmt(c->TypeOffset(t)) + ", ";
+		ivs.emplace_back(Fmt(c->TypeOffset(field_types[i])));
+
+		ivs.emplace_back(Fmt(field_attrs[i]));
 		}
-
-	for ( auto& a : field_attrs )
-		attrs += Fmt(a) + ", ";
-
-	ivs.emplace_back(string("std::vector<const char*>({ ") + names + "})");
-	ivs.emplace_back(string("std::vector<int>({ ") + types + "})");
-	ivs.emplace_back(string("std::vector<int>({ ") + attrs + "})");
 	}
 
 

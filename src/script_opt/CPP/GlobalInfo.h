@@ -103,7 +103,10 @@ public:
 	CPP_CompoundGlobalsInfo(std::string _tag, std::string type)
 		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
 		{
-		CPP_type2 = std::string("CPP_GlobalsNEW<") + CPPType() + ">";
+		if ( tag == "Type" )
+			CPP_type2 = "CPP_TypeGlobals";
+		else
+			CPP_type2 = std::string("CPP_GlobalsNEW<") + CPPType() + ">";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
@@ -472,9 +475,7 @@ class TypeTypeInfo : public CompoundTypeInfo
 public:
 	TypeTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string InitializerType() const override
-		{ return "CPP_TypeType"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
 	TypePtr tt;
@@ -485,9 +486,7 @@ class VectorTypeInfo : public CompoundTypeInfo
 public:
 	VectorTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string InitializerType() const override
-		{ return "CPP_VectorType"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
 	TypePtr yield;
@@ -498,9 +497,7 @@ class ListTypeInfo : public CompoundTypeInfo
 public:
 	ListTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string InitializerType() const override
-		{ return "CPP_TypeList"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
 	const std::vector<TypePtr>& types;
@@ -511,9 +508,7 @@ class TableTypeInfo : public CompoundTypeInfo
 public:
 	TableTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string InitializerType() const override
-		{ return "CPP_TableType"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
 	int indices;
@@ -525,9 +520,7 @@ class FuncTypeInfo : public CompoundTypeInfo
 public:
 	FuncTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string InitializerType() const override
-		{ return "CPP_FuncType"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
 	FunctionFlavor flavor;
@@ -540,9 +533,7 @@ class RecordTypeInfo : public CompoundTypeInfo
 public:
 	RecordTypeInfo(CPPCompile* c, TypePtr _t);
 
-	std::string InitializerType() const override
-		{ return "CPP_RecordType"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
 	std::vector<std::string> field_names;

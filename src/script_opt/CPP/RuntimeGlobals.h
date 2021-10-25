@@ -168,6 +168,9 @@ public:
 
 	void InitializeCohort(int cohort)
 		{
+		if ( cohort == 0 )
+			PreInit();
+
 		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
 		auto& co = inits[cohort];
 		std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
@@ -176,6 +179,8 @@ public:
 		}
 
 protected:
+	virtual void PreInit() { }
+
 	void Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
 		{
 		auto& e_type = CPP__Type__[init_vals[0]];
@@ -317,6 +322,10 @@ class CPP_TypeGlobals : public CPP_GlobalsNEW<TypePtr>
 public:
 	CPP_TypeGlobals(std::vector<TypePtr>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
 		: CPP_GlobalsNEW<TypePtr>(_global_vec, _offsets_set, _inits)
+		{ }
+
+protected:
+	void PreInit() override
 		{
 		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
 		for ( auto cohort = 0U; cohort < offsets_vec.size(); ++cohort )
@@ -328,7 +337,6 @@ public:
 			}
 		}
 
-protected:
 	void PreInit(int offset, ValElemVec& init_vals)
 		{
 		auto tag = static_cast<TypeTag>(init_vals[0]);
@@ -498,7 +506,7 @@ protected:
 			type_decl_list tl;
 
 			auto n = init_vals.size();
-			auto i = 1U;
+			auto i = 2U;
 
 			while ( i < n )
 				{
