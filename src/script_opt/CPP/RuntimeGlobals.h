@@ -671,28 +671,6 @@ public:
 	};
 
 
-class CPP_AbstractType : public CPP_Global<TypePtr>
-	{
-public:
-	CPP_AbstractType() : CPP_Global<TypePtr>() { }
-	CPP_AbstractType(std::string _name)
-		: CPP_Global<TypePtr>(), name(std::move(_name)) { }
-
-	void Generate(std::vector<TypePtr>& global_vec, int offset) const override
-		{
-		DoGenerate(global_vec, offset);
-		if ( ! name.empty() )
-			register_type__CPP(global_vec[offset], name);
-		}
-
-protected:
-	virtual void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const
-		{ global_vec[offset] = nullptr; }
-
-	std::string name;
-	};
-
-
 class CPP_FieldMapping
 	{
 public:
