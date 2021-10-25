@@ -45,17 +45,6 @@ std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 std::vector<CPP_ValElem> CPP__ConstVals__;
 
 
-void CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec, int offset) const
-	{
-	vector<AttrPtr> a_list;
-	for ( auto a : attrs )
-		a_list.push_back(CPP__Attr__[a]);
-
-	global_vec[offset] = make_intrusive<Attributes>(a_list, nullptr, false, false);
-	}
-
-
-
 int CPP_FieldMapping::ComputeOffset() const
 	{
 	auto r = CPP__Type__[rec]->AsRecordType();

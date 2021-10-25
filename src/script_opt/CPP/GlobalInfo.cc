@@ -193,7 +193,7 @@ ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
 	auto lv = cast_intrusive<ListVal>(v);
 	auto n = lv->Length();
 
-	for ( auto i = 0; i < n; ++i )
+	for ( auto i = 0U; i < n; ++i )
 		vals.emplace_back(ValElem(c, lv->Idx(i)));
 	}
 
@@ -324,26 +324,16 @@ AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr)
 		vals.emplace_back(Fmt(static_cast<int>(AE_NONE)));
 	}
 
-AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)
-	: CPP_GlobalInfo()
+AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs)
+	: CompoundConstInfo(_c)
 	{
 	for ( const auto& a : _attrs->GetAttrs() )
 		{
 		ASSERT(c->processed_attr.count(a.get()) > 0);
 		auto gi = c->processed_attr[a.get()];
 		init_cohort = max(init_cohort, gi->InitCohort() + 1);
-		attrs.push_back(gi->Offset());
+		vals.emplace_back(Fmt(gi->Offset()));
 		}
-	}
-
-void AttrsInfo::InitializerVals(std::vector<std::string>& ivs) const
-	{
-	string attr_list;
-
-	for ( auto a : attrs )
-		attr_list += Fmt(a) + ", ";
-
-	ivs.emplace_back(string("std::vector<int>({ ") + attr_list + "})");
 	}
 
 GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, string _CPP_name)

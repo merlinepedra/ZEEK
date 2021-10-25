@@ -334,17 +334,10 @@ public:
 	AttrInfo(CPPCompile* c, const AttrPtr& attr);
 	};
 
-class AttrsInfo : public CPP_GlobalInfo
+class AttrsInfo : public CompoundConstInfo
 	{
 public:
 	AttrsInfo(CPPCompile* c, const AttributesPtr& attrs);
-
-	std::string InitializerType() const override
-		{ return "CPP_Attrs"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override;
-
-protected:
-	std::vector<int> attrs;
 	};
 
 

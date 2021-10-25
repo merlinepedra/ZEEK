@@ -211,7 +211,6 @@ protected:
 		{
 		auto n = init_vals.size();
 		auto i = 0U;
-		auto t = init_vals[i++];	// not used
 
 		auto l = make_intrusive<ListVal>(TYPE_ANY);
 
@@ -346,6 +345,18 @@ protected:
 			}
 
 		global_vec[offset] = make_intrusive<Attr>(tag, e);
+		}
+
+	virtual void Generate(std::vector<AttributesPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto n = init_vals.size();
+		auto i = 0U;
+
+		std::vector<AttrPtr> a_list;
+		while ( i < n )
+			a_list.emplace_back(CPP__Attr__[init_vals[i++]]);
+
+		global_vec[offset] = make_intrusive<Attributes>(a_list, nullptr, false, false);
 		}
 
 	virtual void Generate(std::vector<TypePtr>& global_vec, int offset, ValElemVec& init_vals) const
@@ -657,19 +668,6 @@ public:
 		{
 		this->global_vec[offset] = make_intrusive<SubNetVal>(CPP__Strings__[this->inits[index]]);
 		}
-	};
-
-
-class CPP_Attrs : public CPP_Global<AttributesPtr>
-	{
-public:
-	CPP_Attrs(std::vector<int> _attrs)
-		: CPP_Global<AttributesPtr>(), attrs(std::move(_attrs)) { }
-
-	void Generate(std::vector<AttributesPtr>& global_vec, int offset) const override;
-
-private:
-	std::vector<int> attrs;
 	};
 
 
