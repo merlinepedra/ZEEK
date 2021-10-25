@@ -4,6 +4,7 @@
 // by the generated code.
 
 #include "zeek/Expr.h"
+#include "zeek/module_util.h"
 #include "zeek/script_opt/CPP/RuntimeInit.h"
 
 #pragma once
@@ -301,6 +302,50 @@ protected:
 			hashes.push_back(CPP__Hashes__[init_vals[i++]]);
 
 		global_vec[offset] = lookup_func__CPP(fn, hashes, CPP__Type__[t]);
+		}
+
+	virtual void Generate(std::vector<AttrPtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		auto tag = static_cast<AttrTag>(init_vals[0]);
+		auto ae_tag = static_cast<AttrExprType>(init_vals[1]);
+
+		ExprPtr e;
+		auto e_arg = init_vals[2];
+
+		switch ( ae_tag )
+			{
+			case AE_NONE:
+				break;
+
+			case AE_CONST:
+				e = make_intrusive<ConstExpr>(CPP__ConstVals__[e_arg].Get());
+				break;
+
+			case AE_NAME:
+				{
+				auto name = CPP__Strings__[e_arg];
+				auto gl = lookup_ID(name, GLOBAL_MODULE_NAME, false, false, false);
+				ASSERT(gl);
+				e = make_intrusive<NameExpr>(gl);
+				break;
+				}
+
+			case AE_RECORD:
+				{
+				auto t = CPP__Type__[e_arg];
+				auto rt = cast_intrusive<RecordType>(t);
+				auto empty_vals = make_intrusive<ListExpr>();
+				auto construct = make_intrusive<RecordConstructorExpr>(empty_vals);
+				e = make_intrusive<RecordCoerceExpr>(construct, rt);
+				break;
+				}
+
+			case AE_CALL:
+				e = CPP__CallExpr__[e_arg];
+				break;
+			}
+
+		global_vec[offset] = make_intrusive<Attr>(tag, e);
 		}
 
 	virtual void Generate(std::vector<TypePtr>& global_vec, int offset, ValElemVec& init_vals) const
@@ -614,77 +659,6 @@ public:
 		}
 	};
 
-
-class CPP_AbstractAttrExpr
-	{
-public:
-	CPP_AbstractAttrExpr() {}
-	virtual ~CPP_AbstractAttrExpr() {}
-
-	virtual ExprPtr Build() const { return nullptr; }
-	};
-
-using AbstractAttrPtr = std::shared_ptr<CPP_AbstractAttrExpr>;
-
-class CPP_ConstAttrExpr : public CPP_AbstractAttrExpr
-	{
-public:
-	CPP_ConstAttrExpr(int _v) : v(_v) {}
-
-	ExprPtr Build() const override
-		{ return make_intrusive<ConstExpr>(CPP__ConstVals__[v].Get()); }
-
-private:
-	int v;
-	};
-
-class CPP_NameAttrExpr : public CPP_AbstractAttrExpr
-	{
-public:
-	CPP_NameAttrExpr(IDPtr& _id_addr) : id_addr(_id_addr) {}
-
-	ExprPtr Build() const override
-		{ return make_intrusive<NameExpr>(id_addr); }
-
-private:
-	IDPtr& id_addr;
-	};
-
-class CPP_RecordAttrExpr : public CPP_AbstractAttrExpr
-	{
-public:
-	CPP_RecordAttrExpr(int _type) : type(_type) {}
-
-	ExprPtr Build() const override;
-
-private:
-	int type;
-	};
-
-class CPP_CallAttrExpr : public CPP_AbstractAttrExpr
-	{
-public:
-	CPP_CallAttrExpr(int _call) : call(_call) {}
-
-	ExprPtr Build() const override { return CPP__CallExpr__[call]; }
-
-private:
-	int call;
-	};
-
-class CPP_Attr : public CPP_Global<AttrPtr>
-	{
-public:
-	CPP_Attr(AttrTag t, AbstractAttrPtr _expr)
-		: CPP_Global<AttrPtr>(), tag(t), expr(std::move(_expr)) { }
-
-	void Generate(std::vector<AttrPtr>& global_vec, int offset) const override
-		{ global_vec[offset] =  make_intrusive<Attr>(tag, expr->Build()); }
-
-private:
-	AttrTag tag;
-	AbstractAttrPtr expr;
-	};
 
 class CPP_Attrs : public CPP_Global<AttributesPtr>
 	{

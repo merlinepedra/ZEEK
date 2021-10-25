@@ -3,6 +3,7 @@
 #include "zeek/ZeekString.h"
 #include "zeek/Desc.h"
 #include "zeek/RE.h"
+#include "zeek/script_opt/CPP/Attrs.h"
 #include "zeek/script_opt/CPP/Compile.h"
 
 using namespace std;
@@ -274,10 +275,10 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 	}
 
 
-AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
-	: CPP_GlobalInfo()
+AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr)
+	: CompoundConstInfo(_c)
 	{
-	tag = c->AttrName(attr->Tag());
+	vals.emplace_back(Fmt(static_cast<int>(attr->Tag())));
 	auto a_e = attr->GetExpr();
 
 	if ( a_e )
@@ -285,20 +286,20 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 		auto gi = c->RegisterType(a_e->GetType());
 		init_cohort = max(init_cohort, gi->InitCohort() + 1);
 
-		auto expr_type = gi->Name();
-
 		if ( ! CPPCompile::IsSimpleInitExpr(a_e) )
 			{
 			gi = c->RegisterInitExpr(a_e);
 			init_cohort = max(init_cohort, gi->InitCohort() + 1);
-			e_init_type = "CPP_CallAttrExpr";
-			e_init_args = Fmt(gi->Offset());
+
+			vals.emplace_back(Fmt(static_cast<int>(AE_CALL)));
+			vals.emplace_back(Fmt(gi->Offset()));
 			}
 
 		else if ( a_e->Tag() == EXPR_CONST )
 			{
-			e_init_type = "CPP_ConstAttrExpr";
-			e_init_args = ValElem(c, a_e->AsConstExpr()->ValuePtr());
+			auto v = a_e->AsConstExpr()->ValuePtr();
+			vals.emplace_back(Fmt(static_cast<int>(AE_CONST)));
+			vals.emplace_back(ValElem(c, v));
 			}
 
 		else if ( a_e->Tag() == EXPR_NAME )
@@ -307,20 +308,20 @@ AttrInfo::AttrInfo(CPPCompile* c, const AttrPtr& attr)
 			auto gi = c->RegisterGlobal(g);
 			init_cohort = max(init_cohort, gi->InitCohort() + 1);
 
-			e_init_type = "CPP_NameAttrExpr";
-			e_init_args = c->GlobalName(a_e);
+			vals.emplace_back(Fmt(static_cast<int>(AE_NAME)));
+			vals.emplace_back(Fmt(c->TrackString(g->Name())));
 			}
 
 		else
 			{
 			ASSERT(a_e->Tag() == EXPR_RECORD_COERCE);
-			e_init_type = "CPP_RecordAttrExpr";
-			e_init_args = gi->Name();
+			vals.emplace_back(Fmt(static_cast<int>(AE_RECORD)));
+			vals.emplace_back(Fmt(gi->Offset()));
 			}
 		}
 
 	else
-		e_init_type = "CPP_AbstractAttrExpr";
+		vals.emplace_back(Fmt(static_cast<int>(AE_NONE)));
 	}
 
 AttrsInfo::AttrsInfo(CPPCompile* c, const AttributesPtr& _attrs)

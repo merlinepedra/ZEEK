@@ -269,11 +269,12 @@ class CompoundConstInfo : public CPP_GlobalInfo
 	{
 public:
 	CompoundConstInfo(CPPCompile* c, ValPtr v);
-	CompoundConstInfo(CPPCompile* _c) : c(_c) { type = 0; }
+	CompoundConstInfo(CPPCompile* _c) : c(_c) { type = -1; }
 
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
-		ivs.emplace_back(std::to_string(type));
+		if ( type >= 0 )
+			ivs.emplace_back(std::to_string(type));
 
 		for ( auto& v : vals )
 			ivs.push_back(v);
@@ -327,23 +328,10 @@ private:
 	};
 
 
-class AttrInfo : public CPP_GlobalInfo
+class AttrInfo : public CompoundConstInfo
 	{
 public:
 	AttrInfo(CPPCompile* c, const AttrPtr& attr);
-
-	std::string InitializerType() const override
-		{ return "CPP_Attr"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{
-		ivs.emplace_back(tag);
-		ivs.emplace_back(std::string("std::make_shared<") + e_init_type + ">(" + e_init_args + ")");
-		}
-
-protected:
-	std::string tag;
-	std::string e_init_type;
-	std::string e_init_args;
 	};
 
 class AttrsInfo : public CPP_GlobalInfo

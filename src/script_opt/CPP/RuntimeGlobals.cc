@@ -45,15 +45,6 @@ std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 std::vector<CPP_ValElem> CPP__ConstVals__;
 
 
-ExprPtr CPP_RecordAttrExpr::Build() const
-	{
-	auto t = CPP__Type__[type];
-	auto rt = cast_intrusive<RecordType>(t);
-	auto empty_vals = make_intrusive<ListExpr>();
-	auto construct = make_intrusive<RecordConstructorExpr>(empty_vals);
-	return make_intrusive<RecordCoerceExpr>(construct, rt);
-	}
-
 void CPP_Attrs::Generate(std::vector<AttributesPtr>& global_vec, int offset) const
 	{
 	vector<AttrPtr> a_list;
