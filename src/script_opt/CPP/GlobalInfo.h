@@ -420,46 +420,43 @@ protected:
 class AbstractTypeInfo : public CPP_GlobalInfo
 	{
 public:
-	AbstractTypeInfo(TypePtr _t) : CPP_GlobalInfo(), t(std::move(_t)) { }
+	AbstractTypeInfo(CPPCompile* _c, TypePtr _t) : CPP_GlobalInfo(), c(_c), t(std::move(_t)) { }
+
+	void InitializerVals(std::vector<std::string>& ivs) const override
+		{
+		ivs.emplace_back(std::to_string(static_cast<int>(t->Tag())));
+		AddInitializerVals(ivs);
+		}
+
+	virtual void AddInitializerVals(std::vector<std::string>& ivs) const
+		{
+		}
 
 protected:
+	CPPCompile* c;
 	TypePtr t;
 	};
 
 class BaseTypeInfo : public AbstractTypeInfo
 	{
 public:
-	BaseTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
-
-	std::string InitializerType() const override
-		{ return "CPP_BaseType"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	BaseTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, std::move(_t)) { }
 	};
 
 class EnumTypeInfo : public AbstractTypeInfo
 	{
 public:
-	EnumTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
+	EnumTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, std::move(_t)) { }
 
-	std::string InitializerType() const override
-		{ return "CPP_EnumType"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override;
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 	};
 
 class OpaqueTypeInfo : public AbstractTypeInfo
 	{
 public:
-	OpaqueTypeInfo(TypePtr _t) : AbstractTypeInfo(std::move(_t)) { }
+	OpaqueTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, std::move(_t)) { }
 
-	std::string InitializerType() const override
-		{ return "CPP_OpaqueType"; }
-
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{
-		ivs.emplace_back(std::string("\"") + t->GetName() + "\"");
-		}
+	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 	};
 
 
@@ -467,10 +464,7 @@ class CompoundTypeInfo : public AbstractTypeInfo
 	{
 public:
 	CompoundTypeInfo(CPPCompile* _c, TypePtr _t)
-		: AbstractTypeInfo(_t), c(_c) { }
-
-protected:
-	CPPCompile* c;
+		: AbstractTypeInfo(_c, _t) { }
 	};
 
 class TypeTypeInfo : public CompoundTypeInfo

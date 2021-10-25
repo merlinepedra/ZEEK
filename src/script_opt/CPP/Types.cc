@@ -305,15 +305,15 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 		case TYPE_VOID:
 		case TYPE_SUBNET:
 		case TYPE_FILE:
-			gi = make_shared<BaseTypeInfo>(tp);
+			gi = make_shared<BaseTypeInfo>(this, tp);
 			break;
 
 		case TYPE_ENUM:
-			gi = make_shared<EnumTypeInfo>(tp);
+			gi = make_shared<EnumTypeInfo>(this, tp);
 			break;
 
 		case TYPE_OPAQUE:
-			gi = make_shared<OpaqueTypeInfo>(tp);
+			gi = make_shared<OpaqueTypeInfo>(this, tp);
 			break;
 
 		case TYPE_TYPE:

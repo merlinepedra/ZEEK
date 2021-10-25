@@ -164,9 +164,6 @@ public:
 			num_globals += cohort.size();
 
 		global_vec.resize(num_globals);
-
-		for ( auto i = 0; i < num_globals; ++i )
-			PreInit(i);
 		}
 
 	void InitializeCohort(int cohort)
@@ -179,10 +176,6 @@ public:
 		}
 
 protected:
-	virtual void PreInit(int i)
-		{
-		}
-
 	void Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
 		{
 		auto& e_type = CPP__Type__[init_vals[0]];
@@ -305,13 +298,226 @@ protected:
 		global_vec[offset] = lookup_func__CPP(fn, hashes, CPP__Type__[t]);
 		}
 
-private:
+	virtual void Generate(std::vector<TypePtr>& global_vec, int offset, ValElemVec& init_vals) const
+		{
+		ASSERT(0);
+		}
+
+protected:
 	std::vector<T>& global_vec;
 	int offsets_set;
 
 	// Indexed first by cohort, and then iterated over to get all
 	// of the initializers for that cohort.
 	std::vector<std::vector<std::vector<int>>> inits;
+	};
+
+class CPP_TypeGlobals : public CPP_GlobalsNEW<TypePtr>
+	{
+public:
+	CPP_TypeGlobals(std::vector<TypePtr>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
+		: CPP_GlobalsNEW<TypePtr>(_global_vec, _offsets_set, _inits)
+		{
+		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+		for ( auto cohort = 0U; cohort < offsets_vec.size(); ++cohort )
+			{
+			auto& co = inits[cohort];
+			std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+			for ( auto i = 0U; i < co.size(); ++i )
+				PreInit(cohort_offsets[i], co[i]);
+			}
+		}
+
+protected:
+	void PreInit(int offset, ValElemVec& init_vals)
+		{
+		auto tag = static_cast<TypeTag>(init_vals[0]);
+
+		if ( tag == TYPE_LIST )
+			global_vec[offset] = make_intrusive<TypeList>();
+
+		else if ( tag == TYPE_RECORD )
+			{
+			auto name = CPP__Strings__[init_vals[1]];
+			if ( name[0] )
+				global_vec[offset] = get_record_type__CPP(name);
+			else
+				global_vec[offset] = get_record_type__CPP(nullptr);
+			}
+		}
+
+	void Generate(std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const override
+		{
+		auto tag = static_cast<TypeTag>(init_vals[0]);
+		TypePtr t;
+		switch ( tag )
+			{
+			case TYPE_ADDR:
+			case TYPE_ANY:
+			case TYPE_BOOL:
+			case TYPE_COUNT:
+			case TYPE_DOUBLE:
+			case TYPE_ERROR:
+			case TYPE_INT:
+			case TYPE_INTERVAL:
+			case TYPE_PATTERN:
+			case TYPE_PORT:
+			case TYPE_STRING:
+			case TYPE_TIME:
+			case TYPE_TIMER:
+			case TYPE_VOID:
+			case TYPE_SUBNET:
+			case TYPE_FILE:
+				t = base_type(tag);
+				break;
+
+			case TYPE_ENUM:
+				t = BuildEnumType(init_vals);
+				break;
+
+			case TYPE_OPAQUE:
+				t = BuildOpaqueType(init_vals);
+				break;
+
+			case TYPE_TYPE:
+				t = BuildTypeType(init_vals);
+				break;
+
+			case TYPE_VECTOR:
+				t = BuildVectorType(init_vals);
+				break;
+
+			case TYPE_LIST:
+				t = BuildTypeList(init_vals, offset);
+				break;
+
+			case TYPE_TABLE:
+				t = BuildTableType(init_vals);
+				break;
+
+			case TYPE_FUNC:
+				t = BuildFuncType(init_vals);
+				break;
+
+			case TYPE_RECORD:
+				t = BuildRecordType(init_vals, offset);
+				break;
+
+			default:
+				ASSERT(0);
+			}
+
+		gvec[offset] = t;
+		}
+
+	TypePtr BuildEnumType(ValElemVec& init_vals) const
+		{
+		auto& name = CPP__Strings__[init_vals[1]];
+		auto et = get_enum_type__CPP(name);
+
+		if ( et->Names().empty() )
+			{
+			auto n = init_vals.size();
+			auto i = 2U;
+
+			while ( i < n )
+				{
+				auto e_name = CPP__Strings__[init_vals[i++]];
+				auto e_val = init_vals[i++];
+				et->AddNameInternal(e_name, e_val);
+				}
+			}
+
+		return et;
+		}
+
+	TypePtr BuildOpaqueType(ValElemVec& init_vals) const
+		{
+		auto& name = CPP__Strings__[init_vals[1]];
+		return make_intrusive<OpaqueType>(name);
+		}
+
+	TypePtr BuildTypeType(ValElemVec& init_vals) const
+		{
+		auto& t = CPP__Type__[init_vals[1]];
+		return make_intrusive<TypeType>(t);
+		}
+
+	TypePtr BuildVectorType(ValElemVec& init_vals) const
+		{
+		auto& t = CPP__Type__[init_vals[1]];
+		return make_intrusive<VectorType>(t);
+		}
+
+	TypePtr BuildTypeList(ValElemVec& init_vals, int offset) const
+		{
+		const auto& tl = cast_intrusive<TypeList>(global_vec[offset]);
+
+		auto n = init_vals.size();
+		auto i = 1U;
+
+		while ( i < n )
+			tl->Append(CPP__Type__[init_vals[i++]]);
+
+		return tl;
+		}
+
+	TypePtr BuildTableType(ValElemVec& init_vals) const
+		{
+		auto index = cast_intrusive<TypeList>(CPP__Type__[init_vals[1]]);
+		auto yield_i = init_vals[2];
+		auto yield = yield_i >= 0 ? CPP__Type__[yield_i] : nullptr;
+
+		return make_intrusive<TableType>(index, yield);
+		}
+
+	TypePtr BuildFuncType(ValElemVec& init_vals) const
+		{
+		auto p = cast_intrusive<RecordType>(CPP__Type__[init_vals[1]]);
+		auto yield_i = init_vals[2];
+		auto flavor = static_cast<FunctionFlavor>(init_vals[3]);
+
+		TypePtr y;
+
+		if ( yield_i >= 0 )
+			y = CPP__Type__[yield_i];
+
+		else if ( flavor == FUNC_FLAVOR_FUNCTION || flavor == FUNC_FLAVOR_HOOK )
+			y = base_type(TYPE_VOID);
+
+		return make_intrusive<FuncType>(p, y, flavor);
+		}
+
+	TypePtr BuildRecordType(ValElemVec& init_vals, int offset) const
+		{
+		auto r = cast_intrusive<RecordType>(global_vec[offset]);
+		ASSERT(r);
+
+		if ( r->NumFields() == 0 )
+			{
+			type_decl_list tl;
+
+			auto n = init_vals.size();
+			auto i = 1U;
+
+			while ( i < n )
+				{
+				auto id = util::copy_string(CPP__Strings__[init_vals[i++]]);
+				auto type = CPP__Type__[init_vals[i++]];
+				auto attrs_i = init_vals[i++];
+
+				AttributesPtr attrs;
+				if ( attrs_i >= 0 )
+					attrs = CPP__Attributes__[attrs_i];
+
+				tl.append(new TypeDecl(id, type, attrs));
+				}
+
+			r->AddFieldsDirectly(tl);
+			}
+
+		return r;
+		}
 	};
 
 
@@ -504,130 +710,6 @@ protected:
 		{ global_vec[offset] = nullptr; }
 
 	std::string name;
-	};
-
-class CPP_BaseType : public CPP_AbstractType
-	{
-public:
-	CPP_BaseType(TypeTag t)
-		: CPP_AbstractType(), tag(t) { }
-
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override
-		{ global_vec[offset] = base_type(tag); }
-
-private:
-	TypeTag tag;
-	};
-
-class CPP_EnumType : public CPP_AbstractType
-	{
-public:
-	CPP_EnumType(std::string _name, std::vector<const char*> _elems, std::vector<int> _vals)
-		: CPP_AbstractType(_name), elems(std::move(_elems)), vals(std::move(_vals)) { }
-
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override;
-
-private:
-	std::vector<const char*> elems;
-	std::vector<int> vals;
-	};
-
-class CPP_OpaqueType : public CPP_AbstractType
-	{
-public:
-	CPP_OpaqueType(std::string _name)
-		: CPP_AbstractType(_name) { }
-
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override
-		{ global_vec[offset] = make_intrusive<OpaqueType>(name); }
-	};
-
-class CPP_TypeType : public CPP_AbstractType
-	{
-public:
-	CPP_TypeType(int _tt_offset)
-		: CPP_AbstractType(), tt_offset(_tt_offset) { }
-
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override
-		{ global_vec[offset] = make_intrusive<TypeType>(global_vec[tt_offset]); }
-
-private:
-	int tt_offset;
-	};
-
-class CPP_VectorType : public CPP_AbstractType
-	{
-public:
-	CPP_VectorType(int _yt_offset)
-		: CPP_AbstractType(), yt_offset(_yt_offset) { }
-
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override
-		{ global_vec[offset] = make_intrusive<VectorType>(global_vec[yt_offset]); }
-
-private:
-	int yt_offset;
-	};
-
-class CPP_TypeList : public CPP_AbstractType
-	{
-public:
-	CPP_TypeList(std::vector<int> _types)
-		: CPP_AbstractType(), types(std::move(_types)) { }
-
-	void PreInit(std::vector<TypePtr>& global_vec, int offset) const override
-		{ global_vec[offset] = make_intrusive<TypeList>(); }
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override
-		{
-		const auto& tl = cast_intrusive<TypeList>(global_vec[offset]);
-
-		for ( auto t : types )
-			tl->Append(global_vec[t]);
-		}
-
-private:
-	std::vector<int> types;
-	};
-
-class CPP_TableType : public CPP_AbstractType
-	{
-public:
-	CPP_TableType(int _indices, int _yield)
-		: CPP_AbstractType(), indices(std::move(_indices)), yield(_yield) { }
-
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override;
-
-private:
-	int indices;
-	int yield;
-	};
-
-class CPP_FuncType : public CPP_AbstractType
-	{
-public:
-	CPP_FuncType(int _params, int _yield, FunctionFlavor _flavor)
-		: CPP_AbstractType(), params(std::move(_params)), yield(_yield), flavor(_flavor) { }
-
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override;
-
-private:
-	int params;
-	int yield;
-	FunctionFlavor flavor;
-	};
-
-class CPP_RecordType : public CPP_AbstractType
-	{
-public:
-	CPP_RecordType(std::vector<const char*> _field_names, std::vector<int> _field_types, std::vector<int> _field_attrs)
-		: CPP_AbstractType(), field_names(std::move(_field_names)), field_types(_field_types), field_attrs(_field_attrs) { }
-
-	void PreInit(std::vector<TypePtr>& global_vec, int offset) const override;
-	void DoGenerate(std::vector<TypePtr>& global_vec, int offset) const override;
-
-private:
-	std::vector<const char*> field_names;
-	std::vector<int> field_types;
-	std::vector<int> field_attrs;
 	};
 
 

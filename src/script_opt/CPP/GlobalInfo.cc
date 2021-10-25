@@ -403,25 +403,23 @@ void LambdaRegistrationInfo::InitializerVals(std::vector<std::string>& ivs) cons
 	ivs.emplace_back(has_captures ? "true" : "false");
 	}
 
-void BaseTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
-	{
-	ivs.emplace_back(CPPCompile::TypeTagName(t->Tag()));
-	}
 
-void EnumTypeInfo::InitializerVals(std::vector<std::string>& ivs) const
+void EnumTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
-	string elem_list, val_list;
+	ivs.emplace_back(Fmt(c->TrackString(t->GetName())));
+
 	auto et = t->AsEnumType();
 
 	for ( const auto& name_pair : et->Names() )
 		{
-		elem_list += string("\"") + name_pair.first + "\", ";
-		val_list += Fmt(int(name_pair.second)) + ", ";
+		ivs.emplace_back(Fmt(c->TrackString(name_pair.first)));
+		ivs.emplace_back(Fmt(int(name_pair.second)));
 		}
+	}
 
-	ivs.emplace_back(string("\"") + t->GetName() + "\"");
-	ivs.emplace_back(string("std::vector<const char*>({ ") + elem_list + "})");
-	ivs.emplace_back(string("std::vector<int>({ ") + val_list + "})");
+void OpaqueTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
+	{
+	ivs.emplace_back(Fmt(c->TrackString(t->GetName())));
 	}
 
 
