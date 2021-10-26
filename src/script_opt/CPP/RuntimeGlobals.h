@@ -132,23 +132,6 @@ private:
 
 extern std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
 
-
-class CPP_ValElem
-	{
-public:
-	CPP_ValElem(TypeTag _tag, int _offset)
-		: tag(_tag), offset(_offset) { }
-
-	ValPtr Get() const
-		{ return offset >= 0 ? CPP__Consts__[tag]->Get(offset) : nullptr; }
-
-private:
-	TypeTag tag;
-	int offset;
-	};
-
-extern std::vector<CPP_ValElem> CPP__ConstVals__;
-
 using ValElemVec = std::vector<int>;
 
 
@@ -303,70 +286,6 @@ public:
 	};
 
 
-class CPP_FieldMapping
-	{
-public:
-	CPP_FieldMapping(int _rec, std::string _field_name, int _field_type, int _field_attrs)
-		: rec(_rec), field_name(std::move(_field_name)), field_type(_field_type), field_attrs(_field_attrs)
-		{ }
-
-	int ComputeOffset() const;
-
-private:
-	int rec;
-	std::string field_name;
-	int field_type;
-	int field_attrs;
-	};
-
-
-class CPP_EnumMapping
-	{
-public:
-	CPP_EnumMapping(int _e_type, std::string _e_name)
-		: e_type(_e_type), e_name(std::move(_e_name))
-		{ }
-
-	int ComputeOffset() const;
-
-private:
-	int e_type;
-	std::string e_name;
-	};
-
-
-class CPP_RegisterBody
-	{
-public:
-	CPP_RegisterBody(std::string _func_name, void* _func, int _type_signature, int _priority, p_hash_type _h, std::vector<std::string> _events)
-		: func_name(std::move(_func_name)), func(_func), type_signature(_type_signature), priority(_priority), h(_h), events(std::move(_events))
-		{ }
-	virtual ~CPP_RegisterBody() { }
-
-	virtual void Register() const { }
-
-	std::string func_name;
-	void* func;
-	int type_signature;
-	int priority;
-	p_hash_type h;
-	std::vector<std::string> events;
-	};
-
-class CPP_LookupBiF
-	{
-public:
-	CPP_LookupBiF(zeek::Func*& _bif_func, std::string _bif_name)
-		: bif_func(_bif_func), bif_name(std::move(_bif_name))
-		{ }
-
-	void ResolveBiF() const { bif_func = lookup_bif__CPP(bif_name.c_str()); }
-
-protected:
-	zeek::Func*& bif_func;
-	std::string bif_name;
-	};
-
 class CPP_GlobalInit : public CPP_Global<void*>
 	{
 public:
@@ -443,6 +362,88 @@ protected:
 	p_hash_type h;
 	bool has_captures;
 	};
+
+
+class CPP_FieldMapping
+	{
+public:
+	CPP_FieldMapping(int _rec, std::string _field_name, int _field_type, int _field_attrs)
+		: rec(_rec), field_name(std::move(_field_name)), field_type(_field_type), field_attrs(_field_attrs)
+		{ }
+
+	int ComputeOffset() const;
+
+private:
+	int rec;
+	std::string field_name;
+	int field_type;
+	int field_attrs;
+	};
+
+
+class CPP_EnumMapping
+	{
+public:
+	CPP_EnumMapping(int _e_type, std::string _e_name)
+		: e_type(_e_type), e_name(std::move(_e_name))
+		{ }
+
+	int ComputeOffset() const;
+
+private:
+	int e_type;
+	std::string e_name;
+	};
+
+
+class CPP_RegisterBody
+	{
+public:
+	CPP_RegisterBody(std::string _func_name, void* _func, int _type_signature, int _priority, p_hash_type _h, std::vector<std::string> _events)
+		: func_name(std::move(_func_name)), func(_func), type_signature(_type_signature), priority(_priority), h(_h), events(std::move(_events))
+		{ }
+	virtual ~CPP_RegisterBody() { }
+
+	virtual void Register() const { }
+
+	std::string func_name;
+	void* func;
+	int type_signature;
+	int priority;
+	p_hash_type h;
+	std::vector<std::string> events;
+	};
+
+class CPP_LookupBiF
+	{
+public:
+	CPP_LookupBiF(zeek::Func*& _bif_func, std::string _bif_name)
+		: bif_func(_bif_func), bif_name(std::move(_bif_name))
+		{ }
+
+	void ResolveBiF() const { bif_func = lookup_bif__CPP(bif_name.c_str()); }
+
+protected:
+	zeek::Func*& bif_func;
+	std::string bif_name;
+	};
+
+
+class CPP_ValElem
+	{
+public:
+	CPP_ValElem(TypeTag _tag, int _offset)
+		: tag(_tag), offset(_offset) { }
+
+	ValPtr Get() const
+		{ return offset >= 0 ? CPP__Consts__[tag]->Get(offset) : nullptr; }
+
+private:
+	TypeTag tag;
+	int offset;
+	};
+
+extern std::vector<CPP_ValElem> CPP__ConstVals__;
 
 
 extern void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set);
