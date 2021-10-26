@@ -415,7 +415,7 @@ void OpaqueTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 
 
 TypeTypeInfo::TypeTypeInfo(CPPCompile* _c, TypePtr _t)
-	: CompoundTypeInfo(_c, move(_t))
+	: AbstractTypeInfo(_c, move(_t))
 	{
 	tt = t->AsTypeType()->GetType();
 	auto gi = c->RegisterType(tt);
@@ -429,7 +429,7 @@ void TypeTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	}
 
 VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
-	: CompoundTypeInfo(_c, move(_t))
+	: AbstractTypeInfo(_c, move(_t))
 	{
 	yield = t->Yield();
 	auto gi = c->RegisterType(yield);
@@ -443,7 +443,7 @@ void VectorTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	}
 
 ListTypeInfo::ListTypeInfo(CPPCompile* _c, TypePtr _t)
-	: CompoundTypeInfo(_c, move(_t)), types(t->AsTypeList()->GetTypes())
+	: AbstractTypeInfo(_c, move(_t)), types(t->AsTypeList()->GetTypes())
 	{
 	for ( auto& tl_i : types )
 		{
@@ -461,7 +461,7 @@ void ListTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	}
 
 TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
-	: CompoundTypeInfo(_c, move(_t))
+	: AbstractTypeInfo(_c, move(_t))
 	{
 	auto tbl = t->AsTableType();
 
@@ -487,7 +487,7 @@ void TableTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	}
 
 FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
-	: CompoundTypeInfo(_c, move(_t))
+	: AbstractTypeInfo(_c, move(_t))
 	{
 	auto f = t->AsFuncType();
 
@@ -515,7 +515,7 @@ void FuncTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	}
 
 RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
-	: CompoundTypeInfo(_c, move(_t))
+	: AbstractTypeInfo(_c, move(_t))
 	{
 	auto r = t->AsRecordType()->Types();
 

@@ -444,14 +444,7 @@ public:
 	};
 
 
-class CompoundTypeInfo : public AbstractTypeInfo
-	{
-public:
-	CompoundTypeInfo(CPPCompile* _c, TypePtr _t)
-		: AbstractTypeInfo(_c, _t) { }
-	};
-
-class TypeTypeInfo : public CompoundTypeInfo
+class TypeTypeInfo : public AbstractTypeInfo
 	{
 public:
 	TypeTypeInfo(CPPCompile* c, TypePtr _t);
@@ -462,7 +455,7 @@ private:
 	TypePtr tt;
 	};
 
-class VectorTypeInfo : public CompoundTypeInfo
+class VectorTypeInfo : public AbstractTypeInfo
 	{
 public:
 	VectorTypeInfo(CPPCompile* c, TypePtr _t);
@@ -473,7 +466,7 @@ private:
 	TypePtr yield;
 	};
 
-class ListTypeInfo : public CompoundTypeInfo
+class ListTypeInfo : public AbstractTypeInfo
 	{
 public:
 	ListTypeInfo(CPPCompile* c, TypePtr _t);
@@ -484,7 +477,7 @@ private:
 	const std::vector<TypePtr>& types;
 	};
 
-class TableTypeInfo : public CompoundTypeInfo
+class TableTypeInfo : public AbstractTypeInfo
 	{
 public:
 	TableTypeInfo(CPPCompile* c, TypePtr _t);
@@ -496,7 +489,7 @@ private:
 	TypePtr yield;
 	};
 
-class FuncTypeInfo : public CompoundTypeInfo
+class FuncTypeInfo : public AbstractTypeInfo
 	{
 public:
 	FuncTypeInfo(CPPCompile* c, TypePtr _t);
@@ -509,7 +502,7 @@ private:
 	TypePtr yield;
 	};
 
-class RecordTypeInfo : public CompoundTypeInfo
+class RecordTypeInfo : public AbstractTypeInfo
 	{
 public:
 	RecordTypeInfo(CPPCompile* c, TypePtr _t);
