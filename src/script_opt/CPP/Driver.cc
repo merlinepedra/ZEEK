@@ -64,74 +64,12 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 		fclose(addl_f);
 		}
 
-	const_info[TYPE_BOOL] = InitGlobalInfo("Bool", "ValPtr", "bool");
-	const_info[TYPE_INT] = InitGlobalInfo("Int", "ValPtr", "bro_int_t");
-	const_info[TYPE_COUNT] = InitGlobalInfo("Count", "ValPtr", "bro_uint_t");
-	const_info[TYPE_DOUBLE] = InitGlobalInfo("Double", "ValPtr", "double");
-	const_info[TYPE_TIME] = InitGlobalInfo("Time", "ValPtr", "double");
-	const_info[TYPE_INTERVAL] = InitGlobalInfo("Interval", "ValPtr", "double");
-	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr", "int", false);
-	const_info[TYPE_SUBNET] = InitGlobalInfo("SubNet", "ValPtr", "int", false);
-	const_info[TYPE_PORT] = InitGlobalInfo("Port", "ValPtr", "uint32_t");
-
-	const_info[TYPE_ENUM] = InitGlobalInfo("Enum", "ValPtr");
-	const_info[TYPE_STRING] = InitGlobalInfo("String", "ValPtr");
-	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
-	const_info[TYPE_LIST] = InitGlobalInfo("List", "ValPtr");
-	const_info[TYPE_VECTOR] = InitGlobalInfo("Vector", "ValPtr");
-	const_info[TYPE_RECORD] = InitGlobalInfo("Record", "ValPtr");
-	const_info[TYPE_TABLE] = InitGlobalInfo("Table", "ValPtr");
-	const_info[TYPE_FUNC] = InitGlobalInfo("Func", "ValPtr");
-	const_info[TYPE_FILE] = InitGlobalInfo("File", "ValPtr");
-
-	type_info = InitGlobalInfo("Type", "Ptr");
-	attr_info = InitGlobalInfo("Attr", "Ptr");
-	attrs_info = InitGlobalInfo("Attributes", "Ptr");
-	call_exprs_info = InitGlobalInfo("CallExpr", "Ptr");
-
-	lambda_reg_info = InitGlobalInfo("LambdaRegistration", "");
-	global_id_info = InitGlobalInfo("GlobalID", "");
-
 	Compile(report_uncompilable);
 	}
 
 CPPCompile::~CPPCompile()
 	{
 	fclose(write_file);
-	}
-
-shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const char* type, const char* c_type, bool is_basic)
-	{
-	shared_ptr<CPP_GlobalsInfo> gi;
-
-	if ( c_type )
-		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type, is_basic);
-	else if ( util::streq(tag, "Enum") ||
-	          util::streq(tag, "String") ||
-	          util::streq(tag, "List") ||
-	          util::streq(tag, "Table") ||
-	          util::streq(tag, "Vector") ||
-	          util::streq(tag, "Record") ||
-	          util::streq(tag, "File") ||
-	          util::streq(tag, "Func") ||
-	          util::streq(tag, "Pattern") )
-		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
-
-	else if ( util::streq(tag, "Type") )
-		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
-	else if ( util::streq(tag, "Attr") )
-		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
-	else if ( util::streq(tag, "Attributes") )
-		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
-	else
-		gi = make_shared<CPP_GlobalsInfo>(tag, type);
-
-	all_global_info.insert(gi);
-
-	if ( type[0] == '\0' )
-		gi->SetCPPType("void*");
-
-	return gi;
 	}
 
 void CPPCompile::Compile(bool report_uncompilable)
@@ -278,8 +216,74 @@ void CPPCompile::GenProlog()
 	Emit("std::vector<int> enum_mapping;");
 	NL();
 
+	const_info[TYPE_BOOL] = InitGlobalInfo("Bool", "ValPtr", "bool");
+	const_info[TYPE_INT] = InitGlobalInfo("Int", "ValPtr", "bro_int_t");
+	const_info[TYPE_COUNT] = InitGlobalInfo("Count", "ValPtr", "bro_uint_t");
+	const_info[TYPE_DOUBLE] = InitGlobalInfo("Double", "ValPtr", "double");
+	const_info[TYPE_TIME] = InitGlobalInfo("Time", "ValPtr", "double");
+	const_info[TYPE_INTERVAL] = InitGlobalInfo("Interval", "ValPtr", "double");
+	const_info[TYPE_ADDR] = InitGlobalInfo("Addr", "ValPtr", "int", false);
+	const_info[TYPE_SUBNET] = InitGlobalInfo("SubNet", "ValPtr", "int", false);
+	const_info[TYPE_PORT] = InitGlobalInfo("Port", "ValPtr", "uint32_t");
+
+	const_info[TYPE_ENUM] = InitGlobalInfo("Enum", "ValPtr");
+	const_info[TYPE_STRING] = InitGlobalInfo("String", "ValPtr");
+	const_info[TYPE_PATTERN] = InitGlobalInfo("Pattern", "ValPtr");
+	const_info[TYPE_LIST] = InitGlobalInfo("List", "ValPtr");
+	const_info[TYPE_VECTOR] = InitGlobalInfo("Vector", "ValPtr");
+	const_info[TYPE_RECORD] = InitGlobalInfo("Record", "ValPtr");
+	const_info[TYPE_TABLE] = InitGlobalInfo("Table", "ValPtr");
+	const_info[TYPE_FUNC] = InitGlobalInfo("Func", "ValPtr");
+	const_info[TYPE_FILE] = InitGlobalInfo("File", "ValPtr");
+
+	type_info = InitGlobalInfo("Type", "Ptr");
+	attr_info = InitGlobalInfo("Attr", "Ptr");
+	attrs_info = InitGlobalInfo("Attributes", "Ptr");
+	call_exprs_info = InitGlobalInfo("CallExpr", "Ptr");
+
+	lambda_reg_info = InitGlobalInfo("LambdaRegistration", "");
+	global_id_info = InitGlobalInfo("GlobalID", "");
+
+	NL();
 	DeclareDynCPPStmt();
 	NL();
+	}
+
+shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const char* type, const char* c_type, bool is_basic)
+	{
+	string v_type = type[0] ? (string(tag) + type) : "void*";
+	Emit("std::vector<%s> CPP__%s__;", v_type, string(tag));
+
+	shared_ptr<CPP_GlobalsInfo> gi;
+
+	if ( c_type )
+		gi = make_shared<CPP_BasicConstGlobalsInfo>(tag, type, c_type, is_basic);
+	else if ( util::streq(tag, "Enum") ||
+	          util::streq(tag, "String") ||
+	          util::streq(tag, "List") ||
+	          util::streq(tag, "Table") ||
+	          util::streq(tag, "Vector") ||
+	          util::streq(tag, "Record") ||
+	          util::streq(tag, "File") ||
+	          util::streq(tag, "Func") ||
+	          util::streq(tag, "Pattern") )
+		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
+
+	else if ( util::streq(tag, "Type") )
+		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
+	else if ( util::streq(tag, "Attr") )
+		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
+	else if ( util::streq(tag, "Attributes") )
+		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
+	else
+		gi = make_shared<CPP_GlobalsInfo>(tag, type);
+
+	all_global_info.insert(gi);
+
+	if ( type[0] == '\0' )
+		gi->SetCPPType("void*");
+
+	return gi;
 	}
 
 void CPPCompile::RegisterCompiledBody(const string& f)
@@ -416,17 +420,19 @@ void CPPCompile::GenEpilog()
 
 	StartBlock();
 
-	Emit("generate_indices_set(CPP__Indices__init, CPP__Indices__);");
-	Emit("CPP__Strings__ = CPP__Strings__init; // this can go away with alternative scoping");
-	Emit("CPP__ConstVals__ = CPP__ConstVals__init; // this can go away with alternative scoping");
-	Emit("CPP__Hashes__ = CPP__Hashes__init; // this can go away with alternative scoping");
+	Emit("std::vector<std::vector<int>> InitIndices;");
+	Emit("generate_indices_set(CPP__Indices__init, InitIndices);");
+
+	Emit("std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> InitConsts;");
 
 	NL();
 	for ( const auto& ci : const_info )
 		{
 		auto& gi = ci.second;
-		Emit("CPP__Consts__.emplace(%s, std::make_shared<CPP_GlobalAccessor<%s>>(%s));", TypeTagName(ci.first), gi->CPPType(), gi->GlobalsName());
+		Emit("InitConsts.emplace(%s, std::make_shared<CPP_GlobalAccessor<%s>>(%s));", TypeTagName(ci.first), gi->CPPType(), gi->GlobalsName());
 		}
+
+	Emit("InitsManager im(CPP__ConstVals, InitConsts, InitIndices, CPP__Strings, CPP__Hashes, CPP__Type__, CPP__Attributes__, CPP__Attr__, CPP__CallExpr__);");
 
 	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");
@@ -443,7 +449,7 @@ void CPPCompile::GenEpilog()
 	for ( auto c = 0; c <= max_cohort; ++c )
 		for ( auto gi : all_global_info )
 			if ( gi->CohortSize(c) > 0 )
-				Emit("%s.InitializeCohort(%s);",
+				Emit("%s.InitializeCohort(&im, %s);",
 				     gi->InitializersName(), Fmt(c));
 
 	NL();
@@ -453,10 +459,10 @@ void CPPCompile::GenEpilog()
 	// Populate mappings for dynamic offsets.
 	NL();
 	Emit("for ( auto& em : CPP__enum_mappings__ )");
-	Emit("\tenum_mapping.push_back(em.ComputeOffset());");
+	Emit("\tenum_mapping.push_back(em.ComputeOffset(&im));");
 	NL();
 	Emit("for ( auto& fm : CPP__field_mappings__ )");
-	Emit("\tfield_mapping.push_back(fm.ComputeOffset());");
+	Emit("\tfield_mapping.push_back(fm.ComputeOffset(&im));");
 
 	if ( standalone )
 		Emit("standalone_init__CPP();");

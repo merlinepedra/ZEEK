@@ -157,7 +157,7 @@ void CPPCompile::InitializeBiFs()
 
 void CPPCompile::InitializeStrings()
 	{
-	Emit("std::vector<const char*> CPP__Strings__init =");
+	Emit("std::vector<const char*> CPP__Strings =");
 
 	StartBlock();
 
@@ -169,7 +169,7 @@ void CPPCompile::InitializeStrings()
 
 void CPPCompile::InitializeHashes()
 	{
-	Emit("std::vector<p_hash_type> CPP__Hashes__init =");
+	Emit("std::vector<p_hash_type> CPP__Hashes =");
 
 	StartBlock();
 
@@ -181,7 +181,7 @@ void CPPCompile::InitializeHashes()
 
 void CPPCompile::InitializeConsts()
 	{
-	Emit("std::vector<CPP_ValElem> CPP__ConstVals__init =");
+	Emit("std::vector<CPP_ValElem> CPP__ConstVals =");
 
 	StartBlock();
 

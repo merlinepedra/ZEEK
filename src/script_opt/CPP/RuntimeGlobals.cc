@@ -12,39 +12,6 @@ using namespace std;
 namespace zeek::detail
 	{
 
-std::vector<BoolValPtr> CPP__Bool__;
-std::vector<IntValPtr> CPP__Int__;
-std::vector<CountValPtr> CPP__Count__;
-std::vector<EnumValPtr> CPP__Enum__;
-std::vector<DoubleValPtr> CPP__Double__;
-std::vector<TimeValPtr> CPP__Time__;
-std::vector<IntervalValPtr> CPP__Interval__;
-std::vector<StringValPtr> CPP__String__;
-std::vector<PatternValPtr> CPP__Pattern__;
-std::vector<AddrValPtr> CPP__Addr__;
-std::vector<SubNetValPtr> CPP__SubNet__;
-std::vector<PortValPtr> CPP__Port__;
-std::vector<ListValPtr> CPP__List__;
-std::vector<RecordValPtr> CPP__Record__;
-std::vector<TableValPtr> CPP__Table__;
-std::vector<VectorValPtr> CPP__Vector__;
-std::vector<FuncValPtr> CPP__Func__;
-std::vector<FileValPtr> CPP__File__;
-
-std::vector<TypePtr> CPP__Type__;
-std::vector<AttrPtr> CPP__Attr__;
-std::vector<AttributesPtr> CPP__Attributes__;
-std::vector<CallExprPtr> CPP__CallExpr__;
-std::vector<void*> CPP__LambdaRegistration__;
-std::vector<void*> CPP__GlobalID__;
-
-std::vector<std::vector<int>> CPP__Indices__;
-std::vector<const char*> CPP__Strings__;
-std::vector<p_hash_type> CPP__Hashes__;
-
-std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
-std::vector<CPP_ValElem> CPP__ConstVals__;
-
 
 template <class T>
 CPP_Globals<T>::CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
@@ -59,38 +26,38 @@ CPP_Globals<T>::CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::
 	}
 
 template <class T>
-void CPP_Globals<T>::InitializeCohort(int cohort)
+void CPP_Globals<T>::InitializeCohort(InitsManager* im, int cohort)
 	{
 	if ( cohort == 0 )
-		PreInit();
+		PreInit(im);
 
-	std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+	auto& offsets_vec = im->Indices(offsets_set);
 	auto& co = inits[cohort];
-	std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+	auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 	for ( auto i = 0U; i < co.size(); ++i )
-		Generate(global_vec, cohort_offsets[i], co[i]);
+		Generate(im, global_vec, cohort_offsets[i], co[i]);
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
 	{
-	auto& e_type = CPP__Type__[init_vals[0]];
+	auto& e_type = im->Types(init_vals[0]);
 	int val = init_vals[1];
 	gvec[offset] = make_enum__CPP(e_type, val);
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals)
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals)
 	{
-	auto chars = CPP__Strings__[init_vals[0]];
+	auto chars = im->Strings(init_vals[0]);
 	int len = init_vals[1];
 	gvec[offset] = make_intrusive<StringVal>(len, chars);
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals)
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals)
 	{
-	auto re = new RE_Matcher(CPP__Strings__[init_vals[0]]);
+	auto re = new RE_Matcher(im->Strings(init_vals[0]));
 	if ( init_vals[1] )
 		re->MakeCaseInsensitive();
 
@@ -100,7 +67,7 @@ void CPP_Globals<T>::Generate(std::vector<PatternValPtr>& gvec, int offset, ValE
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -108,42 +75,42 @@ void CPP_Globals<T>::Generate(std::vector<ListValPtr>& gvec, int offset, ValElem
 	auto l = make_intrusive<ListVal>(TYPE_ANY);
 
 	while ( i < n )
-		l->Append(CPP__ConstVals__[init_vals[i++]].Get());
+		l->Append(im->ConstVals(init_vals[i++]));
 
 	gvec[offset] = l;
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
 	auto t = init_vals[i++];
 
-	auto vt = cast_intrusive<VectorType>(CPP__Type__[t]);
+	auto vt = cast_intrusive<VectorType>(im->Types(t));
 	auto vv = make_intrusive<VectorVal>(vt);
 
 	while ( i < n )
-		vv->Append(CPP__ConstVals__[init_vals[i++]].Get());
+		vv->Append(im->ConstVals(init_vals[i++]));
 
 	gvec[offset] = vv;
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
 	auto t = init_vals[i++];
 
-	auto rt = cast_intrusive<RecordType>(CPP__Type__[t]);
+	auto rt = cast_intrusive<RecordType>(im->Types(t));
 	auto rv = make_intrusive<RecordVal>(rt);
 
 	while ( i < n )
 		{
 		auto v = init_vals[i];
 		if ( v >= 0 )
-			rv->Assign(i - 1, CPP__ConstVals__[v].Get());
+			rv->Assign(i - 1, im->ConstVals(v));
 		++i;
 		}
 
@@ -151,20 +118,20 @@ void CPP_Globals<T>::Generate(std::vector<RecordValPtr>& gvec, int offset, ValEl
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
 	auto t = init_vals[i++];
 
-	auto tt = cast_intrusive<TableType>(CPP__Type__[t]);
+	auto tt = cast_intrusive<TableType>(im->Types(t));
 	auto tv = make_intrusive<TableVal>(tt);
 
 	while ( i < n )
 		{
-		auto index = CPP__ConstVals__[init_vals[i++]].Get();
+		auto index = im->ConstVals(init_vals[i++]);
 		auto v = init_vals[i++];
-		auto value = v >= 0 ? CPP__ConstVals__[v].Get() : nullptr;
+		auto value = v >= 0 ? im->ConstVals(v) : nullptr;
 		tv->Assign(index, value);
 		}
 
@@ -172,37 +139,37 @@ void CPP_Globals<T>::Generate(std::vector<TableValPtr>& gvec, int offset, ValEle
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
 	auto t = init_vals[i++];	// not used
 
-	auto fn = CPP__Strings__[init_vals[i++]];
+	auto fn = im->Strings(init_vals[i++]);
 	auto fv = make_intrusive<FileVal>(make_intrusive<File>(fn, "w"));
 
 	gvec[offset] = fv;
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
 	auto t = init_vals[i++];
 
-	auto fn = CPP__Strings__[init_vals[i++]];
+	auto fn = im->Strings(init_vals[i++]);
 
 	std::vector<p_hash_type> hashes;
 
 	while ( i < n )
-		hashes.push_back(CPP__Hashes__[init_vals[i++]]);
+		hashes.push_back(im->Hashes(init_vals[i++]));
 
-	gvec[offset] = lookup_func__CPP(fn, hashes, CPP__Type__[t]);
+	gvec[offset] = lookup_func__CPP(fn, hashes, im->Types(t));
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto tag = static_cast<AttrTag>(init_vals[0]);
 	auto ae_tag = static_cast<AttrExprType>(init_vals[1]);
@@ -216,12 +183,12 @@ void CPP_Globals<T>::Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec
 			break;
 
 		case AE_CONST:
-			e = make_intrusive<ConstExpr>(CPP__ConstVals__[e_arg].Get());
+			e = make_intrusive<ConstExpr>(im->ConstVals(e_arg));
 			break;
 
 		case AE_NAME:
 			{
-			auto name = CPP__Strings__[e_arg];
+			auto name = im->Strings(e_arg);
 			auto gl = lookup_ID(name, GLOBAL_MODULE_NAME, false, false, false);
 			ASSERT(gl);
 			e = make_intrusive<NameExpr>(gl);
@@ -230,7 +197,7 @@ void CPP_Globals<T>::Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec
 
 		case AE_RECORD:
 			{
-			auto t = CPP__Type__[e_arg];
+			auto t = im->Types(e_arg);
 			auto rt = cast_intrusive<RecordType>(t);
 			auto empty_vals = make_intrusive<ListExpr>();
 			auto construct = make_intrusive<RecordConstructorExpr>(empty_vals);
@@ -239,7 +206,7 @@ void CPP_Globals<T>::Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec
 			}
 
 		case AE_CALL:
-			e = CPP__CallExpr__[e_arg];
+			e = im->CallExprs(e_arg);
 			break;
 		}
 
@@ -247,32 +214,32 @@ void CPP_Globals<T>::Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_Globals<T>::Generate(InitsManager* im, std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
 
 	std::vector<AttrPtr> a_list;
 	while ( i < n )
-		a_list.emplace_back(CPP__Attr__[init_vals[i++]]);
+		a_list.emplace_back(im->Attrs(init_vals[i++]));
 
 	gvec[offset] = make_intrusive<Attributes>(a_list, nullptr, false, false);
 	}
 
 
-void CPP_TypeGlobals::PreInit()
+void CPP_TypeGlobals::PreInit(InitsManager* im)
 	{
-	vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+	auto& offsets_vec = im->Indices(offsets_set);
 	for ( auto cohort = 0U; cohort < offsets_vec.size(); ++cohort )
 		{
 		auto& co = inits[cohort];
-		vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+		auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 		for ( auto i = 0U; i < co.size(); ++i )
-			PreInit(cohort_offsets[i], co[i]);
+			PreInit(im, cohort_offsets[i], co[i]);
 		}
 	}
 
-void CPP_TypeGlobals::PreInit(int offset, ValElemVec& init_vals)
+void CPP_TypeGlobals::PreInit(InitsManager* im, int offset, ValElemVec& init_vals)
 	{
 	auto tag = static_cast<TypeTag>(init_vals[0]);
 
@@ -281,7 +248,7 @@ void CPP_TypeGlobals::PreInit(int offset, ValElemVec& init_vals)
 
 	else if ( tag == TYPE_RECORD )
 		{
-		auto name = CPP__Strings__[init_vals[1]];
+		auto name = im->Strings(init_vals[1]);
 		if ( name[0] )
 			global_vec[offset] = get_record_type__CPP(name);
 		else
@@ -289,7 +256,7 @@ void CPP_TypeGlobals::PreInit(int offset, ValElemVec& init_vals)
 		}
 	}
 
-void CPP_TypeGlobals::Generate(vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_TypeGlobals::Generate(InitsManager* im, vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto tag = static_cast<TypeTag>(init_vals[0]);
 	TypePtr t;
@@ -315,35 +282,35 @@ void CPP_TypeGlobals::Generate(vector<TypePtr>& gvec, int offset, ValElemVec& in
 			break;
 
 		case TYPE_ENUM:
-			t = BuildEnumType(init_vals);
+			t = BuildEnumType(im, init_vals);
 			break;
 
 		case TYPE_OPAQUE:
-			t = BuildOpaqueType(init_vals);
+			t = BuildOpaqueType(im, init_vals);
 			break;
 
 		case TYPE_TYPE:
-			t = BuildTypeType(init_vals);
+			t = BuildTypeType(im, init_vals);
 			break;
 
 		case TYPE_VECTOR:
-			t = BuildVectorType(init_vals);
+			t = BuildVectorType(im, init_vals);
 			break;
 
 		case TYPE_LIST:
-			t = BuildTypeList(init_vals, offset);
+			t = BuildTypeList(im, init_vals, offset);
 			break;
 
 		case TYPE_TABLE:
-			t = BuildTableType(init_vals);
+			t = BuildTableType(im, init_vals);
 			break;
 
 		case TYPE_FUNC:
-			t = BuildFuncType(init_vals);
+			t = BuildFuncType(im, init_vals);
 			break;
 
 		case TYPE_RECORD:
-			t = BuildRecordType(init_vals, offset);
+			t = BuildRecordType(im, init_vals, offset);
 			break;
 
 		default:
@@ -353,9 +320,9 @@ void CPP_TypeGlobals::Generate(vector<TypePtr>& gvec, int offset, ValElemVec& in
 	gvec[offset] = t;
 	}
 
-TypePtr CPP_TypeGlobals::BuildEnumType(ValElemVec& init_vals) const
+TypePtr CPP_TypeGlobals::BuildEnumType(InitsManager* im, ValElemVec& init_vals) const
 	{
-	auto& name = CPP__Strings__[init_vals[1]];
+	auto name = im->Strings(init_vals[1]);
 	auto et = get_enum_type__CPP(name);
 
 	if ( et->Names().empty() )
@@ -365,7 +332,7 @@ TypePtr CPP_TypeGlobals::BuildEnumType(ValElemVec& init_vals) const
 
 		while ( i < n )
 			{
-			auto e_name = CPP__Strings__[init_vals[i++]];
+			auto e_name = im->Strings(init_vals[i++]);
 			auto e_val = init_vals[i++];
 			et->AddNameInternal(e_name, e_val);
 			}
@@ -374,25 +341,25 @@ TypePtr CPP_TypeGlobals::BuildEnumType(ValElemVec& init_vals) const
 	return et;
 	}
 
-TypePtr CPP_TypeGlobals::BuildOpaqueType(ValElemVec& init_vals) const
+TypePtr CPP_TypeGlobals::BuildOpaqueType(InitsManager* im, ValElemVec& init_vals) const
 	{
-	auto& name = CPP__Strings__[init_vals[1]];
+	auto name = im->Strings(init_vals[1]);
 	return make_intrusive<OpaqueType>(name);
 	}
 
-TypePtr CPP_TypeGlobals::BuildTypeType(ValElemVec& init_vals) const
+TypePtr CPP_TypeGlobals::BuildTypeType(InitsManager* im, ValElemVec& init_vals) const
 	{
-	auto& t = CPP__Type__[init_vals[1]];
+	auto& t = im->Types(init_vals[1]);
 	return make_intrusive<TypeType>(t);
 	}
 
-TypePtr CPP_TypeGlobals::BuildVectorType(ValElemVec& init_vals) const
+TypePtr CPP_TypeGlobals::BuildVectorType(InitsManager* im, ValElemVec& init_vals) const
 	{
-	auto& t = CPP__Type__[init_vals[1]];
+	auto& t = im->Types(init_vals[1]);
 	return make_intrusive<VectorType>(t);
 	}
 
-TypePtr CPP_TypeGlobals::BuildTypeList(ValElemVec& init_vals, int offset) const
+TypePtr CPP_TypeGlobals::BuildTypeList(InitsManager* im, ValElemVec& init_vals, int offset) const
 	{
 	const auto& tl = cast_intrusive<TypeList>(global_vec[offset]);
 
@@ -400,30 +367,30 @@ TypePtr CPP_TypeGlobals::BuildTypeList(ValElemVec& init_vals, int offset) const
 	auto i = 1U;
 
 	while ( i < n )
-		tl->Append(CPP__Type__[init_vals[i++]]);
+		tl->Append(im->Types(init_vals[i++]));
 
 	return tl;
 	}
 
-TypePtr CPP_TypeGlobals::BuildTableType(ValElemVec& init_vals) const
+TypePtr CPP_TypeGlobals::BuildTableType(InitsManager* im, ValElemVec& init_vals) const
 	{
-	auto index = cast_intrusive<TypeList>(CPP__Type__[init_vals[1]]);
+	auto index = cast_intrusive<TypeList>(im->Types(init_vals[1]));
 	auto yield_i = init_vals[2];
-	auto yield = yield_i >= 0 ? CPP__Type__[yield_i] : nullptr;
+	auto yield = yield_i >= 0 ? im->Types(yield_i) : nullptr;
 
 	return make_intrusive<TableType>(index, yield);
 	}
 
-TypePtr CPP_TypeGlobals::BuildFuncType(ValElemVec& init_vals) const
+TypePtr CPP_TypeGlobals::BuildFuncType(InitsManager* im, ValElemVec& init_vals) const
 	{
-	auto p = cast_intrusive<RecordType>(CPP__Type__[init_vals[1]]);
+	auto p = cast_intrusive<RecordType>(im->Types(init_vals[1]));
 	auto yield_i = init_vals[2];
 	auto flavor = static_cast<FunctionFlavor>(init_vals[3]);
 
 	TypePtr y;
 
 	if ( yield_i >= 0 )
-		y = CPP__Type__[yield_i];
+		y = im->Types(yield_i);
 
 	else if ( flavor == FUNC_FLAVOR_FUNCTION || flavor == FUNC_FLAVOR_HOOK )
 		y = base_type(TYPE_VOID);
@@ -431,7 +398,7 @@ TypePtr CPP_TypeGlobals::BuildFuncType(ValElemVec& init_vals) const
 	return make_intrusive<FuncType>(p, y, flavor);
 	}
 
-TypePtr CPP_TypeGlobals::BuildRecordType(ValElemVec& init_vals, int offset) const
+TypePtr CPP_TypeGlobals::BuildRecordType(InitsManager* im, ValElemVec& init_vals, int offset) const
 	{
 	auto r = cast_intrusive<RecordType>(global_vec[offset]);
 	ASSERT(r);
@@ -445,13 +412,14 @@ TypePtr CPP_TypeGlobals::BuildRecordType(ValElemVec& init_vals, int offset) cons
 
 		while ( i < n )
 			{
-			auto id = util::copy_string(CPP__Strings__[init_vals[i++]]);
-			auto type = CPP__Type__[init_vals[i++]];
+			auto s = im->Strings(init_vals[i++]);
+			auto id = util::copy_string(s);
+			auto type = im->Types(init_vals[i++]);
 			auto attrs_i = init_vals[i++];
 
 			AttributesPtr attrs;
 			if ( attrs_i >= 0 )
-				attrs = CPP__Attributes__[attrs_i];
+				attrs = im->Attributes(attrs_i);
 
 			tl.append(new TypeDecl(id, type, attrs));
 			}
@@ -463,9 +431,9 @@ TypePtr CPP_TypeGlobals::BuildRecordType(ValElemVec& init_vals, int offset) cons
 	}
 
 
-int CPP_FieldMapping::ComputeOffset() const
+int CPP_FieldMapping::ComputeOffset(InitsManager* im) const
 	{
-	auto r = CPP__Type__[rec]->AsRecordType();
+	auto r = im->Types(rec)->AsRecordType();
 	auto fm_offset = r->FieldOffset(field_name.c_str());
 
 	if ( fm_offset < 0 )
@@ -474,11 +442,11 @@ int CPP_FieldMapping::ComputeOffset() const
                 fm_offset = r->NumFields();
 
 		auto id = util::copy_string(field_name.c_str());
-		auto type = CPP__Type__[field_type];
+		auto type = im->Types(field_type);
 
 		AttributesPtr attrs;
 		if ( field_attrs >= 0 )
-			attrs = CPP__Attributes__[field_attrs];
+			attrs = im->Attributes(field_attrs);
 
 		type_decl_list tl;
 		tl.append(new TypeDecl(id, type, attrs));
@@ -490,9 +458,9 @@ int CPP_FieldMapping::ComputeOffset() const
 	}
 
 
-int CPP_EnumMapping::ComputeOffset() const
+int CPP_EnumMapping::ComputeOffset(InitsManager* im) const
 	{
-	auto e = CPP__Type__[e_type]->AsEnumType();
+	auto e = im->Types(e_type)->AsEnumType();
 
 	auto em_offset = e->Lookup(e_name);
 	if ( em_offset < 0 )
@@ -507,15 +475,15 @@ int CPP_EnumMapping::ComputeOffset() const
 	}
 
 
-void CPP_GlobalInit::Generate(std::vector<void*>& /* global_vec */, int /* offset */) const
+void CPP_GlobalInit::Generate(InitsManager* im, std::vector<void*>& /* global_vec */, int /* offset */) const
 	{
-	global = lookup_global__CPP(name, CPP__Type__[type], exported);
+	global = lookup_global__CPP(name, im->Types(type), exported);
 
 	if ( ! global->HasVal() && val >= 0 )
 		{
-		global->SetVal(CPP__ConstVals__[val].Get());
+		global->SetVal(im->ConstVals(val));
 		if ( attrs >= 0 )
-			global->SetAttrs(CPP__Attributes__[attrs]);
+			global->SetAttrs(im->Attributes(attrs));
 		}
 	}
 

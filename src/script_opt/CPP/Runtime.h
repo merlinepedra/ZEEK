@@ -23,13 +23,15 @@
 #include "zeek/script_opt/CPP/RuntimeVec.h"
 #include "zeek/script_opt/ScriptOpt.h"
 
-namespace zeek
+namespace zeek::detail
 	{
 
 using BoolValPtr = IntrusivePtr<zeek::BoolVal>;
+using IntValPtr = IntrusivePtr<zeek::IntVal>;
 using CountValPtr = IntrusivePtr<zeek::CountVal>;
 using DoubleValPtr = IntrusivePtr<zeek::DoubleVal>;
 using StringValPtr = IntrusivePtr<zeek::StringVal>;
+using TimeValPtr = IntrusivePtr<zeek::TimeVal>;
 using IntervalValPtr = IntrusivePtr<zeek::IntervalVal>;
 using PatternValPtr = IntrusivePtr<zeek::PatternVal>;
 using FuncValPtr = IntrusivePtr<zeek::FuncVal>;

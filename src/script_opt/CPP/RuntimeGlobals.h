@@ -12,43 +12,80 @@
 namespace zeek::detail
 	{
 
-using BoolValPtr = IntrusivePtr<BoolVal>;
-using IntValPtr = IntrusivePtr<IntVal>;
-using CountValPtr = IntrusivePtr<CountVal>;
-using DoubleValPtr = IntrusivePtr<DoubleVal>;
-using TimeValPtr = IntrusivePtr<TimeVal>;
-using IntervalValPtr = IntrusivePtr<IntervalVal>;
 using FileValPtr = IntrusivePtr<FileVal>;
+using FuncValPtr = IntrusivePtr<FuncVal>;
 
-extern std::vector<BoolValPtr> CPP__Bool__;
-extern std::vector<IntValPtr> CPP__Int__;
-extern std::vector<CountValPtr> CPP__Count__;
-extern std::vector<EnumValPtr> CPP__Enum__;
-extern std::vector<DoubleValPtr> CPP__Double__;
-extern std::vector<TimeValPtr> CPP__Time__;
-extern std::vector<IntervalValPtr> CPP__Interval__;
-extern std::vector<StringValPtr> CPP__String__;
-extern std::vector<PatternValPtr> CPP__Pattern__;
-extern std::vector<AddrValPtr> CPP__Addr__;
-extern std::vector<SubNetValPtr> CPP__SubNet__;
-extern std::vector<PortValPtr> CPP__Port__;
-extern std::vector<ListValPtr> CPP__List__;
-extern std::vector<RecordValPtr> CPP__Record__;
-extern std::vector<TableValPtr> CPP__Table__;
-extern std::vector<VectorValPtr> CPP__Vector__;
-extern std::vector<FuncValPtr> CPP__Func__;
-extern std::vector<FileValPtr> CPP__File__;
 
-extern std::vector<TypePtr> CPP__Type__;
-extern std::vector<AttrPtr> CPP__Attr__;
-extern std::vector<AttributesPtr> CPP__Attributes__;
-extern std::vector<CallExprPtr> CPP__CallExpr__;
-extern std::vector<void*> CPP__LambdaRegistration__;
-extern std::vector<void*> CPP__GlobalID__;
+class InitsManager;
 
-extern std::vector<std::vector<int>> CPP__Indices__;
-extern std::vector<const char*> CPP__Strings__;
-extern std::vector<p_hash_type> CPP__Hashes__;
+class CPP_AbstractGlobalAccessor
+	{
+public:
+	virtual ~CPP_AbstractGlobalAccessor() {}
+	virtual ValPtr Get(int index) const { return nullptr; }
+	};
+
+struct CPP_ValElem
+	{
+	CPP_ValElem(TypeTag _tag, int _offset)
+		: tag(_tag), offset(_offset) { }
+
+	TypeTag tag;
+	int offset;
+	};
+
+
+class InitsManager
+	{
+public:
+	InitsManager(
+		std::vector<CPP_ValElem>& _const_vals,
+		std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>>& _consts,
+		std::vector<std::vector<int>>& _indices,
+		std::vector<const char*>& _strings,
+		std::vector<p_hash_type>& _hashes,
+		std::vector<TypePtr>& _types,
+		std::vector<AttributesPtr>& _attributes,
+		std::vector<AttrPtr>& _attrs,
+		std::vector<CallExprPtr>& _call_exprs)
+		:
+		const_vals(_const_vals),
+		consts(_consts),
+		indices(_indices),
+		strings(_strings),
+		hashes(_hashes),
+		types(_types),
+		attributes(_attributes),
+		attrs(_attrs),
+		call_exprs(_call_exprs)
+		{ }
+
+	ValPtr ConstVals(int offset) const
+		{
+		auto& cv = const_vals[offset];
+		return Consts(cv.tag, cv.offset);
+		}
+	ValPtr Consts(TypeTag tag, int index) const { return consts[tag]->Get(index); }
+
+	const std::vector<int>& Indices(int offset) const { return indices[offset]; }
+	const char* Strings(int offset) const { return strings[offset]; }
+	const p_hash_type Hashes(int offset) const { return hashes[offset]; }
+	const TypePtr& Types(int offset) const { return types[offset]; }
+	const AttributesPtr& Attributes(int offset) const { return attributes[offset]; }
+	const AttrPtr& Attrs(int offset) const { return attrs[offset]; }
+	const CallExprPtr& CallExprs(int offset) const { return call_exprs[offset]; }
+
+private:
+	std::vector<CPP_ValElem>& const_vals;
+	std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>>& consts;
+	std::vector<std::vector<int>>& indices;
+	std::vector<const char*>& strings;
+	std::vector<p_hash_type>& hashes;
+	std::vector<TypePtr>& types;
+	std::vector<AttributesPtr>& attributes;
+	std::vector<AttrPtr>& attrs;
+	std::vector<CallExprPtr>& call_exprs;
+	};
 
 template <class T>
 class CPP_Global
@@ -56,8 +93,8 @@ class CPP_Global
 public:
 	virtual ~CPP_Global() { }
 
-	virtual void PreInit(std::vector<T>& global_vec, int offset) const { }
-	virtual void Generate(std::vector<T>& global_vec, int offset) const
+	virtual void PreInit(InitsManager* im, std::vector<T>& global_vec, int offset) const { }
+	virtual void Generate(InitsManager* im, std::vector<T>& global_vec, int offset) const
 		{ }
 	};
 
@@ -76,28 +113,28 @@ public:
 		global_vec.resize(num_globals);
 		}
 
-	void InitializeCohort(int cohort)
+	void InitializeCohort(InitsManager* im, int cohort)
 		{
 		if ( cohort == 0 )
-			DoPreInits();
+			DoPreInits(im);
 
-		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+		auto& offsets_vec = im->Indices(offsets_set);
 		auto& co = inits[cohort];
-		std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+		auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 		for ( auto i = 0U; i < co.size(); ++i )
-			co[i]->Generate(global_vec, cohort_offsets[i]);
+			co[i]->Generate(im, global_vec, cohort_offsets[i]);
 		}
 
 private:
-	void DoPreInits()
+	void DoPreInits(InitsManager* im)
 		{
-		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
+		auto& offsets_vec = im->Indices(offsets_set);
 		int cohort = 0;
 		for ( const auto& co : inits )
 			{
-			std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+			auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 			for ( auto i = 0U; i < co.size(); ++i )
-				co[i]->PreInit(global_vec, cohort_offsets[i]);
+				co[i]->PreInit(im, global_vec, cohort_offsets[i]);
 			++cohort;
 			}
 		}
@@ -111,13 +148,6 @@ private:
 	};
 
 
-class CPP_AbstractGlobalAccessor
-	{
-public:
-	virtual ~CPP_AbstractGlobalAccessor() {}
-	virtual ValPtr Get(int index) const { return nullptr; }
-	};
-
 template <class T>
 class CPP_GlobalAccessor : public CPP_AbstractGlobalAccessor
 	{
@@ -130,8 +160,6 @@ private:
 	std::vector<T>& global_vec;
 	};
 
-extern std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>> CPP__Consts__;
-
 using ValElemVec = std::vector<int>;
 
 
@@ -141,28 +169,28 @@ class CPP_Globals
 public:
 	CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
 
-	void InitializeCohort(int cohort);
+	void InitializeCohort(InitsManager* im, int cohort);
 
 protected:
-	virtual void PreInit() { }
+	virtual void PreInit(InitsManager* im) { }
 
 	// Note, in the following we pass in the global_vec even though
 	// the method will have direct access to it, because we want to
 	// use overloading to dispatch to custom generation for different
 	// types of values.
-	void Generate(std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals);
-	void Generate(std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals);
-	void Generate(std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals);
-	void Generate(std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals);
+	void Generate(InitsManager* im, std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals);
+	void Generate(InitsManager* im, std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals);
+	void Generate(InitsManager* im, std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const;
 
-	virtual void Generate(std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const
+	virtual void Generate(InitsManager* im, std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const
 		{
 		ASSERT(0);
 		}
@@ -184,19 +212,19 @@ public:
 		{ }
 
 protected:
-	void PreInit() override;
-	void PreInit(int offset, ValElemVec& init_vals);
+	void PreInit(InitsManager* im) override;
+	void PreInit(InitsManager* im, int offset, ValElemVec& init_vals);
 
-	void Generate(std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const override;
+	void Generate(InitsManager* im, std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const override;
 
-	TypePtr BuildEnumType(ValElemVec& init_vals) const;
-	TypePtr BuildOpaqueType(ValElemVec& init_vals) const;
-	TypePtr BuildTypeType(ValElemVec& init_vals) const;
-	TypePtr BuildVectorType(ValElemVec& init_vals) const;
-	TypePtr BuildTypeList(ValElemVec& init_vals, int offset) const;
-	TypePtr BuildTableType(ValElemVec& init_vals) const;
-	TypePtr BuildFuncType(ValElemVec& init_vals) const;
-	TypePtr BuildRecordType(ValElemVec& init_vals, int offset) const;
+	TypePtr BuildEnumType(InitsManager* im, ValElemVec& init_vals) const;
+	TypePtr BuildOpaqueType(InitsManager* im, ValElemVec& init_vals) const;
+	TypePtr BuildTypeType(InitsManager* im, ValElemVec& init_vals) const;
+	TypePtr BuildVectorType(InitsManager* im, ValElemVec& init_vals) const;
+	TypePtr BuildTypeList(InitsManager* im, ValElemVec& init_vals, int offset) const;
+	TypePtr BuildTableType(InitsManager* im, ValElemVec& init_vals) const;
+	TypePtr BuildFuncType(InitsManager* im, ValElemVec& init_vals) const;
+	TypePtr BuildRecordType(InitsManager* im, ValElemVec& init_vals, int offset) const;
 	};
 
 
@@ -210,17 +238,17 @@ public:
 		global_vec.resize(inits.size());
 		}
 
-	void InitializeCohort(int cohort)
+	void InitializeCohort(InitsManager* im, int cohort)
 		{
 		ASSERT(cohort == 0);
-		std::vector<int>& offsets_vec = CPP__Indices__[offsets_set];
-		std::vector<int>& cohort_offsets = CPP__Indices__[offsets_vec[cohort]];
+		auto& offsets_vec = im->Indices(offsets_set);
+		auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 		for ( auto i = 0U; i < inits.size(); ++i )
-			InitElem(cohort_offsets[i], i);
+			InitElem(im, cohort_offsets[i], i);
 		}
 
 protected:
-	virtual void InitElem(int offset, int index)
+	virtual void InitElem(InitsManager* im, int offset, int index)
 		{
 		ASSERT(0);
 		}
@@ -240,7 +268,7 @@ public:
 		{
 		}
 
-	void InitElem(int offset, int index) override
+	void InitElem(InitsManager* /* im */, int offset, int index) override
 		{
 		this->global_vec[offset] = make_intrusive<T3>(this->inits[index]);
 		}
@@ -252,7 +280,7 @@ class CPP_BasicConst : public CPP_Global<T1>
 public:
 	CPP_BasicConst(T2 _v) : CPP_Global<T1>(), v(_v) { }
 
-	void Generate(std::vector<T1>& global_vec, int offset) const override
+	void Generate(InitsManager* /* im */, std::vector<T1>& global_vec, int offset) const override
 		{ this->global_vec[offset] = make_intrusive<T3>(v); }
 
 private:
@@ -266,9 +294,10 @@ public:
 		: CPP_AbstractBasicConsts<AddrValPtr, int>(_global_vec, _offsets_set, std::move(_inits))
 		{ }
 
-	void InitElem(int offset, int index) override
+	void InitElem(InitsManager* im, int offset, int index) override
 		{
-		this->global_vec[offset] = make_intrusive<AddrVal>(CPP__Strings__[this->inits[index]]);
+		auto s = im->Strings(this->inits[index]);
+		this->global_vec[offset] = make_intrusive<AddrVal>(s);
 		}
 	};
 
@@ -279,9 +308,10 @@ public:
 		: CPP_AbstractBasicConsts<SubNetValPtr, int>(_global_vec, _offsets_set, std::move(_inits))
 		{ }
 
-	void InitElem(int offset, int index) override
+	void InitElem(InitsManager* im, int offset, int index) override
 		{
-		this->global_vec[offset] = make_intrusive<SubNetVal>(CPP__Strings__[this->inits[index]]);
+		auto s = im->Strings(this->inits[index]);
+		this->global_vec[offset] = make_intrusive<SubNetVal>(s);
 		}
 	};
 
@@ -293,7 +323,7 @@ public:
 		: CPP_Global<void*>(), global(_global), name(_name), type(_type), attrs(_attrs), val(_val), exported(_exported)
 		{ }
 
-	void Generate(std::vector<void*>& /* global_vec */, int /* offset */) const override;
+	void Generate(InitsManager* im, std::vector<void*>& /* global_vec */, int /* offset */) const override;
 
 protected:
 	IDPtr& global;
@@ -319,7 +349,7 @@ public:
 		: CPP_AbstractCallExprInit(), e_var(_e_var)
 		{ }
 
-	void Generate(std::vector<CallExprPtr>& global_vec, int offset) const override
+	void Generate(InitsManager* /* im */, std::vector<CallExprPtr>& global_vec, int offset) const override
 		{
 		auto wrapper_class = make_intrusive<T>();
 		auto func_val = make_intrusive<FuncVal>(wrapper_class);
@@ -349,10 +379,10 @@ public:
 		: CPP_AbstractLambdaRegistration(), name(_name), func_type(_func_type), h(_h), has_captures(_has_captures)
 		{ }
 
-	void Generate(std::vector<void*>& global_vec, int offset) const override
+	void Generate(InitsManager* im, std::vector<void*>& global_vec, int offset) const override
 		{
 		auto l = make_intrusive<T>(name);
-		auto& ft = CPP__Type__[func_type];
+		auto& ft = im->Types(func_type);
 		register_lambda__CPP(l, h, name, ft, has_captures);
 		}
 
@@ -371,7 +401,7 @@ public:
 		: rec(_rec), field_name(std::move(_field_name)), field_type(_field_type), field_attrs(_field_attrs)
 		{ }
 
-	int ComputeOffset() const;
+	int ComputeOffset(InitsManager* im) const;
 
 private:
 	int rec;
@@ -388,7 +418,7 @@ public:
 		: e_type(_e_type), e_name(std::move(_e_name))
 		{ }
 
-	int ComputeOffset() const;
+	int ComputeOffset(InitsManager* im) const;
 
 private:
 	int e_type;
@@ -427,23 +457,6 @@ protected:
 	zeek::Func*& bif_func;
 	std::string bif_name;
 	};
-
-
-class CPP_ValElem
-	{
-public:
-	CPP_ValElem(TypeTag _tag, int _offset)
-		: tag(_tag), offset(_offset) { }
-
-	ValPtr Get() const
-		{ return offset >= 0 ? CPP__Consts__[tag]->Get(offset) : nullptr; }
-
-private:
-	TypeTag tag;
-	int offset;
-	};
-
-extern std::vector<CPP_ValElem> CPP__ConstVals__;
 
 
 extern void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set);
