@@ -62,10 +62,10 @@ public:
 	};
 
 template <class T>
-class CPP_Globals
+class CPP_MiscGlobals
 	{
 public:
-	CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> _inits)
+	CPP_MiscGlobals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> _inits)
 		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
 		int num_globals = 0;
@@ -136,10 +136,10 @@ using ValElemVec = std::vector<int>;
 
 
 template <class T>
-class CPP_GlobalsNEW
+class CPP_Globals
 	{
 public:
-	CPP_GlobalsNEW(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
+	CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
 
 	void InitializeCohort(int cohort);
 
@@ -176,11 +176,11 @@ protected:
 	std::vector<std::vector<std::vector<int>>> inits;
 	};
 
-class CPP_TypeGlobals : public CPP_GlobalsNEW<TypePtr>
+class CPP_TypeGlobals : public CPP_Globals<TypePtr>
 	{
 public:
 	CPP_TypeGlobals(std::vector<TypePtr>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
-		: CPP_GlobalsNEW<TypePtr>(_global_vec, _offsets_set, _inits)
+		: CPP_Globals<TypePtr>(_global_vec, _offsets_set, _inits)
 		{ }
 
 protected:
