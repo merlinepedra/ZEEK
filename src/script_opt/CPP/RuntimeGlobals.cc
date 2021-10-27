@@ -14,7 +14,7 @@ namespace zeek::detail
 
 
 template <class T>
-CPP_Globals<T>::CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
+CPP_IndexedGlobals<T>::CPP_IndexedGlobals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
 	: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 	{
 	int num_globals = 0;
@@ -26,7 +26,7 @@ CPP_Globals<T>::CPP_Globals(std::vector<T>& _global_vec, int _offsets_set, std::
 	}
 
 template <class T>
-void CPP_Globals<T>::InitializeCohort(InitsManager* im, int cohort)
+void CPP_IndexedGlobals<T>::InitializeCohort(InitsManager* im, int cohort)
 	{
 	if ( cohort == 0 )
 		PreInit(im);
@@ -39,7 +39,7 @@ void CPP_Globals<T>::InitializeCohort(InitsManager* im, int cohort)
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals)
 	{
 	auto& e_type = im->Types(init_vals[0]);
 	int val = init_vals[1];
@@ -47,7 +47,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<EnumValPtr>& gvec, i
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals)
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals)
 	{
 	auto chars = im->Strings(init_vals[0]);
 	int len = init_vals[1];
@@ -55,7 +55,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<StringValPtr>& gvec,
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals)
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals)
 	{
 	auto re = new RE_Matcher(im->Strings(init_vals[0]));
 	if ( init_vals[1] )
@@ -67,7 +67,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<PatternValPtr>& gvec
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -81,7 +81,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<ListValPtr>& gvec, i
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -97,7 +97,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<VectorValPtr>& gvec,
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -118,7 +118,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<RecordValPtr>& gvec,
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -139,7 +139,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<TableValPtr>& gvec, 
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -152,7 +152,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<FileValPtr>& gvec, i
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -169,7 +169,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<FuncValPtr>& gvec, i
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto tag = static_cast<AttrTag>(init_vals[0]);
 	auto ae_tag = static_cast<AttrExprType>(init_vals[1]);
@@ -214,7 +214,7 @@ void CPP_Globals<T>::Generate(InitsManager* im, std::vector<AttrPtr>& gvec, int 
 	}
 
 template <class T>
-void CPP_Globals<T>::Generate(InitsManager* im, std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const
+void CPP_IndexedGlobals<T>::Generate(InitsManager* im, std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const
 	{
 	auto n = init_vals.size();
 	auto i = 0U;
@@ -521,18 +521,18 @@ void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set
 
 // Instantiate the templates we'll need.
 
-template class CPP_Globals<EnumValPtr>;
-template class CPP_Globals<StringValPtr>;
-template class CPP_Globals<PatternValPtr>;
-template class CPP_Globals<ListValPtr>;
-template class CPP_Globals<VectorValPtr>;
-template class CPP_Globals<RecordValPtr>;
-template class CPP_Globals<TableValPtr>;
-template class CPP_Globals<FileValPtr>;
-template class CPP_Globals<FuncValPtr>;
-template class CPP_Globals<AttrPtr>;
-template class CPP_Globals<AttributesPtr>;
-template class CPP_Globals<TypePtr>;
+template class CPP_IndexedGlobals<EnumValPtr>;
+template class CPP_IndexedGlobals<StringValPtr>;
+template class CPP_IndexedGlobals<PatternValPtr>;
+template class CPP_IndexedGlobals<ListValPtr>;
+template class CPP_IndexedGlobals<VectorValPtr>;
+template class CPP_IndexedGlobals<RecordValPtr>;
+template class CPP_IndexedGlobals<TableValPtr>;
+template class CPP_IndexedGlobals<FileValPtr>;
+template class CPP_IndexedGlobals<FuncValPtr>;
+template class CPP_IndexedGlobals<AttrPtr>;
+template class CPP_IndexedGlobals<AttributesPtr>;
+template class CPP_IndexedGlobals<TypePtr>;
 
 
 	} // zeek::detail

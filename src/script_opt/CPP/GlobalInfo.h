@@ -16,11 +16,11 @@ class CPPCompile;
 
 // Abstract class for tracking the information about a single global.
 // This might be a stand-alone global, or a global that's ultimately
-// instantiated as part of a CPP_MiscGlobals object.
+// instantiated as part of a CPP_CustomGlobals object.
 class CPP_GlobalInfo;
 
 // Abstract class for tracking the information about a set of globals,
-// each of which is an element of a CPP_MiscGlobals object.
+// each of which is an element of a CPP_CustomGlobals object.
 class CPP_GlobalsInfo
 	{
 public:
@@ -56,7 +56,7 @@ protected:
 	void BuildOffsetSet(CPPCompile* c);
 
 	virtual std::string GlobalsType() const
-		{ return std::string("CPP_MiscGlobals<") + CPPType() + ">"; }
+		{ return std::string("CPP_CustomGlobals<") + CPPType() + ">"; }
 
 	virtual void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort);
 
@@ -106,7 +106,7 @@ public:
 		if ( tag == "Type" )
 			CPP_type2 = "CPP_TypeGlobals";
 		else
-			CPP_type2 = std::string("CPP_Globals<") + CPPType() + ">";
+			CPP_type2 = std::string("CPP_IndexedGlobals<") + CPPType() + ">";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
@@ -149,7 +149,7 @@ public:
 	int InitCohort() const { return init_cohort; }
 
 	// Returns a C++ declaration for this global.  Not used if
-	// the global is part of a CPP_MiscGlobals object.
+	// the global is part of a CPP_CustomGlobals object.
 	std::string Declare() const { return type + " " + Name() + ";"; }
 
 	// Returns the type used for this initializer.
