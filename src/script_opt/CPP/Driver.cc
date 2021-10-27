@@ -276,7 +276,7 @@ shared_ptr<CPP_GlobalsInfo> CPPCompile::InitGlobalInfo(const char* tag, const ch
 	else if ( util::streq(tag, "Attributes") )
 		gi = make_shared<CPP_CompoundGlobalsInfo>(tag, type);
 	else
-		gi = make_shared<CPP_GlobalsInfo>(tag, type);
+		gi = make_shared<CPP_CustomGlobalsInfo>(tag, type);
 
 	all_global_info.insert(gi);
 

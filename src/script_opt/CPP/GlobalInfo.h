@@ -45,8 +45,11 @@ public:
 		{ return c > MaxCohort() ? 0 : instances[c].size(); }
 
 	const std::string& Tag() const { return tag; }
+
 	const std::string& CPPType() const { return CPP_type; }
-	void SetCPPType(std::string ct) { CPP_type = std::move(ct); }
+	virtual void SetCPPType(std::string ct) { CPP_type = std::move(ct); }
+
+	std::string GlobalsType() const { return globals_type; }
 
 	virtual void AddInstance(std::shared_ptr<CPP_GlobalInfo> g);
 	virtual std::string Declare() const;
@@ -54,9 +57,6 @@ public:
 
 protected:
 	void BuildOffsetSet(CPPCompile* c);
-
-	virtual std::string GlobalsType() const
-		{ return std::string("CPP_CustomGlobals<") + CPPType() + ">"; }
 
 	virtual void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort);
 
@@ -75,26 +75,48 @@ protected:
 
 	// C++ type associated with a single instance of these constants.
 	std::string CPP_type;
+
+	// C++ type associated with the collection of initializers.
+	std::string globals_type;
 	};
 
-class CPP_BasicConstGlobalsInfo : public CPP_GlobalsInfo
+class CPP_CustomGlobalsInfo : public CPP_GlobalsInfo
+	{
+public:
+	CPP_CustomGlobalsInfo(std::string _tag, std::string _type)
+		: CPP_GlobalsInfo(std::move(_tag), std::move(_type))
+		{
+		BuildGlobalType();
+		}
+
+	void SetCPPType(std::string ct) override
+		{
+		CPP_GlobalsInfo::SetCPPType(std::move(ct));
+		BuildGlobalType();
+		}
+
+private:
+	void BuildGlobalType()
+		{
+		globals_type = std::string("CPP_CustomGlobals<") + CPPType() + ">";
+		}
+	};
+
+class CPP_BasicConstGlobalsInfo : public CPP_CustomGlobalsInfo
 	{
 public:
 	CPP_BasicConstGlobalsInfo(std::string _tag, std::string type, std::string c_type, bool is_basic = true)
-		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
+		: CPP_CustomGlobalsInfo(std::move(_tag), std::move(type))
 		{
 		if ( is_basic )
-			CPP_type2 = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
+			globals_type = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
 		else
-			CPP_type2 = std::string("CPP_") + tag + "Consts";
+			globals_type = std::string("CPP_") + tag + "Consts";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
 
-	std::string GlobalsType() const override { return CPP_type2; }
-
 private:
-	std::string CPP_type2;
 	};
 
 class CPP_CompoundGlobalsInfo : public CPP_GlobalsInfo
@@ -104,17 +126,12 @@ public:
 		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
 		{
 		if ( tag == "Type" )
-			CPP_type2 = "CPP_TypeGlobals";
+			globals_type = "CPP_TypeGlobals";
 		else
-			CPP_type2 = std::string("CPP_IndexedGlobals<") + CPPType() + ">";
+			globals_type = std::string("CPP_IndexedGlobals<") + CPPType() + ">";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
-
-	std::string GlobalsType() const override { return CPP_type2; }
-
-private:
-	std::string CPP_type2;
 	};
 
 class CPP_GlobalInfo
