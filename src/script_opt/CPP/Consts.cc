@@ -9,7 +9,7 @@ using namespace std;
 namespace zeek::detail
 	{
 
-shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp, int& consts_offset)
+shared_ptr<CPP_InitInfo> CPPCompile::RegisterConstant(const ValPtr& vp, int& consts_offset)
 	{
 	// Make sure the value pointer, which might be transient
 	// in construction, sticks around so we can track its
@@ -59,7 +59,7 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterConstant(const ValPtr& vp, int& c
 
 	auto tag = t->Tag();
 	auto const_name = const_info[tag]->NextName();
-	shared_ptr<CPP_GlobalInfo> gi;
+	shared_ptr<CPP_InitInfo> gi;
 
 	switch ( tag )
 		{

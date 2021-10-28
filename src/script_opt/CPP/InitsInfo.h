@@ -16,25 +16,25 @@ class CPPCompile;
 
 // Abstract class for tracking the information about a single global.
 // This might be a stand-alone global, or a global that's ultimately
-// instantiated as part of a CPP_CustomGlobals object.
-class CPP_GlobalInfo;
+// instantiated as part of a CPP_CustomInits object.
+class CPP_InitInfo;
 
 // Abstract class for tracking the information about a set of globals,
-// each of which is an element of a CPP_CustomGlobals object.
-class CPP_GlobalsInfo
+// each of which is an element of a CPP_CustomInits object.
+class CPP_InitsInfo
 	{
 public:
-	CPP_GlobalsInfo(std::string _tag, std::string type)
+	CPP_InitsInfo(std::string _tag, std::string type)
 		: tag(std::move(_tag))
 		{
 		base_name = std::string("CPP__") + tag + "__";
 		CPP_type = tag + type;
 		}
 
-	virtual ~CPP_GlobalsInfo() { }
+	virtual ~CPP_InitsInfo() { }
 
 	std::string InitializersName() const { return base_name + "init"; }
-	const std::string& GlobalsName() const { return base_name; }
+	const std::string& InitsName() const { return base_name; }
 
 	std::string Name(int index) const;
 	std::string NextName() const { return Name(Size()); }
@@ -49,21 +49,22 @@ public:
 	const std::string& CPPType() const { return CPP_type; }
 	virtual void SetCPPType(std::string ct) { CPP_type = std::move(ct); }
 
-	std::string GlobalsType() const { return globals_type; }
+	std::string InitsType() const { return globals_type; }
 
-	virtual void AddInstance(std::shared_ptr<CPP_GlobalInfo> g);
-	virtual std::string Declare() const;
-	virtual void GenerateInitializers(CPPCompile* c);
+	void AddInstance(std::shared_ptr<CPP_InitInfo> g);
+	void GenerateInitializers(CPPCompile* c);
 
 protected:
 	void BuildOffsetSet(CPPCompile* c);
 
-	virtual void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort);
+	std::string Declare() const;
+
+	virtual void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort);
 
 	int size = 0;	// total number of globals
 
 	// The outer vector is indexed by initialization cohort.
-	std::vector<std::vector<std::shared_ptr<CPP_GlobalInfo>>> instances;
+	std::vector<std::vector<std::shared_ptr<CPP_InitInfo>>> instances;
 
 	int offset_set = 0;
 
@@ -80,33 +81,33 @@ protected:
 	std::string globals_type;
 	};
 
-class CPP_CustomGlobalsInfo : public CPP_GlobalsInfo
+class CPP_CustomInitsInfo : public CPP_InitsInfo
 	{
 public:
-	CPP_CustomGlobalsInfo(std::string _tag, std::string _type)
-		: CPP_GlobalsInfo(std::move(_tag), std::move(_type))
+	CPP_CustomInitsInfo(std::string _tag, std::string _type)
+		: CPP_InitsInfo(std::move(_tag), std::move(_type))
 		{
-		BuildGlobalType();
+		BuildInitType();
 		}
 
 	void SetCPPType(std::string ct) override
 		{
-		CPP_GlobalsInfo::SetCPPType(std::move(ct));
-		BuildGlobalType();
+		CPP_InitsInfo::SetCPPType(std::move(ct));
+		BuildInitType();
 		}
 
 private:
-	void BuildGlobalType()
+	void BuildInitType()
 		{
-		globals_type = std::string("CPP_CustomGlobals<") + CPPType() + ">";
+		globals_type = std::string("CPP_CustomInits<") + CPPType() + ">";
 		}
 	};
 
-class CPP_BasicConstGlobalsInfo : public CPP_CustomGlobalsInfo
+class CPP_BasicConstInitsInfo : public CPP_CustomInitsInfo
 	{
 public:
-	CPP_BasicConstGlobalsInfo(std::string _tag, std::string type, std::string c_type, bool is_basic = true)
-		: CPP_CustomGlobalsInfo(std::move(_tag), std::move(type))
+	CPP_BasicConstInitsInfo(std::string _tag, std::string type, std::string c_type, bool is_basic = true)
+		: CPP_CustomInitsInfo(std::move(_tag), std::move(type))
 		{
 		if ( is_basic )
 			globals_type = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
@@ -114,44 +115,44 @@ public:
 			globals_type = std::string("CPP_") + tag + "Consts";
 		}
 
-	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
+	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort) override;
 
 private:
 	};
 
-class CPP_CompoundGlobalsInfo : public CPP_GlobalsInfo
+class CPP_CompoundInitsInfo : public CPP_InitsInfo
 	{
 public:
-	CPP_CompoundGlobalsInfo(std::string _tag, std::string type)
-		: CPP_GlobalsInfo(std::move(_tag), std::move(type))
+	CPP_CompoundInitsInfo(std::string _tag, std::string type)
+		: CPP_InitsInfo(std::move(_tag), std::move(type))
 		{
 		if ( tag == "Type" )
-			globals_type = "CPP_TypeGlobals";
+			globals_type = "CPP_TypeInits";
 		else
-			globals_type = std::string("CPP_IndexedGlobals<") + CPPType() + ">";
+			globals_type = std::string("CPP_IndexedInits<") + CPPType() + ">";
 		}
 
-	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort) override;
+	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort) override;
 	};
 
-class CPP_GlobalInfo
+class CPP_InitInfo
 	{
 public:
 	// Constructor used for stand-alone globals.  The second
 	// argument specifies the core of the associated type.
-	CPP_GlobalInfo(std::string _name, std::string _type)
+	CPP_InitInfo(std::string _name, std::string _type)
 		: name(std::move(_name)), type(std::move(_type))
 		{ }
 
-	// Constructor used for a global that will be part of a CPP_GlobalsInfo
+	// Constructor used for a global that will be part of a CPP_InitsInfo
 	// object.  The rest of its initialization will be done by
-	// CPP_GlobalsInfo::AddInstance.
-	CPP_GlobalInfo() { }
+	// CPP_InitsInfo::AddInstance.
+	CPP_InitInfo() { }
 
-	virtual ~CPP_GlobalInfo() { }
+	virtual ~CPP_InitInfo() { }
 
 	int Offset() const { return offset; }
-	void SetOffset(const CPP_GlobalsInfo* _gls, int _offset)
+	void SetOffset(const CPP_InitsInfo* _gls, int _offset)
 		{
 		gls = _gls;
 		offset = _offset;
@@ -161,12 +162,12 @@ public:
 	// global in the generated code.
 	std::string Name() const { return gls ? gls->Name(offset) : name; }
 
-	const CPP_GlobalsInfo* MainGlobal() { return gls; }
+	const CPP_InitsInfo* MainInit() { return gls; }
 
 	int InitCohort() const { return init_cohort; }
 
 	// Returns a C++ declaration for this global.  Not used if
-	// the global is part of a CPP_CustomGlobals object.
+	// the global is part of a CPP_CustomInits object.
 	std::string Declare() const { return type + " " + Name() + ";"; }
 
 	// Returns the type used for this initializer.
@@ -187,12 +188,12 @@ protected:
 	// value in their constructors.
 	int init_cohort = 0;
 
-	const CPP_GlobalsInfo* gls = nullptr;
-	int offset = -1;	// offset for CPP_GlobalsInfo, if non-nil
+	const CPP_InitsInfo* gls = nullptr;
+	int offset = -1;	// offset for CPP_InitsInfo, if non-nil
 	};
 
 
-class BasicConstInfo : public CPP_GlobalInfo
+class BasicConstInfo : public CPP_InitInfo
 	{
 public:
 	BasicConstInfo(std:: string _name, std::string _cpp_type, std::string _val)
@@ -207,7 +208,7 @@ private:
 	std::string val;
 	};
 
-class DescConstInfo : public CPP_GlobalInfo
+class DescConstInfo : public CPP_InitInfo
 	{
 public:
 	DescConstInfo(CPPCompile* c, std::string _name, ValPtr v);
@@ -220,7 +221,7 @@ private:
 	std::string init;
 	};
 
-class EnumConstInfo : public CPP_GlobalInfo
+class EnumConstInfo : public CPP_InitInfo
 	{
 public:
 	EnumConstInfo(CPPCompile* c, ValPtr v);
@@ -236,7 +237,7 @@ private:
 	int e_val;
 	};
 
-class StringConstInfo : public CPP_GlobalInfo
+class StringConstInfo : public CPP_InitInfo
 	{
 public:
 	StringConstInfo(CPPCompile* c, ValPtr v);
@@ -252,7 +253,7 @@ private:
 	int len;
 	};
 
-class PatternConstInfo : public CPP_GlobalInfo
+class PatternConstInfo : public CPP_InitInfo
 	{
 public:
 	PatternConstInfo(CPPCompile* c, ValPtr v);
@@ -268,7 +269,7 @@ private:
 	int is_case_insensitive;
 	};
 
-class PortConstInfo : public CPP_GlobalInfo
+class PortConstInfo : public CPP_InitInfo
 	{
 public:
 	PortConstInfo(ValPtr v) : p(static_cast<UnsignedValImplementation*>(v->AsPortVal())->Get()) { }
@@ -282,7 +283,7 @@ private:
 	bro_uint_t p;
 	};
 
-class CompoundConstInfo : public CPP_GlobalInfo
+class CompoundConstInfo : public CPP_InitInfo
 	{
 public:
 	CompoundConstInfo(CPPCompile* c, ValPtr v);
@@ -358,7 +359,7 @@ public:
 	};
 
 
-class GlobalInitInfo : public CPP_GlobalInfo
+class GlobalInitInfo : public CPP_InitInfo
 	{
 public:
 	GlobalInitInfo(CPPCompile* c, const ID* g, std::string CPP_name);
@@ -377,7 +378,7 @@ protected:
 	};
 
 
-class CallExprInitInfo : public CPP_GlobalInfo
+class CallExprInitInfo : public CPP_InitInfo
 	{
 public:
 	CallExprInitInfo(CPPCompile* c, ExprPtr e, std::string e_name, std::string wrapper_class);
@@ -400,7 +401,7 @@ protected:
 	};
 
 
-class LambdaRegistrationInfo : public CPP_GlobalInfo
+class LambdaRegistrationInfo : public CPP_InitInfo
 	{
 public:
 	LambdaRegistrationInfo(CPPCompile* c, std::string name, FuncTypePtr ft, std::string wrapper_class, p_hash_type h, bool has_captures);
@@ -418,10 +419,10 @@ protected:
 	};
 
 
-class AbstractTypeInfo : public CPP_GlobalInfo
+class AbstractTypeInfo : public CPP_InitInfo
 	{
 public:
-	AbstractTypeInfo(CPPCompile* _c, TypePtr _t) : CPP_GlobalInfo(), c(_c), t(std::move(_t)) { }
+	AbstractTypeInfo(CPPCompile* _c, TypePtr _t) : CPP_InitInfo(), c(_c), t(std::move(_t)) { }
 
 	void InitializerVals(std::vector<std::string>& ivs) const override
 		{

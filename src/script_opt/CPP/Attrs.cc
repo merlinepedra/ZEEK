@@ -7,7 +7,7 @@ namespace zeek::detail
 
 using namespace std;
 
-shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
+shared_ptr<CPP_InitInfo> CPPCompile::RegisterAttributes(const AttributesPtr& attrs)
 	{
 	if ( ! attrs )
 		return nullptr;
@@ -31,14 +31,14 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttributes(const AttributesPtr& a
 	for ( const auto& a : attrs->GetAttrs() )
 		(void)RegisterAttr(a);
 
-	shared_ptr<CPP_GlobalInfo> gi = make_shared<AttrsInfo>(this, attrs);
+	shared_ptr<CPP_InitInfo> gi = make_shared<AttrsInfo>(this, attrs);
 	attrs_info->AddInstance(gi);
 	processed_attrs[a] = gi;
 
 	return gi;
 	}
 
-shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterAttr(const AttrPtr& attr)
+shared_ptr<CPP_InitInfo> CPPCompile::RegisterAttr(const AttrPtr& attr)
 	{
 	auto a = attr.get();
 

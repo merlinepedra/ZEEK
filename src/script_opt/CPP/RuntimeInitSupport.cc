@@ -1,6 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include "zeek/script_opt/CPP/RuntimeInit.h"
+#include "zeek/script_opt/CPP/RuntimeInitSupport.h"
 
 #include "zeek/EventRegistry.h"
 #include "zeek/module_util.h"

@@ -118,7 +118,7 @@ void CPPCompile::CreateGlobal(const ID* g)
 	global_vars.emplace(g);
 	}
 
-std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterGlobal(const ID* g)
+std::shared_ptr<CPP_InitInfo> CPPCompile::RegisterGlobal(const ID* g)
 	{
 	if ( global_gis.count(g) == 0 )
 		{

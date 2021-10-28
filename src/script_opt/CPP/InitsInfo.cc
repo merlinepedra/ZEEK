@@ -11,12 +11,12 @@ using namespace std;
 namespace zeek::detail
 	{
 
-string CPP_GlobalsInfo::Name(int index) const
+string CPP_InitsInfo::Name(int index) const
 	{
 	return base_name + "[" + Fmt(index) + "]";
 	}
 
-void CPP_GlobalsInfo::AddInstance(shared_ptr<CPP_GlobalInfo> g)
+void CPP_InitsInfo::AddInstance(shared_ptr<CPP_InitInfo> g)
 	{
 	auto init_cohort = g->InitCohort();
 
@@ -28,18 +28,18 @@ void CPP_GlobalsInfo::AddInstance(shared_ptr<CPP_GlobalInfo> g)
 	instances[init_cohort].push_back(move(g));
 	}
 
-string CPP_GlobalsInfo::Declare() const
+string CPP_InitsInfo::Declare() const
 	{
 	return string("std::vector<") + CPPType() + "> " + base_name + ";";
 	}
 
-void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
+void CPP_InitsInfo::GenerateInitializers(CPPCompile* c)
 	{
 	BuildOffsetSet(c);
 
 	c->NL();
 
-	auto gt = GlobalsType();
+	auto gt = InitsType();
 
 	c->Emit("%s %s = %s(%s, %s,", gt, InitializersName(), gt, base_name, Fmt(offset_set));
 
@@ -58,7 +58,7 @@ void CPP_GlobalsInfo::GenerateInitializers(CPPCompile* c)
 	c->Emit(");");
 	}
 
-void CPP_GlobalsInfo::BuildOffsetSet(CPPCompile* c)
+void CPP_InitsInfo::BuildOffsetSet(CPPCompile* c)
 	{
 	vector<int> offsets_vec;
 
@@ -75,7 +75,7 @@ void CPP_GlobalsInfo::BuildOffsetSet(CPPCompile* c)
 	offset_set = c->IndMgr().AddIndices(offsets_vec);
 	}
 
-void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
+void CPP_InitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
 	{
 	for ( auto& co : cohort )
 		{
@@ -99,7 +99,7 @@ void CPP_GlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP
 	}
 
 
-void CPP_CompoundGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
+void CPP_CompoundInitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
 	{
 	for ( auto& co : cohort )
 		{
@@ -115,7 +115,7 @@ void CPP_CompoundGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared
 	}
 
 
-void CPP_BasicConstGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_GlobalInfo>>& cohort)
+void CPP_BasicConstInitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
 	{
 	for ( auto& co : cohort )
 		{
@@ -127,7 +127,7 @@ void CPP_BasicConstGlobalsInfo::BuildCohort(CPPCompile* c, std::vector<std::shar
 	}
 
 
-string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
+string CPP_InitInfo::ValElem(CPPCompile* c, ValPtr v)
 	{
 	string init_type;
 	string init_args;
@@ -144,7 +144,7 @@ string CPP_GlobalInfo::ValElem(CPPCompile* c, ValPtr v)
 	}
 
 DescConstInfo::DescConstInfo(CPPCompile* c, string _name, ValPtr v)
-	: CPP_GlobalInfo(), name(move(_name))
+	: CPP_InitInfo(), name(move(_name))
 	{
 	ODesc d;
 	v->Describe(&d);
@@ -162,7 +162,7 @@ EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)
 	}
 
 StringConstInfo::StringConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_GlobalInfo()
+	: CPP_InitInfo()
 	{
 	auto s = v->AsString();
 	const char* b = (const char*)(s->Bytes());
@@ -172,7 +172,7 @@ StringConstInfo::StringConstInfo(CPPCompile* c, ValPtr v)
 	}
 
 PatternConstInfo::PatternConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_GlobalInfo()
+	: CPP_InitInfo()
 	{
 	auto re = v->AsPatternVal()->Get();
 	pattern = c->TrackString(CPPEscape(re->OrigText()));
@@ -180,7 +180,7 @@ PatternConstInfo::PatternConstInfo(CPPCompile* c, ValPtr v)
 	}
 
 CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v)
-	: CPP_GlobalInfo(), c(_c)
+	: CPP_InitInfo(), c(_c)
 	{
 	auto& t = v->GetType();
 	type = c->TypeOffset(t);
@@ -337,7 +337,7 @@ AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs)
 	}
 
 GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, string _CPP_name)
-	: CPP_GlobalInfo(), CPP_name(move(_CPP_name))
+	: CPP_InitInfo(), CPP_name(move(_CPP_name))
 	{
 	Zeek_name = g->Name();
 

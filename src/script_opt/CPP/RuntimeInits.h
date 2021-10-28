@@ -5,7 +5,7 @@
 
 #include "zeek/Expr.h"
 #include "zeek/module_util.h"
-#include "zeek/script_opt/CPP/RuntimeInit.h"
+#include "zeek/script_opt/CPP/RuntimeInitSupport.h"
 
 #pragma once
 
@@ -18,10 +18,10 @@ using FuncValPtr = IntrusivePtr<FuncVal>;
 
 class InitsManager;
 
-class CPP_AbstractGlobalAccessor
+class CPP_AbstractInitAccessor
 	{
 public:
-	virtual ~CPP_AbstractGlobalAccessor() {}
+	virtual ~CPP_AbstractInitAccessor() {}
 	virtual ValPtr Get(int index) const { return nullptr; }
 	};
 
@@ -40,7 +40,7 @@ class InitsManager
 public:
 	InitsManager(
 		std::vector<CPP_ValElem>& _const_vals,
-		std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>>& _consts,
+		std::map<TypeTag, std::shared_ptr<CPP_AbstractInitAccessor>>& _consts,
 		std::vector<std::vector<int>>& _indices,
 		std::vector<const char*>& _strings,
 		std::vector<p_hash_type>& _hashes,
@@ -77,7 +77,7 @@ public:
 
 private:
 	std::vector<CPP_ValElem>& const_vals;
-	std::map<TypeTag, std::shared_ptr<CPP_AbstractGlobalAccessor>>& consts;
+	std::map<TypeTag, std::shared_ptr<CPP_AbstractInitAccessor>>& consts;
 	std::vector<std::vector<int>>& indices;
 	std::vector<const char*>& strings;
 	std::vector<p_hash_type>& hashes;
@@ -88,10 +88,10 @@ private:
 	};
 
 template <class T>
-class CPP_Global
+class CPP_Init
 	{
 public:
-	virtual ~CPP_Global() { }
+	virtual ~CPP_Init() { }
 
 	virtual void PreInit(InitsManager* im, std::vector<T>& global_vec, int offset) const { }
 	virtual void Generate(InitsManager* im, std::vector<T>& global_vec, int offset) const
@@ -99,10 +99,10 @@ public:
 	};
 
 template <class T>
-class CPP_CustomGlobals
+class CPP_CustomInits
 	{
 public:
-	CPP_CustomGlobals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> _inits)
+	CPP_CustomInits(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> _inits)
 		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
 		int num_globals = 0;
@@ -144,15 +144,15 @@ private:
 
 	// Indexed first by cohort, and then iterated over to get all
 	// of the initializers for that cohort.
-	std::vector<std::vector<std::shared_ptr<CPP_Global<T>>>> inits;
+	std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> inits;
 	};
 
 
 template <class T>
-class CPP_GlobalAccessor : public CPP_AbstractGlobalAccessor
+class CPP_InitAccessor : public CPP_AbstractInitAccessor
 	{
 public:
-	CPP_GlobalAccessor(std::vector<T>& _global_vec) : global_vec(_global_vec) {}
+	CPP_InitAccessor(std::vector<T>& _global_vec) : global_vec(_global_vec) {}
 
 	ValPtr Get(int index) const override { return global_vec[index]; }
 
@@ -164,10 +164,10 @@ using ValElemVec = std::vector<int>;
 
 
 template <class T>
-class CPP_IndexedGlobals
+class CPP_IndexedInits
 	{
 public:
-	CPP_IndexedGlobals(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
+	CPP_IndexedInits(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
 
 	void InitializeCohort(InitsManager* im, int cohort);
 
@@ -204,11 +204,11 @@ protected:
 	std::vector<std::vector<std::vector<int>>> inits;
 	};
 
-class CPP_TypeGlobals : public CPP_IndexedGlobals<TypePtr>
+class CPP_TypeInits : public CPP_IndexedInits<TypePtr>
 	{
 public:
-	CPP_TypeGlobals(std::vector<TypePtr>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
-		: CPP_IndexedGlobals<TypePtr>(_global_vec, _offsets_set, _inits)
+	CPP_TypeInits(std::vector<TypePtr>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
+		: CPP_IndexedInits<TypePtr>(_global_vec, _offsets_set, _inits)
 		{ }
 
 protected:
@@ -275,10 +275,10 @@ public:
 	};
 
 template <class T1, typename T2, class T3>
-class CPP_BasicConst : public CPP_Global<T1>
+class CPP_BasicConst : public CPP_Init<T1>
 	{
 public:
-	CPP_BasicConst(T2 _v) : CPP_Global<T1>(), v(_v) { }
+	CPP_BasicConst(T2 _v) : CPP_Init<T1>(), v(_v) { }
 
 	void Generate(InitsManager* /* im */, std::vector<T1>& global_vec, int offset) const override
 		{ this->global_vec[offset] = make_intrusive<T3>(v); }
@@ -316,11 +316,11 @@ public:
 	};
 
 
-class CPP_GlobalInit : public CPP_Global<void*>
+class CPP_GlobalInit : public CPP_Init<void*>
 	{
 public:
 	CPP_GlobalInit(IDPtr& _global, const char* _name, int _type, int _attrs, int _val, bool _exported)
-		: CPP_Global<void*>(), global(_global), name(_name), type(_type), attrs(_attrs), val(_val), exported(_exported)
+		: CPP_Init<void*>(), global(_global), name(_name), type(_type), attrs(_attrs), val(_val), exported(_exported)
 		{ }
 
 	void Generate(InitsManager* im, std::vector<void*>& /* global_vec */, int /* offset */) const override;
@@ -334,11 +334,11 @@ protected:
 	bool exported;
 	};
 
-class CPP_AbstractCallExprInit : public CPP_Global<CallExprPtr>
+class CPP_AbstractCallExprInit : public CPP_Init<CallExprPtr>
 	{
 public:
 	CPP_AbstractCallExprInit()
-		: CPP_Global<CallExprPtr>() {}
+		: CPP_Init<CallExprPtr>() {}
 	};
 
 template <class T>
@@ -364,11 +364,11 @@ protected:
 	CallExprPtr& e_var;
 	};
 
-class CPP_AbstractLambdaRegistration : public CPP_Global<void*>
+class CPP_AbstractLambdaRegistration : public CPP_Init<void*>
 	{
 public:
 	CPP_AbstractLambdaRegistration()
-		: CPP_Global<void*>() { }
+		: CPP_Init<void*>() { }
 	};
 
 template <class T>

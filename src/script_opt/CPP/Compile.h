@@ -3,7 +3,7 @@
 #pragma once
 
 #include "zeek/Desc.h"
-#include "zeek/script_opt/CPP/GlobalInfo.h"
+#include "zeek/script_opt/CPP/InitsInfo.h"
 #include "zeek/script_opt/CPP/Func.h"
 #include "zeek/script_opt/CPP/HashMgr.h"
 #include "zeek/script_opt/CPP/Tracker.h"
@@ -146,15 +146,15 @@ public:
 	// C++ variables representing the types.
 	//
 	// Returns the initialization info associated with the type.
-	std::shared_ptr<CPP_GlobalInfo> RegisterType(const TypePtr& t);
+	std::shared_ptr<CPP_InitInfo> RegisterType(const TypePtr& t);
 	int TypeOffset(const TypePtr& t)
 		{ return GI_Offset(RegisterType(t)); }
 	int TypeCohort(const TypePtr& t)
 		{ return GI_Cohort(RegisterType(t)); }
 
-	std::shared_ptr<CPP_GlobalInfo> RegisterConstant(const ValPtr& vp, int& consts_offset);
+	std::shared_ptr<CPP_InitInfo> RegisterConstant(const ValPtr& vp, int& consts_offset);
 
-	std::shared_ptr<CPP_GlobalInfo> RegisterGlobal(const ID* g);
+	std::shared_ptr<CPP_InitInfo> RegisterGlobal(const ID* g);
 
 	// Tracks a use of the given set of attributes, including
 	// initialization dependencies and the generation of any
@@ -162,8 +162,8 @@ public:
 	//
 	// Returns the initialization info associated with the set of
 	// attributes.
-	std::shared_ptr<CPP_GlobalInfo> RegisterAttributes(const AttributesPtr& attrs);
-	std::shared_ptr<CPP_GlobalInfo> RegisterAttr(const AttrPtr& attr);
+	std::shared_ptr<CPP_InitInfo> RegisterAttributes(const AttributesPtr& attrs);
+	std::shared_ptr<CPP_InitInfo> RegisterAttr(const AttrPtr& attr);
 	int AttributesOffset(const AttributesPtr& attrs)
 		{ return GI_Offset(RegisterAttributes(attrs)); }
 	int AttrOffset(const AttrPtr& attr)
@@ -180,7 +180,7 @@ public:
 	// tracked).  So instead we track the associated CallExprInitInfo
 	// objects, and after all types have been tracked, then spin
 	// through them to generate the code.
-	std::shared_ptr<CPP_GlobalInfo> RegisterInitExpr(const ExprPtr& e);
+	std::shared_ptr<CPP_InitInfo> RegisterInitExpr(const ExprPtr& e);
 
 	int TrackString(std::string s)
 		{
@@ -213,18 +213,18 @@ private:
 	// See Driver.cc for definitions.
 	//
 
-	friend class CPP_GlobalsInfo;
-	friend class CPP_BasicConstGlobalsInfo;
-	friend class CPP_CompoundGlobalsInfo;
+	friend class CPP_InitsInfo;
+	friend class CPP_BasicConstInitsInfo;
+	friend class CPP_CompoundInitsInfo;
 	friend class IndicesManager;
-	friend class CPP_GlobalInfo;
+	friend class CPP_InitInfo;
 	friend class ListConstInfo;
 	friend class FuncConstInfo;
 	friend class BaseTypeInfo;
 	friend class AttrInfo;
 	friend class AttrsInfo;
 
-	std::shared_ptr<CPP_GlobalsInfo> InitGlobalInfo(const char* tag, const char* type, const char* c_type = nullptr, bool is_basic = true);
+	std::shared_ptr<CPP_InitsInfo> CreateInitInfo(const char* tag, const char* type, const char* c_type = nullptr, bool is_basic = true);
 
 	// Main driver, invoked by constructor.
 	void Compile(bool report_uncompilable);
@@ -377,7 +377,7 @@ private:
 
 	// Retrieves the initialization information associated with the
 	// given global.
-	std::unordered_map<const ID*, std::shared_ptr<CPP_GlobalInfo>> global_gis;
+	std::unordered_map<const ID*, std::shared_ptr<CPP_InitInfo>> global_gis;
 
 	// Similar for locals, for the function currently being compiled.
 	std::unordered_map<const ID*, std::string> locals;
@@ -563,7 +563,7 @@ private:
 
 	// Maps the values of (non-native) constants to associated global
 	// information.
-	std::unordered_map<const Val*, std::shared_ptr<CPP_GlobalInfo>> const_vals;
+	std::unordered_map<const Val*, std::shared_ptr<CPP_InitInfo>> const_vals;
 	std::unordered_map<const Val*, int> const_offsets;
 
 	// Used for memory management associated with const_vals's index.
@@ -571,20 +571,20 @@ private:
 
 	// Maps string representations of (non-native) constants to
 	// associated C++ globals.
-	std::unordered_map<std::string, std::shared_ptr<CPP_GlobalInfo>> constants;
+	std::unordered_map<std::string, std::shared_ptr<CPP_InitInfo>> constants;
 	std::unordered_map<std::string, int> constants_offsets;
 
-	std::set<std::shared_ptr<CPP_GlobalsInfo>> all_global_info;
+	std::set<std::shared_ptr<CPP_InitsInfo>> all_global_info;
 
-	std::unordered_map<TypeTag, std::shared_ptr<CPP_GlobalsInfo>> const_info;
+	std::unordered_map<TypeTag, std::shared_ptr<CPP_InitsInfo>> const_info;
 	std::vector<std::pair<TypeTag, int>> consts;
 
-	std::shared_ptr<CPP_GlobalsInfo> type_info;
-	std::shared_ptr<CPP_GlobalsInfo> attr_info;
-	std::shared_ptr<CPP_GlobalsInfo> attrs_info;
-	std::shared_ptr<CPP_GlobalsInfo> call_exprs_info;
-	std::shared_ptr<CPP_GlobalsInfo> lambda_reg_info;
-	std::shared_ptr<CPP_GlobalsInfo> global_id_info;
+	std::shared_ptr<CPP_InitsInfo> type_info;
+	std::shared_ptr<CPP_InitsInfo> attr_info;
+	std::shared_ptr<CPP_InitsInfo> attrs_info;
+	std::shared_ptr<CPP_InitsInfo> call_exprs_info;
+	std::shared_ptr<CPP_InitsInfo> lambda_reg_info;
+	std::shared_ptr<CPP_InitsInfo> global_id_info;
 
 	std::unordered_map<std::string, std::shared_ptr<CallExprInitInfo>> init_infos;
 
@@ -835,7 +835,7 @@ private:
 	// leading to infinite recursion.  Maps types to their global
 	// initialization information (or, initially, to nullptr, if
 	// they're in the process of being registered).
-	std::unordered_map<const Type*, std::shared_ptr<CPP_GlobalInfo>> processed_types;
+	std::unordered_map<const Type*, std::shared_ptr<CPP_InitInfo>> processed_types;
 
 	//
 	// End of methods related to managing script types.
@@ -863,8 +863,8 @@ private:
 
 	// Maps Attributes and Attr's to their global initialization
 	// information.
-	std::unordered_map<const Attributes*, std::shared_ptr<CPP_GlobalInfo>> processed_attrs;
-	std::unordered_map<const Attr*, std::shared_ptr<CPP_GlobalInfo>> processed_attr;
+	std::unordered_map<const Attributes*, std::shared_ptr<CPP_InitInfo>> processed_attrs;
+	std::unordered_map<const Attr*, std::shared_ptr<CPP_InitInfo>> processed_attr;
 
 	//
 	// End of methods related to managing script type attributes.
@@ -885,9 +885,9 @@ private:
 	// initialization expression.
 	std::string InitExprName(const ExprPtr& e);
 
-	int GI_Offset(const std::shared_ptr<CPP_GlobalInfo>& gi) const
+	int GI_Offset(const std::shared_ptr<CPP_InitInfo>& gi) const
 		{ return gi ? gi->Offset() : -1; }
-	int GI_Cohort(const std::shared_ptr<CPP_GlobalInfo>& gi) const
+	int GI_Cohort(const std::shared_ptr<CPP_InitInfo>& gi) const
 		{ return gi ? gi->InitCohort() : 0; }
 
 	// Generate code to initialize the mappings for record field

@@ -276,7 +276,7 @@ const char* CPPCompile::TypeType(const TypePtr& t)
 		}
 	}
 
-shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
+shared_ptr<CPP_InitInfo> CPPCompile::RegisterType(const TypePtr& tp)
 	{
 	auto t = TypeRep(tp);
 
@@ -285,7 +285,7 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 
 	processed_types[t] = nullptr;
 
-	shared_ptr<CPP_GlobalInfo> gi;
+	shared_ptr<CPP_InitInfo> gi;
 
 	switch ( t->Tag() )
 		{
@@ -347,7 +347,7 @@ shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterType(const TypePtr& tp)
 	type_info->AddInstance(gi);
 	processed_types[t] = gi;
 
-	types.AddGlobalInfo(t, gi);
+	types.AddInitInfo(t, gi);
 
 	return gi;
 	}

@@ -15,7 +15,7 @@
 #pragma once
 
 #include "zeek/script_opt/CPP/HashMgr.h"
-#include "zeek/script_opt/CPP/GlobalInfo.h"
+#include "zeek/script_opt/CPP/InitsInfo.h"
 
 namespace zeek::detail
 	{
@@ -43,7 +43,7 @@ public:
 	// is provided, then refrains from computing it.
 	void AddKey(IntrusivePtr<T> key, p_hash_type h = 0);
 
-	void AddGlobalInfo(const T* rep, std::shared_ptr<CPP_GlobalInfo> gi)
+	void AddInitInfo(const T* rep, std::shared_ptr<CPP_InitInfo> gi)
 		{ gi_s[rep] = std::move(gi); }
 
 	// Returns the (C++ variable) name associated with the given key.
@@ -87,7 +87,7 @@ private:
 	// Maps keys to internal representations (i.e., hashes).
 	std::unordered_map<const T*, p_hash_type> map;
 
-	std::unordered_map<const T*, std::shared_ptr<CPP_GlobalInfo>> gi_s;
+	std::unordered_map<const T*, std::shared_ptr<CPP_InitInfo>> gi_s;
 
 	// Maps internal representations to distinct values.  These
 	// may-or-may-not be indices into an "inherited" namespace scope.

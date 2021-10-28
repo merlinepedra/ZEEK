@@ -14,7 +14,7 @@ namespace zeek::detail
 
 using namespace std;
 
-std::shared_ptr<CPP_GlobalInfo> CPPCompile::RegisterInitExpr(const ExprPtr& ep)
+std::shared_ptr<CPP_InitInfo> CPPCompile::RegisterInitExpr(const ExprPtr& ep)
 	{
 	auto ename = InitExprName(ep);
 
