@@ -12,14 +12,13 @@ namespace zeek::detail
 using namespace std;
 
 CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const string& gen_name,
-                       const string& _addl_name, CPPHashManager& _hm, bool _update,
+                       const string& _addl_name, CPPHashManager& _hm,
                        bool _standalone, bool report_uncompilable)
-	: funcs(_funcs), pfs(_pfs), hm(_hm), update(_update), standalone(_standalone)
+	: funcs(_funcs), pfs(_pfs), hm(_hm), standalone(_standalone)
 	{
 	addl_name = _addl_name;
-	bool is_addl = hm.IsAppend();
-	auto target_name = is_addl ? addl_name.c_str() : gen_name.c_str();
-	auto mode = is_addl ? "a" : "w";
+	auto target_name = gen_name.c_str();
+	auto mode = "w";
 
 	write_file = fopen(target_name, mode);
 	if ( ! write_file )
@@ -27,30 +26,6 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 		reporter->Error("can't open C++ target file %s", target_name);
 		exit(1);
 		}
-
-	if ( is_addl )
-		{
-		// We need a unique number to associate with the name
-		// space for the code we're adding.  A convenient way to
-		// generate this safely is to use the present size of the
-		// file we're appending to.  That guarantees that every
-		// incremental compilation will wind up with a different
-		// number.
-		struct stat st;
-		if ( fstat(fileno(write_file), &st) != 0 )
-			{
-			char buf[256];
-			util::zeek_strerror_r(errno, buf, sizeof(buf));
-			reporter->Error("fstat failed on %s: %s", target_name, buf);
-			exit(1);
-			}
-
-		// We use a value of "0" to mean "we're not appending,
-		// we're generating from scratch", so make sure we're
-		// distinct from that.
-		addl_tag = st.st_size + 1;
-		}
-
 	else
 		{
 		// Create an empty "additional" file.
@@ -82,10 +57,6 @@ void CPPCompile::Compile(bool report_uncompilable)
 		reporter->FatalError("getcwd failed: %s", strerror(errno));
 
 	working_dir = buf;
-
-	if ( update && addl_tag > 0 && CheckForCollisions() )
-		// Inconsistent compilation environment.
-		exit(1);
 
 	GenProlog();
 
@@ -316,12 +287,6 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 	ASSERT(func_index.count(f) > 0);
 	auto type_signature = casting_index[func_index[f]];
 	Emit("\tCPP_RegisterBody(\"%s\", (void*) %s, %s, %s, %s, std::vector<std::string>(%s)),", f, f, Fmt(type_signature), Fmt(p), Fmt(h), events);
-
-	if ( update )
-		{
-		fprintf(hm.HashFile(), "func\n%s%s\n", scope_prefix(addl_tag).c_str(), f.c_str());
-		fprintf(hm.HashFile(), "%llu\n", h);
-		}
 	}
 
 void CPPCompile::GenEpilog()
@@ -331,8 +296,6 @@ void CPPCompile::GenEpilog()
 		{
 		auto& ie = ii.second;
 		GenInitExpr(ie);
-		if ( update )
-			init_exprs.LogIfNew(ie->GetExpr(), addl_tag, hm.HashFile());
 		}
 
 	NL();
@@ -375,14 +338,6 @@ void CPPCompile::GenEpilog()
 	EndBlock();
 
 	NL();
-
-	// Generate the guts of compound types, and preserve type names
-	// if present.
-	for ( const auto& t : types.DistinctKeys() )
-		{
-		if ( update )
-			types.LogIfNew(t, addl_tag, hm.HashFile());
-		}
 
 	for ( auto gi : all_global_info )
 		gi->GenerateInitializers(this);
@@ -468,9 +423,6 @@ void CPPCompile::GenEpilog()
 	GenInitHook();
 
 	Emit("} // %s\n\n", scope_prefix(addl_tag));
-
-	if ( update )
-		UpdateGlobalHashes();
 
 	if ( addl_tag > 0 )
 		return;

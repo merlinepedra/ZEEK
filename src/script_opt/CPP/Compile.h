@@ -50,22 +50,6 @@
 // i.e., compiling *additional* Zeek scripts at a later point after an
 // initial compilation.  This comes in two forms.
 //
-// "-O update-C++" produces C++ code that extends that already compiled,
-// in a manner where subsequent compilations can leverage both the original
-// and the newly added.  Such compilations *must* be done in a consistent
-// context (for example, any types extended in the original are extended in
-// the same manner - plus then perhaps further extensions - in the updated
-// code).
-//
-// "-O add-C++" instead produces C++ code that (1) will not be leveraged in
-// any subsequent compilations, and (2) can be inconsistent with other
-// "-O add-C++" code added in the future.  The main use of this feature is
-// to support compiling polyglot versions of Zeek scripts used to run
-// the test suite.
-//
-// Zeek invocations specifying "-O use-C++" will activate any code compiled
-// into the zeek binary; otherwise, the code lies dormant.
-//
 // "-O report-C++" reports on which compiled functions will/won't be used
 // (including ones that are available but not relevant to the scripts loaded
 // on the command line).  This can be useful when debugging to make sure
@@ -136,7 +120,7 @@ class CPPCompile
 	{
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs, const std::string& gen_name,
-	           const std::string& addl_name, CPPHashManager& _hm, bool _update, bool _standalone,
+	           const std::string& addl_name, CPPHashManager& _hm, bool _standalone,
 	           bool report_uncompilable);
 	~CPPCompile();
 
@@ -285,10 +269,6 @@ private:
 	// compilation units.
 	int addl_tag = 0;
 
-	// If true, then we're updating the C++ base (i.e., generating
-	// code meant for use by subsequently generated code).
-	bool update = false;
-
 	// If true, the generated code should run "standalone".
 	bool standalone = false;
 
@@ -320,11 +300,6 @@ private:
 	// it's used as a variable (not just as a function being called),
 	// track it as such.
 	void CreateGlobal(const ID* g);
-
-	// For the globals used in the compilation, if new then append
-	// them to the hash file to make the information available
-	// to subsequent compilation runs.
-	void UpdateGlobalHashes();
 
 	// Register the given identifier as a BiF.  If is_var is true
 	// then the BiF is also used in a non-call context.

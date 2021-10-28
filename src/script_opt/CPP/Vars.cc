@@ -136,42 +136,6 @@ std::shared_ptr<CPP_InitInfo> CPPCompile::RegisterGlobal(const ID* g)
 	return global_gis[g];
 	}
 
-void CPPCompile::UpdateGlobalHashes()
-	{
-	for ( auto& g : pfs.AllGlobals() )
-		{
-		auto gn = g->Name();
-
-		if ( hm.HasGlobal(gn) )
-			// Not new to this compilation run.
-			continue;
-
-		auto ht = pfs.HashType(g->GetType());
-
-		p_hash_type hv = 0;
-		if ( g->GetVal() )
-			hv = p_hash(g->GetVal());
-
-		fprintf(hm.HashFile(), "global\n%s\n", gn);
-		fprintf(hm.HashFile(), "%llu %llu\n", ht, hv);
-
-		// Record location information in the hash file for
-		// diagnostic purposes.
-		auto loc = g->GetLocationInfo();
-		fprintf(hm.HashFile(), "%s %d\n", loc->filename, loc->first_line);
-
-		// Flag any named record/enum types.
-		if ( g->IsType() )
-			{
-			const auto& t = g->GetType();
-			if ( t->Tag() == TYPE_RECORD )
-				fprintf(hm.HashFile(), "record\n%s\n", gn);
-			else if ( t->Tag() == TYPE_ENUM )
-				fprintf(hm.HashFile(), "enum\n%s\n", gn);
-			}
-		}
-	}
-
 void CPPCompile::AddBiF(const ID* b, bool is_var)
 	{
 	auto bn = b->Name();
@@ -197,12 +161,7 @@ bool CPPCompile::AddGlobal(const string& g, const char* suffix, bool track)
 		if ( hm.HasGlobalVar(gn) )
 			gn = scope_prefix(hm.GlobalVarScope(gn)) + gn;
 		else
-			{
 			new_var = true;
-
-			if ( track && update )
-				fprintf(hm.HashFile(), "global-var\n%s\n%d\n", gn.c_str(), addl_tag);
-			}
 
 		globals.emplace(g, gn);
 		}
