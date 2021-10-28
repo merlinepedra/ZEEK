@@ -1,6 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-// Classes for tracking information for initializing C++ globals used by the
+// Classes for tracking information for initializing C++ values used by the
 // generated code.
 
 #include "zeek/Val.h"
@@ -14,12 +14,12 @@ namespace zeek::detail
 
 class CPPCompile;
 
-// Abstract class for tracking the information about a single global.
-// This might be a stand-alone global, or a global that's ultimately
-// instantiated as part of a CPP_CustomInits object.
+// Abstract class for tracking the information about a single initialization
+// value.  This might be a stand-alone value, or a value that's ultimately
+// instantiated as an element of a CPP_CustomInits object.
 class CPP_InitInfo;
 
-// Abstract class for tracking the information about a set of globals,
+// Abstract class for tracking the information about a set of values,
 // each of which is an element of a CPP_CustomInits object.
 class CPP_InitsInfo
 	{
@@ -49,7 +49,7 @@ public:
 	const std::string& CPPType() const { return CPP_type; }
 	virtual void SetCPPType(std::string ct) { CPP_type = std::move(ct); }
 
-	std::string InitsType() const { return globals_type; }
+	std::string InitsType() const { return inits_type; }
 
 	void AddInstance(std::shared_ptr<CPP_InitInfo> g);
 	void GenerateInitializers(CPPCompile* c);
@@ -61,7 +61,7 @@ protected:
 
 	virtual void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort);
 
-	int size = 0;	// total number of globals
+	int size = 0;	// total number of initializers
 
 	// The outer vector is indexed by initialization cohort.
 	std::vector<std::vector<std::shared_ptr<CPP_InitInfo>>> instances;
@@ -78,7 +78,7 @@ protected:
 	std::string CPP_type;
 
 	// C++ type associated with the collection of initializers.
-	std::string globals_type;
+	std::string inits_type;
 	};
 
 class CPP_CustomInitsInfo : public CPP_InitsInfo
@@ -99,7 +99,7 @@ public:
 private:
 	void BuildInitType()
 		{
-		globals_type = std::string("CPP_CustomInits<") + CPPType() + ">";
+		inits_type = std::string("CPP_CustomInits<") + CPPType() + ">";
 		}
 	};
 
@@ -110,9 +110,9 @@ public:
 		: CPP_CustomInitsInfo(std::move(_tag), std::move(type))
 		{
 		if ( is_basic )
-			globals_type = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
+			inits_type = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
 		else
-			globals_type = std::string("CPP_") + tag + "Consts";
+			inits_type = std::string("CPP_") + tag + "Consts";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort) override;
@@ -127,9 +127,9 @@ public:
 		: CPP_InitsInfo(std::move(_tag), std::move(type))
 		{
 		if ( tag == "Type" )
-			globals_type = "CPP_TypeInits";
+			inits_type = "CPP_TypeInits";
 		else
-			globals_type = std::string("CPP_IndexedInits<") + CPPType() + ">";
+			inits_type = std::string("CPP_IndexedInits<") + CPPType() + ">";
 		}
 
 	void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort) override;
@@ -138,13 +138,13 @@ public:
 class CPP_InitInfo
 	{
 public:
-	// Constructor used for stand-alone globals.  The second
-	// argument specifies the core of the associated type.
+	// Constructor used for stand-alone values.  The second argument
+	// specifies the core of the associated type.
 	CPP_InitInfo(std::string _name, std::string _type)
 		: name(std::move(_name)), type(std::move(_type))
 		{ }
 
-	// Constructor used for a global that will be part of a CPP_InitsInfo
+	// Constructor used for a value that will be part of a CPP_InitsInfo
 	// object.  The rest of its initialization will be done by
 	// CPP_InitsInfo::AddInstance.
 	CPP_InitInfo() { }
@@ -159,22 +159,22 @@ public:
 		}
 
 	// Returns the name that should be used for referring to this
-	// global in the generated code.
+	// value in the generated code.
 	std::string Name() const { return gls ? gls->Name(offset) : name; }
 
 	const CPP_InitsInfo* MainInit() { return gls; }
 
 	int InitCohort() const { return init_cohort; }
 
-	// Returns a C++ declaration for this global.  Not used if
-	// the global is part of a CPP_CustomInits object.
+	// Returns a C++ declaration for this value.  Not used if the value
+	// is part of a CPP_CustomInits object.
 	std::string Declare() const { return type + " " + Name() + ";"; }
 
 	// Returns the type used for this initializer.
 	virtual std::string InitializerType() const { return "<shouldn't-be-used>"; }
 
-	// Returns values used for creating this global, one element
-	// per constructor parameter.
+	// Returns values used for creating this value, one element per
+	// constructor parameter.
 	virtual void InitializerVals(std::vector<std::string>& ivs) const = 0;
 
 protected:
@@ -183,7 +183,7 @@ protected:
 	std::string name;
 	std::string type;
 
-	// By default, globals have no dependencies on other globals
+	// By default, values have no dependencies on other values
 	// being first initialized.  Those that do must increase this
 	// value in their constructors.
 	int init_cohort = 0;

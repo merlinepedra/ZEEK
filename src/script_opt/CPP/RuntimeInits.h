@@ -1,6 +1,6 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-// Classes for run-time initialization and management of C++ globals used
+// Classes for run-time initialization and management of C++ values used
 // by the generated code.
 
 #include "zeek/Expr.h"
@@ -93,8 +93,8 @@ class CPP_Init
 public:
 	virtual ~CPP_Init() { }
 
-	virtual void PreInit(InitsManager* im, std::vector<T>& global_vec, int offset) const { }
-	virtual void Generate(InitsManager* im, std::vector<T>& global_vec, int offset) const
+	virtual void PreInit(InitsManager* im, std::vector<T>& inits_vec, int offset) const { }
+	virtual void Generate(InitsManager* im, std::vector<T>& inits_vec, int offset) const
 		{ }
 	};
 
@@ -102,15 +102,15 @@ template <class T>
 class CPP_CustomInits
 	{
 public:
-	CPP_CustomInits(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> _inits)
-		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
+	CPP_CustomInits(std::vector<T>& _inits_vec, int _offsets_set, std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> _inits)
+		: inits_vec(_inits_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
-		int num_globals = 0;
+		int num_inits = 0;
 
 		for ( const auto& cohort : inits )
-			num_globals += cohort.size();
+			num_inits += cohort.size();
 
-		global_vec.resize(num_globals);
+		inits_vec.resize(num_inits);
 		}
 
 	void InitializeCohort(InitsManager* im, int cohort)
@@ -122,7 +122,7 @@ public:
 		auto& co = inits[cohort];
 		auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 		for ( auto i = 0U; i < co.size(); ++i )
-			co[i]->Generate(im, global_vec, cohort_offsets[i]);
+			co[i]->Generate(im, inits_vec, cohort_offsets[i]);
 		}
 
 private:
@@ -134,12 +134,12 @@ private:
 			{
 			auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 			for ( auto i = 0U; i < co.size(); ++i )
-				co[i]->PreInit(im, global_vec, cohort_offsets[i]);
+				co[i]->PreInit(im, inits_vec, cohort_offsets[i]);
 			++cohort;
 			}
 		}
 
-	std::vector<T>& global_vec;
+	std::vector<T>& inits_vec;
 	int offsets_set;
 
 	// Indexed first by cohort, and then iterated over to get all
@@ -152,12 +152,12 @@ template <class T>
 class CPP_InitAccessor : public CPP_AbstractInitAccessor
 	{
 public:
-	CPP_InitAccessor(std::vector<T>& _global_vec) : global_vec(_global_vec) {}
+	CPP_InitAccessor(std::vector<T>& _inits_vec) : inits_vec(_inits_vec) {}
 
-	ValPtr Get(int index) const override { return global_vec[index]; }
+	ValPtr Get(int index) const override { return inits_vec[index]; }
 
 private:
-	std::vector<T>& global_vec;
+	std::vector<T>& inits_vec;
 	};
 
 using ValElemVec = std::vector<int>;
@@ -167,36 +167,36 @@ template <class T>
 class CPP_IndexedInits
 	{
 public:
-	CPP_IndexedInits(std::vector<T>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
+	CPP_IndexedInits(std::vector<T>& _inits_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits);
 
 	void InitializeCohort(InitsManager* im, int cohort);
 
 protected:
 	virtual void PreInit(InitsManager* im) { }
 
-	// Note, in the following we pass in the global_vec even though
+	// Note, in the following we pass in the inits_vec even though
 	// the method will have direct access to it, because we want to
 	// use overloading to dispatch to custom generation for different
 	// types of values.
-	void Generate(InitsManager* im, std::vector<EnumValPtr>& gvec, int offset, ValElemVec& init_vals);
-	void Generate(InitsManager* im, std::vector<StringValPtr>& gvec, int offset, ValElemVec& init_vals);
-	void Generate(InitsManager* im, std::vector<PatternValPtr>& gvec, int offset, ValElemVec& init_vals);
-	void Generate(InitsManager* im, std::vector<ListValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(InitsManager* im, std::vector<VectorValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(InitsManager* im, std::vector<RecordValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(InitsManager* im, std::vector<TableValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(InitsManager* im, std::vector<FileValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(InitsManager* im, std::vector<FuncValPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(InitsManager* im, std::vector<AttrPtr>& gvec, int offset, ValElemVec& init_vals) const;
-	void Generate(InitsManager* im, std::vector<AttributesPtr>& gvec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<EnumValPtr>& ivec, int offset, ValElemVec& init_vals);
+	void Generate(InitsManager* im, std::vector<StringValPtr>& ivec, int offset, ValElemVec& init_vals);
+	void Generate(InitsManager* im, std::vector<PatternValPtr>& ivec, int offset, ValElemVec& init_vals);
+	void Generate(InitsManager* im, std::vector<ListValPtr>& ivec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<VectorValPtr>& ivec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<RecordValPtr>& ivec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<TableValPtr>& ivec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<FileValPtr>& ivec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<FuncValPtr>& ivec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<AttrPtr>& ivec, int offset, ValElemVec& init_vals) const;
+	void Generate(InitsManager* im, std::vector<AttributesPtr>& ivec, int offset, ValElemVec& init_vals) const;
 
-	virtual void Generate(InitsManager* im, std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const
+	virtual void Generate(InitsManager* im, std::vector<TypePtr>& ivec, int offset, ValElemVec& init_vals) const
 		{
 		ASSERT(0);
 		}
 
 protected:
-	std::vector<T>& global_vec;
+	std::vector<T>& inits_vec;
 	int offsets_set;
 
 	// Indexed first by cohort, and then iterated over to get all
@@ -207,15 +207,15 @@ protected:
 class CPP_TypeInits : public CPP_IndexedInits<TypePtr>
 	{
 public:
-	CPP_TypeInits(std::vector<TypePtr>& _global_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
-		: CPP_IndexedInits<TypePtr>(_global_vec, _offsets_set, _inits)
+	CPP_TypeInits(std::vector<TypePtr>& _inits_vec, int _offsets_set, std::vector<std::vector<ValElemVec>> _inits)
+		: CPP_IndexedInits<TypePtr>(_inits_vec, _offsets_set, _inits)
 		{ }
 
 protected:
 	void PreInit(InitsManager* im) override;
 	void PreInit(InitsManager* im, int offset, ValElemVec& init_vals);
 
-	void Generate(InitsManager* im, std::vector<TypePtr>& gvec, int offset, ValElemVec& init_vals) const override;
+	void Generate(InitsManager* im, std::vector<TypePtr>& ivec, int offset, ValElemVec& init_vals) const override;
 
 	TypePtr BuildEnumType(InitsManager* im, ValElemVec& init_vals) const;
 	TypePtr BuildOpaqueType(InitsManager* im, ValElemVec& init_vals) const;
@@ -232,10 +232,10 @@ template <class T1, typename T2>
 class CPP_AbstractBasicConsts
 	{
 public:
-	CPP_AbstractBasicConsts(std::vector<T1>& _global_vec, int _offsets_set, std::vector<T2> _inits)
-		: global_vec(_global_vec), offsets_set(_offsets_set), inits(std::move(_inits))
+	CPP_AbstractBasicConsts(std::vector<T1>& _inits_vec, int _offsets_set, std::vector<T2> _inits)
+		: inits_vec(_inits_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
-		global_vec.resize(inits.size());
+		inits_vec.resize(inits.size());
 		}
 
 	void InitializeCohort(InitsManager* im, int cohort)
@@ -254,7 +254,7 @@ protected:
 		}
 
 protected:
-	std::vector<T1>& global_vec;
+	std::vector<T1>& inits_vec;
 	int offsets_set;
 	std::vector<T2> inits;
 	};
@@ -263,14 +263,14 @@ template <class T1, typename T2, class T3>
 class CPP_BasicConsts : public CPP_AbstractBasicConsts<T1, T2>
 	{
 public:
-	CPP_BasicConsts(std::vector<T1>& _global_vec, int _offsets_set, std::vector<T2> _inits)
-		: CPP_AbstractBasicConsts<T1, T2>(_global_vec, _offsets_set, std::move(_inits))
+	CPP_BasicConsts(std::vector<T1>& _inits_vec, int _offsets_set, std::vector<T2> _inits)
+		: CPP_AbstractBasicConsts<T1, T2>(_inits_vec, _offsets_set, std::move(_inits))
 		{
 		}
 
 	void InitElem(InitsManager* /* im */, int offset, int index) override
 		{
-		this->global_vec[offset] = make_intrusive<T3>(this->inits[index]);
+		this->inits_vec[offset] = make_intrusive<T3>(this->inits[index]);
 		}
 	};
 
@@ -280,8 +280,8 @@ class CPP_BasicConst : public CPP_Init<T1>
 public:
 	CPP_BasicConst(T2 _v) : CPP_Init<T1>(), v(_v) { }
 
-	void Generate(InitsManager* /* im */, std::vector<T1>& global_vec, int offset) const override
-		{ this->global_vec[offset] = make_intrusive<T3>(v); }
+	void Generate(InitsManager* /* im */, std::vector<T1>& inits_vec, int offset) const override
+		{ this->inits_vec[offset] = make_intrusive<T3>(v); }
 
 private:
 	T2 v;
@@ -290,28 +290,28 @@ private:
 class CPP_AddrConsts : public CPP_AbstractBasicConsts<AddrValPtr, int>
 	{
 public:
-	CPP_AddrConsts(std::vector<AddrValPtr>& _global_vec, int _offsets_set, std::vector<int> _inits)
-		: CPP_AbstractBasicConsts<AddrValPtr, int>(_global_vec, _offsets_set, std::move(_inits))
+	CPP_AddrConsts(std::vector<AddrValPtr>& _inits_vec, int _offsets_set, std::vector<int> _inits)
+		: CPP_AbstractBasicConsts<AddrValPtr, int>(_inits_vec, _offsets_set, std::move(_inits))
 		{ }
 
 	void InitElem(InitsManager* im, int offset, int index) override
 		{
 		auto s = im->Strings(this->inits[index]);
-		this->global_vec[offset] = make_intrusive<AddrVal>(s);
+		this->inits_vec[offset] = make_intrusive<AddrVal>(s);
 		}
 	};
 
 class CPP_SubNetConsts : public CPP_AbstractBasicConsts<SubNetValPtr, int>
 	{
 public:
-	CPP_SubNetConsts(std::vector<SubNetValPtr>& _global_vec, int _offsets_set, std::vector<int> _inits)
-		: CPP_AbstractBasicConsts<SubNetValPtr, int>(_global_vec, _offsets_set, std::move(_inits))
+	CPP_SubNetConsts(std::vector<SubNetValPtr>& _inits_vec, int _offsets_set, std::vector<int> _inits)
+		: CPP_AbstractBasicConsts<SubNetValPtr, int>(_inits_vec, _offsets_set, std::move(_inits))
 		{ }
 
 	void InitElem(InitsManager* im, int offset, int index) override
 		{
 		auto s = im->Strings(this->inits[index]);
-		this->global_vec[offset] = make_intrusive<SubNetVal>(s);
+		this->inits_vec[offset] = make_intrusive<SubNetVal>(s);
 		}
 	};
 
@@ -323,7 +323,7 @@ public:
 		: CPP_Init<void*>(), global(_global), name(_name), type(_type), attrs(_attrs), val(_val), exported(_exported)
 		{ }
 
-	void Generate(InitsManager* im, std::vector<void*>& /* global_vec */, int /* offset */) const override;
+	void Generate(InitsManager* im, std::vector<void*>& /* inits_vec */, int /* offset */) const override;
 
 protected:
 	IDPtr& global;
@@ -349,7 +349,7 @@ public:
 		: CPP_AbstractCallExprInit(), e_var(_e_var)
 		{ }
 
-	void Generate(InitsManager* /* im */, std::vector<CallExprPtr>& global_vec, int offset) const override
+	void Generate(InitsManager* /* im */, std::vector<CallExprPtr>& inits_vec, int offset) const override
 		{
 		auto wrapper_class = make_intrusive<T>();
 		auto func_val = make_intrusive<FuncVal>(wrapper_class);
@@ -357,7 +357,7 @@ public:
 		auto empty_args = make_intrusive<ListExpr>();
 
 		e_var = make_intrusive<CallExpr>(func_expr, empty_args);
-		global_vec[offset] = e_var;
+		inits_vec[offset] = e_var;
 		}
 
 protected:
@@ -379,7 +379,7 @@ public:
 		: CPP_AbstractLambdaRegistration(), name(_name), func_type(_func_type), h(_h), has_captures(_has_captures)
 		{ }
 
-	void Generate(InitsManager* im, std::vector<void*>& global_vec, int offset) const override
+	void Generate(InitsManager* im, std::vector<void*>& inits_vec, int offset) const override
 		{
 		auto l = make_intrusive<T>(name);
 		auto& ft = im->Types(func_type);
