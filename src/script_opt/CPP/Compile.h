@@ -932,13 +932,6 @@ private:
 	// attributes.
 	CPPTracker<Expr> init_exprs = {"gen_init_expr", false, &compiled_items};
 
-	// Maps an object requiring initialization to its initializers.
-	std::unordered_map<const Obj*, std::vector<std::string>> obj_inits;
-
-	// Maps an object requiring initializations to its dependencies
-	// on other such objects.
-	std::unordered_map<const Obj*, std::unordered_set<const Obj*>> obj_deps;
-
 	//
 	// End of methods related to run-time initialization.
 

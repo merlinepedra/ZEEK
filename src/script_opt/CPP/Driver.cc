@@ -387,10 +387,6 @@ void CPPCompile::GenEpilog()
 	for ( auto gi : all_global_info )
 		gi->GenerateInitializers(this);
 
-	unordered_set<const Obj*> to_do;
-	for ( const auto& oi : obj_inits )
-		to_do.insert(oi.first);
-
 	if ( standalone )
 		GenStandaloneActivation();
 
