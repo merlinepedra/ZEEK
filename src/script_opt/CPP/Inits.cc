@@ -90,17 +90,17 @@ bool CPPCompile::IsSimpleInitExpr(const ExprPtr& e)
 			return true;
 
 		case EXPR_RECORD_COERCE:
-				{ // look for coercion of empty record
-				auto op = e->GetOp1();
+			{ // look for coercion of empty record
+			auto op = e->GetOp1();
 
-				if ( op->Tag() != EXPR_RECORD_CONSTRUCTOR )
-					return false;
+			if ( op->Tag() != EXPR_RECORD_CONSTRUCTOR )
+				return false;
 
-				auto rc = static_cast<const RecordConstructorExpr*>(op.get());
-				const auto& exprs = rc->Op()->AsListExpr()->Exprs();
+			auto rc = static_cast<const RecordConstructorExpr*>(op.get());
+			const auto& exprs = rc->Op()->AsListExpr()->Exprs();
 
-				return exprs.length() == 0;
-				}
+			return exprs.length() == 0;
+			}
 
 		default:
 			return false;

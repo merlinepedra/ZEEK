@@ -3,8 +3,8 @@
 // Classes for tracking information for initializing C++ values used by the
 // generated code.
 
-#include "zeek/Val.h"
 #include "zeek/File.h"
+#include "zeek/Val.h"
 #include "zeek/script_opt/ProfileFunc.h"
 
 #pragma once
@@ -24,8 +24,7 @@ class CPP_InitInfo;
 class CPP_InitsInfo
 	{
 public:
-	CPP_InitsInfo(std::string _tag, std::string type)
-		: tag(std::move(_tag))
+	CPP_InitsInfo(std::string _tag, std::string type) : tag(std::move(_tag))
 		{
 		base_name = std::string("CPP__") + tag + "__";
 		CPP_type = tag + type;
@@ -41,8 +40,7 @@ public:
 
 	int Size() const { return size; }
 	int MaxCohort() const { return static_cast<int>(instances.size()) - 1; }
-	int CohortSize(int c) const
-		{ return c > MaxCohort() ? 0 : instances[c].size(); }
+	int CohortSize(int c) const { return c > MaxCohort() ? 0 : instances[c].size(); }
 
 	const std::string& Tag() const { return tag; }
 
@@ -61,7 +59,7 @@ protected:
 
 	virtual void BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort);
 
-	int size = 0;	// total number of initializers
+	int size = 0; // total number of initializers
 
 	// The outer vector is indexed by initialization cohort.
 	std::vector<std::vector<std::shared_ptr<CPP_InitInfo>>> instances;
@@ -97,20 +95,19 @@ public:
 		}
 
 private:
-	void BuildInitType()
-		{
-		inits_type = std::string("CPP_CustomInits<") + CPPType() + ">";
-		}
+	void BuildInitType() { inits_type = std::string("CPP_CustomInits<") + CPPType() + ">"; }
 	};
 
 class CPP_BasicConstInitsInfo : public CPP_CustomInitsInfo
 	{
 public:
-	CPP_BasicConstInitsInfo(std::string _tag, std::string type, std::string c_type, bool is_basic = true)
+	CPP_BasicConstInitsInfo(std::string _tag, std::string type, std::string c_type,
+	                        bool is_basic = true)
 		: CPP_CustomInitsInfo(std::move(_tag), std::move(type))
 		{
 		if ( is_basic )
-			inits_type = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag + "Val>";
+			inits_type = std::string("CPP_BasicConsts<") + CPP_type + ", " + c_type + ", " + tag +
+			             "Val>";
 		else
 			inits_type = std::string("CPP_") + tag + "Consts";
 		}
@@ -142,7 +139,8 @@ public:
 	// specifies the core of the associated type.
 	CPP_InitInfo(std::string _name, std::string _type)
 		: name(std::move(_name)), type(std::move(_type))
-		{ }
+		{
+		}
 
 	// Constructor used for a value that will be part of a CPP_InitsInfo
 	// object.  The rest of its initialization will be done by
@@ -189,18 +187,18 @@ protected:
 	int init_cohort = 0;
 
 	const CPP_InitsInfo* gls = nullptr;
-	int offset = -1;	// offset for CPP_InitsInfo, if non-nil
+	int offset = -1; // offset for CPP_InitsInfo, if non-nil
 	};
-
 
 class BasicConstInfo : public CPP_InitInfo
 	{
 public:
-	BasicConstInfo(std:: string _name, std::string _cpp_type, std::string _val)
-		: name(std::move(_name)), cpp_type(std::move(_cpp_type)), val(std::move(_val)) { }
+	BasicConstInfo(std::string _name, std::string _cpp_type, std::string _val)
+		: name(std::move(_name)), cpp_type(std::move(_cpp_type)), val(std::move(_val))
+		{
+		}
 
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{ ivs.emplace_back(val); }
+	void InitializerVals(std::vector<std::string>& ivs) const override { ivs.emplace_back(val); }
 
 private:
 	std::string name;
@@ -213,8 +211,7 @@ class DescConstInfo : public CPP_InitInfo
 public:
 	DescConstInfo(CPPCompile* c, std::string _name, ValPtr v);
 
-	void InitializerVals(std::vector<std::string>& ivs) const override
-		{ ivs.emplace_back(init); }
+	void InitializerVals(std::vector<std::string>& ivs) const override { ivs.emplace_back(init); }
 
 private:
 	std::string name;
@@ -345,7 +342,6 @@ private:
 	FuncVal* fv;
 	};
 
-
 class AttrInfo : public CompoundConstInfo
 	{
 public:
@@ -358,14 +354,12 @@ public:
 	AttrsInfo(CPPCompile* c, const AttributesPtr& attrs);
 	};
 
-
 class GlobalInitInfo : public CPP_InitInfo
 	{
 public:
 	GlobalInitInfo(CPPCompile* c, const ID* g, std::string CPP_name);
 
-	std::string InitializerType() const override
-		{ return "CPP_GlobalInit"; }
+	std::string InitializerType() const override { return "CPP_GlobalInit"; }
 	void InitializerVals(std::vector<std::string>& ivs) const override;
 
 protected:
@@ -377,18 +371,16 @@ protected:
 	bool exported;
 	};
 
-
 class CallExprInitInfo : public CPP_InitInfo
 	{
 public:
 	CallExprInitInfo(CPPCompile* c, ExprPtr e, std::string e_name, std::string wrapper_class);
 
 	std::string InitializerType() const override
-		{ return std::string("CPP_CallExprInit<") + wrapper_class + ">"; }
-	void InitializerVals(std::vector<std::string>& ivs) const override
 		{
-		ivs.emplace_back(e_name);
+		return std::string("CPP_CallExprInit<") + wrapper_class + ">";
 		}
+	void InitializerVals(std::vector<std::string>& ivs) const override { ivs.emplace_back(e_name); }
 
 	const ExprPtr& GetExpr() const { return e; }
 	const std::string& Name() const { return e_name; }
@@ -400,14 +392,16 @@ protected:
 	std::string wrapper_class;
 	};
 
-
 class LambdaRegistrationInfo : public CPP_InitInfo
 	{
 public:
-	LambdaRegistrationInfo(CPPCompile* c, std::string name, FuncTypePtr ft, std::string wrapper_class, p_hash_type h, bool has_captures);
+	LambdaRegistrationInfo(CPPCompile* c, std::string name, FuncTypePtr ft,
+	                       std::string wrapper_class, p_hash_type h, bool has_captures);
 
 	std::string InitializerType() const override
-		{ return std::string("CPP_LambdaRegistration<") + wrapper_class + ">"; }
+		{
+		return std::string("CPP_LambdaRegistration<") + wrapper_class + ">";
+		}
 	void InitializerVals(std::vector<std::string>& ivs) const override;
 
 protected:
@@ -417,7 +411,6 @@ protected:
 	p_hash_type h;
 	bool has_captures;
 	};
-
 
 class AbstractTypeInfo : public CPP_InitInfo
 	{
@@ -430,9 +423,7 @@ public:
 		AddInitializerVals(ivs);
 		}
 
-	virtual void AddInitializerVals(std::vector<std::string>& ivs) const
-		{
-		}
+	virtual void AddInitializerVals(std::vector<std::string>& ivs) const { }
 
 protected:
 	CPPCompile* c;
@@ -460,7 +451,6 @@ public:
 
 	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 	};
-
 
 class TypeTypeInfo : public AbstractTypeInfo
 	{
@@ -532,7 +522,6 @@ private:
 	std::vector<TypePtr> field_types;
 	std::vector<int> field_attrs;
 	};
-
 
 class IndicesManager
 	{

@@ -63,75 +63,76 @@ shared_ptr<CPP_InitInfo> CPPCompile::RegisterConstant(const ValPtr& vp, int& con
 
 	switch ( tag )
 		{
-                case TYPE_BOOL:
+		case TYPE_BOOL:
 			gi = make_shared<BasicConstInfo>("Bool", "bool", vp->AsBool() ? "true" : "false");
 			break;
 
-                case TYPE_INT:
+		case TYPE_INT:
 			gi = make_shared<BasicConstInfo>("Int", "bro_int_t", to_string(vp->AsInt()));
 			break;
 
-                case TYPE_COUNT:
-			gi = make_shared<BasicConstInfo>("Count", "bro_uint_t", to_string(vp->AsCount()) + "ULL");
+		case TYPE_COUNT:
+			gi = make_shared<BasicConstInfo>("Count", "bro_uint_t",
+			                                 to_string(vp->AsCount()) + "ULL");
 			break;
 
-                case TYPE_DOUBLE:
+		case TYPE_DOUBLE:
 			gi = make_shared<BasicConstInfo>("Double", "double", to_string(vp->AsDouble()));
 			break;
 
-                case TYPE_TIME:
+		case TYPE_TIME:
 			gi = make_shared<BasicConstInfo>("Time", "double", to_string(vp->AsDouble()));
 			break;
 
-                case TYPE_INTERVAL:
+		case TYPE_INTERVAL:
 			gi = make_shared<BasicConstInfo>("Interval", "double", to_string(vp->AsDouble()));
 			break;
 
-                case TYPE_ADDR:
+		case TYPE_ADDR:
 			gi = make_shared<DescConstInfo>(this, "Addr", vp);
 			break;
 
-                case TYPE_SUBNET:
+		case TYPE_SUBNET:
 			gi = make_shared<DescConstInfo>(this, "SubNet", vp);
 			break;
 
-                case TYPE_ENUM:
+		case TYPE_ENUM:
 			gi = make_shared<EnumConstInfo>(this, vp);
 			break;
 
-                case TYPE_STRING:
+		case TYPE_STRING:
 			gi = make_shared<StringConstInfo>(this, vp);
 			break;
 
-                case TYPE_PATTERN:
+		case TYPE_PATTERN:
 			gi = make_shared<PatternConstInfo>(this, vp);
 			break;
 
-                case TYPE_PORT:
+		case TYPE_PORT:
 			gi = make_shared<PortConstInfo>(vp);
 			break;
 
-                case TYPE_LIST:
+		case TYPE_LIST:
 			gi = make_shared<ListConstInfo>(this, vp);
 			break;
 
-                case TYPE_VECTOR:
+		case TYPE_VECTOR:
 			gi = make_shared<VectorConstInfo>(this, vp);
 			break;
 
-                case TYPE_RECORD:
+		case TYPE_RECORD:
 			gi = make_shared<RecordConstInfo>(this, vp);
 			break;
 
-                case TYPE_TABLE:
+		case TYPE_TABLE:
 			gi = make_shared<TableConstInfo>(this, vp);
 			break;
 
-                case TYPE_FILE:
+		case TYPE_FILE:
 			gi = make_shared<FileConstInfo>(this, vp);
 			break;
 
-                case TYPE_FUNC:
+		case TYPE_FUNC:
 			gi = make_shared<FuncConstInfo>(this, vp);
 			break;
 

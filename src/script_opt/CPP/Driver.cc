@@ -12,8 +12,8 @@ namespace zeek::detail
 using namespace std;
 
 CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const string& gen_name,
-                       const string& _addl_name, CPPHashManager& _hm,
-                       bool _standalone, bool report_uncompilable)
+                       const string& _addl_name, CPPHashManager& _hm, bool _standalone,
+                       bool report_uncompilable)
 	: funcs(_funcs), pfs(_pfs), hm(_hm), standalone(_standalone)
 	{
 	addl_name = _addl_name;
@@ -75,7 +75,7 @@ void CPPCompile::Compile(bool report_uncompilable)
 			{
 			if ( reason && report_uncompilable )
 				fprintf(stderr, "%s cannot be compiled to C++ due to %s\n", func.Func()->Name(),
-			                reason);
+				        reason);
 			not_fully_compilable.insert(func.Func()->Name());
 			}
 
@@ -220,7 +220,8 @@ void CPPCompile::GenProlog()
 	NL();
 	}
 
-shared_ptr<CPP_InitsInfo> CPPCompile::CreateInitInfo(const char* tag, const char* type, const char* c_type, bool is_basic)
+shared_ptr<CPP_InitsInfo> CPPCompile::CreateInitInfo(const char* tag, const char* type,
+                                                     const char* c_type, bool is_basic)
 	{
 	string v_type = type[0] ? (string(tag) + type) : "void*";
 	Emit("std::vector<%s> CPP__%s__;", v_type, string(tag));
@@ -229,14 +230,9 @@ shared_ptr<CPP_InitsInfo> CPPCompile::CreateInitInfo(const char* tag, const char
 
 	if ( c_type )
 		gi = make_shared<CPP_BasicConstInitsInfo>(tag, type, c_type, is_basic);
-	else if ( util::streq(tag, "Enum") ||
-	          util::streq(tag, "String") ||
-	          util::streq(tag, "List") ||
-	          util::streq(tag, "Table") ||
-	          util::streq(tag, "Vector") ||
-	          util::streq(tag, "Record") ||
-	          util::streq(tag, "File") ||
-	          util::streq(tag, "Func") ||
+	else if ( util::streq(tag, "Enum") || util::streq(tag, "String") || util::streq(tag, "List") ||
+	          util::streq(tag, "Table") || util::streq(tag, "Vector") ||
+	          util::streq(tag, "Record") || util::streq(tag, "File") || util::streq(tag, "Func") ||
 	          util::streq(tag, "Pattern") )
 		gi = make_shared<CPP_CompoundInitsInfo>(tag, type);
 
@@ -286,7 +282,8 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 
 	ASSERT(func_index.count(f) > 0);
 	auto type_signature = casting_index[func_index[f]];
-	Emit("\tCPP_RegisterBody(\"%s\", (void*) %s, %s, %s, %s, std::vector<std::string>(%s)),", f, f, Fmt(type_signature), Fmt(p), Fmt(h), events);
+	Emit("\tCPP_RegisterBody(\"%s\", (void*) %s, %s, %s, %s, std::vector<std::string>(%s)),", f, f,
+	     Fmt(type_signature), Fmt(p), Fmt(h), events);
 	}
 
 void CPPCompile::GenEpilog()
@@ -380,10 +377,12 @@ void CPPCompile::GenEpilog()
 	for ( const auto& ci : const_info )
 		{
 		auto& gi = ci.second;
-		Emit("InitConsts.emplace(%s, std::make_shared<CPP_InitAccessor<%s>>(%s));", TypeTagName(ci.first), gi->CPPType(), gi->InitsName());
+		Emit("InitConsts.emplace(%s, std::make_shared<CPP_InitAccessor<%s>>(%s));",
+		     TypeTagName(ci.first), gi->CPPType(), gi->InitsName());
 		}
 
-	Emit("InitsManager im(CPP__ConstVals, InitConsts, InitIndices, CPP__Strings, CPP__Hashes, CPP__Type__, CPP__Attributes__, CPP__Attr__, CPP__CallExpr__);");
+	Emit("InitsManager im(CPP__ConstVals, InitConsts, InitIndices, CPP__Strings, CPP__Hashes, "
+	     "CPP__Type__, CPP__Attributes__, CPP__Attr__, CPP__CallExpr__);");
 
 	NL();
 	Emit("for ( auto& b : CPP__bodies_to_register )");
@@ -400,8 +399,7 @@ void CPPCompile::GenEpilog()
 	for ( auto c = 0; c <= max_cohort; ++c )
 		for ( auto gi : all_global_info )
 			if ( gi->CohortSize(c) > 0 )
-				Emit("%s.InitializeCohort(&im, %s);",
-				     gi->InitializersName(), Fmt(c));
+				Emit("%s.InitializeCohort(&im, %s);", gi->InitializersName(), Fmt(c));
 
 	NL();
 	Emit("for ( auto& b : CPP__BiF_lookups__ )");

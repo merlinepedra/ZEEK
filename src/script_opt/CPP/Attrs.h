@@ -7,13 +7,13 @@
 namespace zeek::detail
 	{
 
-	enum AttrExprType
-		{
-		AE_NONE,
-		AE_CONST,
-		AE_NAME,
-		AE_RECORD,
-		AE_CALL,
-		};
+enum AttrExprType
+	{
+	AE_NONE,
+	AE_CONST,
+	AE_NAME,
+	AE_RECORD,
+	AE_CALL,
+	};
 
 	} // zeek::detail

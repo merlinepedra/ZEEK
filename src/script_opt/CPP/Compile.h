@@ -3,9 +3,9 @@
 #pragma once
 
 #include "zeek/Desc.h"
-#include "zeek/script_opt/CPP/InitsInfo.h"
 #include "zeek/script_opt/CPP/Func.h"
 #include "zeek/script_opt/CPP/HashMgr.h"
+#include "zeek/script_opt/CPP/InitsInfo.h"
 #include "zeek/script_opt/CPP/Tracker.h"
 #include "zeek/script_opt/CPP/Util.h"
 #include "zeek/script_opt/ScriptOpt.h"
@@ -131,10 +131,8 @@ public:
 	//
 	// Returns the initialization info associated with the type.
 	std::shared_ptr<CPP_InitInfo> RegisterType(const TypePtr& t);
-	int TypeOffset(const TypePtr& t)
-		{ return GI_Offset(RegisterType(t)); }
-	int TypeCohort(const TypePtr& t)
-		{ return GI_Cohort(RegisterType(t)); }
+	int TypeOffset(const TypePtr& t) { return GI_Offset(RegisterType(t)); }
+	int TypeCohort(const TypePtr& t) { return GI_Cohort(RegisterType(t)); }
 
 	std::shared_ptr<CPP_InitInfo> RegisterConstant(const ValPtr& vp, int& consts_offset);
 
@@ -149,9 +147,10 @@ public:
 	std::shared_ptr<CPP_InitInfo> RegisterAttributes(const AttributesPtr& attrs);
 	std::shared_ptr<CPP_InitInfo> RegisterAttr(const AttrPtr& attr);
 	int AttributesOffset(const AttributesPtr& attrs)
-		{ return GI_Offset(RegisterAttributes(attrs)); }
-	int AttrOffset(const AttrPtr& attr)
-		{ return GI_Offset(RegisterAttr(attr)); }
+		{
+		return GI_Offset(RegisterAttributes(attrs));
+		}
+	int AttrOffset(const AttrPtr& attr) { return GI_Offset(RegisterAttr(attr)); }
 
 	// Tracks expressions used in attributes (such as &default=<expr>).
 	//
@@ -189,7 +188,9 @@ public:
 		}
 
 	bool NotFullyCompilable(const std::string& fname) const
-		{ return not_fully_compilable.count(fname) > 0; }
+		{
+		return not_fully_compilable.count(fname) > 0;
+		}
 
 private:
 	// Start of methods related to driving the overall compilation
@@ -208,7 +209,9 @@ private:
 	friend class AttrInfo;
 	friend class AttrsInfo;
 
-	std::shared_ptr<CPP_InitsInfo> CreateInitInfo(const char* tag, const char* type, const char* c_type = nullptr, bool is_basic = true);
+	std::shared_ptr<CPP_InitsInfo> CreateInitInfo(const char* tag, const char* type,
+	                                              const char* c_type = nullptr,
+	                                              bool is_basic = true);
 
 	// Main driver, invoked by constructor.
 	void Compile(bool report_uncompilable);
@@ -342,10 +345,7 @@ private:
 
 	// Returns the name of the global corresponding to an expression
 	// (which must be a EXPR_NAME).
-	std::string GlobalName(const ExprPtr& e)
-		{
-		return globals[e->AsNameExpr()->Id()->Name()];
-		}
+	std::string GlobalName(const ExprPtr& e) { return globals[e->AsNameExpr()->Id()->Name()]; }
 
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
@@ -387,7 +387,8 @@ private:
 	                    const StmtPtr& body, int priority, const LambdaExpr* l,
 	                    FunctionFlavor flavor);
 
-	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname, const std::string& args, const IDPList* lambda_ids);
+	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname,
+	                     const std::string& args, const IDPList* lambda_ids);
 
 	void DeclareDynCPPStmt();
 
@@ -406,8 +407,10 @@ private:
 	// the given type, lambda captures (if non-nil), and profile.
 	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf);
 
-	void GatherParamTypes(std::vector<std::string>& p_types, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf);
-	void GatherParamNames(std::vector<std::string>& p_names, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf);
+	void GatherParamTypes(std::vector<std::string>& p_types, const FuncTypePtr& ft,
+	                      const IDPList* lambda_ids, const ProfileFunc* pf);
+	void GatherParamNames(std::vector<std::string>& p_names, const FuncTypePtr& ft,
+	                      const IDPList* lambda_ids, const ProfileFunc* pf);
 
 	// Inspects the given profile to find the i'th parameter (starting
 	// at 0).  Returns nil if the profile indicates that that parameter
@@ -460,7 +463,9 @@ private:
 	// Generates the body of the Invoke() method (which supplies the
 	// "glue" between for calling the C++-generated code).
 	void GenInvokeBody(const std::string& fname, const TypePtr& t, const std::string& args)
-		{ GenInvokeBody(fname + "(" + args + ")", t); }
+		{
+		GenInvokeBody(fname + "(" + args + ")", t);
+		}
 	void GenInvokeBody(const std::string& call, const TypePtr& t);
 
 	// Generates the code for the body of a script function with
@@ -860,10 +865,11 @@ private:
 	// initialization expression.
 	std::string InitExprName(const ExprPtr& e);
 
-	int GI_Offset(const std::shared_ptr<CPP_InitInfo>& gi) const
-		{ return gi ? gi->Offset() : -1; }
+	int GI_Offset(const std::shared_ptr<CPP_InitInfo>& gi) const { return gi ? gi->Offset() : -1; }
 	int GI_Cohort(const std::shared_ptr<CPP_InitInfo>& gi) const
-		{ return gi ? gi->InitCohort() : 0; }
+		{
+		return gi ? gi->InitCohort() : 0;
+		}
 
 	// Generate code to initialize the mappings for record field
 	// offsets for field accesses into regions of records that
@@ -974,7 +980,8 @@ private:
 		}
 
 	void Emit(const std::string& fmt, const std::string& arg1, const std::string& arg2,
-	          const std::string& arg3, const std::string& arg4, const std::string& arg5, const std::string& arg6) const
+	          const std::string& arg3, const std::string& arg4, const std::string& arg5,
+	          const std::string& arg6) const
 		{
 		Indent();
 		fprintf(write_file, fmt.c_str(), arg1.c_str(), arg2.c_str(), arg3.c_str(), arg4.c_str(),

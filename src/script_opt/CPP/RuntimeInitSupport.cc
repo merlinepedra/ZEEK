@@ -62,7 +62,8 @@ void register_type__CPP(TypePtr t, const string& name)
 	id->MakeType();
 	}
 
-void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash, std::vector<std::string> events)
+void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash,
+                        std::vector<std::string> events)
 	{
 	compiled_scripts[hash] = {move(body), priority, move(events)};
 	}
@@ -207,7 +208,8 @@ FuncValPtr lookup_func__CPP(string name, vector<p_hash_type> hashes, const TypeP
 		auto v = gl->GetVal();
 		if ( ! v || v->GetType()->Tag() != TYPE_FUNC )
 			{
-			reporter->CPPRuntimeError("non-compiled function %s has an invalid value", name.c_str());
+			reporter->CPPRuntimeError("non-compiled function %s has an invalid value",
+			                          name.c_str());
 			exit(1);
 			}
 

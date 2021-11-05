@@ -117,7 +117,8 @@ void CPPCompile::CreateFunction(const FuncTypePtr& ft, const ProfileFunc* pf, co
 	total_hash = merge_p_hashes(total_hash, h);
 	}
 
-void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const string& fname, const string& args, const IDPList* lambda_ids)
+void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const string& fname,
+                                 const string& args, const IDPList* lambda_ids)
 	{
 	const auto& yt = ft->Yield();
 
@@ -146,8 +147,7 @@ void CPPCompile::DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, c
 			}
 		}
 
-	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }", fname, addl_args,
-	     inits);
+	Emit("%s_cl(const char* name%s) : CPPStmt(name)%s { }", fname, addl_args, inits);
 
 	// An additional constructor just used to generate place-holder
 	// instances, due to the mis-design that lambdas are identified
@@ -189,7 +189,8 @@ void CPPCompile::DeclareDynCPPStmt()
 	Emit("class CPPDynStmt : public CPPStmt");
 	Emit("\t{");
 	Emit("public:");
-	Emit("\tCPPDynStmt(const char* _name, void* _func, int _type_signature) : CPPStmt(_name), func(_func), type_signature(_type_signature) { }");
+	Emit("\tCPPDynStmt(const char* _name, void* _func, int _type_signature) : CPPStmt(_name), "
+	     "func(_func), type_signature(_type_signature) { }");
 	Emit("\tValPtr Exec(Frame* f, StmtFlowType& flow) override final;");
 	Emit("private:");
 	Emit("\t// The function to call in Exec().");
@@ -217,7 +218,8 @@ void CPPCompile::BuildLambda(const FuncTypePtr& ft, const ProfileFunc* pf, const
 	auto nl = lambda_ids->length();
 	bool has_captures = nl > 0;
 
-	auto gi = make_shared<LambdaRegistrationInfo>(this, l->Name(), ft, fname + "_cl", h, has_captures);
+	auto gi = make_shared<LambdaRegistrationInfo>(this, l->Name(), ft, fname + "_cl", h,
+	                                              has_captures);
 	lambda_reg_info->AddInstance(gi);
 
 	// Generate method to extract the lambda captures from a deserialized
@@ -305,7 +307,8 @@ string CPPCompile::ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids,
 	return decl + "Frame* f__CPP";
 	}
 
-void CPPCompile::GatherParamTypes(vector<string>& p_types, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf)
+void CPPCompile::GatherParamTypes(vector<string>& p_types, const FuncTypePtr& ft,
+                                  const IDPList* lambda_ids, const ProfileFunc* pf)
 	{
 	const auto& params = ft->Params();
 	int n = params->NumFields();
@@ -342,7 +345,8 @@ void CPPCompile::GatherParamTypes(vector<string>& p_types, const FuncTypePtr& ft
 			}
 	}
 
-void CPPCompile::GatherParamNames(vector<string>& p_names, const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf)
+void CPPCompile::GatherParamNames(vector<string>& p_names, const FuncTypePtr& ft,
+                                  const IDPList* lambda_ids, const ProfileFunc* pf)
 	{
 	const auto& params = ft->Params();
 	int n = params->NumFields();

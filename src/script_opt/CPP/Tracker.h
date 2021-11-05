@@ -43,8 +43,7 @@ public:
 	// is provided, then refrains from computing it.
 	void AddKey(IntrusivePtr<T> key, p_hash_type h = 0);
 
-	void AddInitInfo(const T* rep, std::shared_ptr<CPP_InitInfo> gi)
-		{ gi_s[rep] = std::move(gi); }
+	void AddInitInfo(const T* rep, std::shared_ptr<CPP_InitInfo> gi) { gi_s[rep] = std::move(gi); }
 
 	// Returns the (C++ variable) name associated with the given key.
 	std::string KeyName(const T* key);

@@ -1,8 +1,8 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
-#include "zeek/ZeekString.h"
 #include "zeek/Desc.h"
 #include "zeek/RE.h"
+#include "zeek/ZeekString.h"
 #include "zeek/script_opt/CPP/Attrs.h"
 #include "zeek/script_opt/CPP/Compile.h"
 
@@ -98,8 +98,8 @@ void CPP_InitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_I
 		}
 	}
 
-
-void CPP_CompoundInitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
+void CPP_CompoundInitsInfo::BuildCohort(CPPCompile* c,
+                                        std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
 	{
 	for ( auto& co : cohort )
 		{
@@ -114,8 +114,8 @@ void CPP_CompoundInitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_p
 		}
 	}
 
-
-void CPP_BasicConstInitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
+void CPP_BasicConstInitsInfo::BuildCohort(CPPCompile* c,
+                                          std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
 	{
 	for ( auto& co : cohort )
 		{
@@ -125,7 +125,6 @@ void CPP_BasicConstInitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared
 		c->Emit(ivs[0] + ",");
 		}
 	}
-
 
 string CPP_InitInfo::ValElem(CPPCompile* c, ValPtr v)
 	{
@@ -161,8 +160,7 @@ EnumConstInfo::EnumConstInfo(CPPCompile* c, ValPtr v)
 	e_val = v->AsEnum();
 	}
 
-StringConstInfo::StringConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_InitInfo()
+StringConstInfo::StringConstInfo(CPPCompile* c, ValPtr v) : CPP_InitInfo()
 	{
 	auto s = v->AsString();
 	const char* b = (const char*)(s->Bytes());
@@ -171,24 +169,21 @@ StringConstInfo::StringConstInfo(CPPCompile* c, ValPtr v)
 	chars = c->TrackString(CPPEscape(b, len));
 	}
 
-PatternConstInfo::PatternConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_InitInfo()
+PatternConstInfo::PatternConstInfo(CPPCompile* c, ValPtr v) : CPP_InitInfo()
 	{
 	auto re = v->AsPatternVal()->Get();
 	pattern = c->TrackString(CPPEscape(re->OrigText()));
 	is_case_insensitive = re->IsCaseInsensitive();
 	}
 
-CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v)
-	: CPP_InitInfo(), c(_c)
+CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v) : CPP_InitInfo(), c(_c)
 	{
 	auto& t = v->GetType();
 	type = c->TypeOffset(t);
 	init_cohort = c->TypeCohort(t) + 1;
 	}
 
-ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
-	: CompoundConstInfo(_c)
+ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v) : CompoundConstInfo(_c)
 	{
 	auto lv = cast_intrusive<ListVal>(v);
 	auto n = lv->Length();
@@ -197,8 +192,7 @@ ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v)
 		vals.emplace_back(ValElem(c, lv->Idx(i)));
 	}
 
-VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
-	: CompoundConstInfo(c, v)
+VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
 	{
 	auto vv = cast_intrusive<VectorVal>(v);
 	auto n = vv->Size();
@@ -207,8 +201,7 @@ VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v)
 		vals.emplace_back(ValElem(c, vv->ValAt(i)));
 	}
 
-RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
-	: CompoundConstInfo(c, v)
+RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
 	{
 	auto r = cast_intrusive<RecordVal>(v);
 	auto n = r->NumFields();
@@ -219,20 +212,18 @@ RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v)
 		vals.emplace_back(ValElem(c, r->GetField(i)));
 	}
 
-TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v)
-	: CompoundConstInfo(c, v)
+TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
 	{
 	auto tv = cast_intrusive<TableVal>(v);
 
 	for ( auto& tv_i : tv->ToMap() )
 		{
-		vals.emplace_back(ValElem(c, tv_i.first));	// index
-		vals.emplace_back(ValElem(c, tv_i.second));	// value
+		vals.emplace_back(ValElem(c, tv_i.first)); // index
+		vals.emplace_back(ValElem(c, tv_i.second)); // value
 		}
 	}
 
-FileConstInfo::FileConstInfo(CPPCompile* c, ValPtr v)
-	: CompoundConstInfo(c, v)
+FileConstInfo::FileConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
 	{
 	auto fv = cast_intrusive<FileVal>(v);
 	auto fname = c->TrackString(fv->Get()->Name());
@@ -274,9 +265,7 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 		}
 	}
 
-
-AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr)
-	: CompoundConstInfo(_c)
+AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr) : CompoundConstInfo(_c)
 	{
 	vals.emplace_back(Fmt(static_cast<int>(attr->Tag())));
 	auto a_e = attr->GetExpr();
@@ -324,8 +313,7 @@ AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr)
 		vals.emplace_back(Fmt(static_cast<int>(AE_NONE)));
 	}
 
-AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs)
-	: CompoundConstInfo(_c)
+AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs) : CompoundConstInfo(_c)
 	{
 	for ( const auto& a : _attrs->GetAttrs() )
 		{
@@ -369,7 +357,6 @@ void GlobalInitInfo::InitializerVals(std::vector<std::string>& ivs) const
 	ivs.push_back(Fmt(exported));
 	}
 
-
 CallExprInitInfo::CallExprInitInfo(CPPCompile* c, ExprPtr _e, string _e_name, string _wrapper_class)
 	: e(move(_e)), e_name(move(_e_name)), wrapper_class(move(_wrapper_class))
 	{
@@ -377,8 +364,9 @@ CallExprInitInfo::CallExprInitInfo(CPPCompile* c, ExprPtr _e, string _e_name, st
 	init_cohort = max(init_cohort, gi->InitCohort() + 1);
 	}
 
-
-LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, string _name, FuncTypePtr ft, string _wrapper_class, p_hash_type _h, bool _has_captures)
+LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, string _name, FuncTypePtr ft,
+                                               string _wrapper_class, p_hash_type _h,
+                                               bool _has_captures)
 	: name(move(_name)), wrapper_class(move(_wrapper_class)), h(_h), has_captures(_has_captures)
 	{
 	auto gi = c->RegisterType(ft);
@@ -393,7 +381,6 @@ void LambdaRegistrationInfo::InitializerVals(std::vector<std::string>& ivs) cons
 	ivs.emplace_back(Fmt(h));
 	ivs.emplace_back(has_captures ? "true" : "false");
 	}
-
 
 void EnumTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
@@ -413,9 +400,7 @@ void OpaqueTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	ivs.emplace_back(Fmt(c->TrackString(t->GetName())));
 	}
 
-
-TypeTypeInfo::TypeTypeInfo(CPPCompile* _c, TypePtr _t)
-	: AbstractTypeInfo(_c, move(_t))
+TypeTypeInfo::TypeTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, move(_t))
 	{
 	tt = t->AsTypeType()->GetType();
 	auto gi = c->RegisterType(tt);
@@ -428,8 +413,7 @@ void TypeTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	ivs.emplace_back(to_string(c->TypeOffset(tt)));
 	}
 
-VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t)
-	: AbstractTypeInfo(_c, move(_t))
+VectorTypeInfo::VectorTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, move(_t))
 	{
 	yield = t->Yield();
 	auto gi = c->RegisterType(yield);
@@ -460,8 +444,7 @@ void ListTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 		ivs.emplace_back(Fmt(c->TypeOffset(t)));
 	}
 
-TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t)
-	: AbstractTypeInfo(_c, move(_t))
+TableTypeInfo::TableTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, move(_t))
 	{
 	auto tbl = t->AsTableType();
 
@@ -486,8 +469,7 @@ void TableTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	ivs.emplace_back(Fmt(yield ? c->TypeOffset(yield) : -1));
 	}
 
-FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t)
-	: AbstractTypeInfo(_c, move(_t))
+FuncTypeInfo::FuncTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, move(_t))
 	{
 	auto f = t->AsFuncType();
 
@@ -514,8 +496,7 @@ void FuncTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	ivs.emplace_back(Fmt(static_cast<int>(flavor)));
 	}
 
-RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t)
-	: AbstractTypeInfo(_c, move(_t))
+RecordTypeInfo::RecordTypeInfo(CPPCompile* _c, TypePtr _t) : AbstractTypeInfo(_c, move(_t))
 	{
 	auto r = t->AsRecordType()->Types();
 
@@ -564,7 +545,6 @@ void RecordTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 		}
 	}
 
-
 void IndicesManager::Generate(CPPCompile* c)
 	{
 	c->Emit("int CPP__Indices__init[] =");
@@ -587,7 +567,7 @@ void IndicesManager::Generate(CPPCompile* c)
 				}
 			}
 
-		if ( line.size() > 0)
+		if ( line.size() > 0 )
 			c->Emit(line);
 		}
 
