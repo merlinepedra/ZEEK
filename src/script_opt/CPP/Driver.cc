@@ -187,69 +187,67 @@ void CPPCompile::GenProlog()
 	Emit("std::vector<int> enum_mapping;");
 	NL();
 
-	const_info[TYPE_BOOL] = CreateInitInfo("Bool", "ValPtr", "bool");
-	const_info[TYPE_INT] = CreateInitInfo("Int", "ValPtr", "bro_int_t");
-	const_info[TYPE_COUNT] = CreateInitInfo("Count", "ValPtr", "bro_uint_t");
-	const_info[TYPE_DOUBLE] = CreateInitInfo("Double", "ValPtr", "double");
-	const_info[TYPE_TIME] = CreateInitInfo("Time", "ValPtr", "double");
-	const_info[TYPE_INTERVAL] = CreateInitInfo("Interval", "ValPtr", "double");
-	const_info[TYPE_ADDR] = CreateInitInfo("Addr", "ValPtr", "int", false);
-	const_info[TYPE_SUBNET] = CreateInitInfo("SubNet", "ValPtr", "int", false);
-	const_info[TYPE_PORT] = CreateInitInfo("Port", "ValPtr", "uint32_t");
+	const_info[TYPE_BOOL] = CreateConstInitInfo("Bool", "ValPtr", "bool");
+	const_info[TYPE_INT] = CreateConstInitInfo("Int", "ValPtr", "bro_int_t");
+	const_info[TYPE_COUNT] = CreateConstInitInfo("Count", "ValPtr", "bro_uint_t");
+	const_info[TYPE_DOUBLE] = CreateConstInitInfo("Double", "ValPtr", "double");
+	const_info[TYPE_TIME] = CreateConstInitInfo("Time", "ValPtr", "double");
+	const_info[TYPE_INTERVAL] = CreateConstInitInfo("Interval", "ValPtr", "double");
+	const_info[TYPE_ADDR] = CreateConstInitInfo("Addr", "ValPtr", "int", false);
+	const_info[TYPE_SUBNET] = CreateConstInitInfo("SubNet", "ValPtr", "int", false);
+	const_info[TYPE_PORT] = CreateConstInitInfo("Port", "ValPtr", "uint32_t");
 
-	const_info[TYPE_ENUM] = CreateInitInfo("Enum", "ValPtr");
-	const_info[TYPE_STRING] = CreateInitInfo("String", "ValPtr");
-	const_info[TYPE_PATTERN] = CreateInitInfo("Pattern", "ValPtr");
-	const_info[TYPE_LIST] = CreateInitInfo("List", "ValPtr");
-	const_info[TYPE_VECTOR] = CreateInitInfo("Vector", "ValPtr");
-	const_info[TYPE_RECORD] = CreateInitInfo("Record", "ValPtr");
-	const_info[TYPE_TABLE] = CreateInitInfo("Table", "ValPtr");
-	const_info[TYPE_FUNC] = CreateInitInfo("Func", "ValPtr");
-	const_info[TYPE_FILE] = CreateInitInfo("File", "ValPtr");
+	const_info[TYPE_ENUM] = CreateCompoundInitInfo("Enum", "ValPtr");
+	const_info[TYPE_STRING] = CreateCompoundInitInfo("String", "ValPtr");
+	const_info[TYPE_LIST] = CreateCompoundInitInfo("List", "ValPtr");
+	const_info[TYPE_PATTERN] = CreateCompoundInitInfo("Pattern", "ValPtr");
+	const_info[TYPE_VECTOR] = CreateCompoundInitInfo("Vector", "ValPtr");
+	const_info[TYPE_RECORD] = CreateCompoundInitInfo("Record", "ValPtr");
+	const_info[TYPE_TABLE] = CreateCompoundInitInfo("Table", "ValPtr");
+	const_info[TYPE_FUNC] = CreateCompoundInitInfo("Func", "ValPtr");
+	const_info[TYPE_FILE] = CreateCompoundInitInfo("File", "ValPtr");
 
-	type_info = CreateInitInfo("Type", "Ptr");
-	attr_info = CreateInitInfo("Attr", "Ptr");
-	attrs_info = CreateInitInfo("Attributes", "Ptr");
-	call_exprs_info = CreateInitInfo("CallExpr", "Ptr");
+	type_info = CreateCompoundInitInfo("Type", "Ptr");
+	attr_info = CreateCompoundInitInfo("Attr", "Ptr");
+	attrs_info = CreateCompoundInitInfo("Attributes", "Ptr");
 
-	lambda_reg_info = CreateInitInfo("LambdaRegistration", "");
-	global_id_info = CreateInitInfo("GlobalID", "");
+	call_exprs_info = CreateCustomInitInfo("CallExpr", "Ptr");
+	lambda_reg_info = CreateCustomInitInfo("LambdaRegistration", "");
+	global_id_info = CreateCustomInitInfo("GlobalID", "");
 
 	NL();
 	DeclareDynCPPStmt();
 	NL();
 	}
 
-shared_ptr<CPP_InitsInfo> CPPCompile::CreateInitInfo(const char* tag, const char* type,
-                                                     const char* c_type, bool is_basic)
+shared_ptr<CPP_InitsInfo> CPPCompile::CreateConstInitInfo(const char* tag, const char* type,
+                                                          const char* c_type, bool is_basic)
 	{
-	string v_type = type[0] ? (string(tag) + type) : "void*";
-	Emit("std::vector<%s> CPP__%s__;", v_type, string(tag));
+	auto gi = make_shared<CPP_BasicConstInitsInfo>(tag, type, c_type, is_basic);
+	return RegisterInitInfo(tag, type, gi);
+	}
 
-	shared_ptr<CPP_InitsInfo> gi;
+shared_ptr<CPP_InitsInfo> CPPCompile::CreateCompoundInitInfo(const char* tag, const char* type)
+	{
+	auto gi = make_shared<CPP_CompoundInitsInfo>(tag, type);
+	return RegisterInitInfo(tag, type, gi);
+	}
 
-	if ( c_type )
-		gi = make_shared<CPP_BasicConstInitsInfo>(tag, type, c_type, is_basic);
-	else if ( util::streq(tag, "Enum") || util::streq(tag, "String") || util::streq(tag, "List") ||
-	          util::streq(tag, "Table") || util::streq(tag, "Vector") ||
-	          util::streq(tag, "Record") || util::streq(tag, "File") || util::streq(tag, "Func") ||
-	          util::streq(tag, "Pattern") )
-		gi = make_shared<CPP_CompoundInitsInfo>(tag, type);
-
-	else if ( util::streq(tag, "Type") )
-		gi = make_shared<CPP_CompoundInitsInfo>(tag, type);
-	else if ( util::streq(tag, "Attr") )
-		gi = make_shared<CPP_CompoundInitsInfo>(tag, type);
-	else if ( util::streq(tag, "Attributes") )
-		gi = make_shared<CPP_CompoundInitsInfo>(tag, type);
-	else
-		gi = make_shared<CPP_CustomInitsInfo>(tag, type);
-
-	all_global_info.insert(gi);
-
+shared_ptr<CPP_InitsInfo> CPPCompile::CreateCustomInitInfo(const char* tag, const char* type)
+	{
+	auto gi = make_shared<CPP_CustomInitsInfo>(tag, type);
 	if ( type[0] == '\0' )
 		gi->SetCPPType("void*");
 
+	return RegisterInitInfo(tag, type, gi);
+	}
+
+shared_ptr<CPP_InitsInfo> CPPCompile::RegisterInitInfo(const char* tag, const char* type,
+                                                       shared_ptr<CPP_InitsInfo> gi)
+	{
+	string v_type = type[0] ? (string(tag) + type) : "void*";
+	Emit("std::vector<%s> CPP__%s__;", v_type, string(tag));
+	all_global_info.insert(gi);
 	return gi;
 	}
 

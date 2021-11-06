@@ -253,9 +253,37 @@ private:
 	// See Driver.cc for definitions.
 	//
 
-	std::shared_ptr<CPP_InitsInfo> CreateInitInfo(const char* tag, const char* type,
-	                                              const char* c_type = nullptr,
-	                                              bool is_basic = true);
+	// The following methods all create objects that track the
+	// initializations of a given type of value.  In each, "tag"
+	// is the name used to identify the initializer global
+	// associated with the given type of value, and "type" is
+	// its C++ representation.  Often "tag" is concatenated with
+	// "type" to designate a specific C++ type.  For example,
+	// "tag" might be "Double" and "type" might be "ValPtr";
+	// the resulting global's type is "DoubleValPtr".
+
+	// Creates an object for tracking values associated with Zeek
+	// constants.  "c_type" is the C++ type used in the initializer
+	// for each object.  If "is_basic" is true, then this type
+	// directly holds the constant.  Otherwise, it's an index
+	// into a separate vector that holds the constant.
+	std::shared_ptr<CPP_InitsInfo> CreateConstInitInfo(const char* tag, const char* type,
+	                                                   const char* c_type,
+	                                                   bool is_basic = true);
+
+	// Creates an object for tracking compound initializers, which
+	// are whose initialization uses indexes into other vectors.
+	std::shared_ptr<CPP_InitsInfo> CreateCompoundInitInfo(const char* tag, const char* type);
+
+	// Creates an object for tracking initializers that have custom
+	// C++ objects to hold their initialization information.
+	std::shared_ptr<CPP_InitsInfo> CreateCustomInitInfo(const char* tag, const char* type);
+
+	// Generates the declaration associated with a set of initializations
+	// and tracks the object to facilitate looping over all so
+	// initializations.  As a convenience, returns the object.
+	std::shared_ptr<CPP_InitsInfo> RegisterInitInfo(const char* tag, const char* type,
+	                                                std::shared_ptr<CPP_InitsInfo> gi);
 
 	// Main driver, invoked by constructor.
 	void Compile(bool report_uncompilable);

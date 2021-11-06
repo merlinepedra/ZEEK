@@ -398,8 +398,7 @@ static void generate_CPP(std::unique_ptr<ProfileFuncs>& pfs)
 	const auto gen_name = hash_dir + "CPP-gen.cc";
 	const auto addl_name = hash_dir + "CPP-gen-addl.h";
 
-	CPPCompile cpp(funcs, *pfs, gen_name, addl_name, *hm,
-	               analysis_options.gen_CPP || analysis_options.gen_standalone_CPP,
+	CPPCompile cpp(funcs, *pfs, gen_name, addl_name, *hm, analysis_options.gen_standalone_CPP,
 	               analysis_options.report_uncompilable);
 	}
 
