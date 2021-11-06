@@ -133,18 +133,35 @@ public:
 	           bool report_uncompilable);
 	~CPPCompile();
 
-	// Track the given type (with support methods for ones that
+	// Constructing a CPPCompile object does all of the compilation.
+	// The public methods here are for use by helper classes.
+
+	// Tracks the given type (with support methods for ones that
 	// are complicated), recursively including its sub-types, and
 	// creating initializations for constructing C++ variables
 	// representing the types.
 	//
 	// Returns the initialization info associated with the type.
 	std::shared_ptr<CPP_InitInfo> RegisterType(const TypePtr& t);
+
+	// Easy access to the global offset and the initialization
+	// cohort associated with a given type.
 	int TypeOffset(const TypePtr& t) { return GI_Offset(RegisterType(t)); }
 	int TypeCohort(const TypePtr& t) { return GI_Cohort(RegisterType(t)); }
 
+	// Tracks a Zeek ValPtr used as a constant value.  These occur
+	// in two contexts: directly as constant expressions, and indirectly
+	// as elements within aggregate constants (such as in vector
+	// initializers).
+	//
+	// Returns the associated initialization info.  In addition,
+	// consts_offset returns an offset into an initialization-time
+	// global that tracks all constructed globals, providing
+	// general access to them for aggregate constants.
 	std::shared_ptr<CPP_InitInfo> RegisterConstant(const ValPtr& vp, int& consts_offset);
 
+	// Tracks a global to generate the necessary initialization.
+	// Returns the associated initialization info.
 	std::shared_ptr<CPP_InitInfo> RegisterGlobal(const ID* g);
 
 	// Tracks a use of the given set of attributes, including
@@ -154,19 +171,26 @@ public:
 	// Returns the initialization info associated with the set of
 	// attributes.
 	std::shared_ptr<CPP_InitInfo> RegisterAttributes(const AttributesPtr& attrs);
-	std::shared_ptr<CPP_InitInfo> RegisterAttr(const AttrPtr& attr);
+
+	// Convenient access to the global offset associated with
+	// a set of Attributes.
 	int AttributesOffset(const AttributesPtr& attrs)
 		{
 		return GI_Offset(RegisterAttributes(attrs));
 		}
+
+	// The same, for a single attribute.
+	std::shared_ptr<CPP_InitInfo> RegisterAttr(const AttrPtr& attr);
 	int AttrOffset(const AttrPtr& attr) { return GI_Offset(RegisterAttr(attr)); }
 
+	// Returns a mapping of from Attr objects to their associated
+	// initialization information.  The Attr must have previously
+	// been registered.
 	auto ProcessedAttr() { return processed_attr; }
 
 	// True if the given expression is simple enough that we can
 	// generate code to evaluate it directly, and don't need to
-	// create a separate function per RegisterInitExpr() to track
-	// it, followed by GenInitExpr() for the actual generation.
+	// create a separate function per RegisterInitExpr() to track it.
 	static bool IsSimpleInitExpr(const ExprPtr& e);
 
 	// Tracks expressions used in attributes (such as &default=<expr>).
@@ -174,14 +198,18 @@ public:
 	// We need to generate code to evaluate these, via CallExpr's
 	// that invoke functions that return the value of the expression.
 	// However, we can't generate that code when first encountering
-	// the attribute because doing so will need to refer to the names
+	// the attribute, because doing so will need to refer to the names
 	// of types, and initially those are unavailable (because the type's
 	// representatives, per pfs.RepTypes(), might not have yet been
 	// tracked).  So instead we track the associated CallExprInitInfo
 	// objects, and after all types have been tracked, then spin
 	// through them to generate the code.
+	//
+	// Returns the associated initialization information.
 	std::shared_ptr<CPP_InitInfo> RegisterInitExpr(const ExprPtr& e);
 
+	// Tracks a C++ string value needed for initialization.  Returns
+	// an offset into the global vector that will hold these.
 	int TrackString(std::string s)
 		{
 		if ( tracked_strings.count(s) == 0 )
@@ -193,6 +221,8 @@ public:
 		return tracked_strings[s];
 		}
 
+	// Tracks a profile hash value needed for initialization.  Returns
+	// an offset into the global vector that will hold these.
 	int TrackHash(p_hash_type h)
 		{
 		if ( tracked_hashes.count(h) == 0 )
@@ -204,15 +234,18 @@ public:
 		return tracked_hashes[h];
 		}
 
-	bool NotFullyCompilable(const std::string& fname) const
-		{
-		return not_fully_compilable.count(fname) > 0;
-		}
-
 	// Returns the hash associated with a given function body.
 	// It's a fatal error to call this for a body that hasn't
 	// been compiled.
 	p_hash_type BodyHash(const Stmt* body);
+
+	// Returns true if at least one of the function bodies associated
+	// with the function/hook/event handler of the given fname is
+	// not compilable.
+	bool NotFullyCompilable(const std::string& fname) const
+		{
+		return not_fully_compilable.count(fname) > 0;
+		}
 
 private:
 	// Start of methods related to driving the overall compilation
