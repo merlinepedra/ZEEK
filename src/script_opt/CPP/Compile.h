@@ -253,6 +253,9 @@ private:
 	// See Driver.cc for definitions.
 	//
 
+	// Main driver, invoked by constructor.
+	void Compile(bool report_uncompilable);
+
 	// The following methods all create objects that track the
 	// initializations of a given type of value.  In each, "tag"
 	// is the name used to identify the initializer global
@@ -285,9 +288,6 @@ private:
 	std::shared_ptr<CPP_InitsInfo> RegisterInitInfo(const char* tag, const char* type,
 	                                                std::shared_ptr<CPP_InitsInfo> gi);
 
-	// Main driver, invoked by constructor.
-	void Compile(bool report_uncompilable);
-
 	// Generate the beginning of the compiled code: run-time functions,
 	// namespace, auxiliary globals.
 	void GenProlog();
@@ -298,7 +298,7 @@ private:
 	void RegisterCompiledBody(const std::string& f);
 
 	// After compilation, generate the final code.  Most of this is
-	// run-time initialization of various dynamic values.
+	// in support of run-time initialization of various dynamic values.
 	void GenEpilog();
 
 	// True if the given function (plus body and profile) is one
@@ -351,7 +351,7 @@ private:
 	// needed for "seatbelts", to ensure that we can produce a
 	// unique hash relating to this compilation (*and* its
 	// compilation time, which is why these are "seatbelts" and
-	// likely not important to make distinct.
+	// likely not important to make distinct).
 	p_hash_type total_hash = 0;
 
 	// Working directory in which we're compiling.  Used to quasi-locate
@@ -393,7 +393,6 @@ private:
 
 	// The following match various forms of identifiers to the
 	// name used for their C++ equivalent.
-	const char* IDName(const ID& id) { return IDName(&id); }
 	const char* IDName(const IDPtr& id) { return IDName(id.get()); }
 	const char* IDName(const ID* id) { return IDNameStr(id).c_str(); }
 	const std::string& IDNameStr(const ID* id);
@@ -422,12 +421,12 @@ private:
 	// Maps global names (not identifiers) to the names we use for them.
 	std::unordered_map<std::string, std::string> globals;
 
+	// Similar for locals, for the function currently being compiled.
+	std::unordered_map<const ID*, std::string> locals;
+
 	// Retrieves the initialization information associated with the
 	// given global.
 	std::unordered_map<const ID*, std::shared_ptr<CPP_InitInfo>> global_gis;
-
-	// Similar for locals, for the function currently being compiled.
-	std::unordered_map<const ID*, std::string> locals;
 
 	// Maps event names to the names we use for them.
 	std::unordered_map<std::string, std::string> events;
@@ -450,18 +449,36 @@ private:
 	// Similar, but for lambdas.
 	void DeclareLambda(const LambdaExpr* l, const ProfileFunc* pf);
 
-	// Declares the CPPStmt subclass used for compiling the given
+	// Generates code to declare the compiled version of a script
 	// function.  "ft" gives the functions type, "pf" its profile,
 	// "fname" its C++ name, "body" its AST, "l" if non-nil its
 	// corresponding lambda expression, and "flavor" whether it's
 	// a hook/event/function.
+	//
+	// We use two basic approaches.  Most functions are represented
+	// by a "CPPDynStmt" object that's parameterized by a void* pointer
+	// to the underlying C++ function and an index used to dynamically
+	// cast the pointer to having the correct type for then calling it.
+	// Lambdas, however (including "implicit" lambdas used to associate
+	// complex expressions with &attributes), each have a unique
+	// subclass derived from CPPStmt that calls the underlying C++
+	// function without requiring a cast, and that holds the values
+	// of the lambda's captures.
+	//
+	// It would be cleanest to use the latter approach for all functions,
+	// but the hundreds/thousands of additional classes required for
+	// doing so significantly slows down C++ compilation, so we instead
+	// opt for the uglier dynamic casting approach, which only requires
+	// one additional class.
 	void CreateFunction(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname,
 	                    const StmtPtr& body, int priority, const LambdaExpr* l,
 	                    FunctionFlavor flavor);
 
+	// Used for the case of creating a custom subclass of CPPStmt.
 	void DeclareSubclass(const FuncTypePtr& ft, const ProfileFunc* pf, const std::string& fname,
 	                     const std::string& args, const IDPList* lambda_ids);
 
+	// Used for the case of employing an instance of a CPPDynStmt object.
 	void DeclareDynCPPStmt();
 
 	// Generates the declarations (and in-line definitions) associated
@@ -479,8 +496,12 @@ private:
 	// the given type, lambda captures (if non-nil), and profile.
 	std::string ParamDecl(const FuncTypePtr& ft, const IDPList* lambda_ids, const ProfileFunc* pf);
 
+	// Returns in p_types the types associated with the parameters for a function
+	// of the given type, set of lambda captures (if any), and profile.
 	void GatherParamTypes(std::vector<std::string>& p_types, const FuncTypePtr& ft,
 	                      const IDPList* lambda_ids, const ProfileFunc* pf);
+
+	// Same, but instead returns the parameter's names.
 	void GatherParamNames(std::vector<std::string>& p_names, const FuncTypePtr& ft,
 	                      const IDPList* lambda_ids, const ProfileFunc* pf);
 
@@ -489,19 +510,21 @@ private:
 	// is not used by the function.
 	const ID* FindParam(int i, const ProfileFunc* pf);
 
+	// Information associated with a CPPDynStmt dynamic dispatch.
 	struct DispatchInfo
 		{
-		std::string cast;
-		std::string args;
-		bool is_hook;
-		TypePtr yield;
+		std::string cast;	// C++ cast to use for function pointer
+		std::string args;	// arguments to pass to the function
+		bool is_hook;	// whether the function is a hook
+		TypePtr yield;	// what type the function returns, if any
 		};
 
 	// An array of cast/invocation pairs used to generate the CPPDynStmt
 	// Exec method.
 	std::vector<DispatchInfo> func_casting_glue;
 
-	// Maps casting strings to indices into func_casting_glue.
+	// Maps casting strings to indices into func_casting_glue.  The index
+	// is what's used to dynamically switch to the right dispatch.
 	std::unordered_map<std::string, int> casting_index;
 
 	// Maps functions (using their C++ name) to their casting strings.
@@ -515,7 +538,7 @@ private:
 	// The function's parameters.  Tracked so we don't re-declare them.
 	std::unordered_set<const ID*> params;
 
-	// Whether we're parsing a hook.
+	// Whether we're compiling a hook.
 	bool in_hook = false;
 
 	//
@@ -533,7 +556,7 @@ private:
 	void CompileLambda(const LambdaExpr* l, const ProfileFunc* pf);
 
 	// Generates the body of the Invoke() method (which supplies the
-	// "glue" between for calling the C++-generated code).
+	// "glue" for calling the C++-generated code, for CPPStmt subclasses).
 	void GenInvokeBody(const std::string& fname, const TypePtr& t, const std::string& args)
 		{
 		GenInvokeBody(fname + "(" + args + ")", t);
@@ -598,34 +621,56 @@ private:
 	//
 	// End of methods related to generating compiled script bodies.
 
-	// Start of methods related to generating code for representing
-	// script constants as run-time values.
-	// See Consts.cc for definitions.
-	//
+	// Methods related to generating code for representing script constants
+	// as run-time values.  There's only one nontrivial one of these,
+	// RegisterConstant() (declared above, as it's public).  All the other
+	// work is done by secondary objects - see InitsInfo.{h,cc} for those.
 
+	// Returns the object used to track indices (vectors of integers
+	// that are used to index various other vectors, including other
+	// indices).  Only used by CPP_InitsInfo objects, but stored
+	// in the CPPCompile object to make it available across different
+	// CPP_InitsInfo objects.
+
+	friend class CPP_InitsInfo;
 	IndicesManager& IndMgr() { return indices_mgr; }
 
 	// Maps (non-native) constants to associated C++ globals.
 	std::unordered_map<const ConstExpr*, std::string> const_exprs;
 
-	// Maps the values of (non-native) constants to associated global
+	// Maps the values of (non-native) constants to associated initializer
 	// information.
 	std::unordered_map<const Val*, std::shared_ptr<CPP_InitInfo>> const_vals;
+
+	// Same, but for the offset into the vector that tracks all constants
+	// collectively (to support initialization of compound constants).
 	std::unordered_map<const Val*, int> const_offsets;
+
+	// The same as the above pair, but indexed by the string representation
+	// rather than the Val*.  The reason for having both is to enable
+	// reusing common constants even though their Val*'s differ.
+	std::unordered_map<std::string, std::shared_ptr<CPP_InitInfo>> constants;
+	std::unordered_map<std::string, int> constants_offsets;
 
 	// Used for memory management associated with const_vals's index.
 	std::vector<ValPtr> cv_indices;
 
-	// Maps string representations of (non-native) constants to
-	// associated C++ globals.
-	std::unordered_map<std::string, std::shared_ptr<CPP_InitInfo>> constants;
-	std::unordered_map<std::string, int> constants_offsets;
-
-	std::set<std::shared_ptr<CPP_InitsInfo>> all_global_info;
-
+	// For different types of constants (as indicated by TypeTag),
+	// provides the associated object that manages the initializers
+	// for those constants.
 	std::unordered_map<TypeTag, std::shared_ptr<CPP_InitsInfo>> const_info;
+
+	// Tracks entries for constructing the vector of all constants
+	// (regardless of type).  Each entry provides a TypeTag, used
+	// to identify the type-specific vector for a given constant,
+	// and the offset into that vector.
 	std::vector<std::pair<TypeTag, int>> consts;
 
+	// The following objects track initialization information for
+	// different types of initializers: Zeek types, individual
+	// attributes, sets of attributes, expressions that call script
+	// functions (for attribute expressions), registering lambda
+	// bodies, and registering Zeek globals.
 	std::shared_ptr<CPP_InitsInfo> type_info;
 	std::shared_ptr<CPP_InitsInfo> attr_info;
 	std::shared_ptr<CPP_InitsInfo> attrs_info;
@@ -633,13 +678,25 @@ private:
 	std::shared_ptr<CPP_InitsInfo> lambda_reg_info;
 	std::shared_ptr<CPP_InitsInfo> global_id_info;
 
+	// Tracks all of the above objects (as well as each entry in
+	// const_info), to facilitate easy iterating over them.
+	std::set<std::shared_ptr<CPP_InitsInfo>> all_global_info;
+
+	// Tracks the attribute expressions for which we need to generate
+	// function calls to evaluate them.
 	std::unordered_map<std::string, std::shared_ptr<CallExprInitInfo>> init_infos;
 
+	// See IndMgr() above for the role of this variable.
 	IndicesManager indices_mgr;
 
-	std::vector<std::string> ordered_tracked_strings;
+	// Maps strings to associated offsets.
 	std::unordered_map<std::string, int> tracked_strings;
 
+	// Tracks strings we've registered in order (corresponding to
+	// their offsets).
+	std::vector<std::string> ordered_tracked_strings;
+
+	// The same as the previous two, but for profile hashes.
 	std::vector<p_hash_type> ordered_tracked_hashes;
 	std::unordered_map<p_hash_type, int> tracked_hashes;
 
@@ -825,8 +882,8 @@ private:
 	// not the outer map).
 	int num_ev_mappings = 0;
 
-	// For each entry in "enum_mapping", the record and name
-	// associated with the mapping.
+	// For each entry in "enum_mapping", the EnumType (as a global
+	// offset) and name associated with the mapping.
 	std::vector<std::pair<int, std::string>> enum_names;
 
 	//
@@ -920,12 +977,16 @@ private:
 	// See Inits.cc for definitions.
 	//
 
+	// Generates code for dynamically generating an expression
+	// associated with an attribute, via a function call.
 	void GenInitExpr(std::shared_ptr<CallExprInitInfo> ce_init);
 
 	// Returns the name of a function used to evaluate an
 	// initialization expression.
 	std::string InitExprName(const ExprPtr& e);
 
+	// Convenience functions for return the offset or initialization cohort
+	// associated with an initialization.
 	int GI_Offset(const std::shared_ptr<CPP_InitInfo>& gi) const { return gi ? gi->Offset() : -1; }
 	int GI_Cohort(const std::shared_ptr<CPP_InitInfo>& gi) const
 		{
@@ -982,7 +1043,6 @@ private:
 	//
 
 	// The following all need to be able to emit code.
-	friend class CPP_InitsInfo;
 	friend class CPP_BasicConstInitsInfo;
 	friend class CPP_CompoundInitsInfo;
 	friend class IndicesManager;

@@ -288,10 +288,7 @@ void CPPCompile::GenEpilog()
 	{
 	NL();
 	for ( const auto& ii : init_infos )
-		{
-		auto& ie = ii.second;
-		GenInitExpr(ie);
-		}
+		GenInitExpr(ii.second);
 
 	NL();
 	Emit("ValPtr CPPDynStmt::Exec(Frame* f, StmtFlowType& flow)");
