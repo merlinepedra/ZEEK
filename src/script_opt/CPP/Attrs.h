@@ -9,11 +9,11 @@ namespace zeek::detail
 
 enum AttrExprType
 	{
-	AE_NONE,
-	AE_CONST,
-	AE_NAME,
-	AE_RECORD,
-	AE_CALL,
+	AE_NONE,	// attribute doesn't have an expression
+	AE_CONST,	// easy expression - a constant (ConstExpr)
+	AE_NAME,	// easy - a global (NameExpr)
+	AE_RECORD,	// an empty record cast to a given type
+	AE_CALL,	// everything else - requires a lambda, essentially
 	};
 
 	} // zeek::detail
