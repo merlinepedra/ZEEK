@@ -317,8 +317,8 @@ AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs) : CompoundCons
 	{
 	for ( const auto& a : _attrs->GetAttrs() )
 		{
-		ASSERT(c->processed_attr.count(a.get()) > 0);
-		auto gi = c->processed_attr[a.get()];
+		ASSERT(c->ProcessedAttr().count(a.get()) > 0);
+		auto gi = c->ProcessedAttr()[a.get()];
 		init_cohort = max(init_cohort, gi->InitCohort() + 1);
 		vals.emplace_back(Fmt(gi->Offset()));
 		}

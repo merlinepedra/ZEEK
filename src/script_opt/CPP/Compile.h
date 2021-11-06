@@ -11,13 +11,14 @@
 #include "zeek/script_opt/ScriptOpt.h"
 
 // We structure the compiler for generating C++ versions of Zeek script
-// bodies as a single large class.  While we divide the compiler's
+// bodies maily as a single large class.  While we divide the compiler's
 // functionality into a number of groups (see below), these interact with
 // one another, and in particular with various member variables, enough
 // so that it's not clear there's benefit to further splitting the
 // functionality into multiple classes.  (Some splitting has already been
 // done for more self-contained functionality, resulting in the CPPTracker
-// and CPPHashManager classes.)
+// and CPPHashManager classes, and initialization information in
+// InitsInfo.{h,cc} and RuntimeInits.{h,cc}.)
 //
 // Most aspects of translating to C++ have a straightforward nature.
 // We can turn many Zeek script statements directly into the C++ that's
@@ -45,10 +46,6 @@
 // for example, "zeek -b -O gen-C++ foo.zeek" will generate C++ code for
 // all of the scripts loaded in "bare" mode, plus those for foo.zeek; and
 // without the "-b" for all of the default scripts plus those in foo.zeek.
-//
-// One of the design goals employed is to support "incremental" compilation,
-// i.e., compiling *additional* Zeek scripts at a later point after an
-// initial compilation.  This comes in two forms.
 //
 // "-O report-C++" reports on which compiled functions will/won't be used
 // (including ones that are available but not relevant to the scripts loaded
@@ -89,29 +86,41 @@
 //
 //	Emit		Low-level code generation.
 //
-// Of these, Inits is probably the most subtle.  It turns out to be
-// very tricky ensuring that we create run-time variables in the
-// proper order.  For example, a global might need a record type to be
-// defined; one of the record's fields is a table; that table contains
-// another record; one of that other record's fields is the original
-// record (recursion); another field has an &default expression that
-// requires the compiler to generate a helper function to construct
-// the expression dynamically; and that helper function might in turn
-// refer to other types that require initialization.
+// Of these, Inits is the most subtle and complex.  There are two major
+// challenges in creating run-time values (such as Zeek types and constants).
 //
-// To deal with these dependencies, for every run-time object the compiler
-// maintains (1) all of the other run-time objects on which its initialization
-// depends, and (2) the C++ statements needed to initialize it, once those
-// other objects have been initialized.  It then beings initialization with
-// objects that have no dependencies, marks those as done (essentially), finds
-// objects that now can be initialized and emits their initializations,
-// marks those as done, etc.
+// First, generating individual code for creating each of these winds up
+// incurring unacceptable compile times (for example, clang compiling all
+// of the base scripts with optimization takes many hours on a high-end
+// laptop).  As a result, we employ a table-driven approach that compiles
+// much faster (though still taking many minutes on the same high-end laptop,
+// running about 40x faster however).
 //
-// Below in declaring the CPPCompiler class, we group methods in accordance
-// with those listed above.  We also locate member variables with the group
-// most relevant for their usage.  However, keep in mind that many member
-// variables are used by multiple groups, which is why we haven't created
-// distinct per-group classes.
+// Second, initializations frequently rely upon *other* initializations
+// having occurred first.  For example, a global might need a record type
+// to be defined; one of the record's fields is a table; that table contains
+// another record; one of that other record's fields is the original record
+// (recursion); another field has an &default expression that requires the
+// compiler to generate a helper function to construct the expression
+// dynamically; and that helper function might in turn refer to other types
+// that require initialization.  What's required is a framework for ensuring
+// that everything occurs in the proper order.
+//
+// The logic for dealing with these complexities is isolated into several
+// sets of classes.  InitsInfo.{h,cc} provides the classes related to tracking
+// how to generate initializations in the proper order.  RuntimeInits.{h,cc}
+// provides the classes used when initialization generated code in order
+// to instantiate all of the necessary values.  See those files for discussions
+// on how they address the points framed above.
+//
+// In declaring the CPPCompiler class, we group methods in accordance with
+// those listed above, locating member variables with the group most relevant
+// for their usage.  However, keep in mind that many member variables are
+// used by multiple groups, which is why we haven't created distinct
+// per-group classes.  In addition, we make a number of methods public
+// in order to avoid the need for numerous "friend" declarations to allow
+// associated classes (like those for initialization) access to a the
+// necessary compiler methods.
 
 namespace zeek::detail
 	{
@@ -124,10 +133,10 @@ public:
 	           bool report_uncompilable);
 	~CPPCompile();
 
-	// Track the given type (with support methods for onces that
+	// Track the given type (with support methods for ones that
 	// are complicated), recursively including its sub-types, and
-	// creating initializations (and dependencies) for constructing
-	// C++ variables representing the types.
+	// creating initializations for constructing C++ variables
+	// representing the types.
 	//
 	// Returns the initialization info associated with the type.
 	std::shared_ptr<CPP_InitInfo> RegisterType(const TypePtr& t);
@@ -151,6 +160,14 @@ public:
 		return GI_Offset(RegisterAttributes(attrs));
 		}
 	int AttrOffset(const AttrPtr& attr) { return GI_Offset(RegisterAttr(attr)); }
+
+	auto ProcessedAttr() { return processed_attr; }
+
+	// True if the given expression is simple enough that we can
+	// generate code to evaluate it directly, and don't need to
+	// create a separate function per RegisterInitExpr() to track
+	// it, followed by GenInitExpr() for the actual generation.
+	static bool IsSimpleInitExpr(const ExprPtr& e);
 
 	// Tracks expressions used in attributes (such as &default=<expr>).
 	//
@@ -192,22 +209,16 @@ public:
 		return not_fully_compilable.count(fname) > 0;
 		}
 
+	// Returns the hash associated with a given function body.
+	// It's a fatal error to call this for a body that hasn't
+	// been compiled.
+	p_hash_type BodyHash(const Stmt* body);
+
 private:
 	// Start of methods related to driving the overall compilation
 	// process.
 	// See Driver.cc for definitions.
 	//
-
-	friend class CPP_InitsInfo;
-	friend class CPP_BasicConstInitsInfo;
-	friend class CPP_CompoundInitsInfo;
-	friend class IndicesManager;
-	friend class CPP_InitInfo;
-	friend class ListConstInfo;
-	friend class FuncConstInfo;
-	friend class BaseTypeInfo;
-	friend class AttrInfo;
-	friend class AttrsInfo;
 
 	std::shared_ptr<CPP_InitsInfo> CreateInitInfo(const char* tag, const char* type,
 	                                              const char* c_type = nullptr,
@@ -488,11 +499,6 @@ private:
 
 	// Returns the C++ name to use for a given function body.
 	std::string BodyName(const FuncInfo& func);
-
-	// Returns the hash associated with a given function body.
-	// It's a fatal error to call this for a body that hasn't
-	// been compiled.
-	p_hash_type BodyHash(const Stmt* body);
 
 	// Generate the arguments to be used when calling a C++-generated
 	// function.
@@ -853,12 +859,6 @@ private:
 	// See Inits.cc for definitions.
 	//
 
-	// True if the given expression is simple enough that we can
-	// generate code to evaluate it directly, and don't need to
-	// create a separate function per RegisterInitExpr() to track
-	// it, followed by GenInitExpr() for the actual generation.
-	static bool IsSimpleInitExpr(const ExprPtr& e);
-
 	void GenInitExpr(std::shared_ptr<CallExprInitInfo> ce_init);
 
 	// Returns the name of a function used to evaluate an
@@ -919,6 +919,12 @@ private:
 	// Start of methods related to low-level code generation.
 	// See Emit.cc for definitions.
 	//
+
+	// The following all need to be able to emit code.
+	friend class CPP_InitsInfo;
+	friend class CPP_BasicConstInitsInfo;
+	friend class CPP_CompoundInitsInfo;
+	friend class IndicesManager;
 
 	// Used to create (indented) C++ {...} code blocks.  "needs_semi"
 	// controls whether to terminate the block with a ';' (such as
