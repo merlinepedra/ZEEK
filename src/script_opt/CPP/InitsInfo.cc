@@ -563,7 +563,7 @@ void IndicesManager::Generate(CPPCompile* c)
 		// easier to debug problems.
 		auto line = string("/* ") + to_string(nset++) + " */ ";
 
-		// We use run-length encoding.
+		// We first record the size, then the values.
 		line += to_string(is.size()) + ", ";
 
 		auto n = 1;

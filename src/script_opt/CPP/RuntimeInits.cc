@@ -237,6 +237,22 @@ void CPP_IndexedInits<T>::Generate(InitsManager* im, std::vector<AttributesPtr>&
 	ivec[offset] = make_intrusive<Attributes>(a_list, nullptr, false, false);
 	}
 
+// Instantiate the templates we'll need.
+
+template class CPP_IndexedInits<EnumValPtr>;
+template class CPP_IndexedInits<StringValPtr>;
+template class CPP_IndexedInits<PatternValPtr>;
+template class CPP_IndexedInits<ListValPtr>;
+template class CPP_IndexedInits<VectorValPtr>;
+template class CPP_IndexedInits<RecordValPtr>;
+template class CPP_IndexedInits<TableValPtr>;
+template class CPP_IndexedInits<FileValPtr>;
+template class CPP_IndexedInits<FuncValPtr>;
+template class CPP_IndexedInits<AttrPtr>;
+template class CPP_IndexedInits<AttributesPtr>;
+template class CPP_IndexedInits<TypePtr>;
+
+
 void CPP_TypeInits::PreInit(InitsManager* im)
 	{
 	auto& offsets_vec = im->Indices(offsets_set);
@@ -264,6 +280,8 @@ void CPP_TypeInits::PreInit(InitsManager* im, int offset, ValElemVec& init_vals)
 		else
 			inits_vec[offset] = get_record_type__CPP(nullptr);
 		}
+
+	// else no pre-initialization needed
 	}
 
 void CPP_TypeInits::Generate(InitsManager* im, vector<TypePtr>& ivec, int offset,
@@ -441,14 +459,14 @@ TypePtr CPP_TypeInits::BuildRecordType(InitsManager* im, ValElemVec& init_vals, 
 	return r;
 	}
 
+
 int CPP_FieldMapping::ComputeOffset(InitsManager* im) const
 	{
 	auto r = im->Types(rec)->AsRecordType();
 	auto fm_offset = r->FieldOffset(field_name.c_str());
 
 	if ( fm_offset < 0 )
-		{
-		// field does not exist, create it
+		{ // field does not exist, create it
 		fm_offset = r->NumFields();
 
 		auto id = util::copy_string(field_name.c_str());
@@ -473,7 +491,7 @@ int CPP_EnumMapping::ComputeOffset(InitsManager* im) const
 
 	auto em_offset = e->Lookup(e_name);
 	if ( em_offset < 0 )
-		{
+		{ // enum constant does not exist, create it
 		em_offset = e->Names().size();
 		if ( e->Lookup(em_offset) )
 			reporter->InternalError("enum inconsistency while initializing compiled scripts");
@@ -482,6 +500,7 @@ int CPP_EnumMapping::ComputeOffset(InitsManager* im) const
 
 	return em_offset;
 	}
+
 
 void CPP_GlobalInit::Generate(InitsManager* im, std::vector<void*>& /* inits_vec */,
                               int /* offset */) const
@@ -496,6 +515,7 @@ void CPP_GlobalInit::Generate(InitsManager* im, std::vector<void*>& /* inits_vec
 		}
 	}
 
+
 void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set)
 	{
 	// First figure out how many groups of indices there are, so we
@@ -506,7 +526,7 @@ void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set
 		{
 		++num_inits;
 		int n = *i_ptr;
-		i_ptr += n + 1;
+		i_ptr += n + 1;	// skip over vector elements
 		}
 
 	indices_set.reserve(num_inits);
@@ -525,20 +545,5 @@ void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set
 		indices_set.emplace_back(move(indices));
 		}
 	}
-
-// Instantiate the templates we'll need.
-
-template class CPP_IndexedInits<EnumValPtr>;
-template class CPP_IndexedInits<StringValPtr>;
-template class CPP_IndexedInits<PatternValPtr>;
-template class CPP_IndexedInits<ListValPtr>;
-template class CPP_IndexedInits<VectorValPtr>;
-template class CPP_IndexedInits<RecordValPtr>;
-template class CPP_IndexedInits<TableValPtr>;
-template class CPP_IndexedInits<FileValPtr>;
-template class CPP_IndexedInits<FuncValPtr>;
-template class CPP_IndexedInits<AttrPtr>;
-template class CPP_IndexedInits<AttributesPtr>;
-template class CPP_IndexedInits<TypePtr>;
 
 	} // zeek::detail

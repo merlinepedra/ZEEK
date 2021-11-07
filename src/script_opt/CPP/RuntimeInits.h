@@ -3,6 +3,9 @@
 // Classes for run-time initialization and management of C++ values used
 // by the generated code.
 
+// See InitsInfo.h for a discussion of initialization issues and the
+// associated strategies for dealing with them.
+
 #include "zeek/Expr.h"
 #include "zeek/module_util.h"
 #include "zeek/script_opt/CPP/RuntimeInitSupport.h"
@@ -17,6 +20,9 @@ using FuncValPtr = IntrusivePtr<FuncVal>;
 
 class InitsManager;
 
+// An abstract helper class used to access elements of an initialization vector.
+// We need the abstraction because InitsManager below needs to be able to refer
+// to any of a range of templated classes.
 class CPP_AbstractInitAccessor
 	{
 public:
@@ -24,14 +30,13 @@ public:
 	virtual ValPtr Get(int index) const { return nullptr; }
 	};
 
-struct CPP_ValElem
-	{
-	CPP_ValElem(TypeTag _tag, int _offset) : tag(_tag), offset(_offset) { }
+// Convenient way to refer to an offset associated with a particular Zeek type.
+using CPP_ValElem = std::pair<TypeTag, int>;
 
-	TypeTag tag;
-	int offset;
-	};
-
+// This class groups together all of the vectors needed for run-time
+// initialization.  We gather them together into a single object so as
+// to avoid wiring in a set of globals that the various initialization
+// methods have to know about.
 class InitsManager
 	{
 public:
@@ -47,13 +52,19 @@ public:
 		{
 		}
 
+	// Providse generic access to Zeek constant values based on a single
+	// index.
 	ValPtr ConstVals(int offset) const
 		{
 		auto& cv = const_vals[offset];
-		return Consts(cv.tag, cv.offset);
+		return Consts(cv.first, cv.second);
 		}
+
+	// Retrieves the Zeek constant value for a particular Zeek type.
 	ValPtr Consts(TypeTag tag, int index) const { return consts[tag]->Get(index); }
 
+	// Accessors for the sundry initialization vectors, each retrieving
+	// a specific element identified by an index/offset.
 	const std::vector<int>& Indices(int offset) const { return indices[offset]; }
 	const char* Strings(int offset) const { return strings[offset]; }
 	const p_hash_type Hashes(int offset) const { return hashes[offset]; }
@@ -74,15 +85,23 @@ private:
 	std::vector<CallExprPtr>& call_exprs;
 	};
 
+
+// Manages an initialization vector of the given type.
 template <class T> class CPP_Init
 	{
 public:
 	virtual ~CPP_Init() { }
 
+	// Pre-initializes the given element of the vector, if necessary.
 	virtual void PreInit(InitsManager* im, std::vector<T>& inits_vec, int offset) const { }
+
+	// Initializes the given element of the vector.
 	virtual void Generate(InitsManager* im, std::vector<T>& inits_vec, int offset) const { }
 	};
 
+
+// Manages an initialization vector that uses "custom" initializers
+// (tailored ones rather than initializers based on indexing).
 template <class T> class CPP_CustomInits
 	{
 public:
@@ -90,6 +109,7 @@ public:
 	                std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> _inits)
 		: inits_vec(_inits_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
+		// Compute how big to make the vector.
 		int num_inits = 0;
 
 		for ( const auto& cohort : inits )
@@ -98,21 +118,29 @@ public:
 		inits_vec.resize(num_inits);
 		}
 
+	// Initialize the given cohort of elements.
 	void InitializeCohort(InitsManager* im, int cohort)
 		{
 		if ( cohort == 0 )
 			DoPreInits(im);
 
+		// Get this object's vector-of-vector-of-indices.
 		auto& offsets_vec = im->Indices(offsets_set);
-		auto& co = inits[cohort];
+
+		// Get the vector-of-indices for this cohort.
 		auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
+
+		// Loop over the cohort's elements to initialize them.
+		auto& co = inits[cohort];
 		for ( auto i = 0U; i < co.size(); ++i )
 			co[i]->Generate(im, inits_vec, cohort_offsets[i]);
 		}
 
 private:
+	// Pre-initialize all elements requiring it.
 	void DoPreInits(InitsManager* im)
 		{
+		// See InitializeCohort() for the variables used here.
 		auto& offsets_vec = im->Indices(offsets_set);
 		int cohort = 0;
 		for ( const auto& co : inits )
@@ -124,7 +152,10 @@ private:
 			}
 		}
 
+	// The initialization vector in its entirety.
 	std::vector<T>& inits_vec;
+
+	// A meta-index for retrieving the vector-of-vector-of-indices.
 	int offsets_set;
 
 	// Indexed first by cohort, and then iterated over to get all
@@ -132,6 +163,8 @@ private:
 	std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> inits;
 	};
 
+
+// Provides access to elements of an initialization vector of the given type.
 template <class T> class CPP_InitAccessor : public CPP_AbstractInitAccessor
 	{
 public:
@@ -143,20 +176,27 @@ private:
 	std::vector<T>& inits_vec;
 	};
 
+
+// A type used for initializations that are based on indices into
+// initialization vectors.
 using ValElemVec = std::vector<int>;
 
+// Manages an initialization vector of the given type whose elements are
+// built up from previously constructed values in other initialization vectors.
 template <class T> class CPP_IndexedInits
 	{
 public:
 	CPP_IndexedInits(std::vector<T>& _inits_vec, int _offsets_set,
 	                 std::vector<std::vector<ValElemVec>> _inits);
 
+	// Generate the given cohort of the initialization vector's elements.
 	void InitializeCohort(InitsManager* im, int cohort);
 
 protected:
+	// Takes care of any necessary pre-initializations.
 	virtual void PreInit(InitsManager* im) { }
 
-	// Note, in the following we pass in the inits_vec even though
+	// Note, in the following we pass in the inits_vec, even though
 	// the method will have direct access to it, because we want to
 	// use overloading to dispatch to custom generation for different
 	// types of values.
@@ -183,6 +223,8 @@ protected:
 	void Generate(InitsManager* im, std::vector<AttributesPtr>& ivec, int offset,
 	              ValElemVec& init_vals) const;
 
+	// The TypePtr initialization vector requires special treatment, since
+	// it has to dispatch on subclasses of TypePtr.
 	virtual void Generate(InitsManager* im, std::vector<TypePtr>& ivec, int offset,
 	                      ValElemVec& init_vals) const
 		{
@@ -190,14 +232,14 @@ protected:
 		}
 
 protected:
+	// The following are conceptually the same as for CPP_CustomInits.
 	std::vector<T>& inits_vec;
 	int offsets_set;
-
-	// Indexed first by cohort, and then iterated over to get all
-	// of the initializers for that cohort.
 	std::vector<std::vector<std::vector<int>>> inits;
 	};
 
+// A specialization of CPP_IndexedInits that supports initializing based
+// on subclasses of TypePtr.
 class CPP_TypeInits : public CPP_IndexedInits<TypePtr>
 	{
 public:
@@ -224,6 +266,10 @@ protected:
 	TypePtr BuildRecordType(InitsManager* im, ValElemVec& init_vals, int offset) const;
 	};
 
+
+// Abstract class for initializing basic (non-compound) constants.  T1 is
+// the Zeek type for the constructed constant, T2 is the C++ type of its
+// initializer.
 template <class T1, typename T2> class CPP_AbstractBasicConsts
 	{
 public:
@@ -246,11 +292,15 @@ protected:
 	virtual void InitElem(InitsManager* im, int offset, int index) { ASSERT(0); }
 
 protected:
+	// The following are conceptually the same as for CPP_CustomInits.
 	std::vector<T1>& inits_vec;
 	int offsets_set;
 	std::vector<T2> inits;
 	};
 
+// Class for initializing a basic constant of Zeek type T1, using initializers
+// of C++ type T2.  T1 is an intrusive pointer to a T3 type; for example, if
+// T1 is a BoolValPtr then T3 will be BoolVal.
 template <class T1, typename T2, class T3>
 class CPP_BasicConsts : public CPP_AbstractBasicConsts<T1, T2>
 	{
@@ -266,20 +316,7 @@ public:
 		}
 	};
 
-template <class T1, typename T2, class T3> class CPP_BasicConst : public CPP_Init<T1>
-	{
-public:
-	CPP_BasicConst(T2 _v) : CPP_Init<T1>(), v(_v) { }
-
-	void Generate(InitsManager* /* im */, std::vector<T1>& inits_vec, int offset) const override
-		{
-		this->inits_vec[offset] = make_intrusive<T3>(v);
-		}
-
-private:
-	T2 v;
-	};
-
+// Specific classes for basic constants that use string-based constructors.
 class CPP_AddrConsts : public CPP_AbstractBasicConsts<AddrValPtr, int>
 	{
 public:
@@ -311,6 +348,9 @@ public:
 		}
 	};
 
+
+// Class for initializing a Zeek global.  These don't go into an initialization
+// vector, so we use void* as the underlying type.
 class CPP_GlobalInit : public CPP_Init<void*>
 	{
 public:
@@ -333,12 +373,15 @@ protected:
 	bool exported;
 	};
 
+
+// Abstract class for constructing a CallExpr to evaluate a Zeek expression.
 class CPP_AbstractCallExprInit : public CPP_Init<CallExprPtr>
 	{
 public:
 	CPP_AbstractCallExprInit() : CPP_Init<CallExprPtr>() { }
 	};
 
+// Constructs a CallExpr that calls a given CPPFunc subclass.
 template <class T> class CPP_CallExprInit : public CPP_AbstractCallExprInit
 	{
 public:
@@ -356,16 +399,20 @@ public:
 		inits_vec[offset] = e_var;
 		}
 
-protected:
+private:
+	// Where to store the expression once we've built it.
 	CallExprPtr& e_var;
 	};
 
+
+// Abstract class for registering a lambda defined in terms of a CPPStmt.
 class CPP_AbstractLambdaRegistration : public CPP_Init<void*>
 	{
 public:
 	CPP_AbstractLambdaRegistration() : CPP_Init<void*>() { }
 	};
 
+// Registers a lambda defined in terms of a given CPPStmt subclass.
 template <class T> class CPP_LambdaRegistration : public CPP_AbstractLambdaRegistration
 	{
 public:
@@ -389,6 +436,11 @@ protected:
 	bool has_captures;
 	};
 
+
+// Constructs at run-time a mapping between abstract record field offsets used
+// when compiling a set of scripts to their concrete offsets (which might differ
+// from those during compilation due to loading of other scripts that extend
+// various records).
 class CPP_FieldMapping
 	{
 public:
@@ -401,12 +453,16 @@ public:
 	int ComputeOffset(InitsManager* im) const;
 
 private:
-	int rec;
-	std::string field_name;
-	int field_type;
-	int field_attrs;
+	int rec;	// index to retrieve the record's type
+	std::string field_name;	// which field this offset pertains to
+	int field_type;	// the field's type, in case we have to construct it
+	int field_attrs;	// the same for the field's attributes
 	};
 
+// Constructs at run-time a mapping between abstract enum values used when
+// compiling a set of scripts to their concrete values (which might differ
+// from those during compilation due to loading of other scripts that extend
+// the enum).
 class CPP_EnumMapping
 	{
 public:
@@ -417,31 +473,13 @@ public:
 	int ComputeOffset(InitsManager* im) const;
 
 private:
-	int e_type;
-	std::string e_name;
+	int e_type;	// index to EnumType
+	std::string e_name;	// which enum constant for that type
 	};
 
-class CPP_RegisterBody
-	{
-public:
-	CPP_RegisterBody(std::string _func_name, void* _func, int _type_signature, int _priority,
-	                 p_hash_type _h, std::vector<std::string> _events)
-		: func_name(std::move(_func_name)), func(_func), type_signature(_type_signature),
-		  priority(_priority), h(_h), events(std::move(_events))
-		{
-		}
-	virtual ~CPP_RegisterBody() { }
 
-	virtual void Register() const { }
-
-	std::string func_name;
-	void* func;
-	int type_signature;
-	int priority;
-	p_hash_type h;
-	std::vector<std::string> events;
-	};
-
+// Looks up a BiF of the given name, making it available to compiled
+// code via a C++ global.
 class CPP_LookupBiF
 	{
 public:
@@ -453,10 +491,37 @@ public:
 	void ResolveBiF() const { bif_func = lookup_bif__CPP(bif_name.c_str()); }
 
 protected:
-	zeek::Func*& bif_func;
-	std::string bif_name;
+	zeek::Func*& bif_func;	// where to store the pointer to the BiF
+	std::string bif_name;	// the BiF's name
 	};
 
+
+// Information needed to register a compiled function body (which makes it
+// available to substitute for the body's AST).  The compiler generates
+// code that loops over a vector of these to perform the registrations.
+struct CPP_RegisterBody
+	{
+	CPP_RegisterBody(std::string _func_name, void* _func, int _type_signature, int _priority,
+	                 p_hash_type _h, std::vector<std::string> _events)
+		: func_name(std::move(_func_name)), func(_func), type_signature(_type_signature),
+		  priority(_priority), h(_h), events(std::move(_events))
+		{
+		}
+
+	std::string func_name;	// name of the function
+	void* func;	// pointer to C++ 
+	int type_signature;
+	int priority;
+	p_hash_type h;
+	std::vector<std::string> events;
+	};
+
+
+// Helper function that takes a (large) array of int's and from them
+// constructs the corresponding vector-of-vector-of-indices.  Each
+// vector-of-indices is represented first by an int specifying its
+// size, and then that many int's for its values.  We recognize the
+// end of the array upon encountering a "size" entry of -1.
 extern void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set);
 
 	} // zeek::detail
