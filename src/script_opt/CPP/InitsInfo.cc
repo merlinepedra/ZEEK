@@ -41,11 +41,13 @@ void CPP_InitsInfo::GenerateInitializers(CPPCompile* c)
 
 	auto gt = InitsType();
 
+	// Declare the initializer.
 	c->Emit("%s %s = %s(%s, %s,", gt, InitializersName(), gt, base_name, Fmt(offset_set));
 
 	c->IndentUp();
 	c->Emit("{");
 
+	// Add each cohort as a vector element.
 	for ( auto& cohort : instances )
 		{
 		c->Emit("{");
@@ -64,6 +66,8 @@ void CPP_InitsInfo::BuildOffsetSet(CPPCompile* c)
 
 	for ( auto& cohort : instances )
 		{
+		// Reduce the offsets used by this cohort to an
+		// offset into the managed vector-of-indices global.
 		vector<int> offsets;
 		offsets.reserve(cohort.size());
 		for ( auto& co : cohort )
@@ -72,6 +76,8 @@ void CPP_InitsInfo::BuildOffsetSet(CPPCompile* c)
 		offsets_vec.push_back(c->IndMgr().AddIndices(offsets));
 		}
 
+	// Now that we have all the offsets in a vector, reduce them, too,
+	// to an offset into the managed vector-of-indices global,
 	offset_set = c->IndMgr().AddIndices(offsets_vec);
 	}
 
@@ -81,50 +87,44 @@ void CPP_InitsInfo::BuildCohort(CPPCompile* c, std::vector<std::shared_ptr<CPP_I
 		{
 		vector<string> ivs;
 		co->InitializerVals(ivs);
-
-		string full_init;
-		bool did_one = false;
-		for ( auto& iv : ivs )
-			{
-			if ( did_one )
-				full_init += ", ";
-			else
-				did_one = true;
-
-			full_init += iv;
-			}
-
-		c->Emit("std::make_shared<%s>(%s),", co->InitializerType(), full_init);
+		BuildCohortElement(c, co->InitializerType(), ivs);
 		}
 	}
 
-void CPP_CompoundInitsInfo::BuildCohort(CPPCompile* c,
-                                        std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
+void CPP_InitsInfo::BuildCohortElement(CPPCompile* c, string init_type, vector<string>& ivs)
 	{
-	for ( auto& co : cohort )
+	string full_init;
+	bool did_one = false;
+	for ( auto& iv : ivs )
 		{
-		vector<string> ivs;
-		co->InitializerVals(ivs);
+		if ( did_one )
+			full_init += ", ";
+		else
+			did_one = true;
 
-		string init_line;
-		for ( auto& iv : ivs )
-			init_line += iv + ", ";
-
-		c->Emit("{ %s},", init_line);
+		full_init += iv;
 		}
+
+	c->Emit("std::make_shared<%s>(%s),", init_type, full_init);
 	}
 
-void CPP_BasicConstInitsInfo::BuildCohort(CPPCompile* c,
-                                          std::vector<std::shared_ptr<CPP_InitInfo>>& cohort)
+
+void CPP_CompoundInitsInfo::BuildCohortElement(CPPCompile* c, string init_type, vector<string>& ivs)
 	{
-	for ( auto& co : cohort )
-		{
-		vector<string> ivs;
-		co->InitializerVals(ivs);
-		ASSERT(ivs.size() == 1);
-		c->Emit(ivs[0] + ",");
-		}
+	string init_line;
+	for ( auto& iv : ivs )
+		init_line += iv + ", ";
+
+	c->Emit("{ %s},", init_line);
 	}
+
+
+void CPP_BasicConstInitsInfo::BuildCohortElement(CPPCompile* c, string init_type, vector<string>& ivs)
+	{
+	ASSERT(ivs.size() == 1);
+	c->Emit(ivs[0] + ",");
+	}
+
 
 string CPP_InitInfo::ValElem(CPPCompile* c, ValPtr v)
 	{
@@ -142,8 +142,9 @@ string CPP_InitInfo::ValElem(CPPCompile* c, ValPtr v)
 		return Fmt(-1);
 	}
 
-DescConstInfo::DescConstInfo(CPPCompile* c, string _name, ValPtr v)
-	: CPP_InitInfo(), name(move(_name))
+
+DescConstInfo::DescConstInfo(CPPCompile* c, ValPtr v)
+	: CPP_InitInfo()
 	{
 	ODesc d;
 	v->Describe(&d);
@@ -176,14 +177,14 @@ PatternConstInfo::PatternConstInfo(CPPCompile* c, ValPtr v) : CPP_InitInfo()
 	is_case_insensitive = re->IsCaseInsensitive();
 	}
 
-CompoundConstInfo::CompoundConstInfo(CPPCompile* _c, ValPtr v) : CPP_InitInfo(), c(_c)
+CompoundItemInfo::CompoundItemInfo(CPPCompile* _c, ValPtr v) : CPP_InitInfo(), c(_c)
 	{
 	auto& t = v->GetType();
 	type = c->TypeOffset(t);
 	init_cohort = c->TypeCohort(t) + 1;
 	}
 
-ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v) : CompoundConstInfo(_c)
+ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v) : CompoundItemInfo(_c)
 	{
 	auto lv = cast_intrusive<ListVal>(v);
 	auto n = lv->Length();
@@ -192,7 +193,7 @@ ListConstInfo::ListConstInfo(CPPCompile* _c, ValPtr v) : CompoundConstInfo(_c)
 		vals.emplace_back(ValElem(c, lv->Idx(i)));
 	}
 
-VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
+VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v) : CompoundItemInfo(c, v)
 	{
 	auto vv = cast_intrusive<VectorVal>(v);
 	auto n = vv->Size();
@@ -201,7 +202,7 @@ VectorConstInfo::VectorConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c,
 		vals.emplace_back(ValElem(c, vv->ValAt(i)));
 	}
 
-RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
+RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v) : CompoundItemInfo(c, v)
 	{
 	auto r = cast_intrusive<RecordVal>(v);
 	auto n = r->NumFields();
@@ -212,7 +213,7 @@ RecordConstInfo::RecordConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c,
 		vals.emplace_back(ValElem(c, r->GetField(i)));
 	}
 
-TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
+TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v) : CompoundItemInfo(c, v)
 	{
 	auto tv = cast_intrusive<TableVal>(v);
 
@@ -223,7 +224,7 @@ TableConstInfo::TableConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v
 		}
 	}
 
-FileConstInfo::FileConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
+FileConstInfo::FileConstInfo(CPPCompile* c, ValPtr v) : CompoundItemInfo(c, v)
 	{
 	auto fv = cast_intrusive<FileVal>(v);
 	auto fname = c->TrackString(fv->Get()->Name());
@@ -231,13 +232,13 @@ FileConstInfo::FileConstInfo(CPPCompile* c, ValPtr v) : CompoundConstInfo(c, v)
 	}
 
 FuncConstInfo::FuncConstInfo(CPPCompile* _c, ValPtr v)
-	: CompoundConstInfo(_c, v), fv(v->AsFuncVal())
+	: CompoundItemInfo(_c, v), fv(v->AsFuncVal())
 	{
 	// This is slightly hacky.  There's a chance that this constant
 	// depends on a lambda being registered.  Here we use the knowledge
 	// that LambdaRegistrationInfo sets its cohort to 1 more than
 	// the function type, so we can ensure any possible lambda has
-	// been registered by setting ours to 2 more.  CompoundConstInfo
+	// been registered by setting ours to 2 more.  CompoundItemInfo
 	// has already set our cohort to 1 more.
 	++init_cohort;
 	}
@@ -265,7 +266,8 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 		}
 	}
 
-AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr) : CompoundConstInfo(_c)
+
+AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr) : CompoundItemInfo(_c)
 	{
 	vals.emplace_back(Fmt(static_cast<int>(attr->Tag())));
 	auto a_e = attr->GetExpr();
@@ -313,7 +315,7 @@ AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr) : CompoundConstInfo(_c)
 		vals.emplace_back(Fmt(static_cast<int>(AE_NONE)));
 	}
 
-AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs) : CompoundConstInfo(_c)
+AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs) : CompoundItemInfo(_c)
 	{
 	for ( const auto& a : _attrs->GetAttrs() )
 		{
@@ -323,6 +325,7 @@ AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs) : CompoundCons
 		vals.emplace_back(Fmt(gi->Offset()));
 		}
 	}
+
 
 GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, string _CPP_name)
 	: CPP_InitInfo(), CPP_name(move(_CPP_name))
@@ -357,12 +360,14 @@ void GlobalInitInfo::InitializerVals(std::vector<std::string>& ivs) const
 	ivs.push_back(Fmt(exported));
 	}
 
+
 CallExprInitInfo::CallExprInitInfo(CPPCompile* c, ExprPtr _e, string _e_name, string _wrapper_class)
 	: e(move(_e)), e_name(move(_e_name)), wrapper_class(move(_wrapper_class))
 	{
 	auto gi = c->RegisterType(e->GetType());
 	init_cohort = max(init_cohort, gi->InitCohort() + 1);
 	}
+
 
 LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, string _name, FuncTypePtr ft,
                                                string _wrapper_class, p_hash_type _h,
@@ -381,6 +386,7 @@ void LambdaRegistrationInfo::InitializerVals(std::vector<std::string>& ivs) cons
 	ivs.emplace_back(Fmt(h));
 	ivs.emplace_back(has_captures ? "true" : "false");
 	}
+
 
 void EnumTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
@@ -540,10 +546,10 @@ void RecordTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 		// the field type's offsets.  At this point, though,
 		// they should all be available.
 		ivs.emplace_back(Fmt(c->TypeOffset(field_types[i])));
-
 		ivs.emplace_back(Fmt(field_attrs[i]));
 		}
 	}
+
 
 void IndicesManager::Generate(CPPCompile* c)
 	{
@@ -553,7 +559,11 @@ void IndicesManager::Generate(CPPCompile* c)
 	int nset = 0;
 	for ( auto& is : indices_set )
 		{
+		// Track the offsets into the raw vector, to make it
+		// easier to debug problems.
 		auto line = string("/* ") + to_string(nset++) + " */ ";
+
+		// We use run-length encoding.
 		line += to_string(is.size()) + ", ";
 
 		auto n = 1;
@@ -574,5 +584,6 @@ void IndicesManager::Generate(CPPCompile* c)
 	c->Emit("-1");
 	c->EndBlock(true);
 	}
+
 
 	} // zeek::detail

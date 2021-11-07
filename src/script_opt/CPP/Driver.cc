@@ -193,8 +193,8 @@ void CPPCompile::GenProlog()
 	const_info[TYPE_DOUBLE] = CreateConstInitInfo("Double", "ValPtr", "double");
 	const_info[TYPE_TIME] = CreateConstInitInfo("Time", "ValPtr", "double");
 	const_info[TYPE_INTERVAL] = CreateConstInitInfo("Interval", "ValPtr", "double");
-	const_info[TYPE_ADDR] = CreateConstInitInfo("Addr", "ValPtr", "int", false);
-	const_info[TYPE_SUBNET] = CreateConstInitInfo("SubNet", "ValPtr", "int", false);
+	const_info[TYPE_ADDR] = CreateConstInitInfo("Addr", "ValPtr", "");
+	const_info[TYPE_SUBNET] = CreateConstInitInfo("SubNet", "ValPtr", "");
 	const_info[TYPE_PORT] = CreateConstInitInfo("Port", "ValPtr", "uint32_t");
 
 	const_info[TYPE_ENUM] = CreateCompoundInitInfo("Enum", "ValPtr");
@@ -221,9 +221,9 @@ void CPPCompile::GenProlog()
 	}
 
 shared_ptr<CPP_InitsInfo> CPPCompile::CreateConstInitInfo(const char* tag, const char* type,
-                                                          const char* c_type, bool is_basic)
+                                                          const char* c_type)
 	{
-	auto gi = make_shared<CPP_BasicConstInitsInfo>(tag, type, c_type, is_basic);
+	auto gi = make_shared<CPP_BasicConstInitsInfo>(tag, type, c_type);
 	return RegisterInitInfo(tag, type, gi);
 	}
 

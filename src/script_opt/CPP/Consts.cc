@@ -64,36 +64,35 @@ shared_ptr<CPP_InitInfo> CPPCompile::RegisterConstant(const ValPtr& vp, int& con
 	switch ( tag )
 		{
 		case TYPE_BOOL:
-			gi = make_shared<BasicConstInfo>("Bool", "bool", vp->AsBool() ? "true" : "false");
+			gi = make_shared<BasicConstInfo>(vp->AsBool() ? "true" : "false");
 			break;
 
 		case TYPE_INT:
-			gi = make_shared<BasicConstInfo>("Int", "bro_int_t", to_string(vp->AsInt()));
+			gi = make_shared<BasicConstInfo>(to_string(vp->AsInt()));
 			break;
 
 		case TYPE_COUNT:
-			gi = make_shared<BasicConstInfo>("Count", "bro_uint_t",
-			                                 to_string(vp->AsCount()) + "ULL");
+			gi = make_shared<BasicConstInfo>(to_string(vp->AsCount()) + "ULL");
 			break;
 
 		case TYPE_DOUBLE:
-			gi = make_shared<BasicConstInfo>("Double", "double", to_string(vp->AsDouble()));
+			gi = make_shared<BasicConstInfo>(to_string(vp->AsDouble()));
 			break;
 
 		case TYPE_TIME:
-			gi = make_shared<BasicConstInfo>("Time", "double", to_string(vp->AsDouble()));
+			gi = make_shared<BasicConstInfo>(to_string(vp->AsDouble()));
 			break;
 
 		case TYPE_INTERVAL:
-			gi = make_shared<BasicConstInfo>("Interval", "double", to_string(vp->AsDouble()));
+			gi = make_shared<BasicConstInfo>(to_string(vp->AsDouble()));
 			break;
 
 		case TYPE_ADDR:
-			gi = make_shared<DescConstInfo>(this, "Addr", vp);
+			gi = make_shared<DescConstInfo>(this, vp);
 			break;
 
 		case TYPE_SUBNET:
-			gi = make_shared<DescConstInfo>(this, "SubNet", vp);
+			gi = make_shared<DescConstInfo>(this, vp);
 			break;
 
 		case TYPE_ENUM:

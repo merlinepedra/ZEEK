@@ -267,12 +267,11 @@ private:
 
 	// Creates an object for tracking values associated with Zeek
 	// constants.  "c_type" is the C++ type used in the initializer
-	// for each object.  If "is_basic" is true, then this type
-	// directly holds the constant.  Otherwise, it's an index
-	// into a separate vector that holds the constant.
+	// for each object; or, if empty, it specifies that we represent
+	// the value using an index into a separate vector that holds
+	// the constant.
 	std::shared_ptr<CPP_InitsInfo> CreateConstInitInfo(const char* tag, const char* type,
-	                                                   const char* c_type,
-	                                                   bool is_basic = true);
+	                                                   const char* c_type);
 
 	// Creates an object for tracking compound initializers, which
 	// are whose initialization uses indexes into other vectors.
