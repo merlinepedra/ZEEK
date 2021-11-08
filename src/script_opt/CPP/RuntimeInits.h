@@ -100,13 +100,12 @@ public:
 	};
 
 
-// Manages an initialization vector that uses "custom" initializers
-// (tailored ones rather than initializers based on indexing).
-template <class T> class CPP_CustomInits
+// Abstract class for creating a collection of initializers.  T1 is
+// the type of the generated vector, T2 the type of its initializers.
+template <class T1, class T2> class CPP_AbstractInits
 	{
 public:
-	CPP_CustomInits(std::vector<T>& _inits_vec, int _offsets_set,
-	                std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> _inits)
+	CPP_AbstractInits(std::vector<T1>& _inits_vec, int _offsets_set, std::vector<T2> _inits)
 		: inits_vec(_inits_vec), offsets_set(_offsets_set), inits(std::move(_inits))
 		{
 		// Compute how big to make the vector.
@@ -121,46 +120,71 @@ public:
 	// Initialize the given cohort of elements.
 	void InitializeCohort(InitsManager* im, int cohort)
 		{
-		if ( cohort == 0 )
-			DoPreInits(im);
-
 		// Get this object's vector-of-vector-of-indices.
 		auto& offsets_vec = im->Indices(offsets_set);
+
+		if ( cohort == 0 )
+			DoPreInits(im, offsets_vec);
 
 		// Get the vector-of-indices for this cohort.
 		auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
 
-		// Loop over the cohort's elements to initialize them.
-		auto& co = inits[cohort];
-		for ( auto i = 0U; i < co.size(); ++i )
-			co[i]->Generate(im, inits_vec, cohort_offsets[i]);
+		InitializeCohortWithOffsets(im, cohort, cohort_offsets);
 		}
 
-private:
-	// Pre-initialize all elements requiring it.
-	void DoPreInits(InitsManager* im)
+protected:
+	virtual void InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets)
 		{
-		// See InitializeCohort() for the variables used here.
-		auto& offsets_vec = im->Indices(offsets_set);
-		int cohort = 0;
-		for ( const auto& co : inits )
-			{
-			auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
-			for ( auto i = 0U; i < co.size(); ++i )
-				co[i]->PreInit(im, inits_vec, cohort_offsets[i]);
-			++cohort;
-			}
 		}
+
+	// Pre-initialize all elements requiring it.
+	virtual void DoPreInits(InitsManager* im, const std::vector<int>& offsets_vec) { }
+
+	// Generate a single element.
+	virtual void GenerateElement(InitsManager* im, T2& init, int offset) { }
 
 	// The initialization vector in its entirety.
-	std::vector<T>& inits_vec;
+	std::vector<T1>& inits_vec;
 
 	// A meta-index for retrieving the vector-of-vector-of-indices.
 	int offsets_set;
 
-	// Indexed first by cohort, and then iterated over to get all
-	// of the initializers for that cohort.
-	std::vector<std::vector<std::shared_ptr<CPP_Init<T>>>> inits;
+	// Indexed by cohort.
+	std::vector<T2> inits;
+	};
+
+// Manages an initialization vector that uses "custom" initializers
+// (tailored ones rather than initializers based on indexing).
+template <class T> using CPP_InitVec = std::vector<std::shared_ptr<CPP_Init<T>>>;
+template <class T> class CPP_CustomInits : public CPP_AbstractInits<T, CPP_InitVec<T>>
+	{
+public:
+	CPP_CustomInits(std::vector<T>& _inits_vec, int _offsets_set,
+	                std::vector<CPP_InitVec<T>> _inits)
+		: CPP_AbstractInits<T, CPP_InitVec<T>>(_inits_vec, _offsets_set, std::move(_inits))
+		{
+		}
+
+private:
+	void DoPreInits(InitsManager* im, const std::vector<int>& offsets_vec) override
+		{
+		int cohort = 0;
+		for ( const auto& co : this->inits )
+			{
+			auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
+			for ( auto i = 0U; i < co.size(); ++i )
+				co[i]->PreInit(im, this->inits_vec, cohort_offsets[i]);
+			++cohort;
+			}
+		}
+
+	void InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets) override
+		{
+		// Loop over the cohort's elements to initialize them.
+		auto& co = this->inits[cohort];
+		for ( auto i = 0U; i < co.size(); ++i )
+			co[i]->Generate(im, this->inits_vec, cohort_offsets[i]);
+		}
 	};
 
 
@@ -180,21 +204,21 @@ private:
 // A type used for initializations that are based on indices into
 // initialization vectors.
 using ValElemVec = std::vector<int>;
+using ValElemVecVec = std::vector<ValElemVec>;
 
 // Manages an initialization vector of the given type whose elements are
 // built up from previously constructed values in other initialization vectors.
-template <class T> class CPP_IndexedInits
+template <class T> class CPP_IndexedInits : public CPP_AbstractInits<T, ValElemVecVec>
 	{
 public:
 	CPP_IndexedInits(std::vector<T>& _inits_vec, int _offsets_set,
-	                 std::vector<std::vector<ValElemVec>> _inits);
-
-	// Generate the given cohort of the initialization vector's elements.
-	void InitializeCohort(InitsManager* im, int cohort);
+	                 std::vector<ValElemVecVec> _inits)
+		: CPP_AbstractInits<T, ValElemVecVec>(_inits_vec, _offsets_set, std::move(_inits))
+		{
+		}
 
 protected:
-	// Takes care of any necessary pre-initializations.
-	virtual void PreInit(InitsManager* im) { }
+	void InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets) override;
 
 	// Note, in the following we pass in the inits_vec, even though
 	// the method will have direct access to it, because we want to
@@ -230,12 +254,6 @@ protected:
 		{
 		ASSERT(0);
 		}
-
-protected:
-	// The following are conceptually the same as for CPP_CustomInits.
-	std::vector<T>& inits_vec;
-	int offsets_set;
-	std::vector<std::vector<std::vector<int>>> inits;
 	};
 
 // A specialization of CPP_IndexedInits that supports initializing based
@@ -250,7 +268,7 @@ public:
 		}
 
 protected:
-	void PreInit(InitsManager* im) override;
+	void DoPreInits(InitsManager* im, const std::vector<int>& offsets_vec) override;
 	void PreInit(InitsManager* im, int offset, ValElemVec& init_vals);
 
 	void Generate(InitsManager* im, std::vector<TypePtr>& ivec, int offset,
@@ -270,6 +288,12 @@ protected:
 // Abstract class for initializing basic (non-compound) constants.  T1 is
 // the Zeek type for the constructed constant, T2 is the C++ type of its
 // initializer.
+//
+// In principle we could derive this from CPP_AbstractInits, though to do so
+// we'd need to convert the initializers to a vector-of-vector-of-T2, which
+// would trade complexity here for complexity in InitsInfo.  So we instead
+// keep this class distinct, since at heart it's a simpler set of methods
+// and that way we can keep them as such here.
 template <class T1, typename T2> class CPP_AbstractBasicConsts
 	{
 public:
@@ -292,7 +316,7 @@ protected:
 	virtual void InitElem(InitsManager* im, int offset, int index) { ASSERT(0); }
 
 protected:
-	// The following are conceptually the same as for CPP_CustomInits.
+	// See CPP_AbstractInits for the nature of these.
 	std::vector<T1>& inits_vec;
 	int offsets_set;
 	std::vector<T2> inits;

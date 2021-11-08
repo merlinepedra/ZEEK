@@ -14,28 +14,11 @@ namespace zeek::detail
 	{
 
 template <class T>
-CPP_IndexedInits<T>::CPP_IndexedInits(std::vector<T>& _inits_vec, int _offsets_set,
-                                      std::vector<std::vector<ValElemVec>> _inits)
-	: inits_vec(_inits_vec), offsets_set(_offsets_set), inits(std::move(_inits))
+void CPP_IndexedInits<T>::InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets)
 	{
-	int num_globals = 0;
-
-	for ( const auto& cohort : inits )
-		num_globals += cohort.size();
-
-	inits_vec.resize(num_globals);
-	}
-
-template <class T> void CPP_IndexedInits<T>::InitializeCohort(InitsManager* im, int cohort)
-	{
-	if ( cohort == 0 )
-		PreInit(im);
-
-	auto& offsets_vec = im->Indices(offsets_set);
-	auto& co = inits[cohort];
-	auto& cohort_offsets = im->Indices(offsets_vec[cohort]);
+	auto& co = this->inits[cohort];
 	for ( auto i = 0U; i < co.size(); ++i )
-		Generate(im, inits_vec, cohort_offsets[i], co[i]);
+		Generate(im, this->inits_vec, cohort_offsets[i], co[i]);
 	}
 
 template <class T>
@@ -253,9 +236,8 @@ template class CPP_IndexedInits<AttributesPtr>;
 template class CPP_IndexedInits<TypePtr>;
 
 
-void CPP_TypeInits::PreInit(InitsManager* im)
+void CPP_TypeInits::DoPreInits(InitsManager* im, const std::vector<int>& offsets_vec)
 	{
-	auto& offsets_vec = im->Indices(offsets_set);
 	for ( auto cohort = 0U; cohort < offsets_vec.size(); ++cohort )
 		{
 		auto& co = inits[cohort];
