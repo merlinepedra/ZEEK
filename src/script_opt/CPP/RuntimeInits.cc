@@ -14,7 +14,8 @@ namespace zeek::detail
 	{
 
 template <class T>
-void CPP_IndexedInits<T>::InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets)
+void CPP_IndexedInits<T>::InitializeCohortWithOffsets(InitsManager* im, int cohort,
+                                                      const std::vector<int>& cohort_offsets)
 	{
 	auto& co = this->inits[cohort];
 	for ( auto i = 0U; i < co.size(); ++i )
@@ -235,7 +236,6 @@ template class CPP_IndexedInits<AttrPtr>;
 template class CPP_IndexedInits<AttributesPtr>;
 template class CPP_IndexedInits<TypePtr>;
 
-
 void CPP_TypeInits::DoPreInits(InitsManager* im, const std::vector<int>& offsets_vec)
 	{
 	for ( auto cohort = 0U; cohort < offsets_vec.size(); ++cohort )
@@ -441,7 +441,6 @@ TypePtr CPP_TypeInits::BuildRecordType(InitsManager* im, ValElemVec& init_vals, 
 	return r;
 	}
 
-
 int CPP_FieldMapping::ComputeOffset(InitsManager* im) const
 	{
 	auto r = im->Types(rec)->AsRecordType();
@@ -483,7 +482,6 @@ int CPP_EnumMapping::ComputeOffset(InitsManager* im) const
 	return em_offset;
 	}
 
-
 void CPP_GlobalInit::Generate(InitsManager* im, std::vector<void*>& /* inits_vec */,
                               int /* offset */) const
 	{
@@ -497,7 +495,6 @@ void CPP_GlobalInit::Generate(InitsManager* im, std::vector<void*>& /* inits_vec
 		}
 	}
 
-
 void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set)
 	{
 	// First figure out how many groups of indices there are, so we
@@ -508,7 +505,7 @@ void generate_indices_set(int* inits, std::vector<std::vector<int>>& indices_set
 		{
 		++num_inits;
 		int n = *i_ptr;
-		i_ptr += n + 1;	// skip over vector elements
+		i_ptr += n + 1; // skip over vector elements
 		}
 
 	indices_set.reserve(num_inits);

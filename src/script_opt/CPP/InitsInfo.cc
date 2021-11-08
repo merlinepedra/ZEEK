@@ -108,7 +108,6 @@ void CPP_InitsInfo::BuildCohortElement(CPPCompile* c, string init_type, vector<s
 	c->Emit("std::make_shared<%s>(%s),", init_type, full_init);
 	}
 
-
 void CPP_CompoundInitsInfo::BuildCohortElement(CPPCompile* c, string init_type, vector<string>& ivs)
 	{
 	string init_line;
@@ -118,13 +117,12 @@ void CPP_CompoundInitsInfo::BuildCohortElement(CPPCompile* c, string init_type, 
 	c->Emit("{ %s},", init_line);
 	}
 
-
-void CPP_BasicConstInitsInfo::BuildCohortElement(CPPCompile* c, string init_type, vector<string>& ivs)
+void CPP_BasicConstInitsInfo::BuildCohortElement(CPPCompile* c, string init_type,
+                                                 vector<string>& ivs)
 	{
 	ASSERT(ivs.size() == 1);
 	c->Emit(ivs[0] + ",");
 	}
-
 
 string CPP_InitInfo::ValElem(CPPCompile* c, ValPtr v)
 	{
@@ -142,9 +140,7 @@ string CPP_InitInfo::ValElem(CPPCompile* c, ValPtr v)
 		return Fmt(-1);
 	}
 
-
-DescConstInfo::DescConstInfo(CPPCompile* c, ValPtr v)
-	: CPP_InitInfo()
+DescConstInfo::DescConstInfo(CPPCompile* c, ValPtr v) : CPP_InitInfo()
 	{
 	ODesc d;
 	v->Describe(&d);
@@ -231,8 +227,7 @@ FileConstInfo::FileConstInfo(CPPCompile* c, ValPtr v) : CompoundItemInfo(c, v)
 	vals.emplace_back(Fmt(fname));
 	}
 
-FuncConstInfo::FuncConstInfo(CPPCompile* _c, ValPtr v)
-	: CompoundItemInfo(_c, v), fv(v->AsFuncVal())
+FuncConstInfo::FuncConstInfo(CPPCompile* _c, ValPtr v) : CompoundItemInfo(_c, v), fv(v->AsFuncVal())
 	{
 	// This is slightly hacky.  There's a chance that this constant
 	// depends on a lambda being registered.  Here we use the knowledge
@@ -265,7 +260,6 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 			}
 		}
 	}
-
 
 AttrInfo::AttrInfo(CPPCompile* _c, const AttrPtr& attr) : CompoundItemInfo(_c)
 	{
@@ -326,7 +320,6 @@ AttrsInfo::AttrsInfo(CPPCompile* _c, const AttributesPtr& _attrs) : CompoundItem
 		}
 	}
 
-
 GlobalInitInfo::GlobalInitInfo(CPPCompile* c, const ID* g, string _CPP_name)
 	: CPP_InitInfo(), CPP_name(move(_CPP_name))
 	{
@@ -360,14 +353,12 @@ void GlobalInitInfo::InitializerVals(std::vector<std::string>& ivs) const
 	ivs.push_back(Fmt(exported));
 	}
 
-
 CallExprInitInfo::CallExprInitInfo(CPPCompile* c, ExprPtr _e, string _e_name, string _wrapper_class)
 	: e(move(_e)), e_name(move(_e_name)), wrapper_class(move(_wrapper_class))
 	{
 	auto gi = c->RegisterType(e->GetType());
 	init_cohort = max(init_cohort, gi->InitCohort() + 1);
 	}
-
 
 LambdaRegistrationInfo::LambdaRegistrationInfo(CPPCompile* c, string _name, FuncTypePtr ft,
                                                string _wrapper_class, p_hash_type _h,
@@ -386,7 +377,6 @@ void LambdaRegistrationInfo::InitializerVals(std::vector<std::string>& ivs) cons
 	ivs.emplace_back(Fmt(h));
 	ivs.emplace_back(has_captures ? "true" : "false");
 	}
-
 
 void EnumTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 	{
@@ -550,7 +540,6 @@ void RecordTypeInfo::AddInitializerVals(std::vector<std::string>& ivs) const
 		}
 	}
 
-
 void IndicesManager::Generate(CPPCompile* c)
 	{
 	c->Emit("int CPP__Indices__init[] =");
@@ -584,6 +573,5 @@ void IndicesManager::Generate(CPPCompile* c)
 	c->Emit("-1");
 	c->EndBlock(true);
 	}
-
 
 	} // zeek::detail

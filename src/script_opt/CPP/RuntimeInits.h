@@ -85,7 +85,6 @@ private:
 	std::vector<CallExprPtr>& call_exprs;
 	};
 
-
 // Manages an initialization vector of the given type.
 template <class T> class CPP_Init
 	{
@@ -98,7 +97,6 @@ public:
 	// Initializes the given element of the vector.
 	virtual void Generate(InitsManager* im, std::vector<T>& inits_vec, int offset) const { }
 	};
-
 
 // Abstract class for creating a collection of initializers.  T1 is
 // the type of the generated vector, T2 the type of its initializers.
@@ -133,7 +131,8 @@ public:
 		}
 
 protected:
-	virtual void InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets)
+	virtual void InitializeCohortWithOffsets(InitsManager* im, int cohort,
+	                                         const std::vector<int>& cohort_offsets)
 		{
 		}
 
@@ -178,7 +177,8 @@ private:
 			}
 		}
 
-	void InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets) override
+	void InitializeCohortWithOffsets(InitsManager* im, int cohort,
+	                                 const std::vector<int>& cohort_offsets) override
 		{
 		// Loop over the cohort's elements to initialize them.
 		auto& co = this->inits[cohort];
@@ -186,7 +186,6 @@ private:
 			co[i]->Generate(im, this->inits_vec, cohort_offsets[i]);
 		}
 	};
-
 
 // Provides access to elements of an initialization vector of the given type.
 template <class T> class CPP_InitAccessor : public CPP_AbstractInitAccessor
@@ -199,7 +198,6 @@ public:
 private:
 	std::vector<T>& inits_vec;
 	};
-
 
 // A type used for initializations that are based on indices into
 // initialization vectors.
@@ -218,7 +216,8 @@ public:
 		}
 
 protected:
-	void InitializeCohortWithOffsets(InitsManager* im, int cohort, const std::vector<int>& cohort_offsets) override;
+	void InitializeCohortWithOffsets(InitsManager* im, int cohort,
+	                                 const std::vector<int>& cohort_offsets) override;
 
 	// Note, in the following we pass in the inits_vec, even though
 	// the method will have direct access to it, because we want to
@@ -283,7 +282,6 @@ protected:
 	TypePtr BuildFuncType(InitsManager* im, ValElemVec& init_vals) const;
 	TypePtr BuildRecordType(InitsManager* im, ValElemVec& init_vals, int offset) const;
 	};
-
 
 // Abstract class for initializing basic (non-compound) constants.  T1 is
 // the Zeek type for the constructed constant, T2 is the C++ type of its
@@ -372,7 +370,6 @@ public:
 		}
 	};
 
-
 // Class for initializing a Zeek global.  These don't go into an initialization
 // vector, so we use void* as the underlying type.
 class CPP_GlobalInit : public CPP_Init<void*>
@@ -396,7 +393,6 @@ protected:
 	int val;
 	bool exported;
 	};
-
 
 // Abstract class for constructing a CallExpr to evaluate a Zeek expression.
 class CPP_AbstractCallExprInit : public CPP_Init<CallExprPtr>
@@ -427,7 +423,6 @@ private:
 	// Where to store the expression once we've built it.
 	CallExprPtr& e_var;
 	};
-
 
 // Abstract class for registering a lambda defined in terms of a CPPStmt.
 class CPP_AbstractLambdaRegistration : public CPP_Init<void*>
@@ -460,7 +455,6 @@ protected:
 	bool has_captures;
 	};
 
-
 // Constructs at run-time a mapping between abstract record field offsets used
 // when compiling a set of scripts to their concrete offsets (which might differ
 // from those during compilation due to loading of other scripts that extend
@@ -477,10 +471,10 @@ public:
 	int ComputeOffset(InitsManager* im) const;
 
 private:
-	int rec;	// index to retrieve the record's type
-	std::string field_name;	// which field this offset pertains to
-	int field_type;	// the field's type, in case we have to construct it
-	int field_attrs;	// the same for the field's attributes
+	int rec; // index to retrieve the record's type
+	std::string field_name; // which field this offset pertains to
+	int field_type; // the field's type, in case we have to construct it
+	int field_attrs; // the same for the field's attributes
 	};
 
 // Constructs at run-time a mapping between abstract enum values used when
@@ -497,10 +491,9 @@ public:
 	int ComputeOffset(InitsManager* im) const;
 
 private:
-	int e_type;	// index to EnumType
-	std::string e_name;	// which enum constant for that type
+	int e_type; // index to EnumType
+	std::string e_name; // which enum constant for that type
 	};
-
 
 // Looks up a BiF of the given name, making it available to compiled
 // code via a C++ global.
@@ -515,10 +508,9 @@ public:
 	void ResolveBiF() const { bif_func = lookup_bif__CPP(bif_name.c_str()); }
 
 protected:
-	zeek::Func*& bif_func;	// where to store the pointer to the BiF
-	std::string bif_name;	// the BiF's name
+	zeek::Func*& bif_func; // where to store the pointer to the BiF
+	std::string bif_name; // the BiF's name
 	};
-
 
 // Information needed to register a compiled function body (which makes it
 // available to substitute for the body's AST).  The compiler generates
@@ -532,14 +524,13 @@ struct CPP_RegisterBody
 		{
 		}
 
-	std::string func_name;	// name of the function
-	void* func;	// pointer to C++ 
+	std::string func_name; // name of the function
+	void* func; // pointer to C++
 	int type_signature;
 	int priority;
 	p_hash_type h;
 	std::vector<std::string> events;
 	};
-
 
 // Helper function that takes a (large) array of int's and from them
 // constructs the corresponding vector-of-vector-of-indices.  Each

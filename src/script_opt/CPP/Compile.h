@@ -512,10 +512,10 @@ private:
 	// Information associated with a CPPDynStmt dynamic dispatch.
 	struct DispatchInfo
 		{
-		std::string cast;	// C++ cast to use for function pointer
-		std::string args;	// arguments to pass to the function
-		bool is_hook;	// whether the function is a hook
-		TypePtr yield;	// what type the function returns, if any
+		std::string cast; // C++ cast to use for function pointer
+		std::string args; // arguments to pass to the function
+		bool is_hook; // whether the function is a hook
+		TypePtr yield; // what type the function returns, if any
 		};
 
 	// An array of cast/invocation pairs used to generate the CPPDynStmt

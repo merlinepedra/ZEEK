@@ -65,7 +65,6 @@
 // of integers/indices and then we can track multiple such vectors using
 // another vector of integers/indices.
 
-
 #include "zeek/File.h"
 #include "zeek/Val.h"
 #include "zeek/script_opt/ProfileFunc.h"
@@ -190,7 +189,6 @@ protected:
 	std::string inits_type;
 	};
 
-
 // A class for a collection of initialization items for which each item
 // has a "custom" initializer (that is, a bespoke C++ object, rather than
 // a simple C++ type or a vector of indices).
@@ -212,7 +210,6 @@ public:
 private:
 	void BuildInitType() { inits_type = std::string("CPP_CustomInits<") + CPPType() + ">"; }
 	};
-
 
 // A class for a collection of initialization items corresponding to "basic"
 // constants, i.e., those that can be represented either directly as C++
@@ -237,7 +234,6 @@ public:
 	                        std::vector<std::string>& ivs) override;
 	};
 
-
 // A class for a collection of initialization items that are defined using
 // other initialization items.
 class CPP_CompoundInitsInfo : public CPP_InitsInfo
@@ -257,7 +253,6 @@ public:
 	void BuildCohortElement(CPPCompile* c, std::string init_type,
 	                        std::vector<std::string>& ivs) override;
 	};
-
 
 // Abstract class for tracking information about a single initialization item.
 class CPP_InitInfo
@@ -312,15 +307,11 @@ protected:
 	int offset = -1;
 	};
 
-
 // Information associated with initializing a basic (non-compound) constant.
 class BasicConstInfo : public CPP_InitInfo
 	{
 public:
-	BasicConstInfo(std::string _val)
-		: val(std::move(_val))
-		{
-		}
+	BasicConstInfo(std::string _val) : val(std::move(_val)) { }
 
 	void InitializerVals(std::vector<std::string>& ivs) const override { ivs.emplace_back(val); }
 
@@ -328,7 +319,6 @@ private:
 	// All we need to track is the C++ representation of the constant.
 	std::string val;
 	};
-
 
 // Information associated with initializing a constant whose Val constructor
 // takes a string.
@@ -343,7 +333,6 @@ private:
 	std::string init;
 	};
 
-
 class EnumConstInfo : public CPP_InitInfo
 	{
 public:
@@ -356,10 +345,9 @@ public:
 		}
 
 private:
-	int e_type;	// an index into the enum's Zeek type
-	int e_val;	// integer value of the enum
+	int e_type; // an index into the enum's Zeek type
+	int e_val; // integer value of the enum
 	};
-
 
 class StringConstInfo : public CPP_InitInfo
 	{
@@ -373,10 +361,9 @@ public:
 		}
 
 private:
-	int chars;	// index into vector of char*'s
-	int len;	// length of the string
+	int chars; // index into vector of char*'s
+	int len; // length of the string
 	};
-
 
 class PatternConstInfo : public CPP_InitInfo
 	{
@@ -390,10 +377,9 @@ public:
 		}
 
 private:
-	int pattern;	// index into string representation of pattern
-	int is_case_insensitive;	// case-insensitivity flag, 0 or 1
+	int pattern; // index into string representation of pattern
+	int is_case_insensitive; // case-insensitivity flag, 0 or 1
 	};
-
 
 class PortConstInfo : public CPP_InitInfo
 	{
@@ -408,7 +394,6 @@ public:
 private:
 	bro_uint_t p;
 	};
-
 
 // Abstract class for compound items (those defined in terms of other items).
 class CompoundItemInfo : public CPP_InitInfo
@@ -431,9 +416,8 @@ public:
 protected:
 	CPPCompile* c;
 	int type;
-	std::vector<std::string> vals;	// initialization values
+	std::vector<std::string> vals; // initialization values
 	};
-
 
 // This next set corresponds to compound Zeek constants of various types.
 class ListConstInfo : public CompoundItemInfo
@@ -477,7 +461,6 @@ private:
 	FuncVal* fv;
 	};
 
-
 // Initialization information for single attributes and sets of attributes.
 class AttrInfo : public CompoundItemInfo
 	{
@@ -490,7 +473,6 @@ class AttrsInfo : public CompoundItemInfo
 public:
 	AttrsInfo(CPPCompile* c, const AttributesPtr& attrs);
 	};
-
 
 // Information for initialization a Zeek global.
 class GlobalInitInfo : public CPP_InitInfo
@@ -509,7 +491,6 @@ protected:
 	std::string val;
 	bool exported;
 	};
-
 
 // Information for initializing an item corresponding to a Zeek function
 // call, needed to associate complex expressions with attributes.
@@ -536,7 +517,6 @@ protected:
 	std::string wrapper_class;
 	};
 
-
 // Information for registering the class/function assocaited with a lambda.
 class LambdaRegistrationInfo : public CPP_InitInfo
 	{
@@ -558,7 +538,6 @@ protected:
 	bool has_captures;
 	};
 
-
 // Abstract class for representing information for initializing a Zeek type.
 class AbstractTypeInfo : public CPP_InitInfo
 	{
@@ -575,9 +554,8 @@ public:
 
 protected:
 	CPPCompile* c;
-	TypePtr t;	// the type we're initializing
+	TypePtr t; // the type we're initializing
 	};
-
 
 // The following capture information for different Zeek types.
 class BaseTypeInfo : public AbstractTypeInfo
@@ -610,7 +588,7 @@ public:
 	void AddInitializerVals(std::vector<std::string>& ivs) const override;
 
 private:
-	TypePtr tt;	// the type referred to by t
+	TypePtr tt; // the type referred to by t
 	};
 
 class VectorTypeInfo : public AbstractTypeInfo
@@ -672,7 +650,6 @@ private:
 	std::vector<TypePtr> field_types;
 	std::vector<int> field_attrs;
 	};
-
 
 // Much of the table-driven initialization is based on vectors of indices,
 // which we represent as vectors of int's, where each int is used to index a
