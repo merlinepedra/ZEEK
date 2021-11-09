@@ -812,6 +812,9 @@ private:
 	// (i.e., those pointing to lambdas).
 	void GenFuncVarInits();
 
+	// Generates code to initialize a function-valued global.
+	void GenFuncVarInit(FuncVal* fv, const std::string& const_name);
+
 	// Generates the "pre-initialization" for a given type.  For
 	// extensible types (records, enums, lists), these are empty
 	// versions that we'll later populate.

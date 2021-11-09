@@ -39,14 +39,14 @@ static ScriptFuncPtr global_stmts;
 
 void analyze_func(ScriptFuncPtr f)
 	{
-	// Even if we're doing --optimize-only, we still track all functions
-	// here because the inliner will need the full list.
+	// Even if we're analyzing only a subset of the scripts, we still
+	// track all functions here because the inliner will need the full list.
 	funcs.emplace_back(f, f->GetScope(), f->CurrentBody(), f->CurrentPriority());
 	}
 
 const FuncInfo* analyze_global_stmts(Stmt* stmts)
 	{
-	// We ignore analysis_options.only_func - if it's in use, later
+	// We ignore analysis_options.only_funcs - if it's in use, later
 	// logic will keep this function from being compiled, but it's handy
 	// now to enter it into "funcs" so we have a FuncInfo to return.
 
@@ -63,6 +63,35 @@ const FuncInfo* analyze_global_stmts(Stmt* stmts)
 	funcs.emplace_back(global_stmts, sc, stmts_p, 0);
 
 	return &funcs.back();
+	}
+
+void add_file_analysis_pattern(AnalyOpt& opts, const char* pat)
+	{
+	try
+		{
+		std::string full_pat = std::string("^(") + pat + ")$";
+		opts.only_funcs.emplace_back(std::regex(full_pat));
+		}
+	catch ( const std::regex_error& e )
+		{
+		reporter->Error("bad file analysis pattern: %s", pat);
+		exit(1);
+		}
+	}
+
+bool should_analyze(const ScriptFuncPtr& f, const StmtPtr& body)
+	{
+	auto& of = analysis_options.only_funcs;
+	if ( of.empty() )
+		return true;
+
+	auto fn = f->Name();
+
+	for ( auto& o : of )
+		if ( std::regex_match(fn, o) )
+			return true;
+
+	return false;
 	}
 
 static bool optimize_AST(ScriptFunc* f, std::shared_ptr<ProfileFunc>& pf,
@@ -97,7 +126,7 @@ static void optimize_func(ScriptFunc* f, std::shared_ptr<ProfileFunc> pf, ScopeP
 	if ( reporter->Errors() > 0 )
 		return;
 
-	if ( analysis_options.only_func )
+	if ( ! analysis_options.only_funcs.empty() )
 		printf("Original: %s\n", obj_desc(body.get()).c_str());
 
 	if ( body->Tag() == STMT_CPP )
@@ -263,11 +292,11 @@ static void init_options()
 	if ( usage )
 		analysis_options.usage_issues = 1;
 
-	if ( ! analysis_options.only_func )
+	if ( analysis_options.only_funcs.empty() )
 		{
 		auto zo = getenv("ZEEK_ONLY");
 		if ( zo )
-			analysis_options.only_func = zo;
+			add_file_analysis_pattern(analysis_options, zo);
 		}
 
 	if ( analysis_options.gen_ZAM )
@@ -280,14 +309,8 @@ static void init_options()
 	if ( analysis_options.dump_ZAM )
 		analysis_options.gen_ZAM_code = true;
 
-	if ( analysis_options.only_func )
+	if ( ! analysis_options.only_funcs.empty() )
 		{
-		// Note, this comes after the statement above because for
-		// --optimize-only we don't necessarily want to go all
-		// the way to *generating* ZAM code, though we'll want to
-		// dump it *if* we generate it.
-		analysis_options.dump_xform = analysis_options.dump_ZAM = true;
-
 		if ( analysis_options.gen_ZAM_code || generating_CPP )
 			analysis_options.report_uncompilable = true;
 		}
@@ -296,7 +319,7 @@ static void init_options()
 	     ! generating_CPP )
 		reporter->FatalError("report-uncompilable requires generation of ZAM or C++");
 
-	if ( analysis_options.only_func || analysis_options.optimize_AST ||
+	if ( ! analysis_options.only_funcs.empty() || analysis_options.optimize_AST ||
 	     analysis_options.gen_ZAM_code || analysis_options.usage_issues > 0 )
 		analysis_options.activate = true;
 	}
@@ -403,15 +426,9 @@ static void generate_CPP(std::unique_ptr<ProfileFuncs>& pfs)
 
 	if ( analysis_options.gen_CPP )
 		{
-		if ( analysis_options.only_func )
-			{ // deactivate all functions except the target one
-			for ( auto& func : funcs )
-				{
-				auto fn = func.Func()->Name();
-				if ( *analysis_options.only_func != fn )
-					func.SetSkip(true);
-				}
-			}
+		for ( auto& func : funcs )
+			if ( ! should_analyze(func.FuncPtr(), func.Body()) )
+				func.SetSkip(true);
 		}
 	else
 		{ // doing add-C++ instead, so look for previous compilations
@@ -552,9 +569,9 @@ static void analyze_scripts_for_ZAM(std::unique_ptr<ProfileFuncs>& pfs)
 		{
 		auto func = f.Func();
 
-		if ( analysis_options.only_func )
+		if ( ! analysis_options.only_funcs.empty() )
 			{
-			if ( *analysis_options.only_func != func->Name() )
+			if ( ! should_analyze(f.FuncPtr(), f.Body()) )
 				continue;
 			}
 
@@ -602,6 +619,12 @@ void analyze_scripts()
 
 	if ( generating_CPP )
 		{
+		if ( analysis_options.gen_ZAM )
+			{
+			reporter->Error("-O ZAM and -O gen-C++ conflict");
+			exit(1);
+			}
+
 		generate_CPP(pfs);
 		exit(0);
 		}

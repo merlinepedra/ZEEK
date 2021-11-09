@@ -542,7 +542,7 @@ Options parse_cmdline(int argc, char** argv)
 				set_analysis_option(optarg, rval);
 				break;
 			case 'o':
-				rval.analysis_options.only_func = optarg;
+				add_file_analysis_pattern(rval.analysis_options, optarg);
 				break;
 			case 'P':
 				if ( rval.dns_mode != detail::DNS_DEFAULT )

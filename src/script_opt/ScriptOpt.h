@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <regex>
 
 #include "zeek/Expr.h"
 #include "zeek/Func.h"
@@ -24,9 +25,11 @@ namespace zeek::detail
 struct AnalyOpt
 	{
 
-	// If non-nil, then only analyze the given function/event/hook.
+	// If non-nil, then only analyze function/event/hook(s) whose names
+	// match one of the given regular expressions.
+	//
 	// Applies to both ZAM and C++.
-	std::optional<std::string> only_func;
+	std::vector<std::regex> only_funcs;
 
 	// For a given compilation target, report functions that can't
 	// be compiled.
@@ -68,7 +71,7 @@ struct AnalyOpt
 
 	// If true, dump out transformed code: the results of reducing
 	// interpreted scripts, and, if optimize is set, of then optimizing
-	// them.  Always done if only_func is set.
+	// them.
 	bool dump_xform = false;
 
 	// If true, dump out the use-defs for each analyzed function.
@@ -174,6 +177,13 @@ extern void analyze_func(ScriptFuncPtr f);
 // a pointer to a FuncInfo for an argument-less quasi-function that can
 // be Invoked, or its body executed directly, to execute the statements.
 extern const FuncInfo* analyze_global_stmts(Stmt* stmts);
+
+// Add a pattern to the "only_funcs" list.
+extern void add_file_analysis_pattern(AnalyOpt& opts, const char* pat);
+
+// True if the given script function & body should be analyzed; otherwise
+// it should be skipped.
+extern bool should_analyze(const ScriptFuncPtr& f, const StmtPtr& body);
 
 // Analyze all of the parsed scripts collectively for optimization.
 extern void analyze_scripts();

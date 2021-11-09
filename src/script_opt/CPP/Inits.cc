@@ -154,20 +154,35 @@ void CPPCompile::GenGlobalInit(const ID* g, string& gl, const ValPtr& v)
 void CPPCompile::GenFuncVarInits()
 	{
 	for ( const auto& fv_init : func_vars )
+		GenFuncVarInit(fv_init.first, fv_init.second);
+	}
+
+void CPPCompile::GenFuncVarInit(FuncVal* fv, const std::string& const_name)
+	{
+	auto f = fv->AsFunc();
+	const auto& bodies = f->GetBodies();
+
+	const auto& fn = f->Name();
+	const auto& ft = f->GetType();
+
+	NoteInitDependency(fv, TypeRep(ft));
+
+	string hashes = "{";
+
+	// If we couldn't compile the function, signal that by an empty
+	// set of hashes.
+	auto num_missing_bodies = 0U;
+	for ( const auto& b : bodies )
+		if ( body_names.count(b.stmts.get()) == 0 )
+			++num_missing_bodies;
+
+	if ( num_missing_bodies > 0 )
 		{
-		auto& fv = fv_init.first;
-		auto& const_name = fv_init.second;
+		if ( num_missing_bodies != bodies.size() )
+			reporter->FatalError("event/hook %s has some compiled bodies and some non-compiled", fn);
+		}
 
-		auto f = fv->AsFunc();
-		const auto& fn = f->Name();
-		const auto& ft = f->GetType();
-
-		NoteInitDependency(fv, TypeRep(ft));
-
-		const auto& bodies = f->GetBodies();
-
-		string hashes = "{";
-
+	else
 		for ( const auto& b : bodies )
 			{
 			auto body = b.stmts.get();
@@ -185,13 +200,12 @@ void CPPCompile::GenFuncVarInits()
 			hashes += Fmt(body_hashes[body_name]);
 			}
 
-		hashes += "}";
+	hashes += "}";
 
-		auto init = string("lookup_func__CPP(\"") + fn + "\", " + hashes + ", " + GenTypeName(ft) +
-		            ")";
+	auto init = string("lookup_func__CPP(\"") + fn + "\", " + hashes + ", " + GenTypeName(ft) +
+		    ")";
 
-		AddInit(fv, const_name, init);
-		}
+	AddInit(fv, const_name, init);
 	}
 
 void CPPCompile::GenPreInit(const Type* t)
