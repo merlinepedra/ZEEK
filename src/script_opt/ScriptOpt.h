@@ -31,6 +31,9 @@ struct AnalyOpt
 	// Applies to both ZAM and C++.
 	std::vector<std::regex> only_funcs;
 
+	// Same, but for the filenames where the function is found.
+	std::vector<std::regex> only_files;
+
 	// For a given compilation target, report functions that can't
 	// be compiled.
 	bool report_uncompilable = false;
@@ -179,6 +182,9 @@ extern void analyze_func(ScriptFuncPtr f);
 extern const FuncInfo* analyze_global_stmts(Stmt* stmts);
 
 // Add a pattern to the "only_funcs" list.
+extern void add_func_analysis_pattern(AnalyOpt& opts, const char* pat);
+
+// Add a pattern to the "only_files" list.
 extern void add_file_analysis_pattern(AnalyOpt& opts, const char* pat);
 
 // True if the given script function & body should be analyzed; otherwise

@@ -121,8 +121,8 @@ void usage(const char* prog, int code)
 	                "for verbose)\n");
 	fprintf(stderr, "    -O|--optimize[=<option>]       | enable script optimization (use -O help "
 	                "for options)\n");
-	fprintf(stderr, "    -o|--optimize-only=<func>      | enable script optimization only for the "
-	                "given function\n");
+	fprintf(stderr, "    -o|--optimize-funcs=<pat>      | enable script optimization for "
+	                "functions with names matching the given pattern\n");
 	fprintf(stderr, "    -P|--prime-dns                 | prime DNS\n");
 	fprintf(stderr,
 	        "    -Q|--time                      | print execution time summary to stderr\n");
@@ -382,7 +382,8 @@ Options parse_cmdline(int argc, char** argv)
 		{"save-seeds", required_argument, nullptr, 'H'},
 		{"print-plugins", no_argument, nullptr, 'N'},
 		{"optimize", required_argument, nullptr, 'O'},
-		{"optimize-only", required_argument, nullptr, 'o'},
+		{"optimize-funcs", required_argument, nullptr, 'o'},
+		{"optimize-files", required_argument, nullptr, '0'},
 		{"prime-dns", no_argument, nullptr, 'P'},
 		{"time", no_argument, nullptr, 'Q'},
 		{"debug-rules", no_argument, nullptr, 'S'},
@@ -542,6 +543,9 @@ Options parse_cmdline(int argc, char** argv)
 				set_analysis_option(optarg, rval);
 				break;
 			case 'o':
+				add_func_analysis_pattern(rval.analysis_options, optarg);
+				break;
+			case '0':
 				add_file_analysis_pattern(rval.analysis_options, optarg);
 				break;
 			case 'P':

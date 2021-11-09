@@ -46,7 +46,7 @@ void analyze_func(ScriptFuncPtr f)
 
 const FuncInfo* analyze_global_stmts(Stmt* stmts)
 	{
-	// We ignore analysis_options.only_funcs - if it's in use, later
+	// We ignore analysis_options.only_{files,funcs} - if they're in use, later
 	// logic will keep this function from being compiled, but it's handy
 	// now to enter it into "funcs" so we have a FuncInfo to return.
 
@@ -65,7 +65,7 @@ const FuncInfo* analyze_global_stmts(Stmt* stmts)
 	return &funcs.back();
 	}
 
-void add_file_analysis_pattern(AnalyOpt& opts, const char* pat)
+void add_func_analysis_pattern(AnalyOpt& opts, const char* pat)
 	{
 	try
 		{
@@ -74,20 +74,40 @@ void add_file_analysis_pattern(AnalyOpt& opts, const char* pat)
 		}
 	catch ( const std::regex_error& e )
 		{
-		reporter->Error("bad file analysis pattern: %s", pat);
-		exit(1);
+		reporter->FatalError("bad file analysis pattern: %s", pat);
+		}
+	}
+
+void add_file_analysis_pattern(AnalyOpt& opts, const char* pat)
+	{
+	try
+		{
+		std::string full_pat = std::string("^.*(") + pat + ").*$";
+		opts.only_files.emplace_back(std::regex(full_pat));
+		}
+	catch ( const std::regex_error& e )
+		{
+		reporter->FatalError("bad file analysis pattern: %s", pat);
 		}
 	}
 
 bool should_analyze(const ScriptFuncPtr& f, const StmtPtr& body)
 	{
-	auto& of = analysis_options.only_funcs;
-	if ( of.empty() )
+	auto& ofuncs = analysis_options.only_funcs;
+	auto& ofiles = analysis_options.only_files;
+
+	if ( ofiles.empty() && ofuncs.empty() )
 		return true;
 
 	auto fn = f->Name();
 
-	for ( auto& o : of )
+	for ( auto& o : ofuncs )
+		if ( std::regex_match(fn, o) )
+			return true;
+
+	fn = body->GetLocationInfo()->filename;
+
+	for ( auto& o : ofiles )
 		if ( std::regex_match(fn, o) )
 			return true;
 
@@ -424,10 +444,14 @@ static void generate_CPP(std::unique_ptr<ProfileFuncs>& pfs)
 
 	auto hm = std::make_unique<CPPHashManager>(hash_name.c_str(), analysis_options.add_CPP);
 
+	bool have_one_to_do = false;
+
 	if ( analysis_options.gen_CPP )
 		{
 		for ( auto& func : funcs )
-			if ( ! should_analyze(func.FuncPtr(), func.Body()) )
+			if ( should_analyze(func.FuncPtr(), func.Body()) )
+				have_one_to_do = true;
+			else
 				func.SetSkip(true);
 		}
 	else
@@ -437,12 +461,17 @@ static void generate_CPP(std::unique_ptr<ProfileFuncs>& pfs)
 			auto hash = func.Profile()->HashVal();
 			if ( compiled_scripts.count(hash) > 0 || hm->HasHash(hash) )
 				func.SetSkip(true);
+			else
+				have_one_to_do = true;
 			}
 
 		// Now that we've presumably marked a lot of functions
 		// as skippable, recompute the global profile.
 		pfs = std::make_unique<ProfileFuncs>(funcs, is_CPP_compilable, false);
 		}
+
+	if ( ! have_one_to_do )
+		reporter->FatalError("no matching functions/files for C++ compilation");
 
 	const auto gen_name = hash_dir + "CPP-gen.cc";
 	const auto addl_name = hash_dir + "CPP-gen-addl.h";
@@ -565,11 +594,14 @@ static void analyze_scripts_for_ZAM(std::unique_ptr<ProfileFuncs>& pfs)
 			}
 		}
 
+	bool did_one = false;
+
 	for ( auto& f : funcs )
 		{
 		auto func = f.Func();
 
-		if ( ! analysis_options.only_funcs.empty() )
+		if ( ! analysis_options.only_funcs.empty() ||
+		     ! analysis_options.only_files.empty() )
 			{
 			if ( ! should_analyze(f.FuncPtr(), f.Body()) )
 				continue;
@@ -583,7 +615,11 @@ static void analyze_scripts_for_ZAM(std::unique_ptr<ProfileFuncs>& pfs)
 		auto new_body = f.Body();
 		optimize_func(func, f.ProfilePtr(), f.Scope(), new_body);
 		f.SetBody(new_body);
+		did_one = true;
 		}
+
+	if ( ! did_one )
+		reporter->FatalError("no matching functions/files for -O ZAM");
 	}
 
 void analyze_scripts()
@@ -620,10 +656,7 @@ void analyze_scripts()
 	if ( generating_CPP )
 		{
 		if ( analysis_options.gen_ZAM )
-			{
-			reporter->Error("-O ZAM and -O gen-C++ conflict");
-			exit(1);
-			}
+			reporter->FatalError("-O ZAM and -O gen-C++ conflict");
 
 		generate_CPP(pfs);
 		exit(0);
