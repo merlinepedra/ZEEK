@@ -193,6 +193,23 @@ FuncValPtr lookup_func__CPP(string name, vector<p_hash_type> hashes, const TypeP
 	{
 	auto ft = cast_intrusive<FuncType>(t);
 
+	if ( hashes.empty() )
+		{ // This happens when the function isn't compiled
+		auto f = lookup_ID(name.c_str(), GLOBAL_MODULE_NAME, false, false, false);
+
+		if ( ! f )
+			reporter->InternalError("non-compiled function %s used by compiled scripts missing", name.c_str());
+
+		auto fv = f->GetVal();
+		if ( ! fv )
+			reporter->InternalError("non-compiled function %s used by compiled scripts lacks a definition", name.c_str());
+
+		if ( ! same_type(fv->GetType(), ft) )
+			reporter->InternalError("non-compiled function %s used by compiled scripts has an inconsistent type", name.c_str());
+
+		return cast_intrusive<FuncVal>(fv);
+		}
+
 	vector<StmtPtr> bodies;
 	vector<int> priorities;
 
