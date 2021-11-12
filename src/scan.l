@@ -418,7 +418,7 @@ when	return TOK_WHEN;
 @ifdef	return TOK_ATIFDEF;
 @ifndef	return TOK_ATIFNDEF;
 @else   return TOK_ATELSE;
-@endif	--current_depth;
+@endif	do_atendif();
 
 <IGNORE>@if	++current_depth;
 <IGNORE>@ifdef	++current_depth;
@@ -693,6 +693,18 @@ public:
 	std::vector<const zeek::detail::NameExpr*> local_names;
 };
 
+static void begin_ignoring()
+	{
+	if_stack.push_back(current_depth);
+	BEGIN(IGNORE);
+	}
+
+static void resume_processing()
+	{
+	if_stack.pop_back();
+	BEGIN(INITIAL);
+	}
+
 void do_atif(zeek::detail::Expr* expr)
 	{
 	++current_depth;
@@ -716,10 +728,7 @@ void do_atif(zeek::detail::Expr* expr)
 		}
 
 	if ( ! val->AsBool() )
-		{
-		if_stack.push_back(current_depth);
-		BEGIN(IGNORE);
-		}
+		begin_ignoring();
 	}
 
 void do_atifdef(const char* id)
@@ -729,10 +738,7 @@ void do_atifdef(const char* id)
 	const auto& i = zeek::detail::lookup_ID(id, zeek::detail::current_module.c_str());
 
 	if ( ! i )
-		{
-		if_stack.push_back(current_depth);
-		BEGIN(IGNORE);
-		}
+		begin_ignoring();
 	}
 
 void do_atifndef(const char *id)
@@ -742,10 +748,7 @@ void do_atifndef(const char *id)
 	const auto& i = zeek::detail::lookup_ID(id, zeek::detail::current_module.c_str());
 
 	if ( i )
-		{
-		if_stack.push_back(current_depth);
-		BEGIN(IGNORE);
-		}
+		begin_ignoring();
 	}
 
 void do_atelse()
@@ -757,15 +760,9 @@ void do_atelse()
 		return;
 
 	if ( YY_START == INITIAL )
-		{
-		if_stack.push_back(current_depth);
-		BEGIN(IGNORE);
-		}
+		begin_ignoring();
 	else
-		{
-		if_stack.pop_back();
-		BEGIN(INITIAL);
-		}
+		resume_processing();
 	}
 
 void do_atendif()
@@ -773,11 +770,8 @@ void do_atendif()
 	if ( current_depth == 0 )
 		zeek::reporter->Error("unbalanced @if... @endif");
 
-	if ( current_depth == if_stack.back() )
-		{
-		BEGIN(INITIAL);
-		if_stack.pop_back();
-		}
+	if ( ! if_stack.empty() && current_depth == if_stack.back() )
+		resume_processing();
 
 	--current_depth;
 	}
@@ -841,7 +835,7 @@ void add_to_name_list(char* s, char delim, zeek::name_list& nl)
 int yywrap()
 	{
 	if ( current_depth > 0 )
-		zeek::reporter->FatalError("input file ends inside a conditional");
+		zeek::reporter->FatalError("unbalanced @if... @endif");
 
 	last_filename = ::filename;
 
