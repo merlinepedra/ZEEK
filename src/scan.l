@@ -840,6 +840,9 @@ void add_to_name_list(char* s, char delim, zeek::name_list& nl)
 
 int yywrap()
 	{
+	if ( current_depth > 0 )
+		zeek::reporter->FatalError("input file ends inside a conditional");
+
 	last_filename = ::filename;
 
 	if ( zeek::reporter->Errors() > 0 )
