@@ -137,6 +137,11 @@ public:
 	bool IsTemp() const { return is_temp; }
 	void SetTemp() { is_temp = true; }
 
+	// Whether this identifier is free of the possible influence
+	// of conditional code.
+	bool IsFreeOfConditionals() const { return is_free_of_conditionals; }
+	void SetIsFreeOfConditionals(bool is_free) { is_free_of_conditionals = is_free; }
+
 	// Called when the identifier is defined via execution of the
 	// given statement, with an assignment to the expression 'e'
 	// (only non-nil for simple direct assignments).  "conf_blocks"
@@ -255,6 +260,11 @@ private:
 
 	// Whether the identifier is a temporary variable.
 	bool is_temp = false;
+
+	// Tracks whether this function is free of the possible influence
+	// of conditional code.  Used to avoid compiling (to C++) functions
+	// that might need different execution when run in the future.
+	bool is_free_of_conditionals = true;
 
 	// Only needed for debugging purposes.
 	const ID* my_id;

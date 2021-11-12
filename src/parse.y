@@ -105,6 +105,12 @@ extern const char* last_filename; // Absolute path of last file parsed.
 extern const char* last_tok_filename;
 extern const char* last_last_tok_filename;
 
+extern std::intptr_t conditional_depth; // if > 0, we're inside a conditional
+extern int conditional_epoch; // let's us track embedded conditionals
+
+// Whether the file we're currently parsing includes @if conditionals.
+extern bool current_file_has_conditionals;
+
 YYLTYPE GetCurrentLocation();
 extern int yyerror(const char[]);
 extern int brolex();
@@ -138,6 +144,7 @@ bool defining_global_ID = false;
 std::vector<int> saved_in_init;
 
 static Location func_hdr_location;
+static int func_hdr_cond_epoch = 0;
 EnumType* cur_enum_type = nullptr;
 static ID* cur_decl_type_id = nullptr;
 
@@ -272,6 +279,12 @@ static StmtPtr build_local(ID* id, Type* t, InitClass ic, Expr* e,
 		script_coverage_mgr.AddStmt(init.get());
 
 	return init;
+	}
+
+static void check_conditionals(const ID* id)
+	{
+	if ( conditional_depth > 0 )
+		id->GetOptInfo()->SetIsFreeOfConditionals(false);
 	}
 %}
 
@@ -1175,19 +1188,29 @@ decl:
 
 	|	TOK_REDEF global_id opt_type init_class opt_init opt_attr ';'
 			{
+			check_conditionals($2);
 			build_global($2, $3, $4, $5, $6, VAR_REDEF);
 			}
 
 	|	TOK_REDEF TOK_ENUM global_id TOK_ADD_TO '{'
-			{ ++in_enum_redef; parse_redef_enum($3); zeekygen_mgr->Redef($3, ::filename); }
+			{
+			++in_enum_redef;
+			parse_redef_enum($3);
+			zeekygen_mgr->Redef($3, ::filename);
+			}
 		enum_body '}' ';'
 			{
+			check_conditionals($3);
 			--in_enum_redef;
 			// Zeekygen already grabbed new enum IDs as the type created them.
 			}
 
 	|	TOK_REDEF TOK_RECORD global_id
-			{ cur_decl_type_id = $3; zeekygen_mgr->Redef($3, ::filename); }
+			{
+			check_conditionals($3);
+			cur_decl_type_id = $3;
+			zeekygen_mgr->Redef($3, ::filename);
+			}
 		TOK_ADD_TO '{'
 			{ ++in_record; ++in_record_redef; }
 		type_decl_list
@@ -1214,16 +1237,19 @@ decl:
 			zeekygen_mgr->Identifier(std::move(id));
 			}
 
-	|	func_hdr { func_hdr_location = @1; } func_body
-
-	|	func_hdr { func_hdr_location = @1; } conditional_list func_body
+	|	func_hdr
+			{
+			func_hdr_location = @1;
+			func_hdr_cond_epoch = conditional_epoch;
+			}
+		conditional_list func_body
 
 	|	conditional
 	;
 
 conditional_list:
-		conditional
-	|	conditional conditional_list
+	|	conditional_list conditional
+	;
 
 conditional:
 		TOK_ATIF '(' expr ')'
@@ -1273,6 +1299,7 @@ func_hdr:
 			}
 	|	TOK_REDEF TOK_EVENT event_id func_params opt_attr
 			{
+			check_conditionals($3);
 			begin_func({NewRef{}, $3}, current_module.c_str(),
 				                     FUNC_FLAVOR_EVENT, true, {NewRef{}, $4},
 			                         std::unique_ptr<std::vector<AttrPtr>>{$5});
@@ -1296,7 +1323,13 @@ func_body:
 		'}'
 			{
 			set_location(func_hdr_location, @5);
-			end_func({AdoptRef{}, $3});
+
+			bool free_of_conditionals = true;
+			if ( current_file_has_conditionals ||
+			     conditional_epoch > func_hdr_cond_epoch )
+				free_of_conditionals = false;
+
+			end_func({AdoptRef{}, $3}, free_of_conditionals);
 			}
 	;
 
