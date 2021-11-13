@@ -101,8 +101,10 @@ void CPPCompile::Compile(bool report_uncompilable)
 		if ( IsCompilable(func, &reason) )
 			compilable_funcs.insert(BodyName(func));
 		else if ( reason && report_uncompilable )
-			fprintf(stderr, "%s cannot be compiled to C++ due to %s\n", func.Func()->Name(),
-			        reason);
+			{
+			auto loc = func.Body()->GetLocationInfo();
+			fprintf(stderr, "%s:%d %s cannot be compiled to C++ due to %s\n", loc->filename, loc->first_line, func.Func()->Name(), reason);
+			}
 
 		auto h = func.Profile()->HashVal();
 		if ( hm.HasHash(h) )
