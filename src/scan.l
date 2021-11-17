@@ -113,6 +113,11 @@ static void start_conditional()
 	{
 	++conditional_depth;
 	++conditional_epoch;
+
+	if ( ! current_file_has_conditionals )
+		{ // check for optimize_files match
+		}
+
 	current_file_has_conditionals = true;
 	}
 
