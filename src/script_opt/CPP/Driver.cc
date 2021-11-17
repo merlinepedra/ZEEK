@@ -104,6 +104,9 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 	NL();
 
+	for ( auto& g : pfs.AllGlobals() )
+		CreateGlobal(g);
+
 	for ( const auto& e : pfs.Events() )
 		if ( AddGlobal(e, "gl", false) )
 			Emit("EventHandlerPtr %s_ev;", globals[string(e)]);
