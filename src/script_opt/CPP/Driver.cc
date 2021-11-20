@@ -65,7 +65,10 @@ void CPPCompile::Compile(bool report_uncompilable)
 	for ( const auto& func : funcs )
 		{
 		if ( func.ShouldSkip() )
+			{
+			not_fully_compilable.insert(func.Func()->Name());
 			continue;
+			}
 
 		if ( func.Func()->Flavor() != FUNC_FLAVOR_FUNCTION )
 			// Can't be called directly.
