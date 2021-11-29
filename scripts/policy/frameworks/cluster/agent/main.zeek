@@ -9,18 +9,18 @@
 redef ClusterController::role = ClusterController::Types::AGENT;
 
 # The global configuration as passed to us by the controller
-global global_config: ClusterController::Types::Configuration;
+global _config: ClusterController::Types::Configuration;
 
 # A map to make other instance info accessible
-global instances: table[string] of ClusterController::Types::Instance;
+global _instances: table[string] of ClusterController::Types::Instance;
 
 # A map for the nodes we run on this instance, via this agent.
-global nodes: table[string] of ClusterController::Types::Node;
+global _nodes: table[string] of ClusterController::Types::Node;
 
 # The node map employed by the supervisor to describe the cluster
 # topology to newly forked nodes. We refresh it when we receive
 # new configurations.
-global data_cluster: table[string] of Supervisor::ClusterEndpoint;
+global _data_cluster: table[string] of Supervisor::ClusterEndpoint;
 
 event SupervisorControl::create_response(reqid: string, result: string)
 	{
@@ -86,43 +86,43 @@ event ClusterAgent::API::set_configuration_request(reqid: string, config: Cluste
 	# Adopt the global configuration provided.
 	# XXX this can later handle validation and persistence
 	# XXX should do this transactionally, only set when all else worked
-	global_config = config;
+	_config = config;
 
 	# Refresh the instances table:
-	instances = table();
+	_instances = table();
 	for ( inst in config$instances )
-		instances[inst$name] = inst;
+		_instances[inst$name] = inst;
 
 	# Terminate existing nodes
-	for ( nodename in nodes )
+	for ( nodename in _nodes )
 		supervisor_destroy(nodename);
 
-	nodes = table();
+	_nodes = table();
 
 	# Refresh the data cluster and nodes tables
 
-	data_cluster = table();
+	_data_cluster = table();
 	for ( node in config$nodes )
 		{
 		if ( node$instance == ClusterAgent::name )
-			nodes[node$name] = node;
+			_nodes[node$name] = node;
 
 		local cep = Supervisor::ClusterEndpoint(
 		    $role = node$role,
-		    $host = instances[node$instance]$host,
+		    $host = _instances[node$instance]$host,
 		    $p = node$p);
 
 		if ( node?$interface )
 			cep$interface = node$interface;
 
-		data_cluster[node$name] = cep;
+		_data_cluster[node$name] = cep;
 		}
 
 	# Apply the new configuration via the supervisor
 
-	for ( nodename in nodes )
+	for ( nodename in _nodes )
 		{
-		node = nodes[nodename];
+		node = _nodes[nodename];
 		nc = Supervisor::NodeConfig($name=nodename);
 
 		if ( ClusterAgent::cluster_directory != "" )
@@ -140,7 +140,7 @@ event ClusterAgent::API::set_configuration_request(reqid: string, config: Cluste
 		# XXX could use options to enable per-node overrides for
 		# directory, stdout, stderr, others?
 
-		nc$cluster = data_cluster;
+		nc$cluster = _data_cluster;
 		supervisor_create(nc);
 		}
 
