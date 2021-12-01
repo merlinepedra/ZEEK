@@ -10,8 +10,8 @@ set -x
 # This is used to compare version numbers between what's installed and what's
 # expected from the packages we install via brew. We check the version numbers
 # to avoid a lenghty update process that might not need to run.
-pip3 install packaging
-pip3 install parse
+pip3 install --user packaging
+pip3 install --user parse
 
 DO_UPDATE=0
 
