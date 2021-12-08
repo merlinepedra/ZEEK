@@ -33,7 +33,7 @@ static std::vector<FuncInfo> funcs;
 static ZAMCompiler* ZAM = nullptr;
 
 static bool generating_CPP = false;
-static std::string hash_dir; // for storing hashes of previous compilations
+static std::string CPP_dir; // where to generate C++ code
 
 static ScriptFuncPtr global_stmts;
 
@@ -203,9 +203,9 @@ static void check_env_opt(const char* opt, bool& opt_flag)
 
 static void init_options()
 	{
-	auto hd = getenv("ZEEK_HASH_DIR");
-	if ( hd )
-		hash_dir = std::string(hd) + "/";
+	auto cppd = getenv("ZEEK_CPP_DIR");
+	if ( cppd )
+		CPP_dir = std::string(cppd) + "/";
 
 	// ZAM-related options.
 	check_env_opt("ZEEK_DUMP_XFORM", analysis_options.dump_xform);
@@ -378,12 +378,13 @@ static void use_CPP()
 
 static void generate_CPP(std::unique_ptr<ProfileFuncs>& pfs)
 	{
-	const auto hash_name = hash_dir + "CPP-hashes";
-	const auto gen_name = hash_dir + "CPP-gen.cc";
-	const auto addl_name = hash_dir + "CPP-gen-addl.h";
+	const auto gen_name = CPP_dir + "CPP-gen.cc";
 
-	CPPCompile cpp(funcs, *pfs, gen_name, addl_name, analysis_options.gen_standalone_CPP,
-	               analysis_options.report_uncompilable);
+	const bool add = analysis_options.add_CPP;
+	const bool standalone = analysis_options.gen_standalone_CPP;
+	const bool report = analysis_options.report_uncompilable;
+
+	CPPCompile cpp(funcs, *pfs, gen_name, add, standalone, report);
 	}
 
 static void find_when_funcs(std::unique_ptr<ProfileFuncs>& pfs,

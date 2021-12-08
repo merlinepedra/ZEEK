@@ -127,8 +127,7 @@ class CPPCompile
 	{
 public:
 	CPPCompile(std::vector<FuncInfo>& _funcs, ProfileFuncs& pfs, const std::string& gen_name,
-	           const std::string& addl_name, bool _standalone,
-	           bool report_uncompilable);
+	           bool add, bool _standalone, bool report_uncompilable);
 	~CPPCompile();
 
 	// Constructing a CPPCompile object does all of the compilation.
@@ -1113,9 +1112,6 @@ private:
 
 	// File to which we're generating code.
 	FILE* write_file;
-
-	// Name of file holding potential "additional" code.
-	std::string addl_name;
 
 	// Indentation level.
 	int block_level = 0;

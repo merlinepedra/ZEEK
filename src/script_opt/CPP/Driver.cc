@@ -11,32 +11,17 @@ namespace zeek::detail
 using namespace std;
 
 CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const string& gen_name,
-                       const string& _addl_name, bool _standalone,
-                       bool report_uncompilable)
+                       bool add, bool _standalone, bool report_uncompilable)
 	: funcs(_funcs), pfs(_pfs), standalone(_standalone)
 	{
-	addl_name = _addl_name;
 	auto target_name = gen_name.c_str();
-	// auto mode = is_addl ? "a" : "w";
-	auto mode = "w";
+	auto mode = add ? "a" : "w";
 
 	write_file = fopen(target_name, mode);
 	if ( ! write_file )
 		{
 		reporter->Error("can't open C++ target file %s", target_name);
 		exit(1);
-		}
-	else
-		{
-		// Create an empty "additional" file.
-		auto addl_f = fopen(addl_name.c_str(), "w");
-		if ( ! addl_f )
-			{
-			reporter->Error("can't open C++ additional file %s", addl_name.c_str());
-			exit(1);
-			}
-
-		fclose(addl_f);
 		}
 
 	Compile(report_uncompilable);
