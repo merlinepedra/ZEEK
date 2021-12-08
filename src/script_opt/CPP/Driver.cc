@@ -11,12 +11,13 @@ namespace zeek::detail
 using namespace std;
 
 CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const string& gen_name,
-                       const string& _addl_name, CPPHashManager& _hm, bool _standalone,
+                       const string& _addl_name, bool _standalone,
                        bool report_uncompilable)
-	: funcs(_funcs), pfs(_pfs), hm(_hm), standalone(_standalone)
+	: funcs(_funcs), pfs(_pfs), standalone(_standalone)
 	{
 	addl_name = _addl_name;
 	auto target_name = gen_name.c_str();
+	// auto mode = is_addl ? "a" : "w";
 	auto mode = "w";
 
 	write_file = fopen(target_name, mode);
@@ -83,15 +84,6 @@ void CPPCompile::Compile(bool report_uncompilable)
 				        reason);
 			not_fully_compilable.insert(func.Func()->Name());
 			}
-
-		auto h = func.Profile()->HashVal();
-		if ( hm.HasHash(h) )
-			{
-			// Track the previously compiled instance
-			// of this function.
-			auto n = func.Func()->Name();
-			hashed_funcs[n] = hm.FuncBodyName(h);
-			}
 		}
 
 	// Track all of the types we'll be using.
@@ -110,7 +102,7 @@ void CPPCompile::Compile(bool report_uncompilable)
 		CreateGlobal(g);
 
 	for ( const auto& e : pfs.Events() )
-		if ( AddGlobal(e, "gl", false) )
+		if ( AddGlobal(e, "gl") )
 			Emit("EventHandlerPtr %s_ev;", globals[string(e)]);
 
 	for ( const auto& t : pfs.RepTypes() )
@@ -176,9 +168,9 @@ void CPPCompile::GenProlog()
 	if ( addl_tag == 0 )
 		{
 		Emit("#include \"zeek/script_opt/CPP/Runtime.h\"\n");
-		Emit("namespace zeek::detail { //\n");
 		}
 
+	Emit("namespace zeek::detail { //\n");
 	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir);
 
 	// The following might-or-might-not wind up being populated/used.
@@ -417,11 +409,6 @@ void CPPCompile::GenEpilog()
 	GenInitHook();
 
 	Emit("} // %s\n\n", scope_prefix(addl_tag));
-
-	if ( addl_tag > 0 )
-		return;
-
-	Emit("#include \"" + addl_name + "\"\n");
 	Emit("} // zeek::detail");
 	}
 
@@ -436,10 +423,6 @@ bool CPPCompile::IsCompilable(const FuncInfo& func, const char** reason)
 		*reason = nullptr;
 
 	if ( func.ShouldSkip() )
-		return false;
-
-	if ( hm.HasHash(func.Profile()->HashVal()) )
-		// We've already compiled it.
 		return false;
 
 	return true;
