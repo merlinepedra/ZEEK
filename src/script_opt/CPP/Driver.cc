@@ -1,6 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
 #include <errno.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include "zeek/script_opt/CPP/Compile.h"
@@ -23,6 +24,33 @@ CPPCompile::CPPCompile(vector<FuncInfo>& _funcs, ProfileFuncs& _pfs, const strin
 		reporter->Error("can't open C++ target file %s", target_name);
 		exit(1);
 		}
+
+	if ( add )
+		{
+		// We need a unique number to associate with the name
+		// space for the code we're adding.  A convenient way to
+		// generate this safely is to use the present size of the
+		// file we're appending to.  That guarantees that every
+		// incremental compilation will wind up with a different
+		// number.
+		struct stat st;
+		if ( fstat(fileno(write_file), &st) != 0 )
+			{
+			char buf[256];
+			util::zeek_strerror_r(errno, buf, sizeof(buf));
+			reporter->Error("fstat failed on %s: %s", target_name, buf);
+			exit(1);
+			}
+
+		// We use a value of "0" to mean "we're not appending,
+		// we're generating from scratch", so make sure we're
+		// distinct from that.
+		addl_tag = st.st_size + 1;
+		}
+
+	else
+		addl_tag = 0;
+
 
 	Compile(report_uncompilable);
 	}
@@ -249,10 +277,7 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 		// Hash in the location associated with this compilation
 		// pass, to get a final hash that avoids conflicts with
 		// identical-but-in-a-different-context function bodies
-		// when compiling potentially conflicting additional code
-		// (which we want to support to enable quicker test suite
-		// runs by enabling multiple tests to be compiled into the
-		// same binary).
+		// when compiling potentially conflicting additional code.
 		h = merge_p_hashes(h, p_hash(cf_locs[f]));
 
 	auto fi = func_index.find(f);
