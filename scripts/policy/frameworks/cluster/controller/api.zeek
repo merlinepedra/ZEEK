@@ -17,4 +17,8 @@ export {
 	    config: ClusterController::Types::Configuration);
 	global set_configuration_response: event(reqid: string,
 	    result: ClusterController::Types::ResultVec);
+
+	global get_configuration_request: event(reqid: string);
+	global get_configuration_response: event(reqid: string,
+	    result: ClusterController::Types::Result);
 }

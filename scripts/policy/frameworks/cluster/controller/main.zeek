@@ -391,6 +391,28 @@ event ClusterController::API::set_configuration_request(reqid: string, config: C
 		event ClusterController::API::notify_agents_ready(insts_to_keep);
 	}
 
+event ClusterController::API::get_configuration_request(reqid: string)
+	{
+	ClusterController::Log::info(fmt("rx ClusterController::API::get_configuration_request %s", reqid));
+
+	local res = ClusterController::Types::Result($reqid=reqid);
+
+	if ( is_null_config(_config_current) )
+		{
+		# We don't have a live configuration yet.
+		res$success = F;
+		res$error = "no configuration deployed";
+		}
+	else
+		{
+		res$data = _config_current;
+		}
+
+	ClusterController::Log::info(fmt("tx ClusterController::API::get_configuration_response %s",
+	                                 ClusterController::Types::result_to_string(res)));
+	event ClusterController::API::get_configuration_response(reqid, res);
+	}
+
 event ClusterController::API::get_instances_request(reqid: string)
 	{
 	ClusterController::Log::info(fmt("rx ClusterController::API::set_instances_request %s", reqid));
@@ -430,6 +452,8 @@ event zeek_init()
 	    ClusterController::API::get_instances_response);
 	Broker::auto_publish(ClusterController::topic,
 	    ClusterController::API::set_configuration_response);
+	Broker::auto_publish(ClusterController::topic,
+	    ClusterController::API::get_configuration_response);
 
 	Broker::auto_publish(ClusterController::topic,
 	    ClusterController::API::notify_agents_ready);
