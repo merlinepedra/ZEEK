@@ -603,7 +603,7 @@ string CPPCompile::GenArithCoerceExpr(const Expr* e, GenType gt)
 		}
 
 	if ( is_vec )
-		return string("vec_coerce_") + cast_name + "__CPP(" + GenExpr(op, GEN_NATIVE) + ", " +
+		return string("vec_coerce_to_") + cast_name + "__CPP(" + GenExpr(op, GEN_NATIVE) + ", " +
 		       GenTypeName(t) + ")";
 
 	return NativeToGT(cast_name + "(" + GenExpr(op, GEN_NATIVE) + ")", t, gt);
@@ -784,7 +784,7 @@ string CPPCompile::GenBinary(const Expr* e, GenType gt, const char* op, const ch
 
 		if ( t->Tag() == TYPE_VECTOR && t->Yield()->Tag() == TYPE_STRING &&
 		     op2->GetType()->Tag() == TYPE_VECTOR )
-			return string("vec_str_op_") + vec_op + "__CPP(" + gen1 + ", " + gen2 + ")";
+			return string("str_vec_op_") + vec_op + "__CPP(" + gen1 + ", " + gen2 + ")";
 
 		return GenVectorOp(e, gen1, gen2, vec_op);
 		}
