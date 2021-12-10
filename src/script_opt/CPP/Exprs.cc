@@ -1103,9 +1103,20 @@ string CPPCompile::GenVectorOp(const Expr* e, string op, const char* vec_op)
 
 string CPPCompile::GenVectorOp(const Expr* e, string op1, string op2, const char* vec_op)
 	{
+	auto& op1_t = e->GetOp1()->GetType();
+	auto& op2_t = e->GetOp2()->GetType();
+
+	if ( op1_t->Tag() != TYPE_VECTOR || op2_t->Tag() != TYPE_VECTOR )
+		{
+		// This is a deprecated mixed-scalar-and-vector operation.
+		// We don't support these.  Arrange for linking errors.
+		reporter->Error("C++ generation does not support deprecated scalar-mixed-with-vector operations");
+		return "vec_scalar_mixed_with_vector()";
+		}
+
 	auto invoke = string(vec_op) + "__CPP(" + op1 + ", " + op2 + ")";
 
-	if ( e->GetOp1()->GetType()->Yield()->Tag() == TYPE_STRING )
+	if ( op2_t->Yield()->Tag() == TYPE_STRING )
 		return string("str_vec_op_") + invoke;
 
 	auto gen = string("vec_op_") + invoke;
