@@ -197,10 +197,10 @@ void CPPCompile::Compile(bool report_uncompilable)
 
 void CPPCompile::GenProlog()
 	{
-	if ( addl_tag == 0 )
-		{
+	if ( addl_tag <= 1 )
+		// This is either a compilation via gen-C++, or
+		// one using add-C++ and an empty CPP-gen.cc file.
 		Emit("#include \"zeek/script_opt/CPP/Runtime.h\"\n");
-		}
 
 	Emit("namespace zeek::detail { //\n");
 	Emit("namespace CPP_%s { // %s\n", Fmt(addl_tag), working_dir);
