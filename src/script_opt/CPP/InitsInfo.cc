@@ -245,11 +245,14 @@ void FuncConstInfo::InitializerVals(std::vector<std::string>& ivs) const
 	ivs.emplace_back(Fmt(c->TrackString(fn)));
 	ivs.emplace_back(to_string(bodies.size()));
 
-	for ( const auto& b : bodies )
+	if ( ! c->NotFullyCompilable(fn) )
 		{
-		auto h = c->BodyHash(b.stmts.get());
-		auto h_o = c->TrackHash(h);
-		ivs.emplace_back(Fmt(h_o));
+		for ( const auto& b : bodies )
+			{
+			auto h = c->BodyHash(b.stmts.get());
+			auto h_o = c->TrackHash(h);
+			ivs.emplace_back(Fmt(h_o));
+			}
 		}
 	}
 
