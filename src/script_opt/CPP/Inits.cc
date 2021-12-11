@@ -216,6 +216,9 @@ void CPPCompile::GenStandaloneActivation()
 	Emit("void standalone_activation__CPP()");
 	StartBlock();
 
+	Emit("finish_init__CPP();");
+	NL();
+
 	// For events and hooks, we need to add each compiled body *unless*
 	// it's already there (which could be the case if the standalone
 	// code wasn't run standalone but instead with the original scripts).

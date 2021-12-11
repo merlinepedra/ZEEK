@@ -371,16 +371,6 @@ void CPPCompile::GenEpilog()
 	InitializeConsts();
 
 	NL();
-	Emit("void register_bodies__CPP()");
-	StartBlock();
-	Emit("for ( auto& b : CPP__bodies_to_register )");
-	StartBlock();
-	Emit("auto f = make_intrusive<CPPDynStmt>(b.func_name.c_str(), b.func, b.type_signature);");
-	Emit("register_body__CPP(f, b.priority, b.h, b.events);");
-	EndBlock();
-	EndBlock();
-
-	NL();
 	Emit("void load_BiFs__CPP()");
 	StartBlock();
 	Emit("for ( auto& b : CPP__BiF_lookups__ )");
@@ -388,13 +378,16 @@ void CPPCompile::GenEpilog()
 	EndBlock();
 
 	NL();
-	Emit("void init__CPP()");
+	Emit("void finish_init__CPP()");
 
 	StartBlock();
 
-	Emit("register_bodies__CPP();");
-	NL();
+	Emit("static bool did_init = false;");
+	Emit("if ( did_init )");
+	Emit("\treturn;");
+	Emit("did_init = true;");
 
+	NL();
 	Emit("std::vector<std::vector<int>> InitIndices;");
 	Emit("generate_indices_set(CPP__Indices__init, InitIndices);");
 
@@ -432,7 +425,23 @@ void CPPCompile::GenEpilog()
 	NL();
 	Emit("load_BiFs__CPP();");
 
-	EndBlock(true);
+	EndBlock();
+
+	NL();
+	Emit("void register_bodies__CPP()");
+	StartBlock();
+	Emit("for ( auto& b : CPP__bodies_to_register )");
+	StartBlock();
+	Emit("auto f = make_intrusive<CPPDynStmt>(b.func_name.c_str(), b.func, b.type_signature);");
+	Emit("register_body__CPP(f, b.priority, b.h, b.events, finish_init__CPP);");
+	EndBlock();
+	EndBlock();
+
+	NL();
+	Emit("void init__CPP()");
+	StartBlock();
+	Emit("register_bodies__CPP();");
+	EndBlock();
 
 	if ( standalone )
 		GenStandaloneActivation();

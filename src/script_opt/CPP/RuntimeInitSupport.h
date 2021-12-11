@@ -37,7 +37,7 @@ extern void register_type__CPP(TypePtr t, const std::string& name);
 // relevant for the function body, which should be registered if the
 // function body is going to be used.
 extern void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash,
-                               std::vector<std::string> events);
+                               std::vector<std::string> events, void (*finish_init)());
 
 // Registers a lambda body as associated with the given hash.  Includes
 // the name of the lambda (so it can be made available as a quasi-global

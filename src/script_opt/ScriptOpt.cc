@@ -418,6 +418,10 @@ static void use_CPP()
 				auto h = event_registry->Register(e);
 				h->SetUsed();
 				}
+
+			auto finish = s->second.finish_init_func;
+			if ( finish )
+				(*finish)();
 			}
 		}
 
