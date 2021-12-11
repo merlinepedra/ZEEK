@@ -213,16 +213,7 @@ void CPPCompile::GenStandaloneActivation()
 	{
 	NL();
 
-#if 0
 	Emit("void standalone_activation__CPP()");
-	StartBlock();
-	for ( auto& a : activations )
-		Emit(a);
-	EndBlock();
-#endif
-
-	NL();
-	Emit("void standalone_init__CPP()");
 	StartBlock();
 
 	// For events and hooks, we need to add each compiled body *unless*
@@ -283,10 +274,14 @@ void CPPCompile::GenStandaloneActivation()
 		     GenTypeName(ft), hashes);
 		}
 
+	EndBlock();
+
 	NL();
+	Emit("void standalone_init__CPP()");
+	StartBlock();
+	Emit("init__CPP();");
 	Emit("CPP_activation_funcs.push_back(standalone_activation__CPP);");
 	Emit("CPP_activation_hook = activate__CPPs;");
-
 	EndBlock();
 	}
 

@@ -190,11 +190,11 @@ Func* lookup_bif__CPP(const char* bif)
 	return b ? b->GetVal()->AsFunc() : nullptr;
 	}
 
-FuncValPtr lookup_func__CPP(string name, vector<p_hash_type> hashes, const TypePtr& t)
+FuncValPtr lookup_func__CPP(string name, int num_bodies, vector<p_hash_type> hashes, const TypePtr& t)
 	{
 	auto ft = cast_intrusive<FuncType>(t);
 
-	if ( hashes.empty() )
+	if ( static_cast<int>(hashes.size()) < num_bodies )
 		{
 		// This happens for functions that have at least one
 		// uncompilable body.

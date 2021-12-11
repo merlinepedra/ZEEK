@@ -356,9 +356,6 @@ void CPPCompile::GenEpilog()
 	for ( auto gi : all_global_info )
 		gi->GenerateInitializers(this);
 
-	if ( standalone )
-		GenStandaloneActivation();
-
 	NL();
 	InitializeEnumMappings();
 
@@ -381,9 +378,29 @@ void CPPCompile::GenEpilog()
 	InitializeConsts();
 
 	NL();
+	Emit("void register_bodies__CPP()");
+	StartBlock();
+	Emit("for ( auto& b : CPP__bodies_to_register )");
+	StartBlock();
+	Emit("auto f = make_intrusive<CPPDynStmt>(b.func_name.c_str(), b.func, b.type_signature);");
+	Emit("register_body__CPP(f, b.priority, b.h, b.events);");
+	EndBlock();
+	EndBlock();
+
+	NL();
+	Emit("void load_BiFs__CPP()");
+	StartBlock();
+	Emit("for ( auto& b : CPP__BiF_lookups__ )");
+	Emit("\tb.ResolveBiF();");
+	EndBlock();
+
+	NL();
 	Emit("void init__CPP()");
 
 	StartBlock();
+
+	Emit("register_bodies__CPP();");
+	NL();
 
 	Emit("std::vector<std::vector<int>> InitIndices;");
 	Emit("generate_indices_set(CPP__Indices__init, InitIndices);");
@@ -402,13 +419,6 @@ void CPPCompile::GenEpilog()
 	     "CPP__Type__, CPP__Attributes__, CPP__Attr__, CPP__CallExpr__);");
 
 	NL();
-	Emit("for ( auto& b : CPP__bodies_to_register )");
-	StartBlock();
-	Emit("auto f = make_intrusive<CPPDynStmt>(b.func_name.c_str(), b.func, b.type_signature);");
-	Emit("register_body__CPP(f, b.priority, b.h, b.events);");
-	EndBlock();
-
-	NL();
 	int max_cohort = 0;
 	for ( auto gi : all_global_info )
 		max_cohort = std::max(max_cohort, gi->MaxCohort());
@@ -418,10 +428,6 @@ void CPPCompile::GenEpilog()
 			if ( gi->CohortSize(c) > 0 )
 				Emit("%s.InitializeCohort(&im, %s);", gi->InitializersName(), Fmt(c));
 
-	NL();
-	Emit("for ( auto& b : CPP__BiF_lookups__ )");
-	Emit("\tb.ResolveBiF();");
-
 	// Populate mappings for dynamic offsets.
 	NL();
 	Emit("for ( auto& em : CPP__enum_mappings__ )");
@@ -430,10 +436,13 @@ void CPPCompile::GenEpilog()
 	Emit("for ( auto& fm : CPP__field_mappings__ )");
 	Emit("\tfield_mapping.push_back(fm.ComputeOffset(&im));");
 
-	if ( standalone )
-		Emit("standalone_init__CPP();");
+	NL();
+	Emit("load_BiFs__CPP();");
 
 	EndBlock(true);
+
+	if ( standalone )
+		GenStandaloneActivation();
 
 	GenInitHook();
 

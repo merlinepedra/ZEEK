@@ -67,7 +67,8 @@ extern Func* lookup_bif__CPP(const char* bif);
 // returns an associated FuncVal.  It's a fatal error for the hash
 // not to exist, because this function should only be called by compiled
 // code that has ensured its existence.
-extern FuncValPtr lookup_func__CPP(std::string name, std::vector<p_hash_type> h, const TypePtr& t);
+extern FuncValPtr lookup_func__CPP(std::string name, int num_bodies, std::vector<p_hash_type> h,
+                                   const TypePtr& t);
 
 // Returns the record corresponding to the given name, as long as the
 // name is indeed a record type.  Otherwise (or if the name is nil)
