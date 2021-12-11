@@ -99,16 +99,16 @@ bool should_analyze(const ScriptFuncPtr& f, const StmtPtr& body)
 	if ( ofiles.empty() && ofuncs.empty() )
 		return true;
 
-	auto fn = f->Name();
+	auto fun = f->Name();
 
 	for ( auto& o : ofuncs )
-		if ( std::regex_match(fn, o) )
+		if ( std::regex_match(fun, o) )
 			return true;
 
-	fn = body->GetLocationInfo()->filename;
+	auto fin = util::detail::normalize_path(body->GetLocationInfo()->filename);
 
 	for ( auto& o : ofiles )
-		if ( std::regex_match(fn, o) )
+		if ( std::regex_match(fin, o) )
 			return true;
 
 	return false;
