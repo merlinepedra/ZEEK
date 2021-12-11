@@ -296,7 +296,14 @@ static void init_options()
 
 	if ( analysis_options.only_funcs.empty() )
 		{
-		auto zo = getenv("ZEEK_ONLY");
+		auto zo = getenv("ZEEK_FUNC_ONLY");
+		if ( zo )
+			add_func_analysis_pattern(analysis_options, zo);
+		}
+
+	if ( analysis_options.only_files.empty() )
+		{
+		auto zo = getenv("ZEEK_FILE_ONLY");
 		if ( zo )
 			add_file_analysis_pattern(analysis_options, zo);
 		}
