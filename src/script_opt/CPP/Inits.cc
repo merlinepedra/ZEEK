@@ -295,15 +295,6 @@ void CPPCompile::GenLoad()
 
 	Emit("register_scripts__CPP(%s, standalone_init__CPP);", Fmt(total_hash));
 
-	// Spit out the placeholder script, and any associated module
-	// definitions.
-	for ( const auto& m : module_names )
-		if ( m != "GLOBAL" )
-			printf("module %s;\n", m.c_str());
-
-	if ( module_names.size() > 0 )
-		printf("module GLOBAL;\n\n");
-
 	printf("global init_CPP_%llu = load_CPP(%llu);\n", total_hash, total_hash);
 	}
 

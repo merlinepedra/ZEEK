@@ -292,13 +292,6 @@ void CPPCompile::RegisterCompiledBody(const string& f)
 
 	events = string("{") + events + "}";
 
-	if ( addl_tag > 0 )
-		// Hash in the location associated with this compilation
-		// pass, to get a final hash that avoids conflicts with
-		// identical-but-in-a-different-context function bodies
-		// when compiling potentially conflicting additional code.
-		h = merge_p_hashes(h, p_hash(cf_locs[f]));
-
 	auto fi = func_index.find(f);
 	ASSERT(fi != func_index.end());
 	auto type_signature = casting_index[fi->second];
