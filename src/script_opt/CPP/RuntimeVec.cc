@@ -47,9 +47,9 @@ static VectorTypePtr base_vector_type__CPP(const VectorTypePtr& vt)
 #define VEC_OP1_KERNEL(accessor, type, op)                                                         \
 	for ( unsigned int i = 0; i < v->Size(); ++i )                                                 \
 		{                                                                                          \
-		auto v_i = v->ValAt(i);                                                        \
-		if ( v_i )                                                        \
-			v_result->Assign(i, make_intrusive<type>(op v_i->accessor()));                                         \
+		auto v_i = v->ValAt(i);                                                                    \
+		if ( v_i )                                                                                 \
+			v_result->Assign(i, make_intrusive<type>(op v_i->accessor()));                         \
 		}
 
 // A macro (since it's beyond my templating skillz to deal with the
@@ -59,9 +59,9 @@ static VectorTypePtr base_vector_type__CPP(const VectorTypePtr& vt)
 // is "double".  It needs to be optional because C++ will (rightfully)
 // complain about applying certain C++ unary operations to doubles.
 #define VEC_OP1(name, op, double_kernel)                                                           \
-	VectorValPtr vec_op_##name##__CPP(const VectorValPtr& v, const TypePtr& t)                                       \
+	VectorValPtr vec_op_##name##__CPP(const VectorValPtr& v, const TypePtr& t)                     \
 		{                                                                                          \
-		auto vt = base_vector_type__CPP(cast_intrusive<VectorType>(t));                                 \
+		auto vt = base_vector_type__CPP(cast_intrusive<VectorType>(t));                            \
 		auto v_result = make_intrusive<VectorVal>(vt);                                             \
                                                                                                    \
 		switch ( vt->Yield()->InternalType() )                                                     \
@@ -106,10 +106,10 @@ VEC_OP1(comp, ~, )
 #define VEC_OP2_KERNEL(accessor, type, op)                                                         \
 	for ( unsigned int i = 0; i < v1->Size(); ++i )                                                \
 		{                                                                                          \
-		auto v1_i = v1->ValAt(i);                                                      \
-		auto v2_i = v2->ValAt(i);                                                      \
-		if ( v1_i && v2_i ) \
-			v_result->Assign(i, make_intrusive<type>(v1_i->accessor() op v2_i->accessor()));                                   \
+		auto v1_i = v1->ValAt(i);                                                                  \
+		auto v2_i = v2->ValAt(i);                                                                  \
+		if ( v1_i && v2_i )                                                                        \
+			v_result->Assign(i, make_intrusive<type>(v1_i->accessor() op v2_i->accessor()));       \
 		}
 
 // Analogous to VEC_OP1, instantiates a function for a given binary operation,

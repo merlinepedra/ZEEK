@@ -485,8 +485,7 @@ ProfileFuncs::ProfileFuncs(std::vector<FuncInfo>& funcs, is_compilable_pred pred
 
 		// Computing those hashes could have led to traversals that
 		// create more pending expressions to analyze.
-		}
-	while ( ! pending_exprs.empty() );
+		} while ( ! pending_exprs.empty() );
 	}
 
 void ProfileFuncs::MergeInProfile(ProfileFunc* pf)

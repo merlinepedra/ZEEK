@@ -62,7 +62,8 @@ void register_type__CPP(TypePtr t, const string& name)
 	id->MakeType();
 	}
 
-void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash, vector<string> events, void (*finish_init)())
+void register_body__CPP(CPPStmtPtr body, int priority, p_hash_type hash, vector<string> events,
+                        void (*finish_init)())
 	{
 	compiled_scripts[hash] = {move(body), priority, move(events), finish_init};
 	}
@@ -190,7 +191,8 @@ Func* lookup_bif__CPP(const char* bif)
 	return b ? b->GetVal()->AsFunc() : nullptr;
 	}
 
-FuncValPtr lookup_func__CPP(string name, int num_bodies, vector<p_hash_type> hashes, const TypePtr& t)
+FuncValPtr lookup_func__CPP(string name, int num_bodies, vector<p_hash_type> hashes,
+                            const TypePtr& t)
 	{
 	auto ft = cast_intrusive<FuncType>(t);
 

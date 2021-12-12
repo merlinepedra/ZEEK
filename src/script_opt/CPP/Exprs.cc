@@ -581,8 +581,8 @@ string CPPCompile::GenArithCoerceExpr(const Expr* e, GenType gt)
 		return GenExpr(op, gt);
 
 	if ( t->Tag() == TYPE_VECTOR )
-		return string("vector_coerce_to__CPP(") + GenExpr(op, GEN_NATIVE) + ", " +
-		       GenTypeName(t) + ")";
+		return string("vector_coerce_to__CPP(") + GenExpr(op, GEN_NATIVE) + ", " + GenTypeName(t) +
+		       ")";
 
 	string cast_name;
 
@@ -1113,7 +1113,7 @@ string CPPCompile::GenVectorOp(const Expr* e, string op, const char* vec_op)
 	{
 	auto t = e->GetType();
 	auto gen_t = GenTypeName(t);
-	auto gen = string("vec_op_") + vec_op + "__CPP(" + op + ", " + gen_t +")";
+	auto gen = string("vec_op_") + vec_op + "__CPP(" + op + ", " + gen_t + ")";
 
 	if ( ! IsArithmetic(t->Yield()->Tag()) )
 		gen = string("vector_coerce_to__CPP(") + gen + ", " + gen_t + ")";
