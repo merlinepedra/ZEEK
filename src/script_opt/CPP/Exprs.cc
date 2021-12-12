@@ -1111,10 +1111,12 @@ string CPPCompile::GenListAssign(const ExprPtr& lhs, const ExprPtr& rhs)
 
 string CPPCompile::GenVectorOp(const Expr* e, string op, const char* vec_op)
 	{
-	auto gen = string("vec_op_") + vec_op + "__CPP(" + op + ")";
+	auto t = e->GetType();
+	auto gen_t = GenTypeName(t);
+	auto gen = string("vec_op_") + vec_op + "__CPP(" + op + ", " + gen_t +")";
 
-	if ( ! IsArithmetic(e->GetType()->Yield()->Tag()) )
-		gen = string("vector_coerce_to__CPP(") + gen + ", " + GenTypeName(e->GetType()) + ")";
+	if ( ! IsArithmetic(t->Yield()->Tag()) )
+		gen = string("vector_coerce_to__CPP(") + gen + ", " + gen_t + ")";
 
 	return gen;
 	}
