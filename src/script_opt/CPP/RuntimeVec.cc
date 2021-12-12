@@ -437,4 +437,10 @@ VectorValPtr vector_coerce_to__CPP(const VectorValPtr& v, const TypePtr& targ)
 	return v_result;
 	}
 
+VectorValPtr vec_scalar_mixed_with_vector()
+	{
+	reporter->CPPRuntimeError("vector-mixed-with-scalar operations not supported");
+	return nullptr;
+	}
+
 	} // namespace zeek::detail
