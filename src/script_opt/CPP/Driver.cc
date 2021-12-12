@@ -306,9 +306,65 @@ void CPPCompile::GenEpilog()
 		GenInitExpr(ii.second);
 
 	NL();
-	Emit("ValPtr CPPDynStmt::Exec(Frame* f, StmtFlowType& flow)");
+	GenCPPDynStmt();
+
+	NL();
+	for ( auto gi : all_global_info )
+		gi->GenerateInitializers(this);
+
+	NL();
+	InitializeEnumMappings();
+
+	NL();
+	InitializeFieldMappings();
+
+	NL();
+	InitializeBiFs();
+
+	NL();
+	indices_mgr.Generate(this);
+
+	NL();
+	InitializeStrings();
+
+	NL();
+	InitializeHashes();
+
+	NL();
+	InitializeConsts();
+
+	NL();
+	GenLoadBiFs();
+
+	NL();
+	GenFinishInit();
+
+	NL();
+	GenRegisterBodies();
+
+	NL();
+	Emit("void init__CPP()");
 	StartBlock();
+	Emit("register_bodies__CPP();");
+	EndBlock();
+
+	if ( standalone )
+		GenStandaloneActivation();
+
+	GenInitHook();
+
+	Emit("} // %s\n\n", scope_prefix(addl_tag));
+	Emit("} // zeek::detail");
+	}
+
+void CPPCompile::GenCPPDynStmt()
+	{
+	Emit("ValPtr CPPDynStmt::Exec(Frame* f, StmtFlowType& flow)");
+
+	StartBlock();
+
 	Emit("flow = FLOW_RETURN;");
+
 	Emit("switch ( type_signature )");
 	StartBlock();
 	for ( auto i = 0U; i < func_casting_glue.size(); ++i )
@@ -343,41 +399,19 @@ void CPPCompile::GenEpilog()
 
 	EndBlock();
 	EndBlock();
+	}
 
-	NL();
-
-	for ( auto gi : all_global_info )
-		gi->GenerateInitializers(this);
-
-	NL();
-	InitializeEnumMappings();
-
-	NL();
-	InitializeFieldMappings();
-
-	NL();
-	InitializeBiFs();
-
-	NL();
-	indices_mgr.Generate(this);
-
-	NL();
-	InitializeStrings();
-
-	NL();
-	InitializeHashes();
-
-	NL();
-	InitializeConsts();
-
-	NL();
+void CPPCompile::GenLoadBiFs()
+	{
 	Emit("void load_BiFs__CPP()");
 	StartBlock();
 	Emit("for ( auto& b : CPP__BiF_lookups__ )");
 	Emit("\tb.ResolveBiF();");
 	EndBlock();
+	}
 
-	NL();
+void CPPCompile::GenFinishInit()
+	{
 	Emit("void finish_init__CPP()");
 
 	StartBlock();
@@ -426,30 +460,20 @@ void CPPCompile::GenEpilog()
 	Emit("load_BiFs__CPP();");
 
 	EndBlock();
+	}
 
-	NL();
+void CPPCompile::GenRegisterBodies()
+	{
 	Emit("void register_bodies__CPP()");
 	StartBlock();
+
 	Emit("for ( auto& b : CPP__bodies_to_register )");
 	StartBlock();
 	Emit("auto f = make_intrusive<CPPDynStmt>(b.func_name.c_str(), b.func, b.type_signature);");
 	Emit("register_body__CPP(f, b.priority, b.h, b.events, finish_init__CPP);");
 	EndBlock();
+
 	EndBlock();
-
-	NL();
-	Emit("void init__CPP()");
-	StartBlock();
-	Emit("register_bodies__CPP();");
-	EndBlock();
-
-	if ( standalone )
-		GenStandaloneActivation();
-
-	GenInitHook();
-
-	Emit("} // %s\n\n", scope_prefix(addl_tag));
-	Emit("} // zeek::detail");
 	}
 
 bool CPPCompile::IsCompilable(const FuncInfo& func, const char** reason)
