@@ -571,7 +571,9 @@ public:
 	ExprPtr Cond();
 	StmtPtr WhenBody();
 
-	ExprPtr TimeoutExpr() { return timeout; }
+	ExprPtr TimeoutExpr() const { return timeout; }
+	double TimeoutVal(Frame* f);
+
 	StmtPtr TimeoutStmt();
 
 	FuncType::CaptureList* Captures() { return cl; }

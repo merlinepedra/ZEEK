@@ -1977,6 +1977,18 @@ StmtPtr WhenInfo::WhenBody()
 	return make_intrusive<ReturnStmt>(invoke, true);
 	}
 
+double WhenInfo::TimeoutVal(Frame* f)
+	{
+	if ( timeout )
+		{
+		auto t = timeout->Eval(f);
+		if ( t )
+			return t->AsDouble();
+		}
+
+	return -1.0; // signals "no timeout"
+	}
+
 StmtPtr WhenInfo::TimeoutStmt()
 	{
 	if ( ! curr_lambda )
@@ -2020,6 +2032,8 @@ ValPtr WhenStmt::Exec(Frame* f, StmtFlowType& flow)
 
 	wi->Instantiate(f);
 
+	auto timeout = wi->TimeoutVal(f);
+
 	if ( wi->Captures() )
 		{
 		std::vector<ValPtr> local_aggrs;
@@ -2031,12 +2045,12 @@ ValPtr WhenStmt::Exec(Frame* f, StmtFlowType& flow)
 				local_aggrs.emplace_back(std::move(v));
 			}
 
-		new trigger::Trigger(wi, wi->WhenExprGlobals(), local_aggrs, f, location);
+		new trigger::Trigger(wi, timeout, wi->WhenExprGlobals(), local_aggrs, f, location);
 		}
 
 	else
 		// The new trigger object will take care of its own deletion.
-		new trigger::Trigger(wi->Cond(), wi->WhenBody(), wi->TimeoutStmt(), wi->TimeoutExpr(), f,
+		new trigger::Trigger(wi->Cond(), wi->WhenBody(), wi->TimeoutStmt(), timeout, f,
 		                     wi->IsReturn(), location);
 
 	return nullptr;
