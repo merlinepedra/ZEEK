@@ -35,6 +35,7 @@ public:
 	StringValPtr Host();
 
 	double CreationTime() const { return creation_time; }
+	uint32_t TTL() const { return req_ttl; }
 
 	void Save(FILE* f) const;
 

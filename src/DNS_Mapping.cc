@@ -129,12 +129,15 @@ void DNS_Mapping::Init(struct hostent* h)
 		// TODO: this could easily be expanded to include all of the aliases as well
 		names.push_back(h->h_name);
 
-	for ( int i = 0; h->h_addr_list[i] != NULL; ++i )
+	if ( h->h_addr_list )
 		{
-		if ( h->h_addrtype == AF_INET )
-			addrs.push_back(IPAddr(IPv4, (uint32_t*)h->h_addr_list[i], IPAddr::Network));
-		else if ( h->h_addrtype == AF_INET6 )
-			addrs.push_back(IPAddr(IPv6, (uint32_t*)h->h_addr_list[i], IPAddr::Network));
+		for ( int i = 0; h->h_addr_list[i] != NULL; ++i )
+			{
+			if ( h->h_addrtype == AF_INET )
+				addrs.push_back(IPAddr(IPv4, (uint32_t*)h->h_addr_list[i], IPAddr::Network));
+			else if ( h->h_addrtype == AF_INET6 )
+				addrs.push_back(IPAddr(IPv6, (uint32_t*)h->h_addr_list[i], IPAddr::Network));
+			}
 		}
 
 	failed = false;
