@@ -66,6 +66,10 @@ void CPPCompile::GenStmt(const Stmt* s)
 			GenSwitchStmt(static_cast<const SwitchStmt*>(s));
 			break;
 
+		case STMT_WHEN:
+			GenWhenStmt(static_cast<const WhenStmt*>(s));
+			break;
+
 		case STMT_FOR:
 			GenForStmt(s->AsForStmt());
 			break;
@@ -89,10 +93,6 @@ void CPPCompile::GenStmt(const Stmt* s)
 			break;
 
 		case STMT_FALLTHROUGH:
-			break;
-
-		case STMT_WHEN:
-			ASSERT(0);
 			break;
 
 		default:
@@ -282,6 +282,47 @@ void CPPCompile::GenSwitchStmt(const SwitchStmt* sw)
 		}
 
 	--break_level;
+
+	Emit("}");
+	}
+
+void CPPCompile::GenWhenStmt(const WhenStmt* w)
+	{
+	auto wi = w->Info();
+
+	auto is_return = wi->IsReturn() ? "true" : "false";
+	auto timeout = wi->TimeoutExpr();
+	auto timeout_val = timeout ? GenExpr(timeout, GEN_NATIVE) : "-1.0";
+	auto loc = w->GetLocationInfo();
+
+	Emit("{ // begin a new scope for internal variables");
+
+	Emit("static WhenInfo* CPP__wi = nullptr;");
+	Emit("static IDSet CPP__w_globals;");
+
+	NL();
+
+	Emit("if ( ! CPP__wi )");
+	StartBlock();
+	Emit("CPP__wi = new WhenInfo(%s);", is_return);
+	for ( auto& wg : wi->WhenExprGlobals() )
+		Emit("CPP__w_globals.insert(find_global__CPP(\"%s\"));", wg->Name());
+	EndBlock();
+	NL();
+
+	Emit("std::vector<ValPtr> CPP__local_aggrs;");
+	for ( auto l : wi->WhenExprLocals() )
+		if ( IsAggr(l->GetType()) )
+			Emit("CPP__local_aggrs.emplace_back(%s);", IDNameStr(l));
+
+	Emit("Frame* CPP__f = nullptr;");
+
+	Emit("CPP__wi->Instantiate(%s);", GenExpr(wi->Lambda(), GEN_NATIVE));
+
+	Emit("auto t = new trigger::Trigger(CPP__wi, %s, CPP__w_globals, CPP__local_aggrs, CPP__f, nullptr);", timeout_val);
+
+	auto loc_str = util::fmt("%s:%d-%d", loc->filename, loc->first_line, loc->last_line);
+	Emit("t->SetName(\"%s\");", loc_str);
 
 	Emit("}");
 	}

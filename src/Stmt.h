@@ -546,6 +546,10 @@ public:
 	// Takes ownership of the CaptureList, which if nil signifies
 	// old-style frame semantics.
 	WhenInfo(ExprPtr _cond, FuncType::CaptureList* _cl, bool _is_return);
+
+	// Constructor used by script optimization to create a stub.
+	WhenInfo(bool _is_return);
+
 	~WhenInfo() { delete cl; }
 
 	void AddBody(StmtPtr _s) { s = std::move(_s); }
@@ -558,11 +562,18 @@ public:
 
 	// Complete construction of the associated internals, including
 	// the (complex) lambda used to access the different elements of
-	// the statement.
-	void Build(StmtPtr ws);
+	// the statement.  The optional argument is only for generating
+	// error messages.
+	void Build(StmtPtr ws = nullptr);
 
-	// Instantiate a new instance.
+	// This is available after a call to Build().
+	const LambdaExprPtr& Lambda() const { return lambda; }
+
+	// Instantiate a new instance, either by evaluating the associated
+	// lambda, or directly using the given function value (for compiled
+	// code).
 	void Instantiate(Frame* f);
+	void Instantiate(ValPtr func);
 
 	// For old-style semantics, the following simply return the
 	// individual "when" components.  For capture semantics, however,
@@ -580,8 +591,6 @@ public:
 
 	bool IsReturn() const { return is_return; }
 
-	const LambdaExprPtr& Lambda() const { return lambda; }
-
 	// The locals and globals used in the conditional expression
 	// (other than newly introduced locals), necessary for registering
 	// the associated triggers for when their values change.
@@ -589,6 +598,9 @@ public:
 	const IDSet& WhenExprGlobals() const { return when_expr_globals; }
 
 private:
+	// Build those elements we'll need for invoking our lambda.
+	void BuildInvokeElems();
+
 	ExprPtr cond;
 	StmtPtr s;
 	ExprPtr timeout;
@@ -612,6 +624,11 @@ private:
 	ListExprPtr invoke_cond;
 	ListExprPtr invoke_s;
 	ListExprPtr invoke_timeout;
+
+	// Helper expressions for calling the lambda / testing within it.
+	ConstExprPtr one_const;
+	ConstExprPtr two_const;
+	ConstExprPtr three_const;
 
 	IDSet when_expr_locals;
 	IDSet when_expr_globals;

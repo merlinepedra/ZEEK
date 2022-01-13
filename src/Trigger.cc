@@ -117,7 +117,7 @@ Trigger::Trigger(WhenInfo* wi, double timeout, const IDSet& _globals, std::vecto
 	}
 
 void Trigger::Init(ExprPtr arg_cond, StmtPtr arg_body, StmtPtr arg_timeout_stmts, Frame* arg_frame,
-                   bool arg_is_return, const Location* arg_location)
+                   bool arg_is_return, const Location* location)
 	{
 	cond = arg_cond;
 	body = arg_body;
@@ -127,7 +127,11 @@ void Trigger::Init(ExprPtr arg_cond, StmtPtr arg_body, StmtPtr arg_timeout_stmts
 	disabled = false;
 	attached = nullptr;
 	is_return = arg_is_return;
-	location = arg_location;
+
+	if ( location )
+		name = util::fmt("%s:%d-%d", location->filename, location->first_line, location->last_line);
+	else
+		name = "<no-trigger-location>";
 
 	if ( arg_frame )
 		frame = arg_frame->Clone();
@@ -494,12 +498,6 @@ void Trigger::Describe(ODesc* d) const
 void Trigger::Modified(notifier::detail::Modifiable* m)
 	{
 	trigger_mgr->Queue(this);
-	}
-
-const char* Trigger::Name() const
-	{
-	assert(location);
-	return util::fmt("%s:%d-%d", location->filename, location->first_line, location->last_line);
 	}
 
 Manager::Manager() : iosource::IOSource()

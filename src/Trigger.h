@@ -103,7 +103,8 @@ public:
 	// for any further progress to be made, so just Unref ourselves.
 	void Terminate() override;
 
-	const char* Name() const;
+	const char* Name() const { return name.c_str(); }
+	void SetName(const char* new_name) { name = new_name; }
 
 private:
 	friend class TriggerTimer;
@@ -124,7 +125,8 @@ private:
 	double timeout_value;
 	Frame* frame;
 	bool is_return;
-	const Location* location;
+
+	std::string name;
 
 	TriggerTimer* timer;
 	Trigger* attached;

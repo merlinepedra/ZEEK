@@ -719,6 +719,7 @@ private:
 	void GenDeleteStmt(const ExprStmt* es);
 	void GenEventStmt(const EventStmt* ev);
 	void GenSwitchStmt(const SwitchStmt* sw);
+	void GenWhenStmt(const WhenStmt* w);
 
 	void GenForStmt(const ForStmt* f);
 	void GenForOverTable(const ExprPtr& tbl, const IDPtr& value_var, const IDPList* loop_vars);

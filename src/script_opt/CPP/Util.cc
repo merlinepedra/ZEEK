@@ -38,13 +38,6 @@ string scope_prefix(int scope)
 
 bool is_CPP_compilable(const ProfileFunc* pf, const char** reason)
 	{
-	if ( pf->NumWhenStmts() > 0 )
-		{
-		if ( reason )
-			*reason = "use of \"when\"";
-		return false;
-		}
-
 	if ( pf->TypeSwitches().size() > 0 )
 		{
 		if ( reason )
