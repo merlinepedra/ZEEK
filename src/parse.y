@@ -772,7 +772,7 @@ expr:
 				}
 
 			else
-				$$ = new CallExpr({AdoptRef{}, $1}, {AdoptRef{}, $4}, in_hook > 0);
+				$$ = new CallExpr({AdoptRef{}, $1}, {AdoptRef{}, $4}, in_hook > 0, in_when_cond);
 			}
 
 	|	TOK_HOOK { ++in_hook; } expr

@@ -4409,8 +4409,8 @@ ValPtr InExpr::Fold(Val* v1, Val* v2) const
 	return val_mgr->Bool(res);
 	}
 
-CallExpr::CallExpr(ExprPtr arg_func, ListExprPtr arg_args, bool in_hook)
-	: Expr(EXPR_CALL), func(std::move(arg_func)), args(std::move(arg_args))
+CallExpr::CallExpr(ExprPtr arg_func, ListExprPtr arg_args, bool in_hook, bool _in_when)
+	: Expr(EXPR_CALL), func(std::move(arg_func)), args(std::move(arg_args)), in_when(_in_when)
 	{
 	if ( func->IsError() || args->IsError() )
 		{
