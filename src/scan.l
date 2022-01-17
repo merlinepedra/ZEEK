@@ -68,6 +68,10 @@ std::unordered_set<std::string> files_with_conditionals;
 
 zeek::detail::int_list if_stack;
 
+// Whether we're parsing a "when" conditional, for which we treat
+// the "local" keyword differently.
+int in_when_cond = 0;
+
 int line_number = 1;
 const char* filename = 0; // Absolute path of file currently being parsed.
 const char* last_filename = 0; // Absolute path of last file parsed.
@@ -278,7 +282,7 @@ int	return TOK_INT;
 interval	return TOK_INTERVAL;
 is	return TOK_IS;
 list	return TOK_LIST;
-local	return TOK_LOCAL;
+local	return in_when_cond ? TOK_WHEN_LOCAL : TOK_LOCAL;
 module	return TOK_MODULE;
 next	return TOK_NEXT;
 of	return TOK_OF;
