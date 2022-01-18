@@ -315,11 +315,9 @@ void CPPCompile::GenWhenStmt(const WhenStmt* w)
 		if ( IsAggr(l->GetType()) )
 			Emit("CPP__local_aggrs.emplace_back(%s);", IDNameStr(l));
 
-	Emit("Frame* CPP__f = nullptr;");
-
 	Emit("CPP__wi->Instantiate(%s);", GenExpr(wi->Lambda(), GEN_NATIVE));
 
-	Emit("auto t = new trigger::Trigger(CPP__wi, %s, CPP__w_globals, CPP__local_aggrs, CPP__f, nullptr);", timeout_val);
+	Emit("auto t = new trigger::Trigger(CPP__wi, %s, CPP__w_globals, CPP__local_aggrs, f__CPP, nullptr);", timeout_val);
 
 	auto loc_str = util::fmt("%s:%d-%d", loc->filename, loc->first_line, loc->last_line);
 	Emit("t->SetName(\"%s\");", loc_str);
