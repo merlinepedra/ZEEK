@@ -41,6 +41,22 @@ inline ValPtr invoke__CPP(Func* f, std::vector<ValPtr> args, Frame* frame)
 	return f->Invoke(&args, frame);
 	}
 
+class DelayedCallException : public InterpreterException
+	{
+public:
+	DelayedCallException() { }
+	};
+
+// The same, but raises an interpreter exception if the function does
+// not return a value.  Used for calls inside "when" conditions.
+inline ValPtr when_invoke__CPP(Func* f, std::vector<ValPtr> args, Frame* frame)
+	{
+	auto res = f->Invoke(&args, frame);
+	if ( ! res )
+		throw DelayedCallException();
+	return res;
+	}
+
 // Assigns the given value to the given global.  A separate function because
 // we also need to return the value, for use in assignment cascades.
 inline ValPtr set_global__CPP(IDPtr g, ValPtr v)
