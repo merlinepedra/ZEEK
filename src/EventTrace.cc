@@ -112,7 +112,7 @@ bool ValTrace::operator==(const ValTrace& vt) const
 		}
 	}
 
-void ValTrace::ComputeDelta(const ValTrace& prev, DeltaVector& deltas)
+void ValTrace::ComputeDelta(const ValTrace& prev, DeltaVector& deltas) const
 	{
 	auto tag = t->Tag();
 
@@ -120,77 +120,56 @@ void ValTrace::ComputeDelta(const ValTrace& prev, DeltaVector& deltas)
 
 	auto& prev_v = prev.GetVal();
 
-	if ( ptr_equiv && prev_v != v )
+	if ( prev_v != v )
 		{
-		deltas.emplace_back(DeltaChangeSingleton(v));
+		if ( *this != prev )
+			deltas.emplace_back(DeltaReplaceValue(this, v));
 		return;
 		}
-
-	bool same;
 
 	switch ( tag )
 		{
 		case TYPE_BOOL:
 		case TYPE_INT:
 		case TYPE_ENUM:
-			same = v->AsInt() == prev_v->AsInt();
-			break;
-
 		case TYPE_COUNT:
 		case TYPE_PORT:
-			same = v->AsCount() == prev_v->AsCount();
-			break;
-
 		case TYPE_DOUBLE:
 		case TYPE_INTERVAL:
 		case TYPE_TIME:
-			same = v->AsDouble() == prev_v->AsDouble();
-			break;
-
 		case TYPE_STRING:
-			same = (*v->AsString()) == (*prev_v->AsString());
-			break;
-
 		case TYPE_ADDR:
-			same = v->AsAddr() == prev_v->AsAddr();
-			break;
-
 		case TYPE_SUBNET:
-			same = v->AsSubNet() == prev_v->AsSubNet();
-			break;
-
 		case TYPE_FUNC:
 		case TYPE_FILE:
 		case TYPE_OPAQUE:
 		case TYPE_PATTERN:
 		case TYPE_ANY:
 		case TYPE_TYPE:
-			// These require pointer equivalence.
-			same = false;
+			// These don't change in place.
 			break;
 
 		case TYPE_LIST:
-			same = ComputeListDelta(prev, deltas);
+			// We shouldn't see these exposed directly, as
+			// they're not manipulable at script-level.
+			reporter->InternalError("list type seen in ValTrace::ComputeDelta");
 			break;
 
 		case TYPE_RECORD:
-			same = ComputeRecordDelta(prev, deltas);
+			ComputeRecordDelta(prev, deltas);
 			break;
 
 		case TYPE_TABLE:
-			same = ComputeTableDelta(prev, deltas);
+			ComputeTableDelta(prev, deltas);
 			break;
 
 		case TYPE_VECTOR:
-			same = ComputeVectorDelta(prev, deltas);
+			ComputeVectorDelta(prev, deltas);
 			break;
 
 		default:
 			reporter->InternalError("bad type in ValTrace::ComputeDelta");
 		}
-
-	if ( ! same )
-		deltas.emplace_back(DeltaChangeSingleton(v));
 	}
 
 void ValTrace::TraceList(const ListValPtr& lv)
@@ -342,60 +321,159 @@ bool ValTrace::SameElems(const ValTrace& vt) const
 	return true;
 	}
 
-bool ValTrace::ComputeListDelta(const ValTrace& prev, DeltaVector& deltas)
+void ValTrace::ComputeRecordDelta(const ValTrace& prev, DeltaVector& deltas) const
 	{
-	// For lists, we don't bother constructing actual deltas because
-	// these are not visible at script-land.  All we care about is
-	// equivalence (for checking table/set indices).
 	auto& prev_elems = prev.elems;
 	auto n = elems.size();
 	if ( n != prev_elems.size() )
-		return false;
-
-	auto orig_delta_size = deltas.size();
+		reporter->InternalError("size inconsistency in ValTrace::ComputeRecordDelta");
 
 	for ( auto i = 0U; i < n; ++i )
 		{
 		auto& trace_i = elems[i];
 		auto& prev_trace_i = prev_elems[i];
 
-		if ( trace_i && prev_trace_i )
+		if ( trace_i )
 			{
-			trace_i->ComputeDelta(*prev_trace_i, deltas);
-			if ( deltas.size() > orig_delta_size )
-				return false;
+			if ( prev_trace_i )
+				{
+				auto& v = trace_i->GetVal();
+				auto& prev_v = prev_trace_i->GetVal();
+
+				if ( v == prev_v )
+					{
+					trace_i->ComputeDelta(*prev_trace_i, deltas);
+					continue;
+					}
+				}
+
+			deltas.emplace_back(DeltaSetField(this, i, v));
 			}
 
-		else if ( trace_i || prev_trace_i )
-			return false;
+		else if ( prev_trace_i )
+			deltas.emplace_back(DeltaSetField(this, i, nullptr));
 		}
-
-	return true;
 	}
 
-bool ValTrace::ComputeRecordDelta(const ValTrace& prev, DeltaVector& deltas)
+void ValTrace::ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) const
 	{
 	auto& prev_elems = prev.elems;
-	auto n = elems.size();
-	if ( n != prev_elems.size() )
-		return false;
+	auto& prev_elems2 = prev.elems2;
 
-	auto orig_delta_size = deltas.size();
+	auto n = elems.size();
+	auto is_set = elems2.size() == 0;
+	auto prev_n = prev_elems.size();
+
+	// We can't compare pointers for the indices because they're
+	// new objects generated afresh by TableVal::ToMap.  So we do
+	// explict full comparisons for equality, distinguishing values
+	// newly added, common to both, or (implicitly) removed.  We'll
+	// then go through the common to check them further.
+	//
+	// Our approach is O(N^2), but presumably these tables aren't
+	// large, and in any case generating event traces is not something
+	// requiring high performance, so we opt for conceptual simplicity.
+
+	// Track which index values are newly added:
+	std::set<const Val*> added_indices;
+
+	// Track which entry traces are in common.  Indexed by previous
+	// trace elem index, yielding current trace elem index.
+	std::map<int, int> common_entries;
 
 	for ( auto i = 0U; i < n; ++i )
 		{
 		auto& trace_i = elems[i];
-		auto& prev_trace_i = prev_elems[i];
 
-		if ( trace_i && prev_trace_i )
+		bool common = false;
+
+		for ( auto j = 0U; j < prev_n; ++j )
 			{
-			trace_i->ComputeDelta(*prev_trace_i, deltas);
-			if ( deltas.size() > orig_delta_size )
-				return false;
+			auto& prev_trace_j = prev_elems[j];
+
+			if ( *trace_i == *prev_trace_j )
+				{
+				common_entries[j] = i;
+				common = true;
+				break;
+				}
 			}
 
-		else if ( trace_i || prev_trace_i )
-			return false;
+		if ( ! common )
+			{
+			auto v = trace_i->GetVal();
+			auto yield = is_set ? nullptr : elems2[i]->GetVal();
+			deltas.emplace_back(DeltaSetTableEntry(this, v, yield));
+			added_indices.insert(v.get());
+			}
+		}
+
+	for ( auto j = 0U; j < prev_n; ++j )
+		{
+		auto& prev_trace = prev_elems2[j];
+		auto common_pair = common_entries.find(j);
+
+		if ( common_pair == common_entries.end() )
+			{
+			deltas.emplace_back(DeltaRemoveTableEntry(this, prev_trace->GetVal()));
+			continue;
+			}
+
+		if ( is_set )
+			continue;
+
+		// If we get here, we're analyzing a table for which there's
+		// a common index.  The remaining question is whether the
+		// yield has changed.
+		auto i = common_pair->second;
+		auto& trace = elems2[i];
+
+		auto& yield = trace->GetVal();
+		auto& prev_yield = prev_trace->GetVal();
+
+		if ( yield == prev_yield )
+			trace->ComputeDelta(*prev_trace, deltas);
+		else
+			deltas.emplace_back(DeltaSetTableEntry(this, elems[i]->GetVal(), yield));
+		}
+	}
+
+void ValTrace::ComputeVectorDelta(const ValTrace& prev, DeltaVector& deltas) const
+	{
+	auto& prev_elems = prev.elems;
+	auto n = elems.size();
+	auto prev_n = prev_elems.size();
+
+	if ( n < prev_n )
+		{
+		// The vector shrank in size.  Easiest to just build it
+		// from scratch.
+		deltas.emplace_back(DeltaVectorCreate(this));
+		return;
+		}
+
+	// Look for existing entries that need reassigment.
+	auto i = 0U;
+	for ( ; i < prev_n; ++i )
+		{
+		auto& trace_i = elems[i];
+		auto& prev_trace_i = prev_elems[i];
+
+		auto& elem_i = trace_i->GetVal();
+		auto& prev_elem_i = prev_trace_i->GetVal();
+
+		if ( elem_i == prev_elem_i )
+			trace_i->ComputeDelta(*prev_trace_i, deltas);
+		else
+			deltas.emplace_back(DeltaVectorSet(this, i, elem_i));
+		}
+
+	// Now append any new entries.
+	for ( ; i < n; ++i )
+		{
+		auto& trace_i = elems[i];
+		auto& elem_i = trace_i->GetVal();
+		deltas.emplace_back(DeltaVectorAppend(this, i, elem_i));
 		}
 	}
 
