@@ -401,6 +401,23 @@ ValPtr ScriptFunc::Invoke(zeek::Args* args, Frame* parent) const
 	const CallExpr* call_expr = parent ? parent->GetCall() : nullptr;
 	call_stack.emplace_back(CallInfo{call_expr, this, *args});
 
+	if ( GetType()->Flavor() == FUNC_FLAVOR_EVENT )
+		{
+		printf("event %s:\n", Name());
+		for ( auto& a : *args )
+			{
+			auto& t = a->GetType();
+			if ( IsAggr(t) )
+				printf("\taggr %llx (%s), %llx\n", t.get(), t->GetName().c_str(), a.get());
+			else
+				{
+				ODesc d;
+				a->Describe(&d);
+				printf("\tval %s\n", d.Description());
+				}
+			}
+		}
+
 	if ( g_trace_state.DoTrace() )
 		{
 		ODesc d;
