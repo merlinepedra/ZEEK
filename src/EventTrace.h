@@ -8,6 +8,7 @@ namespace zeek::detail
 	{
 
 class ValTrace;
+class ValTraceMgr;
 
 // Abstract class for capturing a single difference between two values.
 // Includes notions of inserting, changing, or deleting a value.
@@ -15,14 +16,19 @@ class ValDelta
 	{
 public:
 	ValDelta(const ValTrace* _vt) : vt(_vt) {}
+	virtual ~ValDelta() {}
 
-	auto GetValTrace() const { return vt; }
+	virtual std::string Generate(ValTraceMgr* vtm);
 
-private:
+	virtual void Dump() const;
+
+protected:
+	std::string ValDesc(const ValPtr& v) const;
+
 	const ValTrace* vt;
 	};
 
-using DeltaVector = std::vector<ValDelta>;
+using DeltaVector = std::vector<std::unique_ptr<ValDelta>>;
 
 // Tracks the elements of a value as seen at a given point in execution.
 // For non-aggregates, this is simply the Val object, but for aggregates
@@ -36,6 +42,7 @@ public:
 
 	const ValPtr& GetVal() const { return v; }
 	const TypePtr& GetType() const { return t; }
+	const auto& GetElems() const { return elems; }
 
 	// Returns true if this trace and the given one represent the
 	// same underlying value.
@@ -49,6 +56,8 @@ public:
 	// nothing was added to deltas then the two ValTrace's are equivalent
 	// (no changes between them).
 	void ComputeDelta(const ValTrace& prev, DeltaVector& deltas) const;
+
+	void Dump(int indent_level) const;
 
 private:
 	void TraceList(const ListValPtr& lv);
@@ -67,6 +76,8 @@ private:
 	void ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) const;
 	void ComputeVectorDelta(const ValTrace& prev, DeltaVector& deltas) const;
 
+	void Indent(int indent_level) const;
+
 	// Holds sub-elements.
 	std::vector<std::shared_ptr<ValTrace>> elems;
 
@@ -84,6 +95,10 @@ public:
 	DeltaReplaceValue(const ValTrace* _vt, ValPtr _new_val)
 		: ValDelta(_vt), new_val(std::move(_new_val)) {}
 
+	std::string Generate(ValTraceMgr* vtm) override;
+
+	void Dump() const override;
+
 private:
 	ValPtr new_val;
 	};
@@ -95,6 +110,10 @@ class DeltaSetField : public ValDelta
 public:
 	DeltaSetField(const ValTrace* _vt, int _field, ValPtr _new_val)
 		: ValDelta(_vt), field(_field), new_val(std::move(_new_val)) {}
+
+	std::string Generate(ValTraceMgr* vtm) override;
+
+	void Dump() const override;
 
 private:
 	int field;
@@ -111,6 +130,10 @@ public:
 	DeltaSetTableEntry(const ValTrace* _vt, ValPtr _index, ValPtr _new_val)
 		: ValDelta(_vt), index(_index), new_val(std::move(_new_val)) {}
 
+	std::string Generate(ValTraceMgr* vtm) override;
+
+	void Dump() const override;
+
 private:
 	ValPtr index;
 	ValPtr new_val;
@@ -123,6 +146,10 @@ public:
 	DeltaRemoveTableEntry(const ValTrace* _vt, ValPtr _index)
 		: ValDelta(_vt), index(std::move(_index)) {}
 
+	std::string Generate(ValTraceMgr* vtm) override;
+
+	void Dump() const override;
+
 private:
 	ValPtr index;
 	};
@@ -133,6 +160,10 @@ class DeltaVectorSet : public ValDelta
 public:
 	DeltaVectorSet(const ValTrace* _vt, int _index, ValPtr _elem)
 		 : ValDelta(_vt), index(_index), elem(std::move(_elem)) {}
+
+	std::string Generate(ValTraceMgr* vtm) override;
+
+	void Dump() const override;
 
 private:
 	int index;
@@ -146,6 +177,10 @@ public:
 	DeltaVectorAppend(const ValTrace* _vt, int _index, ValPtr _elem)
 		: ValDelta(_vt), index(_index), elem(std::move(_elem)) {}
 
+	std::string Generate(ValTraceMgr* vtm) override;
+
+	void Dump() const override;
+
 private:
 	int index;
 	ValPtr elem;
@@ -158,13 +193,38 @@ public:
 	DeltaVectorCreate(const ValTrace* _vt)
 		: ValDelta(_vt) {}
 
+	std::string Generate(ValTraceMgr* vtm) override;
+
+	void Dump() const override;
+
 private:
 	};
 
 class ValTraceMgr
 	{
 public:
-	std::shared_ptr<ValTrace> GetTrace(const ValPtr& v);
+	void AddVal(ValPtr v);
+
+	const std::string& ValName(const ValPtr& v);
+	const std::string& ValName(const ValTrace* vt);
+
+private:
+	void NewVal(ValPtr v);
+
+	void AssessChange(ValPtr v, std::shared_ptr<ValTrace> prev_vt);
+	bool AssessChange(const ValTrace* vt, std::shared_ptr<ValTrace> prev_vt);
+
+	void TrackValTrace(const ValTrace* vt);
+	void CreateVal(const ValTrace* vt);
+
+	std::unordered_map<const Val*, std::shared_ptr<ValTrace>> val_map;
+
+	std::unordered_map<const Val*, std::string> val_names;
+	std::unordered_map<const ValTrace*, std::string> vt_names;
+
+	// Hang on to values we're tracking to make sure the pointers don't
+	// go away.
+	std::vector<ValPtr> vals;
 	};
 
 	} // namespace zeek::detail

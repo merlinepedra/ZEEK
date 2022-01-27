@@ -33,6 +33,7 @@
 #include "zeek/Debug.h"
 #include "zeek/Desc.h"
 #include "zeek/Event.h"
+#include "zeek/EventTrace.h"
 #include "zeek/Expr.h"
 #include "zeek/File.h"
 #include "zeek/Frame.h"
@@ -403,9 +404,13 @@ ValPtr ScriptFunc::Invoke(zeek::Args* args, Frame* parent) const
 
 	if ( GetType()->Flavor() == FUNC_FLAVOR_EVENT )
 		{
+		static ValTraceMgr vtm;
+
 		printf("event %s:\n", Name());
 		for ( auto& a : *args )
 			{
+			vtm.AddVal(a);
+#if 0
 			auto& t = a->GetType();
 			if ( IsAggr(t) )
 				printf("\taggr %llx (%s), %llx\n", t.get(), t->GetName().c_str(), a.get());
@@ -415,6 +420,7 @@ ValPtr ScriptFunc::Invoke(zeek::Args* args, Frame* parent) const
 				a->Describe(&d);
 				printf("\tval %s\n", d.Description());
 				}
+#endif
 			}
 		}
 
