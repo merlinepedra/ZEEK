@@ -18,7 +18,10 @@ public:
 	ValDelta(const ValTrace* _vt) : vt(_vt) {}
 	virtual ~ValDelta() {}
 
-	virtual std::string Generate(ValTraceMgr* vtm);
+	virtual std::string Generate(ValTraceMgr* vtm) const;
+	virtual bool NeedsLHS() const { return true; }
+
+	const ValTrace* GetValTrace() const { return vt; }
 
 	virtual void Dump() const;
 
@@ -95,7 +98,7 @@ public:
 	DeltaReplaceValue(const ValTrace* _vt, ValPtr _new_val)
 		: ValDelta(_vt), new_val(std::move(_new_val)) {}
 
-	std::string Generate(ValTraceMgr* vtm) override;
+	std::string Generate(ValTraceMgr* vtm) const override;
 
 	void Dump() const override;
 
@@ -111,7 +114,7 @@ public:
 	DeltaSetField(const ValTrace* _vt, int _field, ValPtr _new_val)
 		: ValDelta(_vt), field(_field), new_val(std::move(_new_val)) {}
 
-	std::string Generate(ValTraceMgr* vtm) override;
+	std::string Generate(ValTraceMgr* vtm) const override;
 
 	void Dump() const override;
 
@@ -120,9 +123,25 @@ private:
 	ValPtr new_val;
 	};
 
-// Captures the notion of setting a table/set entry (which includes both
-// changing an existing one and adding a new one).  The new yield value
-// should be nil in the case of a set.  Use DeltaRemoveTableEntry to
+// Captures the notion of adding an element to a set.  Use DeltaRemoveTableEntry to
+// delete values.
+class DeltaSetSetEntry : public ValDelta
+	{
+public:
+	DeltaSetSetEntry(const ValTrace* _vt, ValPtr _index)
+		: ValDelta(_vt), index(_index) {}
+
+	std::string Generate(ValTraceMgr* vtm) const override;
+	bool NeedsLHS() const override { return false; }
+
+	void Dump() const override;
+
+private:
+	ValPtr index;
+	};
+
+// Captures the notion of setting a table entry (which includes both changing
+// an existing one and adding a new one).  Use DeltaRemoveTableEntry to
 // delete values.
 class DeltaSetTableEntry : public ValDelta
 	{
@@ -130,7 +149,7 @@ public:
 	DeltaSetTableEntry(const ValTrace* _vt, ValPtr _index, ValPtr _new_val)
 		: ValDelta(_vt), index(_index), new_val(std::move(_new_val)) {}
 
-	std::string Generate(ValTraceMgr* vtm) override;
+	std::string Generate(ValTraceMgr* vtm) const override;
 
 	void Dump() const override;
 
@@ -146,7 +165,8 @@ public:
 	DeltaRemoveTableEntry(const ValTrace* _vt, ValPtr _index)
 		: ValDelta(_vt), index(std::move(_index)) {}
 
-	std::string Generate(ValTraceMgr* vtm) override;
+	std::string Generate(ValTraceMgr* vtm) const override;
+	bool NeedsLHS() const override { return false; }
 
 	void Dump() const override;
 
@@ -161,7 +181,7 @@ public:
 	DeltaVectorSet(const ValTrace* _vt, int _index, ValPtr _elem)
 		 : ValDelta(_vt), index(_index), elem(std::move(_elem)) {}
 
-	std::string Generate(ValTraceMgr* vtm) override;
+	std::string Generate(ValTraceMgr* vtm) const override;
 
 	void Dump() const override;
 
@@ -177,7 +197,7 @@ public:
 	DeltaVectorAppend(const ValTrace* _vt, int _index, ValPtr _elem)
 		: ValDelta(_vt), index(_index), elem(std::move(_elem)) {}
 
-	std::string Generate(ValTraceMgr* vtm) override;
+	std::string Generate(ValTraceMgr* vtm) const override;
 
 	void Dump() const override;
 
@@ -193,7 +213,7 @@ public:
 	DeltaVectorCreate(const ValTrace* _vt)
 		: ValDelta(_vt) {}
 
-	std::string Generate(ValTraceMgr* vtm) override;
+	std::string Generate(ValTraceMgr* vtm) const override;
 
 	void Dump() const override;
 
@@ -211,8 +231,10 @@ public:
 private:
 	void NewVal(ValPtr v);
 
-	void AssessChange(ValPtr v, std::shared_ptr<ValTrace> prev_vt);
-	bool AssessChange(const ValTrace* vt, std::shared_ptr<ValTrace> prev_vt);
+	void AssessChange(ValPtr v, const ValTrace* prev_vt);
+	bool AssessChange(const ValTrace* vt, const ValTrace* prev_vt);
+
+	void ProcessDelta(const ValDelta* d);
 
 	void TrackValTrace(const ValTrace* vt);
 	void CreateVal(const ValTrace* vt);

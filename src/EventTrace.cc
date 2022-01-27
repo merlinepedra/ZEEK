@@ -438,8 +438,15 @@ void ValTrace::ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) cons
 		if ( ! common )
 			{
 			auto v = trace_i->GetVal();
-			auto yield = is_set ? nullptr : elems2[i]->GetVal();
-			deltas.emplace_back(std::make_unique<DeltaSetTableEntry>(this, v, yield));
+
+			if ( is_set )
+				deltas.emplace_back(std::make_unique<DeltaSetSetEntry>(this, v));
+			else
+				{
+				auto yield = elems2[i]->GetVal();
+				deltas.emplace_back(std::make_unique<DeltaSetTableEntry>(this, v, yield));
+				}
+
 			added_indices.insert(v.get());
 			}
 		}
@@ -524,7 +531,7 @@ void ValDelta::Dump() const
 	printf("<bad ValDelta>\n");
 	}
 
-std::string ValDelta::Generate(ValTraceMgr* vtm)
+std::string ValDelta::Generate(ValTraceMgr* vtm) const
 	{
 	return "<bad ValDelta>";
 	}
@@ -536,9 +543,9 @@ std::string ValDelta::ValDesc(const ValPtr& v) const
 	return d.Description();
 	}
 
-std::string DeltaReplaceValue::Generate(ValTraceMgr* vtm)
+std::string DeltaReplaceValue::Generate(ValTraceMgr* vtm) const
 	{
-	return vtm->ValName(vt) + " = " + vtm->ValName(new_val);
+	return std::string(" = ") + vtm->ValName(new_val);
 	}
 
 void DeltaReplaceValue::Dump() const
@@ -546,11 +553,11 @@ void DeltaReplaceValue::Dump() const
 	printf("DeltaReplaceValue: %s\n", ValDesc(new_val).c_str());
 	}
 
-std::string DeltaSetField::Generate(ValTraceMgr* vtm)
+std::string DeltaSetField::Generate(ValTraceMgr* vtm) const
 	{
 	auto rt = vt->GetType()->AsRecordType();
 	auto f = rt->FieldName(field);
-	return vtm->ValName(vt) + "$" + f + " = " + vtm->ValName(new_val);
+	return std::string("$") + f + " = " + vtm->ValName(new_val);
 	}
 
 void DeltaSetField::Dump() const
@@ -558,9 +565,19 @@ void DeltaSetField::Dump() const
 	printf("DeltaSetField: $%s = %s\n", vt->GetType()->AsRecordType()->FieldName(field), ValDesc(new_val).c_str());;
 	}
 
-std::string DeltaSetTableEntry::Generate(ValTraceMgr* vtm)
+std::string DeltaSetSetEntry::Generate(ValTraceMgr* vtm) const
 	{
-	return vtm->ValName(vt) + "[" + vtm->ValName(index) + "] = " + vtm->ValName(new_val);
+	return std::string("add ") + vtm->ValName(vt) + "[" + vtm->ValName(index) + "]";
+	}
+
+void DeltaSetSetEntry::Dump() const
+	{
+	printf("DeltaSetSetEntry\n");
+	}
+
+std::string DeltaSetTableEntry::Generate(ValTraceMgr* vtm) const
+	{
+	return std::string("[") + vtm->ValName(index) + "] = " + vtm->ValName(new_val);
 	}
 
 void DeltaSetTableEntry::Dump() const
@@ -568,7 +585,7 @@ void DeltaSetTableEntry::Dump() const
 	printf("DeltaSetTableEntry\n");
 	}
 
-std::string DeltaRemoveTableEntry::Generate(ValTraceMgr* vtm)
+std::string DeltaRemoveTableEntry::Generate(ValTraceMgr* vtm) const
 	{
 	return std::string("delete ") + vtm->ValName(vt) + "[" + vtm->ValName(index) + "]";
 	}
@@ -578,9 +595,9 @@ void DeltaRemoveTableEntry::Dump() const
 	printf("DeltaRemoveTableEntry\n");
 	}
 
-std::string DeltaVectorSet::Generate(ValTraceMgr* vtm)
+std::string DeltaVectorSet::Generate(ValTraceMgr* vtm) const
 	{
-	return vtm->ValName(vt) + "[" + std::to_string(index) + "] = " + vtm->ValName(elem);
+	return std::string("[") + std::to_string(index) + "] = " + vtm->ValName(elem);
 	}
 
 void DeltaVectorSet::Dump() const
@@ -588,9 +605,9 @@ void DeltaVectorSet::Dump() const
 	printf("DeltaVectorSet\n");
 	}
 
-std::string DeltaVectorAppend::Generate(ValTraceMgr* vtm)
+std::string DeltaVectorAppend::Generate(ValTraceMgr* vtm) const
 	{
-	return vtm->ValName(vt) + "[" + std::to_string(index) + "] = " + vtm->ValName(elem);
+	return std::string("[") + std::to_string(index) + "] = " + vtm->ValName(elem);
 	}
 
 void DeltaVectorAppend::Dump() const
@@ -598,7 +615,7 @@ void DeltaVectorAppend::Dump() const
 	printf("DeltaVectorAppend\n");
 	}
 
-std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm)
+std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm) const
 	{
 	auto& elems = vt->GetElems();
 	std::string vec;
@@ -611,7 +628,7 @@ std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm)
 		vec += vtm->ValName(e->GetVal());
 		}
 
-	return vtm->ValName(vt) + " = vector(" + vec + ")";
+	return std::string(" = vector(") + vec + ")";
 	}
 
 void DeltaVectorCreate::Dump() const
@@ -626,7 +643,7 @@ void ValTraceMgr::AddVal(ValPtr v)
 	if ( mapping == val_map.end() )
 		NewVal(v);
 	else
-		AssessChange(v, mapping->second);
+		AssessChange(v, mapping->second.get());
 	}
 
 const std::string& ValTraceMgr::ValName(const ValPtr& v)
@@ -680,7 +697,7 @@ void ValTraceMgr::NewVal(ValPtr v)
 	vt->Dump(1);
 	}
 
-void ValTraceMgr::AssessChange(ValPtr v, std::shared_ptr<ValTrace> prev_vt)
+void ValTraceMgr::AssessChange(ValPtr v, const ValTrace* prev_vt)
 	{
 	auto vt = std::make_shared<ValTrace>(v);
 
@@ -688,7 +705,7 @@ void ValTraceMgr::AssessChange(ValPtr v, std::shared_ptr<ValTrace> prev_vt)
 		TrackValTrace(vt.get());
 	}
 
-bool ValTraceMgr::AssessChange(const ValTrace* vt, std::shared_ptr<ValTrace> prev_vt)
+bool ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 	{
 	DeltaVector deltas;
 
@@ -696,9 +713,25 @@ bool ValTraceMgr::AssessChange(const ValTrace* vt, std::shared_ptr<ValTrace> pre
 
 	printf("reuse of %llx, %lu differences\n", vt->GetVal().get(), deltas.size());
 	for ( auto i = 0U; i < deltas.size(); ++i )
-		printf("\t%s\n", deltas[i]->Generate(this).c_str());
+		ProcessDelta(deltas[i].get());
 
 	return ! deltas.empty();
+	}
+
+void ValTraceMgr::ProcessDelta(const ValDelta* d)
+	{
+	auto gen = d->Generate(this);
+
+	if ( d->NeedsLHS() )
+		{
+		auto vt = d->GetValTrace();
+		if ( vt_names.count(vt) == 0 )
+			TrackValTrace(vt);
+
+		gen = vt_names[vt] + gen;
+		}
+
+	printf("\t%s\n", gen.c_str());
 	}
 
 void ValTraceMgr::TrackValTrace(const ValTrace* vt)
@@ -709,12 +742,17 @@ void ValTraceMgr::TrackValTrace(const ValTrace* vt)
 
 void ValTraceMgr::CreateVal(const ValTrace* vt)
 	{
-	auto find = val_map.find(vt->GetVal().get());
+	auto& v = vt->GetVal();
 
-	if ( find != val_map.end() )
-		AssessChange(vt, find->second);
-
-	TrackValTrace(vt);
+	auto find = val_map.find(v.get());
+	if ( find == val_map.end() )
+		{
+		auto RHS = ValName(v);
+		TrackValTrace(vt);
+		printf("\t%s = %s\n", vt_names[vt].c_str(), RHS.c_str());
+		}
+	else
+		AssessChange(vt, find->second.get());
 	}
 
 	} // namespace zeek::detail
