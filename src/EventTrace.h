@@ -23,8 +23,6 @@ public:
 
 	const ValTrace* GetValTrace() const { return vt; }
 
-	virtual void Dump() const;
-
 protected:
 	std::string ValDesc(const ValPtr& v) const;
 
@@ -103,8 +101,6 @@ public:
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
-	void Dump() const override;
-
 private:
 	ValPtr new_val;
 	};
@@ -119,11 +115,19 @@ public:
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
-	void Dump() const override;
-
 private:
 	int field;
 	ValPtr new_val;
+	};
+
+// Captures the notion of creating a record from scratch.
+class DeltaRecordCreate : public ValDelta
+	{
+public:
+	DeltaRecordCreate(const ValTrace* _vt)
+		: ValDelta(_vt) {}
+
+	std::string Generate(ValTraceMgr* vtm) const override;
 	};
 
 // Captures the notion of adding an element to a set.  Use DeltaRemoveTableEntry to
@@ -136,8 +140,6 @@ public:
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 	bool NeedsLHS() const override { return false; }
-
-	void Dump() const override;
 
 private:
 	ValPtr index;
@@ -154,8 +156,6 @@ public:
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
-	void Dump() const override;
-
 private:
 	ValPtr index;
 	ValPtr new_val;
@@ -171,10 +171,28 @@ public:
 	std::string Generate(ValTraceMgr* vtm) const override;
 	bool NeedsLHS() const override { return false; }
 
-	void Dump() const override;
-
 private:
 	ValPtr index;
+	};
+
+// Captures the notion of creating a set from scratch.
+class DeltaSetCreate : public ValDelta
+	{
+public:
+	DeltaSetCreate(const ValTrace* _vt)
+		: ValDelta(_vt) {}
+
+	std::string Generate(ValTraceMgr* vtm) const override;
+	};
+
+// Captures the notion of creating a table from scratch.
+class DeltaTableCreate : public ValDelta
+	{
+public:
+	DeltaTableCreate(const ValTrace* _vt)
+		: ValDelta(_vt) {}
+
+	std::string Generate(ValTraceMgr* vtm) const override;
 	};
 
 // Captures the notion of changing an element of a vector.
@@ -185,8 +203,6 @@ public:
 		 : ValDelta(_vt), index(_index), elem(std::move(_elem)) {}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
-
-	void Dump() const override;
 
 private:
 	int index;
@@ -202,8 +218,6 @@ public:
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
-	void Dump() const override;
-
 private:
 	int index;
 	ValPtr elem;
@@ -217,8 +231,6 @@ public:
 		: ValDelta(_vt) {}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
-
-	void Dump() const override;
 
 private:
 	};

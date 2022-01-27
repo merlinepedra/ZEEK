@@ -117,15 +117,18 @@ void ValTrace::ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const
 	{
 	auto tag = t->Tag();
 
-	ASSERT(prev->GetType()->Tag() == tag);
-
-	auto& prev_v = prev->GetVal();
-
-	if ( prev_v != v )
+	if ( prev )
 		{
-		if ( this != prev )
-			deltas.emplace_back(std::make_unique<DeltaReplaceValue>(this, v));
-		return;
+		ASSERT(prev->GetType()->Tag() == tag);
+
+		auto& prev_v = prev->GetVal();
+
+		if ( prev_v != v )
+			{
+			if ( *this != *prev )
+				deltas.emplace_back(std::make_unique<DeltaReplaceValue>(this, v));
+			return;
+			}
 		}
 
 	switch ( tag )
@@ -142,30 +145,51 @@ void ValTrace::ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const
 		case TYPE_ADDR:
 		case TYPE_SUBNET:
 		case TYPE_FUNC:
-		case TYPE_FILE:
-		case TYPE_OPAQUE:
 		case TYPE_PATTERN:
-		case TYPE_ANY:
 		case TYPE_TYPE:
 			// These don't change in place.
+			if ( ! prev )
+				deltas.emplace_back(std::make_unique<DeltaReplaceValue>(this, v));
+			break;
+
+		case TYPE_FILE:
+		case TYPE_OPAQUE:
+		case TYPE_ANY:
+			// These we have no way of creating as constants.
+			reporter->Error("cannot generate an event trace for an event of type %s", type_name(tag));
 			break;
 
 		case TYPE_LIST:
 			// We shouldn't see these exposed directly, as
-			// they're not manipulable at script-level.
+			// they're not manipulable at script-level.  An
+			// exception might be for "any" types that are
+			// then decomposed via compound assignment; for
+			// now, we don't support those.
 			reporter->InternalError("list type seen in ValTrace::ComputeDelta");
 			break;
 
 		case TYPE_RECORD:
-			ComputeRecordDelta(prev, deltas);
+			if ( prev )
+				ComputeRecordDelta(prev, deltas);
+			else
+				deltas.emplace_back(std::make_unique<DeltaRecordCreate>(this));
 			break;
 
 		case TYPE_TABLE:
-			ComputeTableDelta(prev, deltas);
+			if ( prev )
+				ComputeTableDelta(prev, deltas);
+
+			else if ( t->Yield() )
+				deltas.emplace_back(std::make_unique<DeltaTableCreate>(this));
+			else
+				deltas.emplace_back(std::make_unique<DeltaSetCreate>(this));
 			break;
 
 		case TYPE_VECTOR:
-			ComputeVectorDelta(prev, deltas);
+			if ( prev )
+				ComputeVectorDelta(prev, deltas);
+			else
+				deltas.emplace_back(std::make_unique<DeltaVectorCreate>(this));
 			break;
 
 		default:
@@ -526,11 +550,6 @@ void ValTrace::Indent(int indent_level) const
 		printf("\t");
 	}
 
-void ValDelta::Dump() const
-	{
-	printf("<bad ValDelta>\n");
-	}
-
 std::string ValDelta::Generate(ValTraceMgr* vtm) const
 	{
 	return "<bad ValDelta>";
@@ -548,11 +567,6 @@ std::string DeltaReplaceValue::Generate(ValTraceMgr* vtm) const
 	return std::string(" = ") + vtm->ValName(new_val);
 	}
 
-void DeltaReplaceValue::Dump() const
-	{
-	printf("DeltaReplaceValue: %s\n", ValDesc(new_val).c_str());
-	}
-
 std::string DeltaSetField::Generate(ValTraceMgr* vtm) const
 	{
 	auto rt = vt->GetType()->AsRecordType();
@@ -560,9 +574,31 @@ std::string DeltaSetField::Generate(ValTraceMgr* vtm) const
 	return std::string("$") + f + " = " + vtm->ValName(new_val);
 	}
 
-void DeltaSetField::Dump() const
+std::string DeltaRecordCreate::Generate(ValTraceMgr* vtm) const
 	{
-	printf("DeltaSetField: $%s = %s\n", vt->GetType()->AsRecordType()->FieldName(field), ValDesc(new_val).c_str());;
+	auto rv = cast_intrusive<RecordVal>(vt->GetVal());
+	auto rt = rv->GetType<RecordType>();
+	auto n = rt->NumFields();
+
+	std::string args;
+
+	for ( auto i = 0; i < n; ++i )
+		{
+		auto v_i = rv->GetField(i);
+		if ( v_i )
+			{
+			if ( ! args.empty() )
+				args += ", ";
+
+			args += std::string("$") + rt->FieldName(i) + "=" + vtm->ValName(v_i);
+			}
+		}
+
+	auto name = rt->GetName();
+	if ( name.empty() )
+		name = "record";
+
+	return name + "(" + args + ")";
 	}
 
 std::string DeltaSetSetEntry::Generate(ValTraceMgr* vtm) const
@@ -570,19 +606,9 @@ std::string DeltaSetSetEntry::Generate(ValTraceMgr* vtm) const
 	return std::string("add ") + vtm->ValName(vt) + "[" + vtm->ValName(index) + "]";
 	}
 
-void DeltaSetSetEntry::Dump() const
-	{
-	printf("DeltaSetSetEntry\n");
-	}
-
 std::string DeltaSetTableEntry::Generate(ValTraceMgr* vtm) const
 	{
 	return std::string("[") + vtm->ValName(index) + "] = " + vtm->ValName(new_val);
-	}
-
-void DeltaSetTableEntry::Dump() const
-	{
-	printf("DeltaSetTableEntry\n");
 	}
 
 std::string DeltaRemoveTableEntry::Generate(ValTraceMgr* vtm) const
@@ -590,9 +616,48 @@ std::string DeltaRemoveTableEntry::Generate(ValTraceMgr* vtm) const
 	return std::string("delete ") + vtm->ValName(vt) + "[" + vtm->ValName(index) + "]";
 	}
 
-void DeltaRemoveTableEntry::Dump() const
+std::string DeltaSetCreate::Generate(ValTraceMgr* vtm) const
 	{
-	printf("DeltaRemoveTableEntry\n");
+	auto sv = cast_intrusive<TableVal>(vt->GetVal());
+	auto members = sv->ToMap();
+
+	std::string args;
+
+	for ( auto& m : members )
+		{
+		if ( ! args.empty() )
+			args += ", ";
+
+		args += vtm->ValName(m.first);
+		}
+
+	auto name = sv->GetType()->GetName();
+	if ( name.empty() )
+		name = "set";
+
+	return name + "(" + args + ")";
+	}
+
+std::string DeltaTableCreate::Generate(ValTraceMgr* vtm) const
+	{
+	auto tv = cast_intrusive<TableVal>(vt->GetVal());
+	auto members = tv->ToMap();
+
+	std::string args;
+
+	for ( auto& m : members )
+		{
+		if ( ! args.empty() )
+			args += ", ";
+
+		args += std::string("[") + vtm->ValName(m.first) + "] = " + vtm->ValName(m.second);
+		}
+
+	auto name = tv->GetType()->GetName();
+	if ( name.empty() )
+		name = "table";
+
+	return name + "(" + args + ")";
 	}
 
 std::string DeltaVectorSet::Generate(ValTraceMgr* vtm) const
@@ -600,19 +665,9 @@ std::string DeltaVectorSet::Generate(ValTraceMgr* vtm) const
 	return std::string("[") + std::to_string(index) + "] = " + vtm->ValName(elem);
 	}
 
-void DeltaVectorSet::Dump() const
-	{
-	printf("DeltaVectorSet\n");
-	}
-
 std::string DeltaVectorAppend::Generate(ValTraceMgr* vtm) const
 	{
 	return std::string("[") + std::to_string(index) + "] = " + vtm->ValName(elem);
-	}
-
-void DeltaVectorAppend::Dump() const
-	{
-	printf("DeltaVectorAppend\n");
 	}
 
 std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm) const
@@ -629,11 +684,6 @@ std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm) const
 		}
 
 	return std::string(" = vector(") + vec + ")";
-	}
-
-void DeltaVectorCreate::Dump() const
-	{
-	printf("DeltaVectorCreate\n");
 	}
 
 void ValTraceMgr::AddVal(ValPtr v)
