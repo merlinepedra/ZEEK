@@ -113,17 +113,17 @@ bool ValTrace::operator==(const ValTrace& vt) const
 		}
 	}
 
-void ValTrace::ComputeDelta(const ValTrace& prev, DeltaVector& deltas) const
+void ValTrace::ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const
 	{
 	auto tag = t->Tag();
 
-	ASSERT(prev.GetType()->Tag() == tag);
+	ASSERT(prev->GetType()->Tag() == tag);
 
-	auto& prev_v = prev.GetVal();
+	auto& prev_v = prev->GetVal();
 
 	if ( prev_v != v )
 		{
-		if ( *this != prev )
+		if ( this != prev )
 			deltas.emplace_back(std::make_unique<DeltaReplaceValue>(this, v));
 		return;
 		}
@@ -357,17 +357,17 @@ bool ValTrace::SameElems(const ValTrace& vt) const
 	return true;
 	}
 
-void ValTrace::ComputeRecordDelta(const ValTrace& prev, DeltaVector& deltas) const
+void ValTrace::ComputeRecordDelta(const ValTrace* prev, DeltaVector& deltas) const
 	{
-	auto& prev_elems = prev.elems;
+	auto& prev_elems = prev->elems;
 	auto n = elems.size();
 	if ( n != prev_elems.size() )
 		reporter->InternalError("size inconsistency in ValTrace::ComputeRecordDelta");
 
 	for ( auto i = 0U; i < n; ++i )
 		{
-		auto& trace_i = elems[i];
-		auto& prev_trace_i = prev_elems[i];
+		const auto trace_i = elems[i].get();
+		const auto prev_trace_i = prev_elems[i].get();
 
 		if ( trace_i )
 			{
@@ -378,7 +378,7 @@ void ValTrace::ComputeRecordDelta(const ValTrace& prev, DeltaVector& deltas) con
 
 				if ( v == prev_v )
 					{
-					trace_i->ComputeDelta(*prev_trace_i, deltas);
+					trace_i->ComputeDelta(prev_trace_i, deltas);
 					continue;
 					}
 				}
@@ -391,10 +391,10 @@ void ValTrace::ComputeRecordDelta(const ValTrace& prev, DeltaVector& deltas) con
 		}
 	}
 
-void ValTrace::ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) const
+void ValTrace::ComputeTableDelta(const ValTrace* prev, DeltaVector& deltas) const
 	{
-	auto& prev_elems = prev.elems;
-	auto& prev_elems2 = prev.elems2;
+	auto& prev_elems = prev->elems;
+	auto& prev_elems2 = prev->elems2;
 
 	auto n = elems.size();
 	auto is_set = elems2.size() == 0;
@@ -419,13 +419,13 @@ void ValTrace::ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) cons
 
 	for ( auto i = 0U; i < n; ++i )
 		{
-		auto& trace_i = elems[i];
+		const auto trace_i = elems[i].get();
 
 		bool common = false;
 
 		for ( auto j = 0U; j < prev_n; ++j )
 			{
-			auto& prev_trace_j = prev_elems[j];
+			const auto prev_trace_j = prev_elems[j].get();
 
 			if ( *trace_i == *prev_trace_j )
 				{
@@ -453,7 +453,7 @@ void ValTrace::ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) cons
 
 	for ( auto j = 0U; j < prev_n; ++j )
 		{
-		auto& prev_trace = prev_elems2[j];
+		const auto prev_trace = prev_elems2[j].get();
 		auto common_pair = common_entries.find(j);
 
 		if ( common_pair == common_entries.end() )
@@ -475,15 +475,15 @@ void ValTrace::ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) cons
 		auto& prev_yield = prev_trace->GetVal();
 
 		if ( yield == prev_yield )
-			trace->ComputeDelta(*prev_trace, deltas);
+			trace->ComputeDelta(prev_trace, deltas);
 		else
 			deltas.emplace_back(std::make_unique<DeltaSetTableEntry>(this, elems[i]->GetVal(), yield));
 		}
 	}
 
-void ValTrace::ComputeVectorDelta(const ValTrace& prev, DeltaVector& deltas) const
+void ValTrace::ComputeVectorDelta(const ValTrace* prev, DeltaVector& deltas) const
 	{
-	auto& prev_elems = prev.elems;
+	auto& prev_elems = prev->elems;
 	auto n = elems.size();
 	auto prev_n = prev_elems.size();
 
@@ -499,14 +499,14 @@ void ValTrace::ComputeVectorDelta(const ValTrace& prev, DeltaVector& deltas) con
 	auto i = 0U;
 	for ( ; i < prev_n; ++i )
 		{
-		auto& trace_i = elems[i];
-		auto& prev_trace_i = prev_elems[i];
+		const auto trace_i = elems[i].get();
+		const auto prev_trace_i = prev_elems[i].get();
 
 		auto& elem_i = trace_i->GetVal();
 		auto& prev_elem_i = prev_trace_i->GetVal();
 
 		if ( elem_i == prev_elem_i )
-			trace_i->ComputeDelta(*prev_trace_i, deltas);
+			trace_i->ComputeDelta(prev_trace_i, deltas);
 		else
 			deltas.emplace_back(std::make_unique<DeltaVectorSet>(this, i, elem_i));
 		}
@@ -689,12 +689,13 @@ void ValTraceMgr::NewVal(ValPtr v)
 	vals.push_back(v);
 
 	auto vt = std::make_shared<ValTrace>(v);
+
+	CreateVal(vt.get());
+
 	val_map[v.get()] = vt;
 
-	TrackValTrace(vt.get());
-
-	printf("new value %llx trace\n", v.get());
-	vt->Dump(1);
+	// printf("new value %llx trace\n", v.get());
+	// vt->Dump(1);
 	}
 
 void ValTraceMgr::AssessChange(ValPtr v, const ValTrace* prev_vt)
@@ -709,7 +710,7 @@ bool ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 	{
 	DeltaVector deltas;
 
-	vt->ComputeDelta(*prev_vt, deltas);
+	vt->ComputeDelta(prev_vt, deltas);
 
 	printf("reuse of %llx, %lu differences\n", vt->GetVal().get(), deltas.size());
 	for ( auto i = 0U; i < deltas.size(); ++i )

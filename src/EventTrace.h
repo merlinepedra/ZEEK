@@ -54,11 +54,14 @@ public:
 		{ return ! ((*this) == vt); }
 
 	// Computes the deltas between a previous ValTrace and this one.
+	// If "prev" is nil then we're creating this value from scratch
+	// (though if it's an aggregate, we may reuse existing values
+	// for some of its components).
 	//
 	// Returns the accumulated differences in deltas.  If on return
 	// nothing was added to deltas then the two ValTrace's are equivalent
 	// (no changes between them).
-	void ComputeDelta(const ValTrace& prev, DeltaVector& deltas) const;
+	void ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const;
 
 	void Dump(int indent_level) const;
 
@@ -75,9 +78,9 @@ private:
 
 	bool SameElems(const ValTrace& vt) const;
 
-	void ComputeRecordDelta(const ValTrace& prev, DeltaVector& deltas) const;
-	void ComputeTableDelta(const ValTrace& prev, DeltaVector& deltas) const;
-	void ComputeVectorDelta(const ValTrace& prev, DeltaVector& deltas) const;
+	void ComputeRecordDelta(const ValTrace* prev, DeltaVector& deltas) const;
+	void ComputeTableDelta(const ValTrace* prev, DeltaVector& deltas) const;
+	void ComputeVectorDelta(const ValTrace* prev, DeltaVector& deltas) const;
 
 	void Indent(int indent_level) const;
 
