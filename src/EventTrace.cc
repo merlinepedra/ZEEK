@@ -693,44 +693,36 @@ void ValTraceMgr::AddVal(ValPtr v)
 	if ( mapping == val_map.end() )
 		NewVal(v);
 	else
-		AssessChange(v, mapping->second.get());
+		{
+		auto vt = std::make_shared<ValTrace>(v);
+		AssessChange(vt.get(), mapping->second.get());
+		}
 	}
 
 const std::string& ValTraceMgr::ValName(const ValPtr& v)
 	{
-	if ( IsAggr(v->GetType()) )
-		{
-		auto find = val_map.find(v.get());
-
-		if ( find == val_map.end() )
-			{
-			NewVal(v);
-			find = val_map.find(v.get());
-			ASSERT(find != val_map.end());
-			}
-
-		return ValName(find->second.get());
-		}
-
 	auto find = val_names.find(v.get());
 	if ( find == val_names.end() )
 		{
-		ODesc d;
-		v->Describe(&d);
-		val_names[v.get()] = d.Description();
-		find = val_names.find(v.get());
+		if ( IsAggr(v->GetType()) )
+			{ // Aggregate shouldn't exist; create it
+			ASSERT(val_map.count(v.get()) == 0);
+			NewVal(v);
+			find = val_names.find(v.get());
+			}
+
+		else
+			{ // Non-aggregate can be expressed using a constant
+			ODesc d;
+			v->Describe(&d);
+			val_names[v.get()] = d.Description();
+			find = val_names.find(v.get());
+			}
+
 		ASSERT(find != val_names.end());
 		}
 
 	return find->second;
-	}
-
-const std::string& ValTraceMgr::ValName(const ValTrace* vt)
-	{
-	if ( vt_names.count(vt) == 0 )
-		CreateVal(vt);
-
-	return vt_names[vt];
 	}
 
 void ValTraceMgr::NewVal(ValPtr v)
@@ -739,24 +731,11 @@ void ValTraceMgr::NewVal(ValPtr v)
 	vals.push_back(v);
 
 	auto vt = std::make_shared<ValTrace>(v);
-
 	CreateVal(vt.get());
-
 	val_map[v.get()] = vt;
-
-	// printf("new value %llx trace\n", v.get());
-	// vt->Dump(1);
 	}
 
-void ValTraceMgr::AssessChange(ValPtr v, const ValTrace* prev_vt)
-	{
-	auto vt = std::make_shared<ValTrace>(v);
-
-	if ( AssessChange(vt.get(), prev_vt) )
-		TrackValTrace(vt.get());
-	}
-
-bool ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
+void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 	{
 	DeltaVector deltas;
 
@@ -766,8 +745,6 @@ bool ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 
 	for ( auto i = 0U; i < deltas.size(); ++i )
 		ProcessDelta(deltas[i].get());
-
-	return ! deltas.empty();
 	}
 
 void ValTraceMgr::ProcessDelta(const ValDelta* d)
@@ -776,20 +753,20 @@ void ValTraceMgr::ProcessDelta(const ValDelta* d)
 
 	if ( d->NeedsLHS() )
 		{
-		auto vt = d->GetValTrace();
-		if ( vt_names.count(vt) == 0 )
-			TrackValTrace(vt);
+		auto v = d->GetValTrace()->GetVal().get();
+		if ( val_names.count(v) == 0 )
+			TrackVar(v);
 
-		gen = vt_names[vt] + gen;
+		gen = val_names[v] + gen;
 		}
 
 	printf("\t%s\n", gen.c_str());
 	}
 
-void ValTraceMgr::TrackValTrace(const ValTrace* vt)
+void ValTraceMgr::TrackVar(const Val* v)
 	{
-	auto vt_name = std::string("__val") + std::to_string(vt_names.size());
-	vt_names[vt] = vt_name;
+	auto val_name = std::string("__val") + std::to_string(val_names.size());
+	val_names[v] = val_name;
 	}
 
 void ValTraceMgr::CreateVal(const ValTrace* vt)

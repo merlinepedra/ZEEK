@@ -241,23 +241,21 @@ public:
 	void AddVal(ValPtr v);
 
 	const std::string& ValName(const ValPtr& v);
-	const std::string& ValName(const ValTrace* vt);
+	const std::string& ValName(const ValTrace* vt)
+		{ return ValName(vt->GetVal()); }
 
 private:
 	void NewVal(ValPtr v);
 
-	void AssessChange(ValPtr v, const ValTrace* prev_vt);
-	bool AssessChange(const ValTrace* vt, const ValTrace* prev_vt);
+	void AssessChange(const ValTrace* vt, const ValTrace* prev_vt);
 
 	void ProcessDelta(const ValDelta* d);
 
-	void TrackValTrace(const ValTrace* vt);
+	void TrackVar(const Val* vt);
 	void CreateVal(const ValTrace* vt);
 
 	std::unordered_map<const Val*, std::shared_ptr<ValTrace>> val_map;
-
 	std::unordered_map<const Val*, std::string> val_names;
-	std::unordered_map<const ValTrace*, std::string> vt_names;
 
 	// Hang on to values we're tracking to make sure the pointers don't
 	// go away.
