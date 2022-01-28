@@ -2,6 +2,7 @@
 
 #include "zeek/Desc.h"
 #include "zeek/EventTrace.h"
+#include "zeek/Func.h"
 #include "zeek/IPAddr.h"
 #include "zeek/Reporter.h"
 #include "zeek/ZeekString.h"
@@ -762,6 +763,22 @@ const std::string& ValTraceMgr::ValName(const ValPtr& v)
 				rep = escape_string(s->Bytes(), s->Len());
 				}
 
+			else if ( tag == TYPE_LIST )
+				{
+				auto lv = cast_intrusive<ListVal>(v);
+				auto vals = lv->Vals();
+				for ( auto& v_i : vals )
+					{
+					if ( ! rep.empty() )
+						rep += ", ";
+
+					rep += ValName(v_i);
+					}
+				}
+
+			else if ( tag == TYPE_FUNC )
+				rep = v->AsFunc()->Name();
+
 			else
 				{
 				ODesc d;
@@ -773,6 +790,7 @@ const std::string& ValTraceMgr::ValName(const ValPtr& v)
 				}
 
 			val_names[v.get()] = rep;
+			vals.push_back(v);
 			find = val_names.find(v.get());
 			}
 
@@ -819,10 +837,10 @@ void ValTraceMgr::ProcessDelta(const ValDelta* d)
 			decl = "global ";
 			}
 
-		gen = decl + val_names[v] + gen + ";";
+		gen = decl + val_names[v] + gen;
 		}
 
-	printf("\t%s\n", gen.c_str());
+	printf("\t%s;\n", gen.c_str());
 	}
 
 void ValTraceMgr::TrackVar(const Val* v)
