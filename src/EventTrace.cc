@@ -10,6 +10,43 @@
 namespace zeek::detail
 	{
 
+static std::string escape_string(const u_char* b, int len)
+	{
+	std::string res = "\"";
+
+	for ( int i = 0; i < len; ++i )
+		{
+		unsigned char c = b[i];
+
+		switch ( c ) {
+		case '\a':	res += "\\a"; break;
+		case '\b':	res += "\\b"; break;
+		case '\f':	res += "\\f"; break;
+		case '\n':	res += "\\n"; break;
+		case '\r':	res += "\\r"; break;
+		case '\t':	res += "\\t"; break;
+		case '\v':	res += "\\v"; break;
+
+		case '\\':	res += "\\\\"; break;
+		case '"':	res += "\\\""; break;
+
+		default:
+			if ( isprint(c) )
+				res += c;
+			else
+				{
+				char buf[8192];
+				snprintf(buf, sizeof buf, "%03o", c);
+				res += "\\";
+				res += buf;
+				}
+			break;
+		}
+		}
+
+	return res + "\"";
+	}
+
 ValTrace::ValTrace(const ValPtr& _v)
 	{
 	v = _v;
@@ -716,9 +753,26 @@ const std::string& ValTraceMgr::ValName(const ValPtr& v)
 
 		else
 			{ // Non-aggregate can be expressed using a constant
-			ODesc d;
-			v->Describe(&d);
-			val_names[v.get()] = d.Description();
+			auto tag = v->GetType()->Tag();
+			std::string rep;
+
+			if ( tag == TYPE_STRING )
+				{
+				auto s = v->AsStringVal();
+				rep = escape_string(s->Bytes(), s->Len());
+				}
+
+			else
+				{
+				ODesc d;
+				v->Describe(&d);
+				rep = d.Description();
+
+				if ( tag == TYPE_TIME )
+					rep = std::string("double_to_time(") + rep + ")";
+				}
+
+			val_names[v.get()] = rep;
 			find = val_names.find(v.get());
 			}
 
@@ -757,10 +811,15 @@ void ValTraceMgr::ProcessDelta(const ValDelta* d)
 	if ( d->NeedsLHS() )
 		{
 		auto v = d->GetValTrace()->GetVal().get();
-		if ( val_names.count(v) == 0 )
-			TrackVar(v);
+		std::string decl;
 
-		gen = val_names[v] + gen;
+		if ( val_names.count(v) == 0 )
+			{
+			TrackVar(v);
+			decl = "global ";
+			}
+
+		gen = decl + val_names[v] + gen + ";";
 		}
 
 	printf("\t%s\n", gen.c_str());
