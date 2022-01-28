@@ -826,13 +826,16 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 
 	vt->ComputeDelta(prev_vt, deltas);
 
-	printf("reuse of %llx, %lu differences\n", vt->GetVal().get(), deltas.size());
+	// Used to track deltas across the batch, to suppress redundant ones
+	// (which can arise due to two aggregates both including the same
+	// sub-element).
+	std::unordered_set<std::string> previous_deltas;
 
-	for ( auto i = 0U; i < deltas.size(); ++i )
-		ProcessDelta(deltas[i].get());
+	for ( auto& d : deltas )
+		ProcessDelta(d.get(), previous_deltas);
 	}
 
-void ValTraceMgr::ProcessDelta(const ValDelta* d)
+void ValTraceMgr::ProcessDelta(const ValDelta* d, std::unordered_set<std::string>& prev)
 	{
 	auto gen = d->Generate(this);
 
@@ -850,7 +853,11 @@ void ValTraceMgr::ProcessDelta(const ValDelta* d)
 		gen = decl + val_names[v] + gen;
 		}
 
-	printf("\t%s;\n", gen.c_str());
+	if ( prev.count(gen) == 0 )
+		{
+		printf("\t%s;\n", gen.c_str());
+		prev.insert(gen);
+		}
 	}
 
 void ValTraceMgr::TrackVar(const Val* v)
