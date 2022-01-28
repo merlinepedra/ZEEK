@@ -598,7 +598,7 @@ std::string DeltaRecordCreate::Generate(ValTraceMgr* vtm) const
 	if ( name.empty() )
 		name = "record";
 
-	return name + "(" + args + ")";
+	return std::string(" = ") + name + "(" + args + ")";
 	}
 
 std::string DeltaSetSetEntry::Generate(ValTraceMgr* vtm) const
@@ -635,7 +635,7 @@ std::string DeltaSetCreate::Generate(ValTraceMgr* vtm) const
 	if ( name.empty() )
 		name = "set";
 
-	return name + "(" + args + ")";
+	return std::string(" = ") + name + "(" + args + ")";
 	}
 
 std::string DeltaTableCreate::Generate(ValTraceMgr* vtm) const
@@ -657,7 +657,7 @@ std::string DeltaTableCreate::Generate(ValTraceMgr* vtm) const
 	if ( name.empty() )
 		name = "table";
 
-	return name + "(" + args + ")";
+	return std::string(" = ") + name + "(" + args + ")";
 	}
 
 std::string DeltaVectorSet::Generate(ValTraceMgr* vtm) const
@@ -763,6 +763,7 @@ bool ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 	vt->ComputeDelta(prev_vt, deltas);
 
 	printf("reuse of %llx, %lu differences\n", vt->GetVal().get(), deltas.size());
+
 	for ( auto i = 0U; i < deltas.size(); ++i )
 		ProcessDelta(deltas[i].get());
 
@@ -797,11 +798,7 @@ void ValTraceMgr::CreateVal(const ValTrace* vt)
 
 	auto find = val_map.find(v.get());
 	if ( find == val_map.end() )
-		{
-		auto RHS = ValName(v);
-		TrackValTrace(vt);
-		printf("\t%s = %s\n", vt_names[vt].c_str(), RHS.c_str());
-		}
+		AssessChange(vt, nullptr);
 	else
 		AssessChange(vt, find->second.get());
 	}
