@@ -76,6 +76,8 @@ private:
 
 	bool SameElems(const ValTrace& vt) const;
 
+	bool SameSingleton(const ValTrace& vt) const;
+
 	void ComputeRecordDelta(const ValTrace* prev, DeltaVector& deltas) const;
 	void ComputeTableDelta(const ValTrace* prev, DeltaVector& deltas) const;
 	void ComputeVectorDelta(const ValTrace* prev, DeltaVector& deltas) const;

@@ -419,6 +419,11 @@ bool ValTrace::SameElems(const ValTrace& vt) const
 	return true;
 	}
 
+bool ValTrace::SameSingleton(const ValTrace& vt) const
+	{
+	return ! IsAggr(t) && *this == vt;
+	}
+
 void ValTrace::ComputeRecordDelta(const ValTrace* prev, DeltaVector& deltas) const
 	{
 	auto& prev_elems = prev->elems;
@@ -443,6 +448,10 @@ void ValTrace::ComputeRecordDelta(const ValTrace* prev, DeltaVector& deltas) con
 					trace_i->ComputeDelta(prev_trace_i, deltas);
 					continue;
 					}
+
+				if ( trace_i->SameSingleton(*prev_trace_i) )
+					// No further work needed.
+					continue;
 				}
 
 			deltas.emplace_back(std::make_unique<DeltaSetField>(this, i, trace_i->GetVal()));
@@ -532,15 +541,16 @@ void ValTrace::ComputeTableDelta(const ValTrace* prev, DeltaVector& deltas) cons
 		// yield has changed.
 		auto i = common_pair->second;
 		auto& trace2 = elems2[i];
-		const auto prev_trace2 = prev_elems2[j].get();
+		const auto prev_trace2 = prev_elems2[j];
 
 		auto& yield = trace2->GetVal();
 		auto& prev_yield = prev_trace2->GetVal();
 
 		if ( yield == prev_yield )
 			// Same yield, look for differences in its sub-elements.
-			trace2->ComputeDelta(prev_trace2, deltas);
-		else
+			trace2->ComputeDelta(prev_trace2.get(), deltas);
+
+		else if ( ! trace2->SameSingleton(*prev_trace2) )
 			deltas.emplace_back(std::make_unique<DeltaSetTableEntry>(this, elems[i]->GetVal(), yield));
 		}
 	}
@@ -571,7 +581,7 @@ void ValTrace::ComputeVectorDelta(const ValTrace* prev, DeltaVector& deltas) con
 
 		if ( elem_i == prev_elem_i )
 			trace_i->ComputeDelta(prev_trace_i, deltas);
-		else
+		else if ( ! trace_i->SameSingleton(*prev_trace_i) )
 			deltas.emplace_back(std::make_unique<DeltaVectorSet>(this, i, elem_i));
 		}
 
