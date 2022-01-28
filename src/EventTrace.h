@@ -256,6 +256,7 @@ private:
 
 	std::unordered_map<const Val*, std::shared_ptr<ValTrace>> val_map;
 	std::unordered_map<const Val*, std::string> val_names;
+	int num_vars = 0;
 
 	// Hang on to values we're tracking to make sure the pointers don't
 	// go away.

@@ -477,12 +477,12 @@ void ValTrace::ComputeTableDelta(const ValTrace* prev, DeltaVector& deltas) cons
 
 	for ( auto j = 0U; j < prev_n; ++j )
 		{
-		const auto prev_trace = prev_elems2[j].get();
 		auto common_pair = common_entries.find(j);
-
 		if ( common_pair == common_entries.end() )
 			{
-			deltas.emplace_back(std::make_unique<DeltaRemoveTableEntry>(this, prev_trace->GetVal()));
+			auto& prev_trace = prev_elems[j];
+			auto& v = prev_trace->GetVal();
+			deltas.emplace_back(std::make_unique<DeltaRemoveTableEntry>(this, v));
 			continue;
 			}
 
@@ -493,13 +493,15 @@ void ValTrace::ComputeTableDelta(const ValTrace* prev, DeltaVector& deltas) cons
 		// a common index.  The remaining question is whether the
 		// yield has changed.
 		auto i = common_pair->second;
-		auto& trace = elems2[i];
+		auto& trace2 = elems2[i];
+		const auto prev_trace2 = prev_elems2[j].get();
 
-		auto& yield = trace->GetVal();
-		auto& prev_yield = prev_trace->GetVal();
+		auto& yield = trace2->GetVal();
+		auto& prev_yield = prev_trace2->GetVal();
 
 		if ( yield == prev_yield )
-			trace->ComputeDelta(prev_trace, deltas);
+			// Same yield, look for differences in its sub-elements.
+			trace2->ComputeDelta(prev_trace2, deltas);
 		else
 			deltas.emplace_back(std::make_unique<DeltaSetTableEntry>(this, elems[i]->GetVal(), yield));
 		}
@@ -696,6 +698,7 @@ void ValTraceMgr::AddVal(ValPtr v)
 		{
 		auto vt = std::make_shared<ValTrace>(v);
 		AssessChange(vt.get(), mapping->second.get());
+		val_map[vt->GetVal().get()] = vt;
 		}
 	}
 
@@ -731,7 +734,7 @@ void ValTraceMgr::NewVal(ValPtr v)
 	vals.push_back(v);
 
 	auto vt = std::make_shared<ValTrace>(v);
-	CreateVal(vt.get());
+	AssessChange(vt.get(), nullptr);
 	val_map[v.get()] = vt;
 	}
 
@@ -765,19 +768,8 @@ void ValTraceMgr::ProcessDelta(const ValDelta* d)
 
 void ValTraceMgr::TrackVar(const Val* v)
 	{
-	auto val_name = std::string("__val") + std::to_string(val_names.size());
+	auto val_name = std::string("__val") + std::to_string(num_vars++);
 	val_names[v] = val_name;
-	}
-
-void ValTraceMgr::CreateVal(const ValTrace* vt)
-	{
-	auto& v = vt->GetVal();
-
-	auto find = val_map.find(v.get());
-	if ( find == val_map.end() )
-		AssessChange(vt, nullptr);
-	else
-		AssessChange(vt, find->second.get());
 	}
 
 	} // namespace zeek::detail
