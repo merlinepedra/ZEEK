@@ -185,9 +185,9 @@ void ValTrace::ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const
 		case TYPE_FUNC:
 		case TYPE_PATTERN:
 		case TYPE_TYPE:
-			// These don't change in place.
-			if ( ! prev )
-				deltas.emplace_back(std::make_unique<DeltaReplaceValue>(this, v));
+			// These don't change in place.  No need to create
+			// them as stand-alone variables, since we can just
+			// use the constant representation instead.
 			break;
 
 		case TYPE_FILE:
