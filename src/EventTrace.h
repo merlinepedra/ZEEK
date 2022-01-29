@@ -107,8 +107,7 @@ private:
 	ValPtr new_val;
 	};
 
-// Captures the notion of setting a record field.  If the replacement
-// value is nil then it means delete the field.
+// Captures the notion of setting a record field.
 class DeltaSetField : public ValDelta
 	{
 public:
@@ -120,6 +119,20 @@ public:
 private:
 	int field;
 	ValPtr new_val;
+	};
+
+// Captures the notion of deleting a record field.
+class DeltaRemoveField : public ValDelta
+	{
+public:
+	DeltaRemoveField(const ValTrace* _vt, int _field)
+		: ValDelta(_vt), field(_field) {}
+
+	std::string Generate(ValTraceMgr* vtm) const override;
+	bool NeedsLHS() const override { return false; }
+
+private:
+	int field;
 	};
 
 // Captures the notion of creating a record from scratch.

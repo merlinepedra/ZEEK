@@ -624,6 +624,13 @@ std::string DeltaSetField::Generate(ValTraceMgr* vtm) const
 	return std::string("$") + f + " = " + vtm->ValName(new_val);
 	}
 
+std::string DeltaRemoveField::Generate(ValTraceMgr* vtm) const
+	{
+	auto rt = vt->GetType()->AsRecordType();
+	auto f = rt->FieldName(field);
+	return std::string("delete ") + vtm->ValName(vt) + "$" + f;
+	}
+
 std::string DeltaRecordCreate::Generate(ValTraceMgr* vtm) const
 	{
 	auto rv = cast_intrusive<RecordVal>(vt->GetVal());
