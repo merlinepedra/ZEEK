@@ -839,10 +839,17 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 	std::unordered_set<std::string> previous_deltas;
 
 	for ( auto& d : deltas )
-		ProcessDelta(d.get(), previous_deltas);
+		{
+		auto gen = ProcessDelta(d.get());
+		if ( previous_deltas.count(gen) == 0 )
+			{
+			printf("\t%s;\n", gen.c_str());
+			previous_deltas.insert(gen);
+			}
+		}
 	}
 
-void ValTraceMgr::ProcessDelta(const ValDelta* d, std::unordered_set<std::string>& prev)
+std::string ValTraceMgr::ProcessDelta(const ValDelta* d)
 	{
 	auto gen = d->Generate(this);
 
@@ -860,11 +867,7 @@ void ValTraceMgr::ProcessDelta(const ValDelta* d, std::unordered_set<std::string
 		gen = decl + val_names[v] + gen;
 		}
 
-	if ( prev.count(gen) == 0 )
-		{
-		printf("\t%s;\n", gen.c_str());
-		prev.insert(gen);
-		}
+	return gen;
 	}
 
 void ValTraceMgr::TrackVar(const Val* v)

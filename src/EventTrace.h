@@ -264,7 +264,7 @@ private:
 
 	void AssessChange(const ValTrace* vt, const ValTrace* prev_vt);
 
-	void ProcessDelta(const ValDelta* d, std::unordered_set<std::string>& prev);
+	std::string ProcessDelta(const ValDelta* d);
 
 	void TrackVar(const Val* vt);
 	void CreateVal(const ValTrace* vt);
