@@ -250,9 +250,51 @@ public:
 private:
 	};
 
+// Manages the changes to (or creation of) a variable used to represent
+// a value.
+class DeltaGen
+	{
+public:
+	DeltaGen(std::string _var_name, std::string _rhs, bool _needs_lhs, bool _is_first_def)
+		: var_name(std::move(_var_name)), rhs(std::move(_rhs)), needs_lhs(_needs_lhs), is_first_def(_is_first_def)
+		{}
+
+	const std::string& VarName() const { return var_name; }
+	const std::string& RHS() const { return rhs; }
+	bool NeedsLHS() const { return needs_lhs; }
+	bool IsFirstDef() const { return is_first_def; }
+
+private:
+	std::string var_name;
+	std::string rhs;
+	bool needs_lhs;
+	bool is_first_def;
+	};
+
+// Tracks a single event.
+class EventTrace
+	{
+public:
+	EventTrace(const ScriptFunc* _ev)
+		: ev(_ev) {}
+
+	void AddDelta(std::string val_name, std::string rhs, bool needs_lhs, bool is_first_def)
+		{
+		deltas.emplace_back(DeltaGen(val_name, rhs, needs_lhs, is_first_def));
+		}
+
+	void Dump() const;
+
+private:
+	const ScriptFunc* ev;
+	std::vector<DeltaGen> deltas;
+	};
+
 class ValTraceMgr
 	{
 public:
+	void SetCurrentEvent(std::shared_ptr<EventTrace> ev) { curr_ev = ev; }
+
 	void AddVal(ValPtr v);
 
 	const std::string& ValName(const ValPtr& v);
@@ -273,9 +315,24 @@ private:
 	std::unordered_map<const Val*, std::string> val_names;
 	int num_vars = 0;
 
+	std::shared_ptr<EventTrace> curr_ev;
+
 	// Hang on to values we're tracking to make sure the pointers don't
 	// go away.
 	std::vector<ValPtr> vals;
+	};
+
+class EventTraceMgr
+	{
+public:
+	~EventTraceMgr();
+
+	void StartEvent(const ScriptFunc* ev, const zeek::Args* args);
+	void EndEvent();
+
+private:
+	ValTraceMgr vtm;
+	std::vector<std::shared_ptr<EventTrace>> events;
 	};
 
 	} // namespace zeek::detail

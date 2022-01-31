@@ -743,6 +743,24 @@ std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm) const
 	return std::string(" = vector(") + vec + ")";
 	}
 
+void EventTrace::Dump() const
+	{
+	printf("event %s:\n", ev->Name());
+
+	for ( auto& d : deltas )
+		{
+		printf("\t");
+
+		if ( d.IsFirstDef() )
+			printf("global ");
+
+		if ( d.NeedsLHS() )
+			printf("%s = ", d.VarName().c_str());
+
+		printf("%s;\n", d.RHS().c_str());
+		}
+	}
+
 void ValTraceMgr::AddVal(ValPtr v)
 	{
 	auto mapping = val_map.find(v.get());
@@ -840,12 +858,27 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 
 	for ( auto& d : deltas )
 		{
-		auto gen = ProcessDelta(d.get());
-		if ( previous_deltas.count(gen) == 0 )
+		auto v = d->GetValTrace()->GetVal().get();
+		auto rhs = d->Generate(this);
+
+		bool needs_lhs = d->NeedsLHS();
+		bool is_first_def = false;
+
+		if ( needs_lhs && val_names.count(v) == 0 )
 			{
-			printf("\t%s;\n", gen.c_str());
-			previous_deltas.insert(gen);
+			TrackVar(v);
+			is_first_def = true;
 			}
+
+		ASSERT(val_names.count(v) > 0);
+
+		auto full_delta = val_names[v] + "/" + rhs;
+		if ( previous_deltas.count(full_delta) > 0 )
+			continue;
+
+		previous_deltas.insert(full_delta);
+
+		curr_ev->AddDelta(val_names[v], rhs, needs_lhs, is_first_def);
 		}
 	}
 
@@ -874,6 +907,33 @@ void ValTraceMgr::TrackVar(const Val* v)
 	{
 	auto val_name = std::string("__val") + std::to_string(num_vars++);
 	val_names[v] = val_name;
+	}
+
+EventTraceMgr::~EventTraceMgr()
+	{
+	for ( auto& e : events )
+		{
+		e->Dump();
+		printf("\n");
+		}
+	}
+
+void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
+	{
+	if ( run_state::network_time == 0.0 )
+		return;
+
+	auto et = std::make_shared<EventTrace>(ev);
+	events.emplace_back(et);
+
+	vtm.SetCurrentEvent(et);
+
+	for ( auto& a : *args )
+		vtm.AddVal(a);
+	}
+
+void EventTraceMgr::EndEvent()
+	{
 	}
 
 	} // namespace zeek::detail
