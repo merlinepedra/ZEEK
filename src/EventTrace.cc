@@ -611,13 +611,6 @@ std::string ValDelta::Generate(ValTraceMgr* vtm) const
 	return "<bad ValDelta>";
 	}
 
-std::string ValDelta::ValDesc(const ValPtr& v) const
-	{
-	ODesc d;
-	v->Describe(&d);
-	return d.Description();
-	}
-
 std::string DeltaReplaceValue::Generate(ValTraceMgr* vtm) const
 	{
 	return std::string(" = ") + vtm->ValName(new_val);
@@ -809,7 +802,10 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 	if ( successor.empty() )
 		printf("\tterminate();\n");
 	else
-		printf("\tschedule +%.06f secs { __EventTrace::%s() };\n", dt, successor.c_str());
+		{
+		printf("\t# dt: +%.06f secs\n", dt);
+		printf("\tschedule +0.0 secs { __EventTrace::%s() };\n", successor.c_str());
+		}
 
 	printf("\t}\n");
 	}
@@ -893,14 +889,17 @@ const std::string& ValTraceMgr::ValName(const ValPtr& v)
 			else if ( tag == TYPE_FUNC )
 				rep = v->AsFunc()->Name();
 
+			else if ( tag == TYPE_TIME )
+				rep = std::string("double_to_time(") + std::to_string(v->AsDouble()) + ")";
+
+			else if ( tag == TYPE_INTERVAL )
+				rep = std::string("double_to_interval(") + std::to_string(v->AsDouble()) + ")";
+
 			else
 				{
 				ODesc d;
 				v->Describe(&d);
 				rep = d.Description();
-
-				if ( tag == TYPE_TIME )
-					rep = std::string("double_to_time(") + rep + ")";
 				}
 
 			val_names[v.get()] = rep;

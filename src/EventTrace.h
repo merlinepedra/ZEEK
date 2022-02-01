@@ -24,8 +24,6 @@ public:
 	const ValTrace* GetValTrace() const { return vt; }
 
 protected:
-	std::string ValDesc(const ValPtr& v) const;
-
 	const ValTrace* vt;
 	};
 
