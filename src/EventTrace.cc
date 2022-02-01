@@ -756,9 +756,11 @@ EventTrace::EventTrace(const ScriptFunc* _ev, double _dt, int event_num)
 void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 	{
 	for ( auto& d : deltas )
-		if ( d.IsFirstDef() )
+		{
+		auto& val = d.GetVal();
+
+		if ( d.IsFirstDef() && vtm.IsGlobal(val) )
 			{
-			auto& val = d.GetVal();
 			auto& val_name = vtm.ValName(val);
 
 			std::string type_name;
@@ -775,6 +777,7 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 
 			printf("global %s: %s;\n", val_name.c_str(), type_name.c_str());
 			}
+		}
 
 	printf("event %s()\n", name.c_str());
 	printf("\t{\n");
@@ -783,12 +786,13 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 		{
 		printf("\t");
 
+		auto& val = d.GetVal();
+
+		if ( d.IsFirstDef() && ! vtm.IsGlobal(val) )
+			printf("local ");
+
 		if ( d.NeedsLHS() )
-			{
-			auto& val = d.GetVal();
-			auto& val_name = vtm.ValName(val);
-			printf("%s", val_name.c_str());
-			}
+			printf("%s", vtm.ValName(val).c_str());
 
 		printf("%s;\n", d.RHS().c_str());
 		}
@@ -799,7 +803,7 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 	printf("\tevent %s(%s);\n\n", ev->Name(), args.c_str());
 
 	if ( successor.empty() )
-		printf("\tterminate();");
+		printf("\tterminate();\n");
 	else
 		printf("\tschedule +%.06f secs { __EventTrace::%s() };\n", dt, successor.c_str());
 
@@ -809,6 +813,8 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::Args* args)
 	{
 	curr_ev = std::move(et);
+
+	auto num_vals = vals.size();
 
 	std::string ev_args;
 
@@ -823,6 +829,12 @@ void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::A
 		}
 
 	curr_ev->SetArgs(ev_args);
+
+	for ( auto i = num_vals; i < vals.size(); ++i )
+		{
+		processed_vals.insert(vals[i].get());
+		ASSERT(val_names.count(vals[i].get()) > 0);
+		}
 	}
 
 void ValTraceMgr::AddVal(ValPtr v)
@@ -865,8 +877,7 @@ const std::string& ValTraceMgr::ValName(const ValPtr& v)
 			else if ( tag == TYPE_LIST )
 				{
 				auto lv = cast_intrusive<ListVal>(v);
-				auto vals = lv->Vals();
-				for ( auto& v_i : vals )
+				for ( auto& v_i : lv->Vals() )
 					{
 					if ( ! rep.empty() )
 						rep += ", ";
@@ -896,7 +907,17 @@ const std::string& ValTraceMgr::ValName(const ValPtr& v)
 		ASSERT(find != val_names.end());
 		}
 
+	ValUsed(v);
+
 	return find->second;
+	}
+
+void ValTraceMgr::ValUsed(const ValPtr& v)
+	{
+	ASSERT(val_names.count(v.get()) > 0);
+	if ( processed_vals.count(v.get()) > 0 )
+		// We saw this value when processing a previous event.
+		globals.insert(v.get());
 	}
 
 void ValTraceMgr::NewVal(ValPtr v)
@@ -943,8 +964,13 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 
 		previous_deltas.insert(full_delta);
 
+		ValUsed(vp);
 		curr_ev->AddDelta(vp, rhs, needs_lhs, is_first_def);
 		}
+
+	auto& v = vt->GetVal();
+	if ( IsAggr(v->GetType()) )
+		ValUsed(vt->GetVal());
 	}
 
 std::string ValTraceMgr::ProcessDelta(const ValDelta* d)
@@ -962,6 +988,7 @@ std::string ValTraceMgr::ProcessDelta(const ValDelta* d)
 			decl = "global ";
 			}
 
+		ASSERT(val_names.count(v) > 0);
 		gen = decl + val_names[v] + gen;
 		}
 
@@ -971,6 +998,7 @@ std::string ValTraceMgr::ProcessDelta(const ValDelta* d)
 void ValTraceMgr::TrackVar(const Val* v)
 	{
 	auto val_name = std::string("__val") + std::to_string(num_vars++);
+	ASSERT(val_names.count(v) == 0);
 	val_names[v] = val_name;
 	}
 

@@ -309,6 +309,10 @@ public:
 	const std::string& ValName(const ValTrace* vt)
 		{ return ValName(vt->GetVal()); }
 
+	void ValUsed(const ValPtr& v);
+
+	bool IsGlobal(const ValPtr& v) const { return globals.count(v.get()) > 0; }
+
 private:
 	void NewVal(ValPtr v);
 
@@ -322,6 +326,9 @@ private:
 	std::unordered_map<const Val*, std::shared_ptr<ValTrace>> val_map;
 	std::unordered_map<const Val*, std::string> val_names;
 	int num_vars = 0;
+
+	std::unordered_set<const Val*> processed_vals;
+	std::unordered_set<const Val*> globals;
 
 	std::shared_ptr<EventTrace> curr_ev;
 
