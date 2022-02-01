@@ -464,7 +464,7 @@ void ValTrace::ComputeRecordDelta(const ValTrace* prev, DeltaVector& deltas) con
 			}
 
 		else if ( prev_trace_i )
-			deltas.emplace_back(std::make_unique<DeltaSetField>(this, i, nullptr));
+			deltas.emplace_back(std::make_unique<DeltaRemoveField>(this, i));
 		}
 	}
 
