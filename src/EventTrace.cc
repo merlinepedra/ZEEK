@@ -753,11 +753,28 @@ EventTrace::EventTrace(const ScriptFunc* _ev, double _dt, int event_num)
 	name = ev_name + "_" + std::to_string(event_num) + "__et";
 	}
 
-void EventTrace::Generate(std::string successor) const
+void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 	{
 	for ( auto& d : deltas )
 		if ( d.IsFirstDef() )
-			printf("global %s: %s\n", d.VarName().c_str(), "type");
+			{
+			auto& val = d.GetVal();
+			auto& val_name = vtm.ValName(val);
+
+			std::string type_name;
+			auto& t = val->GetType();
+			auto& tn = t->GetName();
+			if ( tn.empty() )
+				{
+				ODesc d;
+				t->Describe(&d);
+				type_name = d.Description();
+				}
+			else
+				type_name = tn;
+
+			printf("global %s: %s;\n", val_name.c_str(), type_name.c_str());
+			}
 
 	printf("event %s()\n", name.c_str());
 	printf("\t{\n");
@@ -767,7 +784,11 @@ void EventTrace::Generate(std::string successor) const
 		printf("\t");
 
 		if ( d.NeedsLHS() )
-			printf("%s", d.VarName().c_str());
+			{
+			auto& val = d.GetVal();
+			auto& val_name = vtm.ValName(val);
+			printf("%s", val_name.c_str());
+			}
 
 		printf("%s;\n", d.RHS().c_str());
 		}
@@ -899,7 +920,8 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 
 	for ( auto& d : deltas )
 		{
-		auto v = d->GetValTrace()->GetVal().get();
+		auto vp = d->GetValTrace()->GetVal();
+		auto v = vp.get();
 		auto rhs = d->Generate(this);
 
 		bool needs_lhs = d->NeedsLHS();
@@ -919,7 +941,7 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 
 		previous_deltas.insert(full_delta);
 
-		curr_ev->AddDelta(val_names[v], rhs, needs_lhs, is_first_def);
+		curr_ev->AddDelta(vp, rhs, needs_lhs, is_first_def);
 		}
 	}
 
@@ -958,7 +980,7 @@ EventTraceMgr::~EventTraceMgr()
 	printf("module __EventTrace;\n\n");
 
 	for ( auto& e : events )
-		printf("event %s();\n", e->GetName());
+		printf("global %s: event();\n", e->GetName());
 
 	printf("\nevent zeek_init() &priority=-999999\n");
 	printf("\t{\n");
@@ -969,7 +991,7 @@ EventTraceMgr::~EventTraceMgr()
 		{
 		printf("\n");
 		auto successor = i+1 < events.size() ? events[i+1]->GetName() : "";
-		events[i]->Generate(successor);
+		events[i]->Generate(vtm, successor);
 		}
 	}
 

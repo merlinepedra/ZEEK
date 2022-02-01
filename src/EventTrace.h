@@ -255,17 +255,17 @@ private:
 class DeltaGen
 	{
 public:
-	DeltaGen(std::string _var_name, std::string _rhs, bool _needs_lhs, bool _is_first_def)
-		: var_name(std::move(_var_name)), rhs(std::move(_rhs)), needs_lhs(_needs_lhs), is_first_def(_is_first_def)
+	DeltaGen(ValPtr _val, std::string _rhs, bool _needs_lhs, bool _is_first_def)
+		: val(std::move(_val)), rhs(std::move(_rhs)), needs_lhs(_needs_lhs), is_first_def(_is_first_def)
 		{}
 
-	const std::string& VarName() const { return var_name; }
+	const ValPtr& GetVal() const { return val; }
 	const std::string& RHS() const { return rhs; }
 	bool NeedsLHS() const { return needs_lhs; }
 	bool IsFirstDef() const { return is_first_def; }
 
 private:
-	std::string var_name;
+	ValPtr val;
 	std::string rhs;
 	bool needs_lhs;
 	bool is_first_def;
@@ -277,9 +277,9 @@ class EventTrace
 public:
 	EventTrace(const ScriptFunc* _ev, double _dt, int event_num);
 
-	void AddDelta(std::string val_name, std::string rhs, bool needs_lhs, bool is_first_def)
+	void AddDelta(ValPtr val, std::string rhs, bool needs_lhs, bool is_first_def)
 		{
-		deltas.emplace_back(DeltaGen(val_name, rhs, needs_lhs, is_first_def));
+		deltas.emplace_back(DeltaGen(val, rhs, needs_lhs, is_first_def));
 		}
 
 	void SetArgs(std::string _args) { args = std::move(_args); }
@@ -287,7 +287,7 @@ public:
 	const char* GetName() const { return name.c_str(); }
 	double DeltaTime() const { return dt; }
 
-	void Generate(std::string successor) const;
+	void Generate(ValTraceMgr& vtm, std::string successor) const;
 
 private:
 	const ScriptFunc* ev;
