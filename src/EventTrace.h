@@ -345,11 +345,17 @@ public:
 	void StartEvent(const ScriptFunc* ev, const zeek::Args* args);
 	void EndEvent();
 
+	void ScriptEventQueued(const EventHandlerPtr& h);
+
 private:
 	ValTraceMgr vtm;
 
 	double time = 0.0;
 	std::vector<std::shared_ptr<EventTrace>> events;
+
+	std::unordered_set<std::string> script_events;
 	};
+
+extern EventTraceMgr* etm;
 
 	} // namespace zeek::detail

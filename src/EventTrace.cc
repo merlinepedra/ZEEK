@@ -3,6 +3,7 @@
 #include <regex>
 
 #include "zeek/Desc.h"
+#include "zeek/EventHandler.h"
 #include "zeek/EventTrace.h"
 #include "zeek/Func.h"
 #include "zeek/IPAddr.h"
@@ -12,6 +13,9 @@
 
 namespace zeek::detail
 	{
+
+static EventTraceMgr etm_obj;
+EventTraceMgr* etm = &etm_obj;
 
 static std::string escape_string(const u_char* b, int len)
 	{
@@ -1028,6 +1032,14 @@ EventTraceMgr::~EventTraceMgr()
 
 void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
 	{
+	std::string ev_name = ev->Name();
+
+	if ( script_events.count(ev_name) > 0 )
+		{
+		script_events.erase(ev_name);
+		return;
+		}
+
 	auto t = run_state::network_time;
 
 	if ( t == 0.0 )
@@ -1044,6 +1056,11 @@ void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
 
 void EventTraceMgr::EndEvent()
 	{
+	}
+
+void EventTraceMgr::ScriptEventQueued(const EventHandlerPtr& h)
+	{
+	script_events.insert(h->Name());
 	}
 
 	} // namespace zeek::detail
