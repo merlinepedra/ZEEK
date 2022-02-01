@@ -1,5 +1,7 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+#include <regex>
+
 #include "zeek/Desc.h"
 #include "zeek/EventTrace.h"
 #include "zeek/Func.h"
@@ -743,22 +745,61 @@ std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm) const
 	return std::string(" = vector(") + vec + ")";
 	}
 
-void EventTrace::Dump() const
+EventTrace::EventTrace(const ScriptFunc* _ev, double _dt, int event_num)
+	: ev(_ev), dt(_dt)
 	{
-	printf("event %s:\n", ev->Name());
+	auto ev_name = std::regex_replace(ev->Name(), std::regex(":"), "_");
+
+	name = ev_name + "_" + std::to_string(event_num) + "__et";
+	}
+
+void EventTrace::Generate(std::string successor) const
+	{
+	for ( auto& d : deltas )
+		if ( d.IsFirstDef() )
+			printf("global %s: %s\n", d.VarName().c_str(), "type");
+
+	printf("event %s()\n", name.c_str());
+	printf("\t{\n");
 
 	for ( auto& d : deltas )
 		{
 		printf("\t");
 
-		if ( d.IsFirstDef() )
-			printf("global ");
-
 		if ( d.NeedsLHS() )
-			printf("%s = ", d.VarName().c_str());
+			printf("%s", d.VarName().c_str());
 
 		printf("%s;\n", d.RHS().c_str());
 		}
+
+	if ( ! deltas.empty() )
+		printf("\n");
+
+	printf("\tevent %s(%s);\n", ev->Name(), args.c_str());
+
+	if ( ! successor.empty() )
+		printf("\n\tschedule +%.06f secs { %s() };\n", dt, successor.c_str());
+
+	printf("\t}\n");
+	}
+
+void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::Args* args)
+	{
+	curr_ev = std::move(et);
+
+	std::string ev_args;
+
+	for ( auto& a : *args )
+		{
+		AddVal(a);
+
+		if ( ! ev_args.empty() )
+			ev_args += ", ";
+
+		ev_args += ValName(a);
+		}
+
+	curr_ev->SetArgs(ev_args);
 	}
 
 void ValTraceMgr::AddVal(ValPtr v)
@@ -911,25 +952,41 @@ void ValTraceMgr::TrackVar(const Val* v)
 
 EventTraceMgr::~EventTraceMgr()
 	{
+	if ( events.empty() )
+		return;
+
+	printf("module __EventTrace;\n\n");
+
 	for ( auto& e : events )
+		printf("event %s();\n", e->GetName());
+
+	printf("\nevent zeek_init() &priority=-999999\n");
+	printf("\t{\n");
+	printf("\tschedule +0.0 sec { %s() };\n", events.front()->GetName());
+	printf("\t}\n");
+
+	for ( auto i = 0U; i < events.size(); ++i )
 		{
-		e->Dump();
 		printf("\n");
+		auto successor = i+1 < events.size() ? events[i+1]->GetName() : "";
+		events[i]->Generate(successor);
 		}
 	}
 
 void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
 	{
-	if ( run_state::network_time == 0.0 )
+	auto t = run_state::network_time;
+
+	if ( t == 0.0 )
 		return;
 
-	auto et = std::make_shared<EventTrace>(ev);
+	double dt = time == 0.0 ? 0.0 : t - time;
+	time = t;
+
+	auto et = std::make_shared<EventTrace>(ev, dt, events.size());
 	events.emplace_back(et);
 
-	vtm.SetCurrentEvent(et);
-
-	for ( auto& a : *args )
-		vtm.AddVal(a);
+	vtm.TraceEventValues(et, args);
 	}
 
 void EventTraceMgr::EndEvent()

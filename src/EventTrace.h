@@ -275,25 +275,33 @@ private:
 class EventTrace
 	{
 public:
-	EventTrace(const ScriptFunc* _ev)
-		: ev(_ev) {}
+	EventTrace(const ScriptFunc* _ev, double _dt, int event_num);
 
 	void AddDelta(std::string val_name, std::string rhs, bool needs_lhs, bool is_first_def)
 		{
 		deltas.emplace_back(DeltaGen(val_name, rhs, needs_lhs, is_first_def));
 		}
 
-	void Dump() const;
+	void SetArgs(std::string _args) { args = std::move(_args); }
+
+	const char* GetName() const { return name.c_str(); }
+	double DeltaTime() const { return dt; }
+
+	void Generate(std::string successor) const;
 
 private:
 	const ScriptFunc* ev;
+	double dt;
+
 	std::vector<DeltaGen> deltas;
+	std::string name;
+	std::string args;
 	};
 
 class ValTraceMgr
 	{
 public:
-	void SetCurrentEvent(std::shared_ptr<EventTrace> ev) { curr_ev = ev; }
+	void TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::Args* args);
 
 	void AddVal(ValPtr v);
 
@@ -332,6 +340,8 @@ public:
 
 private:
 	ValTraceMgr vtm;
+
+	double time = 0.0;
 	std::vector<std::shared_ptr<EventTrace>> events;
 	};
 
