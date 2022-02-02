@@ -46,7 +46,10 @@ DNS_Mapping::DNS_Mapping(FILE* f)
 
 	if ( sscanf(buf, "%lf %d %512s %d %512s %d %d %" PRIu32, &creation_time, &is_req_host, req_buf,
 	            &failed_local, name_buf, &map_type, &num_addrs, &req_ttl) != 8 )
+		{
+		no_mapping = true;
 		return;
+		}
 
 	failed = static_cast<bool>(failed_local);
 
