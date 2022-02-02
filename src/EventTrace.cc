@@ -742,8 +742,8 @@ std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm) const
 	return std::string(" = vector(") + vec + ")";
 	}
 
-EventTrace::EventTrace(const ScriptFunc* _ev, double _dt, int event_num)
-	: ev(_ev), dt(_dt)
+EventTrace::EventTrace(const ScriptFunc* _ev, double _nt, int event_num)
+	: ev(_ev), nt(_nt)
 	{
 	auto ev_name = std::regex_replace(ev->Name(), std::regex(":"), "_");
 
@@ -803,7 +803,7 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 		printf("\tterminate();\n");
 	else
 		{
-		printf("\t# dt: +%.06f secs\n", dt);
+		printf("\t# set_network_time(double_to_time(%.06f))\n", nt);
 		printf("\tschedule +0.0 secs { __EventTrace::%s() };\n", successor.c_str());
 		}
 
@@ -837,6 +837,12 @@ void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::A
 		}
 	}
 
+void ValTraceMgr::UpdateEventValues(const zeek::Args* args)
+	{
+	for ( auto& a : *args )
+		val_map[a.get()] = std::make_shared<ValTrace>(a);
+	}
+
 void ValTraceMgr::AddVal(ValPtr v)
 	{
 	auto mapping = val_map.find(v.get());
@@ -847,7 +853,7 @@ void ValTraceMgr::AddVal(ValPtr v)
 		{
 		auto vt = std::make_shared<ValTrace>(v);
 		AssessChange(vt.get(), mapping->second.get());
-		val_map[vt->GetVal().get()] = vt;
+		val_map[v.get()] = vt;
 		}
 	}
 
@@ -1039,22 +1045,19 @@ void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
 		return;
 		}
 
-	auto t = run_state::network_time;
-
-	if ( t == 0.0 )
+	auto nt = run_state::network_time;
+	if ( nt == 0.0 )
 		return;
 
-	double dt = time == 0.0 ? 0.0 : t - time;
-	time = t;
-
-	auto et = std::make_shared<EventTrace>(ev, dt, events.size());
+	auto et = std::make_shared<EventTrace>(ev, nt, events.size());
 	events.emplace_back(et);
 
 	vtm.TraceEventValues(et, args);
 	}
 
-void EventTraceMgr::EndEvent()
+void EventTraceMgr::EndEvent(const ScriptFunc* ev, const zeek::Args* args)
 	{
+	// vtm.UpdateEventValues(args);
 	}
 
 void EventTraceMgr::ScriptEventQueued(const EventHandlerPtr& h)

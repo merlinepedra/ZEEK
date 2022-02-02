@@ -486,7 +486,7 @@ ValPtr ScriptFunc::Invoke(zeek::Args* args, Frame* parent) const
 		}
 
 	else if ( etm && Flavor() == FUNC_FLAVOR_EVENT )
-		etm->EndEvent();
+		etm->EndEvent(this, args);
 
 	// Warn if the function returns something, but we returned from
 	// the function without an explicit return, or without a value.
