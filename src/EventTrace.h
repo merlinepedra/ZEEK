@@ -15,8 +15,8 @@ class ValTraceMgr;
 class ValDelta
 	{
 public:
-	ValDelta(const ValTrace* _vt) : vt(_vt) {}
-	virtual ~ValDelta() {}
+	ValDelta(const ValTrace* _vt) : vt(_vt) { }
+	virtual ~ValDelta() { }
 
 	virtual std::string Generate(ValTraceMgr* vtm) const;
 	virtual bool NeedsLHS() const { return true; }
@@ -46,8 +46,7 @@ public:
 	// Returns true if this trace and the given one represent the
 	// same underlying value.
 	bool operator==(const ValTrace& vt) const;
-	bool operator!=(const ValTrace& vt) const
-		{ return ! ((*this) == vt); }
+	bool operator!=(const ValTrace& vt) const { return ! ((*this) == vt); }
 
 	// Computes the deltas between a previous ValTrace and this one.
 	// If "prev" is nil then we're creating this value from scratch
@@ -97,7 +96,9 @@ class DeltaReplaceValue : public ValDelta
 	{
 public:
 	DeltaReplaceValue(const ValTrace* _vt, ValPtr _new_val)
-		: ValDelta(_vt), new_val(std::move(_new_val)) {}
+		: ValDelta(_vt), new_val(std::move(_new_val))
+		{
+		}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
@@ -110,7 +111,9 @@ class DeltaSetField : public ValDelta
 	{
 public:
 	DeltaSetField(const ValTrace* _vt, int _field, ValPtr _new_val)
-		: ValDelta(_vt), field(_field), new_val(std::move(_new_val)) {}
+		: ValDelta(_vt), field(_field), new_val(std::move(_new_val))
+		{
+		}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
@@ -123,8 +126,7 @@ private:
 class DeltaRemoveField : public ValDelta
 	{
 public:
-	DeltaRemoveField(const ValTrace* _vt, int _field)
-		: ValDelta(_vt), field(_field) {}
+	DeltaRemoveField(const ValTrace* _vt, int _field) : ValDelta(_vt), field(_field) { }
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 	bool NeedsLHS() const override { return false; }
@@ -137,8 +139,7 @@ private:
 class DeltaRecordCreate : public ValDelta
 	{
 public:
-	DeltaRecordCreate(const ValTrace* _vt)
-		: ValDelta(_vt) {}
+	DeltaRecordCreate(const ValTrace* _vt) : ValDelta(_vt) { }
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 	};
@@ -148,8 +149,7 @@ public:
 class DeltaSetSetEntry : public ValDelta
 	{
 public:
-	DeltaSetSetEntry(const ValTrace* _vt, ValPtr _index)
-		: ValDelta(_vt), index(_index) {}
+	DeltaSetSetEntry(const ValTrace* _vt, ValPtr _index) : ValDelta(_vt), index(_index) { }
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 	bool NeedsLHS() const override { return false; }
@@ -165,7 +165,9 @@ class DeltaSetTableEntry : public ValDelta
 	{
 public:
 	DeltaSetTableEntry(const ValTrace* _vt, ValPtr _index, ValPtr _new_val)
-		: ValDelta(_vt), index(_index), new_val(std::move(_new_val)) {}
+		: ValDelta(_vt), index(_index), new_val(std::move(_new_val))
+		{
+		}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
@@ -179,7 +181,9 @@ class DeltaRemoveTableEntry : public ValDelta
 	{
 public:
 	DeltaRemoveTableEntry(const ValTrace* _vt, ValPtr _index)
-		: ValDelta(_vt), index(std::move(_index)) {}
+		: ValDelta(_vt), index(std::move(_index))
+		{
+		}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 	bool NeedsLHS() const override { return false; }
@@ -192,8 +196,7 @@ private:
 class DeltaSetCreate : public ValDelta
 	{
 public:
-	DeltaSetCreate(const ValTrace* _vt)
-		: ValDelta(_vt) {}
+	DeltaSetCreate(const ValTrace* _vt) : ValDelta(_vt) { }
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 	};
@@ -202,8 +205,7 @@ public:
 class DeltaTableCreate : public ValDelta
 	{
 public:
-	DeltaTableCreate(const ValTrace* _vt)
-		: ValDelta(_vt) {}
+	DeltaTableCreate(const ValTrace* _vt) : ValDelta(_vt) { }
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 	};
@@ -213,7 +215,9 @@ class DeltaVectorSet : public ValDelta
 	{
 public:
 	DeltaVectorSet(const ValTrace* _vt, int _index, ValPtr _elem)
-		 : ValDelta(_vt), index(_index), elem(std::move(_elem)) {}
+		: ValDelta(_vt), index(_index), elem(std::move(_elem))
+		{
+		}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
@@ -227,7 +231,9 @@ class DeltaVectorAppend : public ValDelta
 	{
 public:
 	DeltaVectorAppend(const ValTrace* _vt, int _index, ValPtr _elem)
-		: ValDelta(_vt), index(_index), elem(std::move(_elem)) {}
+		: ValDelta(_vt), index(_index), elem(std::move(_elem))
+		{
+		}
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
@@ -240,8 +246,7 @@ private:
 class DeltaVectorCreate : public ValDelta
 	{
 public:
-	DeltaVectorCreate(const ValTrace* _vt)
-		: ValDelta(_vt) {}
+	DeltaVectorCreate(const ValTrace* _vt) : ValDelta(_vt) { }
 
 	std::string Generate(ValTraceMgr* vtm) const override;
 
@@ -254,8 +259,10 @@ class DeltaGen
 	{
 public:
 	DeltaGen(ValPtr _val, std::string _rhs, bool _needs_lhs, bool _is_first_def)
-		: val(std::move(_val)), rhs(std::move(_rhs)), needs_lhs(_needs_lhs), is_first_def(_is_first_def)
-		{}
+		: val(std::move(_val)), rhs(std::move(_rhs)), needs_lhs(_needs_lhs),
+		  is_first_def(_is_first_def)
+		{
+		}
 
 	const ValPtr& GetVal() const { return val; }
 	const std::string& RHS() const { return rhs; }
@@ -304,8 +311,7 @@ public:
 	void AddVal(ValPtr v);
 
 	const std::string& ValName(const ValPtr& v);
-	const std::string& ValName(const ValTrace* vt)
-		{ return ValName(vt->GetVal()); }
+	const std::string& ValName(const ValTrace* vt) { return ValName(vt->GetVal()); }
 
 	void ValUsed(const ValPtr& v);
 

@@ -1,15 +1,15 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+#include "zeek/EventTrace.h"
+
 #include <regex>
 
 #include "zeek/Desc.h"
 #include "zeek/EventHandler.h"
-#include "zeek/EventTrace.h"
 #include "zeek/Func.h"
 #include "zeek/IPAddr.h"
 #include "zeek/Reporter.h"
 #include "zeek/ZeekString.h"
-
 
 namespace zeek::detail
 	{
@@ -25,30 +25,49 @@ static std::string escape_string(const u_char* b, int len)
 		{
 		unsigned char c = b[i];
 
-		switch ( c ) {
-		case '\a':	res += "\\a"; break;
-		case '\b':	res += "\\b"; break;
-		case '\f':	res += "\\f"; break;
-		case '\n':	res += "\\n"; break;
-		case '\r':	res += "\\r"; break;
-		case '\t':	res += "\\t"; break;
-		case '\v':	res += "\\v"; break;
+		switch ( c )
+			{
+			case '\a':
+				res += "\\a";
+				break;
+			case '\b':
+				res += "\\b";
+				break;
+			case '\f':
+				res += "\\f";
+				break;
+			case '\n':
+				res += "\\n";
+				break;
+			case '\r':
+				res += "\\r";
+				break;
+			case '\t':
+				res += "\\t";
+				break;
+			case '\v':
+				res += "\\v";
+				break;
 
-		case '\\':	res += "\\\\"; break;
-		case '"':	res += "\\\""; break;
+			case '\\':
+				res += "\\\\";
+				break;
+			case '"':
+				res += "\\\"";
+				break;
 
-		default:
-			if ( isprint(c) )
-				res += c;
-			else
-				{
-				char buf[8192];
-				snprintf(buf, sizeof buf, "%03o", c);
-				res += "\\";
-				res += buf;
-				}
-			break;
-		}
+			default:
+				if ( isprint(c) )
+					res += c;
+				else
+					{
+					char buf[8192];
+					snprintf(buf, sizeof buf, "%03o", c);
+					res += "\\";
+					res += buf;
+					}
+				break;
+			}
 		}
 
 	return res + "\"";
@@ -82,9 +101,7 @@ ValTrace::ValTrace(const ValPtr& _v)
 		}
 	}
 
-ValTrace::~ValTrace()
-	{
-	}
+ValTrace::~ValTrace() { }
 
 bool ValTrace::operator==(const ValTrace& vt) const
 	{
@@ -200,7 +217,8 @@ void ValTrace::ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const
 		case TYPE_OPAQUE:
 		case TYPE_ANY:
 			// These we have no way of creating as constants.
-			reporter->Error("cannot generate an event trace for an event of type %s", type_name(tag));
+			reporter->Error("cannot generate an event trace for an event of type %s",
+			                type_name(tag));
 			break;
 
 		case TYPE_LIST:
@@ -557,7 +575,8 @@ void ValTrace::ComputeTableDelta(const ValTrace* prev, DeltaVector& deltas) cons
 			trace2->ComputeDelta(prev_trace2.get(), deltas);
 
 		else if ( ! trace2->SameSingleton(*prev_trace2) )
-			deltas.emplace_back(std::make_unique<DeltaSetTableEntry>(this, elems[i]->GetVal(), yield));
+			deltas.emplace_back(
+				std::make_unique<DeltaSetTableEntry>(this, elems[i]->GetVal(), yield));
 		}
 	}
 
@@ -742,8 +761,7 @@ std::string DeltaVectorCreate::Generate(ValTraceMgr* vtm) const
 	return std::string(" = vector(") + vec + ")";
 	}
 
-EventTrace::EventTrace(const ScriptFunc* _ev, double _nt, int event_num)
-	: ev(_ev), nt(_nt)
+EventTrace::EventTrace(const ScriptFunc* _ev, double _nt, int event_num) : ev(_ev), nt(_nt)
 	{
 	auto ev_name = std::regex_replace(ev->Name(), std::regex(":"), "_");
 
@@ -1030,7 +1048,7 @@ EventTraceMgr::~EventTraceMgr()
 	for ( auto i = 0U; i < events.size(); ++i )
 		{
 		printf("\n");
-		auto successor = i+1 < events.size() ? events[i+1]->GetName() : "";
+		auto successor = i + 1 < events.size() ? events[i + 1]->GetName() : "";
 		events[i]->Generate(vtm, successor);
 		}
 	}
