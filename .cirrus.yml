@@ -37,6 +37,7 @@ ci_template: &CI_TEMPLATE
     ( $CIRRUS_REPO_NAME == 'zeek' &&
       (
       $CIRRUS_BRANCH == 'master' ||
+      $CIRRUS_BRANCH == 'topic/timw/bifcl-merge' ||
       $CIRRUS_BRANCH =~ 'release/.*'
       )
     )
