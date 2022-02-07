@@ -821,8 +821,8 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 		printf("\tterminate();\n");
 	else
 		{
-		printf("\t# set_network_time(double_to_time(%.06f))\n", nt);
-		printf("\tschedule +0.0 secs { __EventTrace::%s() };\n", successor.c_str());
+		printf("\tset_network_time(double_to_time(%.06f));\n", nt);
+		printf("\tevent __EventTrace::%s();\n", successor.c_str());
 		}
 
 	printf("\t}\n");
@@ -1034,7 +1034,6 @@ EventTraceMgr::~EventTraceMgr()
 	if ( events.empty() )
 		return;
 
-	printf("redef exit_only_after_terminate=T;\n\n");
 	printf("module __EventTrace;\n\n");
 
 	for ( auto& e : events )
@@ -1042,7 +1041,7 @@ EventTraceMgr::~EventTraceMgr()
 
 	printf("\nevent zeek_init() &priority=-999999\n");
 	printf("\t{\n");
-	printf("\tschedule +0 sec { __EventTrace::%s() };\n", events.front()->GetName());
+	printf("\tevent __EventTrace::%s();\n", events.front()->GetName());
 	printf("\t}\n");
 
 	for ( auto i = 0U; i < events.size(); ++i )
