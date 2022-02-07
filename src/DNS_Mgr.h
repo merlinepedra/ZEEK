@@ -3,6 +3,7 @@
 #pragma once
 
 #include <ares.h>
+#include <ares_nameser.h>
 #include <list>
 #include <map>
 #include <queue>
@@ -250,7 +251,7 @@ private:
 	// requested.
 	void CheckAsyncAddrRequest(const IPAddr& addr, bool timeout);
 	void CheckAsyncHostRequest(const char* host, bool timeout);
-	void CheckAsyncTextRequest(const char* host, bool timeout);
+	void CheckAsyncOtherRequest(const char* host, bool timeout, int request_type);
 
 	void Event(EventHandlerPtr e, DNS_Mapping* dm);
 	void Event(EventHandlerPtr e, DNS_Mapping* dm, ListValPtr l1, ListValPtr l2);
@@ -297,10 +298,11 @@ private:
 		IPAddr addr;
 		std::string host;
 		CallbackList callbacks;
-		bool is_txt = false;
+		int type = 0;
 		bool processed = false;
 
-		bool IsAddrReq() const { return host.empty(); }
+		AsyncRequest(const char* host, int request_type) : host(host), type(request_type) { }
+		AsyncRequest(const IPAddr& addr) : addr(addr), type(T_PTR) { }
 
 		void Resolved(const char* name);
 		void Resolved(TableValPtr addrs);
@@ -312,14 +314,8 @@ private:
 		bool operator()(const AsyncRequest* a, const AsyncRequest* b) { return a->time > b->time; }
 		};
 
-	using AsyncRequestAddrMap = std::map<IPAddr, AsyncRequest*>;
-	AsyncRequestAddrMap asyncs_addrs;
-
-	using AsyncRequestNameMap = std::map<std::string, AsyncRequest*>;
-	AsyncRequestNameMap asyncs_names;
-
-	using AsyncRequestTextMap = std::map<std::string, AsyncRequest*>;
-	AsyncRequestTextMap asyncs_texts;
+	using AsyncRequestMap = std::map<MappingKey, AsyncRequest*>;
+	AsyncRequestMap asyncs;
 
 	using QueuedList = std::list<AsyncRequest*>;
 	QueuedList asyncs_queued;
