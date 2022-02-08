@@ -16,6 +16,8 @@ namespace zeek::detail
 
 std::unique_ptr<EventTraceMgr> etm;
 
+// Helper function for generating a correct script-level representation
+// of a string constant.
 static std::string escape_string(const u_char* b, int len)
 	{
 	std::string res = "\"";
@@ -221,11 +223,11 @@ void ValTrace::ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const
 			break;
 
 		case TYPE_LIST:
-			// We shouldn't see these exposed directly, as
-			// they're not manipulable at script-level.  An
-			// exception might be for "any" types that are
-			// then decomposed via compound assignment; for
-			// now, we don't support those.
+			// We shouldn't see these exposed directly, as they're
+			// not manipulable at script-level.  An exception
+			// might be for "any" types that are then decomposed
+			// via compound assignment; for now, we don't support
+			// those.
 			reporter->InternalError("list type seen in ValTrace::ComputeDelta");
 			break;
 
@@ -255,41 +257,6 @@ void ValTrace::ComputeDelta(const ValTrace* prev, DeltaVector& deltas) const
 
 		default:
 			reporter->InternalError("bad type in ValTrace::ComputeDelta");
-		}
-	}
-
-void ValTrace::Dump(int indent_level) const
-	{
-	Indent(indent_level);
-
-	if ( IsAggr(t) || t->Tag() == TYPE_LIST )
-		{
-		bool is_table = ! elems2.empty();
-
-		printf("aggregate of type \"%s\" with %lu elements:\n", t->GetName().c_str(), elems.size());
-
-		for ( auto i = 0; i < elems.size(); ++i )
-			{
-			auto& e = elems[i];
-			if ( e )
-				{
-				e->Dump(indent_level + 1);
-				if ( is_table )
-					elems2[i]->Dump(indent_level + 2);
-				}
-			else
-				{
-				Indent(indent_level + 1);
-				printf("<nil>\n");
-				}
-			}
-		}
-
-	else
-		{
-		ODesc d;
-		v->Describe(&d);
-		printf("singleton %s\n", d.Description());
 		}
 	}
 
@@ -585,6 +552,8 @@ void ValTrace::ComputeVectorDelta(const ValTrace* prev, DeltaVector& deltas) con
 	auto n = elems.size();
 	auto prev_n = prev_elems.size();
 
+	// The following hasn't been tested for robustness to vector holes.
+
 	if ( n < prev_n )
 		{
 		// The vector shrank in size.  Easiest to just build it
@@ -616,12 +585,6 @@ void ValTrace::ComputeVectorDelta(const ValTrace* prev, DeltaVector& deltas) con
 		auto& elem_i = trace_i->GetVal();
 		deltas.emplace_back(std::make_unique<DeltaVectorAppend>(this, i, elem_i));
 		}
-	}
-
-void ValTrace::Indent(int indent_level) const
-	{
-	for ( auto i = 0; i < indent_level; ++i )
-		printf("\t");
 	}
 
 std::string ValDelta::Generate(ValTraceMgr* vtm) const
@@ -870,7 +833,6 @@ void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::A
 	auto num_vals = vals.size();
 
 	std::string ev_args;
-
 	for ( auto& a : *args )
 		{
 		AddVal(a);
@@ -883,6 +845,8 @@ void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::A
 
 	curr_ev->SetArgs(ev_args);
 
+	// Now look for any values newly-processed with this event and
+	// remember them so we can catch uses of them in future events.
 	for ( auto i = num_vals; i < vals.size(); ++i )
 		{
 		processed_vals.insert(vals[i].get());
@@ -901,20 +865,6 @@ void ValTraceMgr::FinishCurrentEvent(const zeek::Args* args)
 
 	for ( auto i = num_vals; i < vals.size(); ++i )
 		processed_vals.insert(vals[i].get());
-	}
-
-void ValTraceMgr::AddVal(ValPtr v)
-	{
-	auto mapping = val_map.find(v.get());
-
-	if ( mapping == val_map.end() )
-		NewVal(v);
-	else
-		{
-		auto vt = std::make_shared<ValTrace>(v);
-		AssessChange(vt.get(), mapping->second.get());
-		val_map[v.get()] = vt;
-		}
 	}
 
 const std::string& ValTraceMgr::ValName(const ValPtr& v)
@@ -981,12 +931,18 @@ const std::string& ValTraceMgr::ValName(const ValPtr& v)
 	return find->second;
 	}
 
-void ValTraceMgr::ValUsed(const ValPtr& v)
+void ValTraceMgr::AddVal(ValPtr v)
 	{
-	ASSERT(val_names.count(v.get()) > 0);
-	if ( processed_vals.count(v.get()) > 0 )
-		// We saw this value when processing a previous event.
-		globals.insert(v.get());
+	auto mapping = val_map.find(v.get());
+
+	if ( mapping == val_map.end() )
+		NewVal(v);
+	else
+		{
+		auto vt = std::make_shared<ValTrace>(v);
+		AssessChange(vt.get(), mapping->second.get());
+		val_map[v.get()] = vt;
+		}
 	}
 
 void ValTraceMgr::NewVal(ValPtr v)
@@ -997,6 +953,14 @@ void ValTraceMgr::NewVal(ValPtr v)
 	auto vt = std::make_shared<ValTrace>(v);
 	AssessChange(vt.get(), nullptr);
 	val_map[v.get()] = vt;
+	}
+
+void ValTraceMgr::ValUsed(const ValPtr& v)
+	{
+	ASSERT(val_names.count(v.get()) > 0);
+	if ( processed_vals.count(v.get()) > 0 )
+		// We saw this value when processing a previous event.
+		globals.insert(v.get());
 	}
 
 void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
@@ -1027,6 +991,8 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 
 		ASSERT(val_names.count(v) > 0);
 
+		// The "/" in the following is just to have a delimiter
+		// to make sure the string is unambiguous.
 		auto full_delta = val_names[v] + "/" + rhs;
 		if ( previous_deltas.count(full_delta) > 0 )
 			continue;
@@ -1042,32 +1008,9 @@ void ValTraceMgr::AssessChange(const ValTrace* vt, const ValTrace* prev_vt)
 		ValUsed(vt->GetVal());
 	}
 
-std::string ValTraceMgr::ProcessDelta(const ValDelta* d)
-	{
-	auto gen = d->Generate(this);
-
-	if ( d->NeedsLHS() )
-		{
-		auto v = d->GetValTrace()->GetVal().get();
-		std::string decl;
-
-		if ( val_names.count(v) == 0 )
-			{
-			TrackVar(v);
-			decl = "global ";
-			}
-
-		ASSERT(val_names.count(v) > 0);
-		gen = decl + val_names[v] + gen;
-		}
-
-	return gen;
-	}
-
 void ValTraceMgr::TrackVar(const Val* v)
 	{
 	auto val_name = std::string("__val") + std::to_string(num_vars++);
-	ASSERT(val_names.count(v) == 0);
 	val_names[v] = val_name;
 	}
 
