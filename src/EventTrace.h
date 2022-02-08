@@ -276,6 +276,8 @@ private:
 	bool is_first_def;
 	};
 
+using DeltaGenVec = std::vector<DeltaGen>;
+
 // Tracks a single event.
 class EventTrace
 	{
@@ -284,20 +286,26 @@ public:
 
 	void AddDelta(ValPtr val, std::string rhs, bool needs_lhs, bool is_first_def)
 		{
-		deltas.emplace_back(DeltaGen(val, rhs, needs_lhs, is_first_def));
+		auto& d = is_post ? post_deltas : deltas;
+		d.emplace_back(DeltaGen(val, rhs, needs_lhs, is_first_def));
 		}
+	void SetDoingPost() { is_post = true; }
 
 	void SetArgs(std::string _args) { args = std::move(_args); }
 
 	const char* GetName() const { return name.c_str(); }
 
-	void Generate(ValTraceMgr& vtm, std::string successor) const;
+	void Generate(ValTraceMgr& vtm, const EventTrace* predecessor, std::string successor) const;
 
 private:
+	void Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor, int num_pre = 0) const;
+
 	const ScriptFunc* ev;
 	double nt;
+	bool is_post = false;
 
-	std::vector<DeltaGen> deltas;
+	DeltaGenVec deltas;
+	DeltaGenVec post_deltas;
 	std::string name;
 	std::string args;
 	};
@@ -307,6 +315,7 @@ class ValTraceMgr
 public:
 	void TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::Args* args);
 	void UpdateEventValues(const zeek::Args* args);
+	void FinishCurrentEvent(const zeek::Args* args);
 
 	void AddVal(ValPtr v);
 

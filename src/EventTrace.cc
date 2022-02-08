@@ -768,9 +768,10 @@ EventTrace::EventTrace(const ScriptFunc* _ev, double _nt, int event_num) : ev(_e
 	name = ev_name + "_" + std::to_string(event_num) + "__et";
 	}
 
-void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
+void EventTrace::Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor, int num_pre) const
 	{
-	for ( auto& d : deltas )
+	int offset = 0;
+	for ( auto& d : dvec )
 		{
 		auto& val = d.GetVal();
 
@@ -790,14 +791,19 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 			else
 				type_name = tn;
 
-			printf("global %s: %s;\n", val_name.c_str(), type_name.c_str());
+			auto anno = offset < num_pre ? " # from script" : "";
+
+			printf("global %s: %s;%s\n", val_name.c_str(), type_name.c_str(), anno);
 			}
+
+		++offset;
 		}
 
 	printf("event %s()\n", name.c_str());
 	printf("\t{\n");
 
-	for ( auto& d : deltas )
+	offset = 0;
+	for ( auto& d : dvec )
 		{
 		printf("\t");
 
@@ -809,16 +815,25 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 		if ( d.NeedsLHS() )
 			printf("%s", vtm.ValName(val).c_str());
 
-		printf("%s;\n", d.RHS().c_str());
+		auto anno = offset < num_pre ? " # from script" : "";
+
+		printf("%s;%s\n", d.RHS().c_str(), anno);
+
+		++offset;
 		}
 
-	if ( ! deltas.empty() )
+	if ( ! dvec.empty() )
 		printf("\n");
 
 	printf("\tevent %s(%s);\n\n", ev->Name(), args.c_str());
 
 	if ( successor.empty() )
-		printf("\tterminate();\n");
+		{
+		// The following isn't necessary with our current approach
+		// to managing chains of events, which avoids having to set
+		// exit_only_after_terminate=T.
+		// printf("\tterminate();\n");
+		}
 	else
 		{
 		printf("\tset_network_time(double_to_time(%.06f));\n", nt);
@@ -826,6 +841,25 @@ void EventTrace::Generate(ValTraceMgr& vtm, std::string successor) const
 		}
 
 	printf("\t}\n");
+	}
+
+void EventTrace::Generate(ValTraceMgr& vtm, const EventTrace* predecessor, std::string successor) const
+	{
+	if ( predecessor )
+		{
+		auto& pre_deltas = predecessor->post_deltas;
+		int num_pre = pre_deltas.size();
+
+		if ( num_pre > 0 )
+			{
+			auto total_deltas = pre_deltas;
+			total_deltas.insert(total_deltas.end(), deltas.begin(), deltas.end());
+			Generate(vtm, total_deltas, successor, num_pre);
+			return;
+			}
+		}
+
+	Generate(vtm, deltas, successor);
 	}
 
 void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::Args* args)
@@ -855,10 +889,17 @@ void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::A
 		}
 	}
 
-void ValTraceMgr::UpdateEventValues(const zeek::Args* args)
+void ValTraceMgr::FinishCurrentEvent(const zeek::Args* args)
 	{
+	auto num_vals = vals.size();
+
+	curr_ev->SetDoingPost();
+
 	for ( auto& a : *args )
-		val_map[a.get()] = std::make_shared<ValTrace>(a);
+		AddVal(a);
+
+	for ( auto i = num_vals; i < vals.size(); ++i )
+		processed_vals.insert(vals[i].get());
 	}
 
 void ValTraceMgr::AddVal(ValPtr v)
@@ -1047,20 +1088,17 @@ EventTraceMgr::~EventTraceMgr()
 	for ( auto i = 0U; i < events.size(); ++i )
 		{
 		printf("\n");
+
+		auto predecessor = i > 0 ? events[i - 1] : nullptr;
 		auto successor = i + 1 < events.size() ? events[i + 1]->GetName() : "";
-		events[i]->Generate(vtm, successor);
+		events[i]->Generate(vtm, predecessor.get(), successor);
 		}
 	}
 
 void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
 	{
-	std::string ev_name = ev->Name();
-
-	if ( script_events.count(ev_name) > 0 )
-		{
-		script_events.erase(ev_name);
+	if ( script_events.count(ev->Name()) > 0 )
 		return;
-		}
 
 	auto nt = run_state::network_time;
 	if ( nt == 0.0 )
@@ -1074,7 +1112,11 @@ void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
 
 void EventTraceMgr::EndEvent(const ScriptFunc* ev, const zeek::Args* args)
 	{
-	// vtm.UpdateEventValues(args);
+	if ( script_events.count(ev->Name()) > 0 )
+		return;
+
+	if ( run_state::network_time > 0.0 )
+		vtm.FinishCurrentEvent(args);
 	}
 
 void EventTraceMgr::ScriptEventQueued(const EventHandlerPtr& h)

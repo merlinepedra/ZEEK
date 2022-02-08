@@ -281,13 +281,13 @@ static void done_with_network()
 	ZEEK_LSAN_DISABLE();
 	}
 
-static void terminate_bro()
+static void terminate_zeek()
 	{
-	util::detail::set_processing_status("TERMINATING", "terminate_bro");
+	util::detail::set_processing_status("TERMINATING", "terminate_zeek");
 
 	run_state::terminating = true;
 
-	iosource_mgr->Wakeup("terminate_bro");
+	iosource_mgr->Wakeup("terminate_zeek");
 
 	// File analysis termination may produce events, so do it early on in
 	// the termination process.
@@ -299,7 +299,13 @@ static void terminate_bro()
 		event_mgr.Enqueue(zeek_done, Args{});
 
 	timer_mgr->Expire();
-	event_mgr.Drain();
+
+	// Drain() limits how many "generations" of newly created events
+	// it will process.  When we're terminating, however, we're okay
+	// with long chains of events, and this makes the workings of
+	// event-tracing simpler.
+	while ( event_mgr.HasEvents() )
+		event_mgr.Drain();
 
 	if ( profiling_logger )
 		{
@@ -941,7 +947,7 @@ int cleanup(bool did_run_loop)
 		done_with_network();
 
 	run_state::detail::delete_run();
-	terminate_bro();
+	terminate_zeek();
 
 	sqlite3_shutdown();
 
@@ -972,7 +978,7 @@ void zeek_terminate_loop(const char* reason)
 	zeek::detail::done_with_network();
 	delete_run();
 
-	zeek::detail::terminate_bro();
+	zeek::detail::terminate_zeek();
 
 	// Close files after net_delete(), because net_delete()
 	// might write to connection content files.
