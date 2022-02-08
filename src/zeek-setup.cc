@@ -305,6 +305,11 @@ static void terminate_zeek()
 	// it will process.  When we're terminating, however, we're okay
 	// with long chains of events, and this makes the workings of
 	// event-tracing simpler.
+	//
+	// That said, we also need to ensure that it runs at least once,
+	// as it has side effects such as tickling triggers.
+	event_mgr.Drain();
+
 	while ( event_mgr.HasEvents() )
 		event_mgr.Drain();
 
