@@ -768,7 +768,8 @@ EventTrace::EventTrace(const ScriptFunc* _ev, double _nt, int event_num) : ev(_e
 	name = ev_name + "_" + std::to_string(event_num) + "__et";
 	}
 
-void EventTrace::Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor, int num_pre) const
+void EventTrace::Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor,
+                          int num_pre) const
 	{
 	int offset = 0;
 	for ( auto& d : dvec )
@@ -843,7 +844,8 @@ void EventTrace::Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string
 	printf("\t}\n");
 	}
 
-void EventTrace::Generate(ValTraceMgr& vtm, const EventTrace* predecessor, std::string successor) const
+void EventTrace::Generate(ValTraceMgr& vtm, const EventTrace* predecessor,
+                          std::string successor) const
 	{
 	if ( predecessor )
 		{

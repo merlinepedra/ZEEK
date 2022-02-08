@@ -298,7 +298,8 @@ public:
 	void Generate(ValTraceMgr& vtm, const EventTrace* predecessor, std::string successor) const;
 
 private:
-	void Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor, int num_pre = 0) const;
+	void Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor,
+	              int num_pre = 0) const;
 
 	const ScriptFunc* ev;
 	double nt;
