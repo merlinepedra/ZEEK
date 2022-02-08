@@ -114,6 +114,8 @@ void usage(const char* prog, int code)
 #endif
 	fprintf(stderr, "    -C|--no-checksums               | ignore checksums\n");
 	fprintf(stderr, "    -D|--deterministic              | initialize random seeds to zero\n");
+	fprintf(stderr, "    -E|--event-trace <file>         | generate a replayable event trace to "
+	                "the given file\n");
 	fprintf(stderr, "    -F|--force-dns                  | force DNS\n");
 	fprintf(stderr, "    -G|--load-seeds <file>          | load seeds from given file\n");
 	fprintf(stderr, "    -H|--save-seeds <file>          | save seeds to given file\n");
@@ -379,6 +381,7 @@ Options parse_cmdline(int argc, char** argv)
 		{"no-checksums", no_argument, nullptr, 'C'},
 		{"force-dns", no_argument, nullptr, 'F'},
 		{"deterministic", no_argument, nullptr, 'D'},
+		{"event-trace", required_argument, nullptr, 'E'},
 		{"load-seeds", required_argument, nullptr, 'G'},
 		{"save-seeds", required_argument, nullptr, 'H'},
 		{"print-plugins", no_argument, nullptr, 'N'},
@@ -399,7 +402,7 @@ Options parse_cmdline(int argc, char** argv)
 		{"mem-profile", no_argument, nullptr, 'M'},
 #endif
 
-		{"pseudo-realtime", optional_argument, nullptr, 'E'},
+		{"pseudo-realtime", optional_argument, nullptr, '~'},
 		{"jobs", optional_argument, nullptr, 'j'},
 		{"test", no_argument, nullptr, '#'},
 
@@ -407,7 +410,7 @@ Options parse_cmdline(int argc, char** argv)
 	};
 
 	char opts[256];
-	util::safe_strncpy(opts, "B:c:e:f:G:H:I:i:j::n:O:0:o:p:r:s:T:t:U:w:X:CDFMNPQSWabdhmuv",
+	util::safe_strncpy(opts, "B:c:E:e:f:G:H:I:i:j::n:O:0:o:p:r:s:T:t:U:w:X:CDFMNPQSWabdhmuv",
 	                   sizeof(opts));
 
 	int op;
@@ -522,9 +525,7 @@ Options parse_cmdline(int argc, char** argv)
 				rval.deterministic_mode = true;
 				break;
 			case 'E':
-				rval.pseudo_realtime = 1.0;
-				if ( optarg )
-					rval.pseudo_realtime = atof(optarg);
+				rval.event_trace_file = optarg;
 				break;
 			case 'F':
 				if ( rval.dns_mode != detail::DNS_DEFAULT )
@@ -584,6 +585,12 @@ Options parse_cmdline(int argc, char** argv)
 				rval.perftools_profile = 1;
 				break;
 #endif
+
+			case '~':
+				rval.pseudo_realtime = 1.0;
+				if ( optarg )
+					rval.pseudo_realtime = atof(optarg);
+				break;
 
 			case '#':
 				fprintf(stderr, "ERROR: --test only allowed as first argument.\n");

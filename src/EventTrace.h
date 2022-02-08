@@ -295,10 +295,11 @@ public:
 
 	const char* GetName() const { return name.c_str(); }
 
-	void Generate(ValTraceMgr& vtm, const EventTrace* predecessor, std::string successor) const;
+	void Generate(FILE* f, ValTraceMgr& vtm, const EventTrace* predecessor,
+	              std::string successor) const;
 
 private:
-	void Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor,
+	void Generate(FILE* f, ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor,
 	              int num_pre = 0) const;
 
 	const ScriptFunc* ev;
@@ -354,6 +355,8 @@ private:
 class EventTraceMgr
 	{
 public:
+	EventTraceMgr(const std::string& trace_file);
+
 	~EventTraceMgr();
 
 	void StartEvent(const ScriptFunc* ev, const zeek::Args* args);
@@ -362,6 +365,7 @@ public:
 	void ScriptEventQueued(const EventHandlerPtr& h);
 
 private:
+	FILE* f = nullptr;
 	ValTraceMgr vtm;
 
 	double time = 0.0;
@@ -370,6 +374,6 @@ private:
 	std::unordered_set<std::string> script_events;
 	};
 
-extern EventTraceMgr* etm;
+extern std::unique_ptr<EventTraceMgr> etm;
 
 	} // namespace zeek::detail

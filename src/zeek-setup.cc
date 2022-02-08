@@ -26,6 +26,7 @@
 #include "zeek/Desc.h"
 #include "zeek/Event.h"
 #include "zeek/EventRegistry.h"
+#include "zeek/EventTrace.h"
 #include "zeek/File.h"
 #include "zeek/Frag.h"
 #include "zeek/Frame.h"
@@ -661,6 +662,9 @@ SetupResult setup(int argc, char** argv, Options* zopts)
 			return val_mgr->True();
 		};
 		auto ipbb = make_intrusive<BuiltinFunc>(init_bifs, ipbid->Name(), false);
+
+		if ( options.event_trace_file )
+			etm = make_unique<EventTraceMgr>(*options.event_trace_file);
 
 		run_state::is_parsing = true;
 		yyparse();

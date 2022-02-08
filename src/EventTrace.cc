@@ -14,8 +14,7 @@
 namespace zeek::detail
 	{
 
-static EventTraceMgr etm_obj;
-EventTraceMgr* etm = &etm_obj;
+std::unique_ptr<EventTraceMgr> etm;
 
 static std::string escape_string(const u_char* b, int len)
 	{
@@ -768,7 +767,7 @@ EventTrace::EventTrace(const ScriptFunc* _ev, double _nt, int event_num) : ev(_e
 	name = ev_name + "_" + std::to_string(event_num) + "__et";
 	}
 
-void EventTrace::Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor,
+void EventTrace::Generate(FILE* f, ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string successor,
                           int num_pre) const
 	{
 	int offset = 0;
@@ -794,57 +793,57 @@ void EventTrace::Generate(ValTraceMgr& vtm, const DeltaGenVec& dvec, std::string
 
 			auto anno = offset < num_pre ? " # from script" : "";
 
-			printf("global %s: %s;%s\n", val_name.c_str(), type_name.c_str(), anno);
+			fprintf(f, "global %s: %s;%s\n", val_name.c_str(), type_name.c_str(), anno);
 			}
 
 		++offset;
 		}
 
-	printf("event %s()\n", name.c_str());
-	printf("\t{\n");
+	fprintf(f, "event %s()\n", name.c_str());
+	fprintf(f, "\t{\n");
 
 	offset = 0;
 	for ( auto& d : dvec )
 		{
-		printf("\t");
+		fprintf(f, "\t");
 
 		auto& val = d.GetVal();
 
 		if ( d.IsFirstDef() && ! vtm.IsGlobal(val) )
-			printf("local ");
+			fprintf(f, "local ");
 
 		if ( d.NeedsLHS() )
-			printf("%s", vtm.ValName(val).c_str());
+			fprintf(f, "%s", vtm.ValName(val).c_str());
 
 		auto anno = offset < num_pre ? " # from script" : "";
 
-		printf("%s;%s\n", d.RHS().c_str(), anno);
+		fprintf(f, "%s;%s\n", d.RHS().c_str(), anno);
 
 		++offset;
 		}
 
 	if ( ! dvec.empty() )
-		printf("\n");
+		fprintf(f, "\n");
 
-	printf("\tevent %s(%s);\n\n", ev->Name(), args.c_str());
+	fprintf(f, "\tevent %s(%s);\n\n", ev->Name(), args.c_str());
 
 	if ( successor.empty() )
 		{
 		// The following isn't necessary with our current approach
 		// to managing chains of events, which avoids having to set
 		// exit_only_after_terminate=T.
-		// printf("\tterminate();\n");
+		// fprintf(f, "\tterminate();\n");
 		}
 	else
 		{
-		printf("\tset_network_time(double_to_time(%.06f));\n", nt);
-		printf("\tevent __EventTrace::%s();\n", successor.c_str());
+		fprintf(f, "\tset_network_time(double_to_time(%.06f));\n", nt);
+		fprintf(f, "\tevent __EventTrace::%s();\n", successor.c_str());
 		}
 
-	printf("\t}\n");
+	fprintf(f, "\t}\n");
 	}
 
-void EventTrace::Generate(ValTraceMgr& vtm, const EventTrace* predecessor,
+void EventTrace::Generate(FILE* f, ValTraceMgr& vtm, const EventTrace* predecessor,
                           std::string successor) const
 	{
 	if ( predecessor )
@@ -856,12 +855,12 @@ void EventTrace::Generate(ValTraceMgr& vtm, const EventTrace* predecessor,
 			{
 			auto total_deltas = pre_deltas;
 			total_deltas.insert(total_deltas.end(), deltas.begin(), deltas.end());
-			Generate(vtm, total_deltas, successor, num_pre);
+			Generate(f, vtm, total_deltas, successor, num_pre);
 			return;
 			}
 		}
 
-	Generate(vtm, deltas, successor);
+	Generate(f, vtm, deltas, successor);
 	}
 
 void ValTraceMgr::TraceEventValues(std::shared_ptr<EventTrace> et, const zeek::Args* args)
@@ -1072,29 +1071,38 @@ void ValTraceMgr::TrackVar(const Val* v)
 	val_names[v] = val_name;
 	}
 
+EventTraceMgr::EventTraceMgr(const std::string& trace_file)
+	{
+	f = fopen(trace_file.c_str(), "w");
+	if ( ! f )
+		reporter->FatalError("can't open event trace file %s", trace_file.c_str());
+	}
+
 EventTraceMgr::~EventTraceMgr()
 	{
 	if ( events.empty() )
 		return;
 
-	printf("module __EventTrace;\n\n");
+	fprintf(f, "module __EventTrace;\n\n");
 
 	for ( auto& e : events )
-		printf("global %s: event();\n", e->GetName());
+		fprintf(f, "global %s: event();\n", e->GetName());
 
-	printf("\nevent zeek_init() &priority=-999999\n");
-	printf("\t{\n");
-	printf("\tevent __EventTrace::%s();\n", events.front()->GetName());
-	printf("\t}\n");
+	fprintf(f, "\nevent zeek_init() &priority=-999999\n");
+	fprintf(f, "\t{\n");
+	fprintf(f, "\tevent __EventTrace::%s();\n", events.front()->GetName());
+	fprintf(f, "\t}\n");
 
 	for ( auto i = 0U; i < events.size(); ++i )
 		{
-		printf("\n");
+		fprintf(f, "\n");
 
 		auto predecessor = i > 0 ? events[i - 1] : nullptr;
 		auto successor = i + 1 < events.size() ? events[i + 1]->GetName() : "";
-		events[i]->Generate(vtm, predecessor.get(), successor);
+		events[i]->Generate(f, vtm, predecessor.get(), successor);
 		}
+
+	fclose(f);
 	}
 
 void EventTraceMgr::StartEvent(const ScriptFunc* ev, const zeek::Args* args)
