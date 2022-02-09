@@ -17,7 +17,7 @@
 #include "zeek/Traverse.h"
 #include "zeek/Val.h"
 #include "zeek/module_util.h"
-#include "zeek/script_opt/ScriptOpt.h"
+#include "zeek/script_opt/FindUnused.h"
 #include "zeek/script_opt/StmtOptInfo.h"
 
 namespace zeek::detail
@@ -613,6 +613,9 @@ void begin_func(IDPtr id, const char* module_name, FunctionFlavor flavor, bool i
 			id->Error("event cannot yield a value", t.get());
 
 		t->ClearYieldType(flavor);
+
+		if ( ! event_registry->Lookup(id->Name()) )
+			register_new_event(id);
 		}
 
 	std::optional<FuncType::Prototype> prototype;

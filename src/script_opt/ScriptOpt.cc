@@ -10,6 +10,7 @@
 #include "zeek/module_util.h"
 #include "zeek/script_opt/CPP/Compile.h"
 #include "zeek/script_opt/CPP/Func.h"
+#include "zeek/script_opt/FindUnused.h"
 #include "zeek/script_opt/GenIDDefs.h"
 #include "zeek/script_opt/Inline.h"
 #include "zeek/script_opt/ProfileFunc.h"
@@ -522,6 +523,8 @@ void analyze_scripts()
 		init_options();
 		did_init = true;
 		}
+
+	UsageAnalyzer ua(funcs);
 
 	auto& ofuncs = analysis_options.only_funcs;
 	auto& ofiles = analysis_options.only_files;

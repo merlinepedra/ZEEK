@@ -405,6 +405,7 @@ set(MAIN_SRCS
     ${_gen_zeek_script_cpp}
 
     script_opt/Expr.cc
+    script_opt/FindUnused.cc
     script_opt/GenIDDefs.cc
     script_opt/IDOptInfo.cc
     script_opt/Inline.cc

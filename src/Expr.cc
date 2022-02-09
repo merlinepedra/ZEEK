@@ -4819,6 +4819,23 @@ TraversalCode EventExpr::Traverse(TraversalCallback* cb) const
 	TraversalCode tc = cb->PreExpr(this);
 	HANDLE_TC_EXPR_PRE(tc);
 
+	if ( handler )
+		{
+		auto& f = handler->GetFunc();
+
+		// We don't traverse the function, because that can lead
+		// to infinite traversals.  We do, however, see if we can
+		// locate the corresponding identifier, and traverse that.
+
+		auto& id = lookup_ID(f->Name(), GLOBAL_MODULE_NAME, false, false, false);
+
+		if ( id )
+			{
+			tc = id->Traverse(cb);
+			HANDLE_TC_EXPR_PRE(tc);
+			}
+		}
+
 	tc = args->Traverse(cb);
 	HANDLE_TC_EXPR_PRE(tc);
 
