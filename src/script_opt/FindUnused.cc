@@ -30,13 +30,15 @@ void UsageAnalyzer::FindEvents(FuncSet& all_events, FuncSet& non_script_events)
 	{
 	for ( auto& gpair : global_scope()->Vars() )
 		{
-		auto f = GetEventIfAny(gpair.second);
+		auto& id = gpair.second;
+		auto f = GetEventIfAny(id);
 
 		if ( f )
 			{
 			all_events.insert(f);
 
-			if ( script_events.count(f->Name()) == 0 )
+			if ( script_events.count(f->Name()) == 0 ||
+			     id->GetAttr(ATTR_IS_USED))
 				non_script_events.insert(f);
 			}
 		}

@@ -176,7 +176,7 @@ function ftp_message(s: Info)
 	delete s$data_channel;
 	}
 
-event sync_add_expected_data(s: Info, chan: ExpectedDataChannel)
+event sync_add_expected_data(s: Info, chan: ExpectedDataChannel) &is_used
 	{
 @if ( Cluster::local_node_type() == Cluster::PROXY ||
       Cluster::local_node_type() == Cluster::MANAGER )
@@ -189,7 +189,7 @@ event sync_add_expected_data(s: Info, chan: ExpectedDataChannel)
 @endif
 	}
 
-event sync_remove_expected_data(resp_h: addr, resp_p: port)
+event sync_remove_expected_data(resp_h: addr, resp_p: port) &is_used
 	{
 @if ( Cluster::local_node_type() == Cluster::PROXY ||
       Cluster::local_node_type() == Cluster::MANAGER )

@@ -44,7 +44,7 @@ function dcc_relay_topic(): string
 	return rval;
 	}
 
-event dcc_transfer_add(host: addr, p: port, info: Info)
+event dcc_transfer_add(host: addr, p: port, info: Info) &is_used
 	{
 @if ( Cluster::local_node_type() == Cluster::PROXY ||
       Cluster::local_node_type() == Cluster::MANAGER )
@@ -56,7 +56,7 @@ event dcc_transfer_add(host: addr, p: port, info: Info)
 @endif
 	}
 
-event dcc_transfer_remove(host: addr, p: port)
+event dcc_transfer_remove(host: addr, p: port) &is_used
 	{
 @if ( Cluster::local_node_type() == Cluster::PROXY ||
       Cluster::local_node_type() == Cluster::MANAGER )
