@@ -16,19 +16,43 @@ void register_new_event(const IDPtr& id)
 
 UsageAnalyzer::UsageAnalyzer(std::vector<FuncInfo>& funcs)
 	{
+	// Setting a scope cues ID::Traverse to delve into function values.
 	current_scope = global_scope();
 
 	FindSeeds(reachables);
 	FullyExpandReachables();
 
-	for ( auto& gpair : global_scope()->Vars() )
+	auto& globals = global_scope()->Vars();
+
+	for ( auto& gpair : globals )
+		{
+		auto id = gpair.second.get();
+		auto& t = id->GetType();
+
+		if ( t->Tag() == TYPE_FUNC && t->AsFuncType()->Flavor() != FUNC_FLAVOR_FUNCTION && reachables.count(id) == 0 )
+			{
+			auto loc = id->GetLocationInfo();
+			ODesc d;
+			loc->Describe(&d);
+			printf("orphan %s (%s): %s\n", id->Name(), id->ModuleName().c_str(), d.Description());
+
+			reachables.insert(id);
+			}
+		}
+
+	for ( auto& gpair : globals )
 		{
 		auto& id = gpair.second;
-		auto f = GetFuncIfAny(id.get());
 
-		if ( f && reachables.count(id.get()) == 0 && ! id->IsExport() )
-			// printf("orphan %s (%d, %s):\n%s\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str(), obj_desc(id.get()).c_str());
-			printf("orphan %s (%d, %s):\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str());
+		auto f = GetFuncIfAny(id);
+
+		if ( f && reachables.count(id.get()) == 0 )
+			{
+			auto loc = id->GetLocationInfo();
+			ODesc d;
+			loc->Describe(&d);
+			printf("orphan function %s (%s): %s\n", id->Name(), id->ModuleName().c_str(), d.Description());
+			}
 		}
 	}
 
@@ -38,7 +62,7 @@ void UsageAnalyzer::FindSeeds(IDSet& seeds) const
 		{
 		auto& id = gpair.second;
 
-		if ( id->GetAttr(ATTR_IS_USED) )
+		if ( id->GetAttr(ATTR_IS_USED) || id->GetAttr(ATTR_DEPRECATED) )
 			{
 			seeds.insert(id.get());
 			continue;
@@ -50,6 +74,7 @@ void UsageAnalyzer::FindSeeds(IDSet& seeds) const
 			{
 			if ( script_events.count(f->Name()) == 0 )
 				seeds.insert(id.get());
+
 			continue;
 			}
 
