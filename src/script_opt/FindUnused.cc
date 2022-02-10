@@ -16,30 +16,51 @@ UsageAnalyzer::UsageAnalyzer(std::vector<FuncInfo>& funcs)
 	{
 	FuncSet all_funcs;
 
-	FindEvents(all_funcs, reachables);
+	FindSeeds(all_funcs, reachables);
 	FullyExpandReachables();
 
-	for ( auto f : all_funcs )
+	for ( auto& gpair : global_scope()->Vars() )
 		{
-		if ( reachables.count(f) == 0 )
-			printf("orphan %s (%d)\n", f->Name(), f->GetBodies().size());
+		auto& id = gpair.second;
+		auto f = GetFuncIfAny(id.get());
+
+		if ( f && reachables.count(f) == 0 && ! id->IsExport() )
+			printf("orphan %s (%d, %s)\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str());
 		}
 	}
 
-void UsageAnalyzer::FindEvents(FuncSet& all_events, FuncSet& non_script_events)
+void UsageAnalyzer::FindSeeds(FuncSet& all_funcs, FuncSet& seeds) const
 	{
 	for ( auto& gpair : global_scope()->Vars() )
 		{
 		auto& id = gpair.second;
-		auto f = GetEventIfAny(id);
+		auto f = GetFuncIfAny(id);
 
-		if ( f )
+		if ( ! f )
+			continue;
+
+		all_funcs.insert(f);
+
+		if ( id->GetAttr(ATTR_IS_USED) )
 			{
-			all_events.insert(f);
+			seeds.insert(f);
+			continue;
+			}
 
-			if ( script_events.count(f->Name()) == 0 ||
-			     id->GetAttr(ATTR_IS_USED))
-				non_script_events.insert(f);
+		auto fl = id->GetType<FuncType>()->Flavor();
+
+		if ( fl == FUNC_FLAVOR_EVENT )
+			{
+			if ( script_events.count(f->Name()) == 0 )
+				seeds.insert(f);
+			}
+
+		else
+			{
+			// A function or a hook.  If it's exported, or has
+			// global scope, then assume it's meant to be called.
+			if ( id->IsExport() || id->ModuleName() == "GLOBAL" )
+				seeds.insert(f);
 			}
 		}
 	}
@@ -51,16 +72,11 @@ const Func* UsageAnalyzer::GetFuncIfAny(const ID* id) const
 		return nullptr;
 
 	auto fv = cast_intrusive<FuncVal>(id->GetVal());
-	return fv ? fv->Get() : nullptr;
-	}
+	if ( ! fv )
+		return nullptr;
 
-const Func* UsageAnalyzer::GetEventIfAny(const ID* id) const
-	{
-	auto f = GetFuncIfAny(id);
-	if ( f && id->GetType<FuncType>()->Flavor() == FUNC_FLAVOR_EVENT )
-		return f;
-
-	return nullptr;
+	auto func = fv->Get();
+	return func->GetKind() == Func::SCRIPT_FUNC ? func : nullptr;
 	}
 
 void UsageAnalyzer::FullyExpandReachables()
@@ -99,8 +115,6 @@ void UsageAnalyzer::Expand(const Func* f)
 TraversalCode UsageAnalyzer::PreID(const ID* id)
 	{
 	auto f = GetFuncIfAny(id);
-
-	// printf("found identifier %s (%d)\n", id->Name(), f ? reachables.count(f) : -1);
 
 	if ( f && reachables.count(f) == 0 )
 		new_reachables.insert(f);

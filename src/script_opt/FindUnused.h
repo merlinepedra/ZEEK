@@ -16,10 +16,10 @@ public:
 private:
 	using FuncSet = std::unordered_set<const Func*>;
 
-	void FindEvents(FuncSet& all_events, FuncSet& non_script_events);
+	void FindSeeds(FuncSet& all_funcs, FuncSet& seeds) const;
+
 	const Func* GetFuncIfAny(const ID* id) const;
-	const Func* GetEventIfAny(const ID* id) const;
-	const Func* GetEventIfAny(const IDPtr& id) const { return GetFuncIfAny(id.get()); }
+	const Func* GetFuncIfAny(const IDPtr& id) const { return GetFuncIfAny(id.get()); }
 
 	void FullyExpandReachables();
 	bool ExpandReachables(const FuncSet& curr_r);
