@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <unordered_set>
 #include "zeek/Scope.h"
 #include "zeek/TraverseTypes.h"
 
@@ -9,6 +10,7 @@ namespace zeek
 	{
 
 class Func;
+class Type;
 
 namespace detail
 	{
@@ -16,6 +18,8 @@ namespace detail
 class Stmt;
 class Expr;
 class ID;
+class Attributes;
+class Attr;
 
 class TraversalCallback
 	{
@@ -41,9 +45,22 @@ public:
 	virtual TraversalCode PreDecl(const ID*) { return TC_CONTINUE; }
 	virtual TraversalCode PostDecl(const ID*) { return TC_CONTINUE; }
 
+	virtual TraversalCode PreType(const Type*);
+	virtual TraversalCode PostType(const Type*);
+
+	virtual TraversalCode PreAttrs(const Attributes*) { return TC_CONTINUE; }
+	virtual TraversalCode PostAttrs(const Attributes*) { return TC_CONTINUE; }
+
+	virtual TraversalCode PreAttr(const Attr*) { return TC_CONTINUE; }
+	virtual TraversalCode PostAttr(const Attr*) { return TC_CONTINUE; }
+
 	ScopePtr current_scope;
+
+protected:
+	std::unordered_set<const Type*> pending_types;
 	};
 
+// ### This appears to be vestigial.
 TraversalCode traverse_all(TraversalCallback* cb);
 
 	} // namespace detail
