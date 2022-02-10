@@ -16,9 +16,9 @@ void register_new_event(const IDPtr& id)
 
 UsageAnalyzer::UsageAnalyzer(std::vector<FuncInfo>& funcs)
 	{
-	FuncSet all_funcs;
+	current_scope = global_scope();
 
-	FindSeeds(all_funcs, reachables);
+	FindSeeds(reachables);
 	FullyExpandReachables();
 
 	for ( auto& gpair : global_scope()->Vars() )
@@ -26,44 +26,38 @@ UsageAnalyzer::UsageAnalyzer(std::vector<FuncInfo>& funcs)
 		auto& id = gpair.second;
 		auto f = GetFuncIfAny(id.get());
 
-		if ( f && reachables.count(f) == 0 && ! id->IsExport() )
-			printf("orphan %s (%d, %s):\n%s\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str(), obj_desc(id.get()).c_str());
+		if ( f && reachables.count(id.get()) == 0 && ! id->IsExport() )
+			// printf("orphan %s (%d, %s):\n%s\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str(), obj_desc(id.get()).c_str());
+			printf("orphan %s (%d, %s):\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str());
 		}
 	}
 
-void UsageAnalyzer::FindSeeds(FuncSet& all_funcs, FuncSet& seeds) const
+void UsageAnalyzer::FindSeeds(IDSet& seeds) const
 	{
 	for ( auto& gpair : global_scope()->Vars() )
 		{
 		auto& id = gpair.second;
-		auto f = GetFuncIfAny(id);
-
-		if ( ! f )
-			continue;
-
-		all_funcs.insert(f);
 
 		if ( id->GetAttr(ATTR_IS_USED) )
 			{
-			seeds.insert(f);
+			seeds.insert(id.get());
 			continue;
 			}
 
-		auto fl = id->GetType<FuncType>()->Flavor();
+		auto f = GetFuncIfAny(id);
 
-		if ( fl == FUNC_FLAVOR_EVENT )
+		if ( f && id->GetType<FuncType>()->Flavor() == FUNC_FLAVOR_EVENT )
 			{
 			if ( script_events.count(f->Name()) == 0 )
-				seeds.insert(f);
+				seeds.insert(id.get());
+			continue;
 			}
 
-		else
-			{
-			// A function or a hook.  If it's exported, or has
-			// global scope, then assume it's meant to be called.
-			if ( id->IsExport() || id->ModuleName() == "GLOBAL" )
-				seeds.insert(f);
-			}
+		// If the global is exported, or has global scope, we assume
+		// it's meant to be used, even if the current scripts don't
+		// use it.
+		if ( id->IsExport() || id->ModuleName() == "GLOBAL" )
+			seeds.insert(id.get());
 		}
 	}
 
@@ -98,7 +92,7 @@ void UsageAnalyzer::FullyExpandReachables()
 		}
 	}
 
-bool UsageAnalyzer::ExpandReachables(const FuncSet& curr_r)
+bool UsageAnalyzer::ExpandReachables(const IDSet& curr_r)
 	{
 	new_reachables.clear();
 
@@ -108,18 +102,18 @@ bool UsageAnalyzer::ExpandReachables(const FuncSet& curr_r)
 	return ! new_reachables.empty();
 	}
 
-void UsageAnalyzer::Expand(const Func* f)
+void UsageAnalyzer::Expand(const ID* id)
 	{
-	// printf("expanding %s\n", f->Name());
-	f->Traverse(this);
+	// printf("expanding %s\n", id->Name());
+	id->Traverse(this);
 	}
 
 TraversalCode UsageAnalyzer::PreID(const ID* id)
 	{
 	auto f = GetFuncIfAny(id);
 
-	if ( f && reachables.count(f) == 0 )
-		new_reachables.insert(f);
+	if ( f && reachables.count(id) == 0 )
+		new_reachables.insert(id);
 
 	id->GetType()->Traverse(this);
 

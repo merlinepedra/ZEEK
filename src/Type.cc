@@ -1515,17 +1515,18 @@ detail::TraversalCode RecordType::Traverse(detail::TraversalCallback* cb) const
 	auto tc = cb->PreType(this);
 	HANDLE_TC_TYPE_PRE(tc);
 
-	for ( const auto& td : *types )
-		{
-		tc = td->type->Traverse(cb);
-		HANDLE_TC_TYPE_PRE(tc);
-
-		if ( td->attrs )
+	if ( types )
+		for ( const auto& td : *types )
 			{
-			tc = td->attrs->Traverse(cb);
+			tc = td->type->Traverse(cb);
 			HANDLE_TC_TYPE_PRE(tc);
+
+			if ( td->attrs )
+				{
+				tc = td->attrs->Traverse(cb);
+				HANDLE_TC_TYPE_PRE(tc);
+				}
 			}
-		}
 
 	tc = cb->PostType(this);
 	HANDLE_TC_TYPE_POST(tc);

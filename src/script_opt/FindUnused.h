@@ -14,22 +14,22 @@ public:
 	UsageAnalyzer(std::vector<FuncInfo>& funcs);
 
 private:
-	using FuncSet = std::unordered_set<const Func*>;
+	using IDSet = std::unordered_set<const ID*>;
 
-	void FindSeeds(FuncSet& all_funcs, FuncSet& seeds) const;
+	void FindSeeds(IDSet& seeds) const;
 
 	const Func* GetFuncIfAny(const ID* id) const;
 	const Func* GetFuncIfAny(const IDPtr& id) const { return GetFuncIfAny(id.get()); }
 
 	void FullyExpandReachables();
-	bool ExpandReachables(const FuncSet& curr_r);
-	void Expand(const Func* f);
+	bool ExpandReachables(const IDSet& curr_r);
+	void Expand(const ID* f);
 
 	TraversalCode PreID(const ID* id) override;
 	TraversalCode PreType(const Type* t) override;
 
-	FuncSet reachables;
-	FuncSet new_reachables;
+	IDSet reachables;
+	IDSet new_reachables;
 
 	std::unordered_set<const Type*> analyzed_types;
 	};
