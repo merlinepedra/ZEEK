@@ -31,6 +31,7 @@ private:
 	IDSet reachables;
 	IDSet new_reachables;
 
+	std::unordered_set<const ID*> analyzed_IDs;
 	std::unordered_set<const Type*> analyzed_types;
 	};
 

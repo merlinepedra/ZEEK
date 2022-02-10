@@ -37,6 +37,7 @@ UsageAnalyzer::UsageAnalyzer(std::vector<FuncInfo>& funcs)
 			printf("orphan %s (%s): %s\n", id->Name(), id->ModuleName().c_str(), d.Description());
 
 			reachables.insert(id);
+			Expand(id);
 			}
 		}
 
@@ -44,9 +45,12 @@ UsageAnalyzer::UsageAnalyzer(std::vector<FuncInfo>& funcs)
 		{
 		auto& id = gpair.second;
 
+		if ( reachables.count(id.get()) > 0 )
+			continue;
+
 		auto f = GetFuncIfAny(id);
 
-		if ( f && reachables.count(id.get()) == 0 )
+		if ( f )
 			{
 			auto loc = id->GetLocationInfo();
 			ODesc d;
@@ -130,11 +134,17 @@ bool UsageAnalyzer::ExpandReachables(const IDSet& curr_r)
 void UsageAnalyzer::Expand(const ID* id)
 	{
 	// printf("expanding %s\n", id->Name());
+	analyzed_IDs.clear();
 	id->Traverse(this);
 	}
 
 TraversalCode UsageAnalyzer::PreID(const ID* id)
 	{
+	if ( analyzed_IDs.count(id) > 0 )
+		return TC_ABORTSTMT;
+
+	analyzed_IDs.insert(id);
+
 	auto f = GetFuncIfAny(id);
 
 	if ( f && reachables.count(id) == 0 )
