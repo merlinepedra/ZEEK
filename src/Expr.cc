@@ -3579,6 +3579,24 @@ ValPtr TableConstructorExpr::Eval(Frame* f) const
 	return aggr;
 	}
 
+TraversalCode TableConstructorExpr::Traverse(TraversalCallback* cb) const
+	{
+	TraversalCode tc = cb->PreExpr(this);
+	HANDLE_TC_EXPR_PRE(tc);
+
+	tc = op->Traverse(cb);
+	HANDLE_TC_EXPR_PRE(tc);
+
+	if ( attrs )
+		{
+		tc = attrs->Traverse(cb);
+		HANDLE_TC_EXPR_PRE(tc);
+		}
+
+	tc = cb->PostExpr(this);
+	HANDLE_TC_EXPR_POST(tc);
+	}
+
 ValPtr TableConstructorExpr::InitVal(const TypePtr& t, ValPtr aggr) const
 	{
 	if ( IsError() )
@@ -3604,6 +3622,9 @@ void TableConstructorExpr::ExprDescribe(ODesc* d) const
 	d->Add("table(");
 	op->Describe(d);
 	d->Add(")");
+
+	if ( attrs )
+		attrs->Describe(d);
 	}
 
 SetConstructorExpr::SetConstructorExpr(ListExprPtr constructor_list,
@@ -3693,6 +3714,24 @@ ValPtr SetConstructorExpr::Eval(Frame* f) const
 	return aggr;
 	}
 
+TraversalCode SetConstructorExpr::Traverse(TraversalCallback* cb) const
+	{
+	TraversalCode tc = cb->PreExpr(this);
+	HANDLE_TC_EXPR_PRE(tc);
+
+	tc = op->Traverse(cb);
+	HANDLE_TC_EXPR_PRE(tc);
+
+	if ( attrs )
+		{
+		tc = attrs->Traverse(cb);
+		HANDLE_TC_EXPR_PRE(tc);
+		}
+
+	tc = cb->PostExpr(this);
+	HANDLE_TC_EXPR_POST(tc);
+	}
+
 ValPtr SetConstructorExpr::InitVal(const TypePtr& t, ValPtr aggr) const
 	{
 	if ( IsError() )
@@ -3726,6 +3765,9 @@ void SetConstructorExpr::ExprDescribe(ODesc* d) const
 	d->Add("set(");
 	op->Describe(d);
 	d->Add(")");
+
+	if ( attrs )
+		attrs->Describe(d);
 	}
 
 VectorConstructorExpr::VectorConstructorExpr(ListExprPtr constructor_list, TypePtr arg_type)
