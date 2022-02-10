@@ -9,21 +9,6 @@
 namespace zeek::detail
 	{
 
-TraversalCode TraversalCallback::PreType(const Type* t)
-	{
-	if ( pending_types.count(t) > 0 )
-		return TC_ABORTSTMT;
-
-	pending_types.insert(t);
-	return TC_CONTINUE;
-	}
-
-TraversalCode TraversalCallback::PostType(const Type* t)
-	{
-	pending_types.erase(t);
-	return TC_CONTINUE;
-	}
-
 TraversalCode traverse_all(TraversalCallback* cb)
 	{
 	if ( ! global_scope() )

@@ -4629,15 +4629,15 @@ LambdaExpr::LambdaExpr(std::unique_ptr<function_ingredients> arg_ing, IDPList ar
 		}
 
 	// Install that in the global_scope
-	auto id = install_ID(my_name.c_str(), current_module.c_str(), true, false);
+	lambda_id = install_ID(my_name.c_str(), current_module.c_str(), true, false);
 
 	// Update lamb's name
 	dummy_func->SetName(my_name.c_str());
 
 	auto v = make_intrusive<FuncVal>(std::move(dummy_func));
-	id->SetVal(std::move(v));
-	id->SetType(ingredients->id->GetType());
-	id->SetConst();
+	lambda_id->SetVal(std::move(v));
+	lambda_id->SetType(ingredients->id->GetType());
+	lambda_id->SetConst();
 	}
 
 void LambdaExpr::CheckCaptures(StmtPtr when_parent)
@@ -4752,8 +4752,11 @@ TraversalCode LambdaExpr::Traverse(TraversalCallback* cb) const
 	TraversalCode tc = cb->PreExpr(this);
 	HANDLE_TC_EXPR_PRE(tc);
 
+	tc = lambda_id->Traverse(cb);
+	HANDLE_TC_EXPR_PRE(tc);
+
 	tc = ingredients->body->Traverse(cb);
-	HANDLE_TC_STMT_PRE(tc);
+	HANDLE_TC_EXPR_PRE(tc);
 
 	tc = cb->PostExpr(this);
 	HANDLE_TC_EXPR_POST(tc);

@@ -26,9 +26,12 @@ private:
 	void Expand(const Func* f);
 
 	TraversalCode PreID(const ID* id) override;
+	TraversalCode PreType(const Type* t) override;
 
 	FuncSet reachables;
 	FuncSet new_reachables;
+
+	std::unordered_set<const Type*> analyzed_types;
 	};
 
 // Marks a given identifier as referring to a script-level event (one

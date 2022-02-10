@@ -1,6 +1,8 @@
 // See the file "COPYING" in the main distribution directory for copyright.
 
+#include "zeek/Desc.h"
 #include "zeek/script_opt/FindUnused.h"
+#include "zeek/script_opt/IDOptInfo.h"
 
 namespace zeek::detail
 	{
@@ -25,7 +27,7 @@ UsageAnalyzer::UsageAnalyzer(std::vector<FuncInfo>& funcs)
 		auto f = GetFuncIfAny(id.get());
 
 		if ( f && reachables.count(f) == 0 && ! id->IsExport() )
-			printf("orphan %s (%d, %s)\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str());
+			printf("orphan %s (%d, %s):\n%s\n", f->Name(), f->GetBodies().size(), id->ModuleName().c_str(), obj_desc(id.get()).c_str());
 		}
 	}
 
@@ -119,6 +121,25 @@ TraversalCode UsageAnalyzer::PreID(const ID* id)
 	if ( f && reachables.count(f) == 0 )
 		new_reachables.insert(f);
 
+	id->GetType()->Traverse(this);
+
+	auto& attrs = id->GetAttrs();
+	if ( attrs )
+		attrs->Traverse(this);
+
+	for ( auto& ie : id->GetOptInfo()->GetInitExprs() )
+		if ( ie )
+			ie->Traverse(this);
+
+	return TC_CONTINUE;
+	}
+
+TraversalCode UsageAnalyzer::PreType(const Type* t)
+	{
+	if ( analyzed_types.count(t) > 0 )
+		return TC_ABORTSTMT;
+
+	analyzed_types.insert(t);
 	return TC_CONTINUE;
 	}
 

@@ -1519,6 +1519,12 @@ detail::TraversalCode RecordType::Traverse(detail::TraversalCallback* cb) const
 		{
 		tc = td->type->Traverse(cb);
 		HANDLE_TC_TYPE_PRE(tc);
+
+		if ( td->attrs )
+			{
+			tc = td->attrs->Traverse(cb);
+			HANDLE_TC_TYPE_PRE(tc);
+			}
 		}
 
 	tc = cb->PostType(this);

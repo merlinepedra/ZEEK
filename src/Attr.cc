@@ -171,6 +171,12 @@ detail::TraversalCode Attr::Traverse(detail::TraversalCallback* cb) const
 	auto tc = cb->PreAttr(this);
 	HANDLE_TC_ATTR_PRE(tc);
 
+	if ( expr )
+		{
+		auto tc = expr->Traverse(cb);
+		HANDLE_TC_ATTR_PRE(tc);
+		}
+
 	tc = cb->PostAttr(this);
 	HANDLE_TC_ATTR_POST(tc);
 	}

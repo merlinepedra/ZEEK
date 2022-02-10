@@ -2090,16 +2090,27 @@ TraversalCode WhenStmt::Traverse(TraversalCallback* cb) const
 	TraversalCode tc = cb->PreStmt(this);
 	HANDLE_TC_STMT_PRE(tc);
 
-	tc = wi->Cond()->Traverse(cb);
-	HANDLE_TC_STMT_PRE(tc);
+	auto wl = wi->Lambda();
 
-	tc = wi->WhenBody()->Traverse(cb);
-	HANDLE_TC_STMT_PRE(tc);
-
-	if ( wi->TimeoutStmt() )
+	if ( wl )
 		{
-		tc = wi->TimeoutStmt()->Traverse(cb);
+		tc = wl->Traverse(cb);
 		HANDLE_TC_STMT_PRE(tc);
+		}
+
+	else
+		{
+		tc = wi->Cond()->Traverse(cb);
+		HANDLE_TC_STMT_PRE(tc);
+
+		tc = wi->WhenBody()->Traverse(cb);
+		HANDLE_TC_STMT_PRE(tc);
+
+		if ( wi->TimeoutStmt() )
+			{
+			tc = wi->TimeoutStmt()->Traverse(cb);
+			HANDLE_TC_STMT_PRE(tc);
+			}
 		}
 
 	tc = cb->PostStmt(this);
