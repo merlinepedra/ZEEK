@@ -33,7 +33,7 @@ export {
 
 global dcc_expected_transfers: table[addr, port] of Info &read_expire=5mins;
 
-function dcc_relay_topic(): string
+function dcc_relay_topic(): string &is_used
 	{
 	local rval = Cluster::rr_topic(Cluster::proxy_pool, "dcc_transfer_rr_key");
 

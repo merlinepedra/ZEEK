@@ -454,13 +454,13 @@ function cmp_versions(v1: Version, v2: Version): int
 	return 0;
 	}
 
-function software_endpoint_name(id: conn_id, host: addr): string
+function software_endpoint_name(id: conn_id, host: addr): string &deprecated
 	{
 	return fmt("%s %s", host, (host == id$orig_h ? "client" : "server"));
 	}
 
 # Convert a version into a string "a.b.c-x".
-function software_fmt_version(v: Version): string
+function software_fmt_version(v: Version): string &is_used
 	{
 	return fmt("%s%s%s%s%s",
 	           v?$major ? fmt("%d", v$major) : "0",
@@ -471,7 +471,7 @@ function software_fmt_version(v: Version): string
 	}
 
 # Convert a software into a string "name a.b.cx".
-function software_fmt(i: Info): string
+function software_fmt(i: Info): string &is_used
 	{
 	return fmt("%s %s", i$name, software_fmt_version(i$version));
 	}
