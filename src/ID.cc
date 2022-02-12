@@ -16,6 +16,7 @@
 #include "zeek/Type.h"
 #include "zeek/Val.h"
 #include "zeek/module_util.h"
+#include "zeek/script_opt/FindUnused.h"
 #include "zeek/script_opt/IDOptInfo.h"
 #include "zeek/zeekygen/IdentifierInfo.h"
 #include "zeek/zeekygen/Manager.h"
@@ -166,6 +167,9 @@ void ID::SetVal(ValPtr v)
 			handler = new EventHandler(name);
 			handler->SetFunc(func);
 			event_registry->Register(handler);
+
+			if ( ! IsExport() )
+				register_new_event({NewRef{}, this});
 			}
 		else
 			{
