@@ -15,6 +15,7 @@
 #include "zeek/TraverseTypes.h"
 #include "zeek/Type.h"
 #include "zeek/Val.h"
+#include "zeek/Var.h"
 #include "zeek/ZeekArgs.h"
 #include "zeek/ZeekList.h"
 
@@ -459,7 +460,7 @@ protected:
 class NameExpr final : public Expr
 	{
 public:
-	explicit NameExpr(IDPtr id, bool const_init = false);
+	explicit NameExpr(IDPtr id, DeclType dt = VAR_REGULAR);
 
 	ID* Id() const { return id.get(); }
 	const IDPtr& IdPtr() const;
@@ -488,6 +489,7 @@ protected:
 	bool FoldableGlobal() const;
 
 	IDPtr id;
+	DeclType dt;
 	bool in_const_init;
 	};
 

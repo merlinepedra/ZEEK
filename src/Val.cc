@@ -1684,14 +1684,14 @@ bool TableVal::RemoveFrom(Val* val) const
 		return false;
 		}
 
-	for ( const auto& tble : *table_val )
+	for ( auto i = table_val->begin_robust(); i != table_val->end_robust(); ++i )
 		{
 		// Not sure that this is 100% sound, since the HashKey
 		// comes from one table but is being used in another.
 		// OTOH, they are both the same type, so as long as
 		// we don't have hash keys that are keyed per dictionary,
 		// it should work ...
-		auto k = tble.GetHashKey();
+		auto k = (*i).GetHashKey();
 		t->Remove(*k);
 		}
 

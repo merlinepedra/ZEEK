@@ -352,7 +352,7 @@ StmtPtr add_local(IDPtr id, TypePtr t, InitClass c, ExprPtr init,
 		// copy Location to the stack, because AssignExpr may free "init"
 		const Location location = init->GetLocationInfo() ? *init->GetLocationInfo() : no_location;
 
-		auto name_expr = make_intrusive<NameExpr>(id, dt == VAR_CONST);
+		auto name_expr = make_intrusive<NameExpr>(id, dt);
 		auto assign_expr = make_intrusive<AssignExpr>(std::move(name_expr), std::move(init), 0,
 		                                              nullptr, id->GetAttrs());
 		auto stmt = make_intrusive<ExprStmt>(std::move(assign_expr));

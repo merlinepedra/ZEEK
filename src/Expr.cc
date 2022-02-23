@@ -515,10 +515,8 @@ void Expr::RuntimeErrorWithCallStack(const std::string& msg) const
 		}
 	}
 
-NameExpr::NameExpr(IDPtr arg_id, bool const_init) : Expr(EXPR_NAME), id(std::move(arg_id))
+NameExpr::NameExpr(IDPtr arg_id, DeclType dt) : Expr(EXPR_NAME), id(std::move(arg_id)), dt(dt)
 	{
-	in_const_init = const_init;
-
 	if ( id->IsType() )
 		SetType(make_intrusive<TypeType>(id->GetType()));
 	else
@@ -567,11 +565,18 @@ ExprPtr NameExpr::MakeLvalue()
 	if ( id->IsType() )
 		ExprError("Type name is not an lvalue");
 
-	if ( id->IsConst() && ! in_const_init )
-		ExprError("const is not a modifiable lvalue");
-
-	if ( id->IsOption() && ! in_const_init )
+	if ( id->IsOption() && dt != VAR_OPTION )
 		ExprError("option is not a modifiable lvalue");
+
+	// Only allow consts if it's as the definition or if it's a global and it's
+	// being redef'd
+	if ( id->IsConst() && dt != VAR_CONST && dt != VAR_REDEF )
+		{
+		// if ( id->IsGlobal() )
+		// 	ExprError("global const lvalues are only modifiable using redef");
+		// else
+		ExprError("const is not a modifiable lvalue");
+		}
 
 	return make_intrusive<RefExpr>(IntrusivePtr{NewRef{}, this});
 	}
@@ -1571,7 +1576,6 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 		PromoteType(max_type(bt1, bt2), is_vector(op1) || is_vector(op2));
 	else if ( BothString(bt1, bt2) || BothInterval(bt1, bt2) )
 		SetType(base_type(bt1));
-
 	else if ( IsVector(bt1) )
 		{
 		bt1 = op1->GetType()->AsVectorType()->Yield()->Tag();
@@ -1597,7 +1601,11 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 		else
 			SetType(op1->GetType());
 		}
-
+	else if ( bt1 == TYPE_TABLE && (bt2 == TYPE_LIST || bt2 == TYPE_TABLE) )
+		{
+		// TODO: validate that the key and yield types are the same.
+		SetType(op1->GetType());
+		}
 	else
 		ExprError("requires two arithmetic or two string operands");
 	}
@@ -1609,10 +1617,23 @@ ValPtr AddToExpr::Eval(Frame* f) const
 	if ( ! v1 )
 		return nullptr;
 
-	auto v2 = op2->Eval(f);
-
-	if ( ! v2 )
-		return nullptr;
+	// We don't want to eval the expression here if the left side is a table
+	// and the right is a list because it tries to evaluate the table elements
+	// as assignments (things like { [1] = 2 }). Instead, convert it to a
+	// TableVal itself, and let AddTo handle it.
+	ValPtr v2;
+	if ( v1->GetType()->Tag() == TYPE_TABLE && op2->Tag() == EXPR_LIST )
+		{
+		TableTypePtr table_type = {NewRef{}, v1->GetType()->AsTableType()};
+		v2 = make_intrusive<TableVal>(table_type);
+		op2->AsListExpr()->InitVal(v1->GetType(), v2);
+		}
+	else
+		{
+		v2 = op2->Eval(f);
+		if ( ! v2 )
+			return nullptr;
+		}
 
 	if ( is_vector(v1) )
 		{
@@ -1622,6 +1643,14 @@ ValPtr AddToExpr::Eval(Frame* f) const
 			RuntimeError("type-checking failed in vector append");
 
 		return v1;
+		}
+	else if ( v1->GetType()->Tag() == TYPE_TABLE && v2->GetType()->Tag() == TYPE_TABLE )
+		{
+		TableValPtr tv1 = cast_intrusive<TableVal>(v1);
+		TableValPtr tv2 = cast_intrusive<TableVal>(v2);
+		if ( ! tv2->AddTo(tv1.get(), false) )
+			RuntimeError("AddToExpr::Eval failed to merge two tables");
+		return tv1;
 		}
 
 	if ( auto result = Fold(v1.get(), v2.get()) )
@@ -1696,6 +1725,11 @@ RemoveFromExpr::RemoveFromExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 		PromoteType(max_type(bt1, bt2), is_vector(op1) || is_vector(op2));
 	else if ( BothInterval(bt1, bt2) )
 		SetType(base_type(bt1));
+	else if ( bt1 == TYPE_TABLE && (bt2 == TYPE_LIST || bt2 == TYPE_TABLE) )
+		{
+		// TODO: validate that the key and yield types are the same.
+		SetType(op1->GetType());
+		}
 	else
 		ExprError("requires two arithmetic operands");
 	}
@@ -1707,10 +1741,32 @@ ValPtr RemoveFromExpr::Eval(Frame* f) const
 	if ( ! v1 )
 		return nullptr;
 
-	auto v2 = op2->Eval(f);
+	// We don't want to eval the expression here if the left side is a table
+	// and the right is a list because it tries to evaluate the table elements
+	// as assignments (things like { [1] = 2 }). Instead, convert it to a
+	// TableVal itself, and let AddTo handle it.
+	ValPtr v2;
+	if ( v1->GetType()->Tag() == TYPE_TABLE && op2->Tag() == EXPR_LIST )
+		{
+		TableTypePtr table_type = {NewRef{}, v1->GetType()->AsTableType()};
+		v2 = make_intrusive<TableVal>(table_type);
+		op2->AsListExpr()->InitVal(v1->GetType(), v2);
+		}
+	else
+		{
+		v2 = op2->Eval(f);
+		if ( ! v2 )
+			return nullptr;
+		}
 
-	if ( ! v2 )
-		return nullptr;
+	if ( v1->GetType()->Tag() == TYPE_TABLE && v2->GetType()->Tag() == TYPE_TABLE )
+		{
+		TableValPtr tv1 = cast_intrusive<TableVal>(v1);
+		TableValPtr tv2 = cast_intrusive<TableVal>(v2);
+		if ( ! tv2->RemoveFrom(tv1.get()) )
+			RuntimeError("AddToExpr::Eval failed to merge two tables");
+		return tv1;
+		}
 
 	if ( auto result = Fold(v1.get(), v2.get()) )
 		{

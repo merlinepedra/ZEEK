@@ -476,7 +476,7 @@ ConstExprPtr Expr::MakeZeroExpr(TypeTag t) const
 
 ExprPtr NameExpr::Duplicate()
 	{
-	return SetSucc(new NameExpr(id, in_const_init));
+	return SetSucc(new NameExpr(id, dt));
 	}
 
 bool NameExpr::IsReduced(Reducer* c) const
