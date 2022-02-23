@@ -7,5 +7,5 @@
 #open XXXX-XX-XX-XX-XX-XX
 #fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	name	addl	notice	peer	source
 #types	time	string	addr	port	addr	port	string	string	bool	string	string
-XXXXXXXXXX.XXXXXX	CHhAvVGS1DHFjwGM9	127.0.0.1	65389	127.0.0.1	6666	irc_invalid_names_line	-	F	zeek	IRC
+XXXXXXXXXX.XXXXXX	ClEkJM2Vm5giqnMf4h	127.0.0.1	65389	127.0.0.1	6666	irc_invalid_names_line	-	F	zeek	IRC
 #close XXXX-XX-XX-XX-XX-XX

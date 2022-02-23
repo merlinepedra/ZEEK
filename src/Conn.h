@@ -228,7 +228,7 @@ public:
 
 	void HistoryThresholdEvent(EventHandlerPtr e, bool is_orig, uint32_t threshold);
 
-	void AddHistory(char code) { history += code; }
+	void AddHistory(char code);
 
 	// Sets the root of the analyzer tree as well as the primary PIA.
 	void SetSessionAdapter(packet_analysis::IP::SessionAdapter* aa, analyzer::pia::PIA* pia);

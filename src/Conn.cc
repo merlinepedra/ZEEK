@@ -273,9 +273,6 @@ const RecordValPtr& Connection::GetVal()
 	conn_val->AssignTime(3, start_time); // ###
 	conn_val->AssignInterval(4, last_time - start_time);
 
-	if ( history.size() )
-		conn_val->Assign(6, history);
-
 	conn_val->SetOrigin(this);
 
 	return conn_val;
@@ -483,6 +480,12 @@ void Connection::CheckFlowLabel(bool is_orig, uint32_t flow_label)
 bool Connection::PermitWeird(const char* name, uint64_t threshold, uint64_t rate, double duration)
 	{
 	return detail::PermitWeird(weird_state, name, threshold, rate, duration);
+	}
+
+void Connection::AddHistory(char code)
+	{
+	history += code;
+	GetVal()->Assign(6, history);
 	}
 
 	} // namespace zeek
