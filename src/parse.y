@@ -67,7 +67,7 @@
 %type <type_decl> type_decl formal_args_decl
 %type <type_decl_l> type_decl_list formal_args_decl_list
 %type <record> formal_args
-%type <list> expr_list opt_expr_list
+%type <list> expr_list opt_expr_list rhs_expr_list
 %type <c_case> case
 %type <case_l> case_list
 %type <attr> attr
@@ -905,12 +905,17 @@ expr:
 			}
 	;
 
-rhs:		'{' { ++in_init; } opt_expr_list '}'
+rhs:		'{' { ++in_init; } rhs_expr_list '}'
 			{
 			--in_init;
 			$$ = $3;
 			}
 	|	expr
+	;
+
+rhs_expr_list: expr_list opt_comma
+	|
+		{ $$ = new ListExpr(); }
 	;
 
 expr_list:
@@ -1522,9 +1527,7 @@ opt_init:
 	;
 
 init:
-		'{' opt_expr_list '}'
-			{ $$ = $2; }
-	|	'{' expr_list ',' '}'
+		'{' rhs_expr_list '}'
 			{ $$ = $2; }
 	|	expr
 	;
@@ -2071,12 +2074,14 @@ opt_no_test:
 			{ $$ = true; }
 	|
 			{ $$ = false; }
+	;
 
 opt_no_test_block:
 		TOK_NO_TEST
 			{ $$ = true; script_coverage_mgr.IncIgnoreDepth(); }
 	|
 			{ $$ = false; }
+	;
 
 opt_deprecated:
 		TOK_ATTR_DEPRECATED
@@ -2097,6 +2102,11 @@ opt_deprecated:
 			}
 	|
 			{ $$ = nullptr; }
+	;
+
+opt_comma: ','
+	|
+	;
 
 %%
 
