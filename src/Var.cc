@@ -129,6 +129,50 @@ static bool add_prototype(const IDPtr& id, Type* t, std::vector<AttrPtr>* attrs,
 	return true;
 	}
 
+static void initialize_var(const IDPtr& id, TypePtr t, InitClass c, ExprPtr init)
+	{
+	ValPtr aggr;
+
+	if ( t->Tag() == TYPE_RECORD )
+		{
+		try
+			{
+			aggr = make_intrusive<RecordVal>(cast_intrusive<RecordType>(t));
+			}
+		catch ( InterpreterException& )
+			{
+			id->Error("initialization failed");
+			return;
+			}
+
+		if ( init && t )
+			// Have an initialization and type is not deduced.
+			init = make_intrusive<RecordCoerceExpr>(
+				std::move(init), IntrusivePtr{NewRef{}, t->AsRecordType()});
+		}
+
+	else if ( t->Tag() == TYPE_TABLE )
+		aggr = make_intrusive<TableVal>(cast_intrusive<TableType>(t), id->GetAttrs());
+
+	else if ( t->Tag() == TYPE_VECTOR )
+		aggr = make_intrusive<VectorVal>(cast_intrusive<VectorType>(t));
+
+	ValPtr v;
+
+	if ( init )
+		{
+		v = init_val(init, t, aggr);
+
+		if ( ! v )
+			return;
+		}
+
+	if ( aggr )
+		id->SetVal(std::move(aggr), c);
+	else if ( v )
+		id->SetVal(std::move(v), c);
+	}
+
 static void make_var(const IDPtr& id, TypePtr t, InitClass c, ExprPtr init,
                      std::unique_ptr<std::vector<AttrPtr>> attr, DeclType dt, bool do_init)
 	{
@@ -258,48 +302,7 @@ static void make_var(const IDPtr& id, TypePtr t, InitClass c, ExprPtr init,
 			id->SetVal(init, c);
 
 		else if ( dt != VAR_REDEF || init || ! attr )
-			{
-			ValPtr aggr;
-
-			if ( t->Tag() == TYPE_RECORD )
-				{
-				try
-					{
-					aggr = make_intrusive<RecordVal>(cast_intrusive<RecordType>(t));
-					}
-				catch ( InterpreterException& )
-					{
-					id->Error("initialization failed");
-					return;
-					}
-
-				if ( init && t )
-					// Have an initialization and type is not deduced.
-					init = make_intrusive<RecordCoerceExpr>(
-						std::move(init), IntrusivePtr{NewRef{}, t->AsRecordType()});
-				}
-
-			else if ( t->Tag() == TYPE_TABLE )
-				aggr = make_intrusive<TableVal>(cast_intrusive<TableType>(t), id->GetAttrs());
-
-			else if ( t->Tag() == TYPE_VECTOR )
-				aggr = make_intrusive<VectorVal>(cast_intrusive<VectorType>(t));
-
-			ValPtr v;
-
-			if ( init )
-				{
-				v = init_val(init, t, aggr);
-
-				if ( ! v )
-					return;
-				}
-
-			if ( aggr )
-				id->SetVal(std::move(aggr), c);
-			else if ( v )
-				id->SetVal(std::move(v), c);
-			}
+			initialize_var(id, t, c, init);
 		}
 
 	if ( dt == VAR_CONST )
