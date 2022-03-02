@@ -1163,11 +1163,16 @@ ValPtr BinaryExpr::SetFold(Val* v1, Val* v2) const
 			break;
 
 		case EXPR_ADD_TO:
-			tv2->AddTo(tv1, false);
+			// Avoid doing the AddTo operation if tv2 is empty,
+			// because then it might not type-check for trivial
+			// reasons.
+			if ( tv2->Size() > 0 )
+				tv2->AddTo(tv1, false);
 			return {NewRef{}, tv1};
 
 		case EXPR_REMOVE_FROM:
-			tv2->RemoveFrom(tv1);
+			if ( tv2->Size() > 0 )
+				tv2->RemoveFrom(tv1);
 			return {NewRef{}, tv1};
 
 		default:
@@ -1298,10 +1303,6 @@ bool BinaryExpr::CheckForRHSList()
 		return false;
 
 	auto rhs = cast_intrusive<ListExpr>(op2);
-	auto& rhs_exprs = rhs->Exprs();
-	assert(! rhs_exprs.empty());
-	auto& rhs_0 = rhs_exprs[0];
-
 	auto lhs_t = op1->GetType();
 
 	if ( lhs_t->Tag() == TYPE_TABLE )
@@ -1312,7 +1313,7 @@ bool BinaryExpr::CheckForRHSList()
 			return false;
 			}
 
-		if ( rhs_0->Tag() == EXPR_ASSIGN )
+		if ( lhs_t->IsTable() )
 			op2 = make_intrusive<TableConstructorExpr>(rhs, nullptr);
 		else
 			op2 = make_intrusive<SetConstructorExpr>(rhs, nullptr);
@@ -1342,7 +1343,9 @@ bool BinaryExpr::CheckForRHSList()
 		return false;
 		}
 
-	if ( ! same_type(op1->GetType(), op2->GetType()) )
+	// Don't bother type-checking for the degenerate case of the RHS
+	// being empty, since it won't actually matter.
+	if ( ! rhs->Exprs().empty() && ! same_type(op1->GetType(), op2->GetType()) )
 		{
 		ExprError("type clash for constructor list on RHS of assignment");
 		return false;

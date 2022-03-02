@@ -905,7 +905,7 @@ expr:
 			}
 	;
 
-rhs:		'{' { ++in_init; } expr_list '}'
+rhs:		'{' { ++in_init; } opt_expr_list '}'
 			{
 			--in_init;
 			$$ = $3;
