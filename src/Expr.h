@@ -630,6 +630,12 @@ protected:
 	// `[1, 2, 3] == 1` or `["a", "b", "c"] + "a"`.
 	void CheckScalarAggOp() const;
 
+	// For assignment operations (=, +=, -=) checks for a valid
+	// expression-list on the RHS (op2), potentially transforming
+	// op2 in the process.  Returns true if the list is present
+	// and type-checks correctly, false otherwise.
+	bool CheckForRHSList();
+
 	ExprPtr op1;
 	ExprPtr op2;
 	};

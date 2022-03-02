@@ -840,16 +840,33 @@ void BinaryExpr::ExprDescribe(ODesc* d) const
 
 ValPtr BinaryExpr::Fold(Val* v1, Val* v2) const
 	{
-	InternalTypeTag it = v1->GetType()->InternalType();
+	auto& t1 = v1->GetType();
+	InternalTypeTag it = t1->InternalType();
 
 	if ( it == TYPE_INTERNAL_STRING )
 		return StringFold(v1, v2);
 
-	if ( v1->GetType()->Tag() == TYPE_PATTERN )
+	if ( t1->Tag() == TYPE_PATTERN )
 		return PatternFold(v1, v2);
 
-	if ( v1->GetType()->IsSet() )
+	if ( t1->IsSet() )
 		return SetFold(v1, v2);
+
+	if ( tag == EXPR_ADD_TO )
+		{
+		if ( t1->IsTable() )
+			// For +=, it turns out we can leverage the same logic
+			// flow as used for sets.
+			return SetFold(v1, v2);
+
+		if ( t1->Tag() == TYPE_VECTOR )
+			{
+			// We only get here when using {} constructor on
+			// the RHS.
+			v2->AsVectorVal()->AddTo(v1, false);
+			return {NewRef{}, v1};
+			}
+		}
 
 	if ( it == TYPE_INTERNAL_ADDR )
 		return AddrFold(v1, v2);
@@ -1145,6 +1162,14 @@ ValPtr BinaryExpr::SetFold(Val* v1, Val* v2) const
 			reporter->InternalError("confusion over canonicalization in set comparison");
 			break;
 
+		case EXPR_ADD_TO:
+			tv2->AddTo(tv1, false);
+			return {NewRef{}, tv1};
+
+		case EXPR_REMOVE_FROM:
+			tv2->RemoveFrom(tv1);
+			return {NewRef{}, tv1};
+
 		default:
 			BadTag("BinaryExpr::SetFold", expr_name(tag));
 			return nullptr;
@@ -1265,6 +1290,67 @@ void BinaryExpr::CheckScalarAggOp() const
 		reporter->Warning("mixing vector and scalar operands is deprecated (%s) (%s)",
 		                  type_name(op1->GetType()->Tag()), type_name(op2->GetType()->Tag()));
 		}
+	}
+
+bool BinaryExpr::CheckForRHSList()
+	{
+	if ( op2->Tag() != EXPR_LIST )
+		return false;
+
+	auto rhs = cast_intrusive<ListExpr>(op2);
+	auto& rhs_exprs = rhs->Exprs();
+	assert(! rhs_exprs.empty());
+	auto& rhs_0 = rhs_exprs[0];
+
+	auto lhs_t = op1->GetType();
+
+	if ( lhs_t->Tag() == TYPE_TABLE )
+		{
+		if ( tag == EXPR_REMOVE_FROM && lhs_t->IsTable() )
+			{
+			ExprError("constructor list not allowed for -= operations on tables");
+			return false;
+			}
+
+		if ( rhs_0->Tag() == EXPR_ASSIGN )
+			op2 = make_intrusive<TableConstructorExpr>(rhs, nullptr);
+		else
+			op2 = make_intrusive<SetConstructorExpr>(rhs, nullptr);
+		}
+
+	else if ( lhs_t->Tag() == TYPE_VECTOR )
+		{
+		if ( tag == EXPR_REMOVE_FROM )
+			{
+			ExprError("constructor list not allowed for -= operations on vectors");
+			return false;
+			}
+
+		op2 = make_intrusive<VectorConstructorExpr>(rhs, nullptr);
+		}
+
+	else
+		{
+		ExprError("invalid constructor list on RHS of assignment");
+		return false;
+		}
+
+	if ( op2->IsError() )
+		{
+		// Message should have already been generated, but propagate.
+		SetError();
+		return false;
+		}
+
+	if ( ! same_type(op1->GetType(), op2->GetType()) )
+		{
+		ExprError("type clash for constructor list on RHS of assignment");
+		return false;
+		}
+
+	SetType(op1->GetType());
+
+	return true;
 	}
 
 CloneExpr::CloneExpr(ExprPtr arg_op) : UnaryExpr(EXPR_CLONE, std::move(arg_op))
@@ -1572,6 +1658,9 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	else if ( BothString(bt1, bt2) || BothInterval(bt1, bt2) )
 		SetType(base_type(bt1));
 
+	else if ( bt2 == TYPE_LIST )
+		(void)CheckForRHSList();
+
 	else if ( IsVector(bt1) )
 		{
 		bt1 = op1->GetType()->AsVectorType()->Yield()->Tag();
@@ -1614,8 +1703,8 @@ ValPtr AddToExpr::Eval(Frame* f) const
 	if ( ! v2 )
 		return nullptr;
 
-	if ( is_vector(v1) )
-		{
+	if ( is_vector(v1) && op2->Tag() != EXPR_VECTOR_CONSTRUCTOR )
+		{ // regular vector append, not a {} constructor on the RHS
 		VectorVal* vv = v1->AsVectorVal();
 
 		if ( ! vv->Assign(vv->Size(), v2) )
@@ -1696,6 +1785,10 @@ RemoveFromExpr::RemoveFromExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 		PromoteType(max_type(bt1, bt2), is_vector(op1) || is_vector(op2));
 	else if ( BothInterval(bt1, bt2) )
 		SetType(base_type(bt1));
+
+	else if ( bt2 == TYPE_LIST )
+		(void)CheckForRHSList();
+
 	else
 		ExprError("requires two arithmetic operands");
 	}
@@ -2522,8 +2615,7 @@ bool AssignExpr::TypeCheck(const AttributesPtr& attrs)
 
 		if ( op2->Tag() == EXPR_LIST )
 			{
-			op2 = make_intrusive<VectorConstructorExpr>(
-				IntrusivePtr{AdoptRef{}, op2.release()->AsListExpr()}, op1->GetType());
+			op2 = make_intrusive<VectorConstructorExpr>(cast_intrusive<ListExpr>(op2), op1->GetType());
 			return true;
 			}
 		}
@@ -2555,7 +2647,7 @@ bool AssignExpr::TypeCheck(const AttributesPtr& attrs)
 					return false;
 					}
 
-				ListExpr* ctor_list = dynamic_cast<ListExpr*>(sce->Op());
+				auto ctor_list = cast_intrusive<ListExpr>(sce->GetOp1());
 
 				if ( ! ctor_list )
 					{
@@ -2572,8 +2664,7 @@ bool AssignExpr::TypeCheck(const AttributesPtr& attrs)
 					}
 
 				int errors_before = reporter->Errors();
-				op2 = make_intrusive<SetConstructorExpr>(IntrusivePtr{NewRef{}, ctor_list},
-				                                         std::move(attr_copy), op1->GetType());
+				op2 = make_intrusive<SetConstructorExpr>(ctor_list, std::move(attr_copy), op1->GetType());
 				int errors_after = reporter->Errors();
 
 				if ( errors_after > errors_before )
