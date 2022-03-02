@@ -58,7 +58,7 @@
 %type <id_l> local_id_list case_type_list
 %type <ic> init_class
 %type <val> TOK_CONSTANT
-%type <expr> expr opt_expr rhs init opt_init anonymous_function lambda_body index_slice opt_deprecated when_condition
+%type <expr> expr opt_expr rhs opt_init anonymous_function lambda_body index_slice opt_deprecated when_condition
 %type <event_expr> event
 %type <stmt> stmt stmt_list func_body for_head
 %type <type> type opt_type enum_body
@@ -1520,16 +1520,10 @@ init_class:
 	;
 
 opt_init:
-		{ ++in_init; } init { --in_init; }
+		{ ++in_init; } rhs { --in_init; }
 			{ $$ = $2; }
 	|
 			{ $$ = 0; }
-	;
-
-init:
-		'{' rhs_expr_list '}'
-			{ $$ = $2; }
-	|	expr
 	;
 
 index_slice:
