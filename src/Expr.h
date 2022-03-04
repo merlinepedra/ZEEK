@@ -1778,7 +1778,12 @@ inline Val* Expr::ExprVal() const
 	}
 
 // Decides whether to return an AssignExpr or a RecordAssignExpr.
-ExprPtr get_assign_expr(ExprPtr op1, ExprPtr op2, bool is_init);
+extern ExprPtr get_assign_expr(ExprPtr op1, ExprPtr op2, bool is_init);
+
+// Takes a RHS constructor list and returns a version with any embedded
+// indices within it (used to concisely represent multiple set/table entries)
+// expanded.
+extern ListExprPtr expand_op(ListExprPtr op);
 
 /**
  * Type-check the given expression(s) against the given type(s).  Complain
@@ -1799,7 +1804,7 @@ extern bool check_and_promote_exprs_to_type(ListExpr* elements, TypePtr type);
 
 // Returns a ListExpr simplified down to a list a values, or nil
 // if they couldn't all be reduced.
-std::optional<std::vector<ValPtr>> eval_list(Frame* f, const ListExpr* l);
+extern std::optional<std::vector<ValPtr>> eval_list(Frame* f, const ListExpr* l);
 
 // Returns true if e1 is "greater" than e2 - here "greater" is just
 // a heuristic, used with commutative operators to put them into

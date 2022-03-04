@@ -1302,8 +1302,9 @@ bool BinaryExpr::CheckForRHSList()
 	if ( op2->Tag() != EXPR_LIST )
 		return false;
 
-	auto rhs = cast_intrusive<ListExpr>(op2);
 	auto lhs_t = op1->GetType();
+	auto rhs = cast_intrusive<ListExpr>(op2);
+	auto& rhs_exprs = rhs->Exprs();
 
 	if ( lhs_t->Tag() == TYPE_TABLE )
 		{
@@ -1311,6 +1312,21 @@ bool BinaryExpr::CheckForRHSList()
 			{
 			ExprError("constructor list not allowed for -= operations on tables");
 			return false;
+			}
+
+		if ( lhs_t->IsSet() && rhs_exprs.size() >= 1 && same_type(lhs_t, rhs_exprs[0]->GetType()) )
+			{
+			// This is potentially the idiom of "set1 += { set2 }"
+			// or "set1 += { set2, set3, set4 }".
+			op2 = {NewRef{}, rhs_exprs[0]};
+
+			for ( auto i = 1U; i < rhs_exprs.size(); ++i )
+				{
+				ExprPtr re_i = {NewRef{}, rhs_exprs[i]};
+				op2 = make_intrusive<BitExpr>(EXPR_OR, op2, re_i);
+				}
+
+			return true;
 			}
 
 		if ( lhs_t->IsTable() )
@@ -1345,7 +1361,7 @@ bool BinaryExpr::CheckForRHSList()
 
 	// Don't bother type-checking for the degenerate case of the RHS
 	// being empty, since it won't actually matter.
-	if ( ! rhs->Exprs().empty() && ! same_type(op1->GetType(), op2->GetType()) )
+	if ( ! rhs_exprs.empty() && ! same_type(op1->GetType(), op2->GetType()) )
 		{
 		ExprError("type clash for constructor list on RHS of assignment");
 		return false;
@@ -2547,7 +2563,10 @@ AssignExpr::AssignExpr(ExprPtr arg_op1, ExprPtr arg_op2, bool arg_is_init, ValPt
 		return;
 		}
 
-	if ( typecheck )
+	if ( op2->Tag() == EXPR_LIST && CheckForRHSList() )
+		;
+
+	else if ( typecheck )
 		// We discard the status from TypeCheck since it has already
 		// generated error messages.
 		(void)TypeCheck(attrs);
@@ -2589,7 +2608,7 @@ bool AssignExpr::TypeCheck(const AttributesPtr& attrs)
 		return true;
 		}
 
-	if ( bt1 == TYPE_TABLE && op2->Tag() == EXPR_LIST )
+	if ( bt1 == TYPE_TABLE && op2->Tag() == EXPR_LIST ) // ###
 		{
 		std::unique_ptr<std::vector<AttrPtr>> attr_copy;
 
@@ -2608,7 +2627,7 @@ bool AssignExpr::TypeCheck(const AttributesPtr& attrs)
 		return ! op2->IsError();
 		}
 
-	if ( bt1 == TYPE_VECTOR )
+	if ( bt1 == TYPE_VECTOR ) // ###
 		{
 		if ( bt2 == bt1 && op2->GetType()->AsVectorType()->IsUnspecifiedVector() )
 			{
@@ -3593,10 +3612,89 @@ TraversalCode RecordConstructorExpr::Traverse(TraversalCallback* cb) const
 	HANDLE_TC_EXPR_POST(tc);
 	}
 
+static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
+	{
+	ExprPtr index;
+	ExprPtr yield;
+
+	if ( elem->Tag() == EXPR_ASSIGN )
+		{
+		index = elem->GetOp1();
+		yield = elem->GetOp2();
+		}
+	else
+		index = elem; // this is a set - no yield
+
+	// If the index isn't a list, then there's nothing to consider
+	// expanding.
+	if ( index->Tag() != EXPR_LIST )
+		{
+		elems->Append(elem);
+		return false;
+		}
+
+	// Look inside the index for any sub-lists, and expand those.
+	// There might be more than one, but we'll pick that up recursively
+	// later.
+	auto& index_exprs = index->AsListExpr()->Exprs();
+	int index_n = index_exprs.length();
+	int list_offset = -1;
+	for ( int i = 0; i < index_n; ++i )
+		if ( index_exprs[i]->Tag() == EXPR_LIST )
+			{
+			list_offset = i;
+			break;
+			}
+
+	if ( list_offset < 0 )
+		{ // No embedded lists.
+		elems->Append(elem);
+		return false;
+		}
+
+	// Expand the identified list.
+	auto sub_list = index_exprs[list_offset]->AsListExpr();
+	for ( auto& sub_list_i : sub_list->Exprs() )
+		{
+		auto expanded_elem = make_intrusive<ListExpr>();
+		for ( int i = 0; i < index_n; ++i )
+			if ( i == list_offset )
+				expanded_elem->Append({NewRef{}, sub_list_i});
+			else
+				expanded_elem->Append({NewRef{}, index_exprs[i]});
+
+		ExprPtr new_elem;
+
+		if ( yield )
+			new_elem = make_intrusive<AssignExpr>(expanded_elem, yield, true);
+		else
+			new_elem = expanded_elem;
+
+		elems->Append(new_elem);
+		}
+
+	return true;
+	}
+
+ListExprPtr expand_op(ListExprPtr op)
+	{
+	auto new_list = make_intrusive<ListExpr>();
+	bool did_expansion = false;
+
+	for ( auto e : op->Exprs() )
+		if ( expand_op_elem(new_list, {NewRef{}, e}) )
+			did_expansion = true;
+
+	if ( did_expansion )
+		return expand_op(new_list);
+	else
+		return op;
+	}
+
 TableConstructorExpr::TableConstructorExpr(ListExprPtr constructor_list,
                                            std::unique_ptr<std::vector<AttrPtr>> arg_attrs,
                                            TypePtr arg_type, AttributesPtr arg_attrs2)
-	: UnaryExpr(EXPR_TABLE_CONSTRUCTOR, std::move(constructor_list))
+	: UnaryExpr(EXPR_TABLE_CONSTRUCTOR, expand_op(constructor_list))
 	{
 	if ( IsError() )
 		return;
@@ -3735,7 +3833,7 @@ void TableConstructorExpr::ExprDescribe(ODesc* d) const
 SetConstructorExpr::SetConstructorExpr(ListExprPtr constructor_list,
                                        std::unique_ptr<std::vector<AttrPtr>> arg_attrs,
                                        TypePtr arg_type, AttributesPtr arg_attrs2)
-	: UnaryExpr(EXPR_SET_CONSTRUCTOR, std::move(constructor_list))
+	: UnaryExpr(EXPR_SET_CONSTRUCTOR, expand_op(constructor_list))
 	{
 	if ( IsError() )
 		return;
