@@ -2233,6 +2233,170 @@ TypeTag max_type(TypeTag t1, TypeTag t2)
 		}
 	}
 
+TypePtr merge_enum_types(const Type* t1, const Type* t2)
+	{
+	// Could compare pointers t1 == t2, but maybe there's someone out
+	// there creating clones of the type, so safer to compare name.
+	if ( t1->GetName() != t2->GetName() )
+		{
+		std::string msg = util::fmt("incompatible enum types: '%s' and '%s'",
+					    t1->GetName().data(), t2->GetName().data());
+
+		t1->Error(msg.data(), t2);
+		return nullptr;
+		}
+
+	// Doing a lookup here as a roundabout way of ref-ing t1, without
+	// changing the function params which has t1 as const and also
+	// (potentially) avoiding a pitfall mentioned earlier about clones.
+	const auto& id = detail::global_scope()->Find(t1->GetName());
+
+	if ( id && id->IsType() && id->GetType()->Tag() == TYPE_ENUM )
+		// It should make most sense to return the real type here rather
+		// than a copy since it may be redef'd later in parsing.  If we
+		// return a copy, then whoever is using this return value won't
+		// actually see those changes from the redef.
+		return id->GetType();
+
+	std::string msg = util::fmt("incompatible enum types: '%s' and '%s'"
+				    " ('%s' enum type ID is invalid)",
+				    t1->GetName().data(), t2->GetName().data(),
+				    t1->GetName().data());
+	t1->Error(msg.data(), t2);
+	return nullptr;
+	}
+
+TypePtr merge_table_types(const Type* t1, const Type* t2)
+	{
+	const IndexType* it1 = (const IndexType*)t1;
+	const IndexType* it2 = (const IndexType*)t2;
+
+	const auto& tl1 = it1->GetIndexTypes();
+	const auto& tl2 = it2->GetIndexTypes();
+	TypeListPtr tl3;
+
+	if ( tl1.size() != tl2.size() )
+		{
+		t1->Error("incompatible types", t2);
+		return nullptr;
+		}
+
+	tl3 = make_intrusive<TypeList>();
+
+	for ( auto i = 0u; i < tl1.size(); ++i )
+		{
+		auto tl3_i = merge_types(tl1[i], tl2[i]);
+		if ( ! tl3_i )
+			return nullptr;
+
+		tl3->Append(std::move(tl3_i));
+		}
+
+	const auto& y1 = t1->Yield();
+	const auto& y2 = t2->Yield();
+	TypePtr y3;
+
+	if ( y1 || y2 )
+		{
+		if ( ! y1 || ! y2 )
+			{
+			t1->Error("incompatible types", t2);
+			return nullptr;
+			}
+
+		y3 = merge_types(y1, y2);
+		if ( ! y3 )
+			return nullptr;
+		}
+
+	if ( t1->IsSet() )
+		return make_intrusive<SetType>(std::move(tl3), nullptr);
+	else
+		return make_intrusive<TableType>(std::move(tl3), std::move(y3));
+	}
+
+TypePtr merge_func_types(const Type* t1, const Type* t2)
+	{
+	if ( ! same_type(t1, t2) )
+		{
+		t1->Error("incompatible types", t2);
+		return nullptr;
+		}
+
+	const FuncType* ft1 = (const FuncType*)t1;
+	const FuncType* ft2 = (const FuncType*)t1;
+	auto args = cast_intrusive<RecordType>(merge_types(ft1->Params(), ft2->Params()));
+	auto yield = t1->Yield() ? merge_types(t1->Yield(), t2->Yield()) : nullptr;
+
+	return make_intrusive<FuncType>(std::move(args), std::move(yield), ft1->Flavor());
+	}
+
+TypePtr merge_record_types(const Type* t1, const Type* t2)
+	{
+	const RecordType* rt1 = (const RecordType*)t1;
+	const RecordType* rt2 = (const RecordType*)t2;
+
+	if ( rt1->NumFields() != rt2->NumFields() )
+		return nullptr;
+
+	type_decl_list* tdl3 = new type_decl_list(rt1->NumFields());
+
+	for ( int i = 0; i < rt1->NumFields(); ++i )
+		{
+		const TypeDecl* td1 = rt1->FieldDecl(i);
+		const TypeDecl* td2 = rt2->FieldDecl(i);
+		auto tdl3_i = merge_types(td1->type, td2->type);
+
+		if ( ! util::streq(td1->id, td2->id) || ! tdl3_i )
+			{
+			t1->Error("incompatible record fields", t2);
+			delete tdl3;
+			return nullptr;
+			}
+
+		tdl3->push_back(new TypeDecl(util::copy_string(td1->id), std::move(tdl3_i)));
+		}
+
+	return make_intrusive<RecordType>(tdl3);
+	}
+
+TypePtr merge_list_types(const Type* t1, const Type* t2)
+	{
+	const TypeList* tl1 = t1->AsTypeList();
+	const TypeList* tl2 = t2->AsTypeList();
+
+	if ( tl1->IsPure() != tl2->IsPure() )
+		{
+		tl1->Error("incompatible lists", tl2);
+		return nullptr;
+		}
+
+	const auto& l1 = tl1->GetTypes();
+	const auto& l2 = tl2->GetTypes();
+
+	if ( l1.size() == 0 || l2.size() == 0 )
+		{
+		if ( l1.size() == 0 )
+			tl1->Error("empty list");
+		else
+			tl2->Error("empty list");
+		return nullptr;
+		}
+
+	if ( l1.size() != l2.size() )
+		{
+		tl1->Error("different number of indices", tl2);
+		return nullptr;
+		}
+
+	auto tl3 = make_intrusive<TypeList>();
+
+	for ( auto i = 0u; i < l1.size(); ++i )
+		tl3->Append(merge_types(l1[i], l2[i]));
+
+	return tl3;
+	}
+
 TypePtr merge_types(const TypePtr& arg_t1, const TypePtr& arg_t2)
 	{
 	auto t1 = arg_t1.get();
@@ -2267,168 +2431,19 @@ TypePtr merge_types(const TypePtr& arg_t1, const TypePtr& arg_t2)
 			return base_type(tg1);
 
 		case TYPE_ENUM:
-			{
-			// Could compare pointers t1 == t2, but maybe there's someone out
-			// there creating clones of the type, so safer to compare name.
-			if ( t1->GetName() != t2->GetName() )
-				{
-				std::string msg = util::fmt("incompatible enum types: '%s' and '%s'",
-				                            t1->GetName().data(), t2->GetName().data());
-
-				t1->Error(msg.data(), t2);
-				return nullptr;
-				}
-
-			// Doing a lookup here as a roundabout way of ref-ing t1, without
-			// changing the function params which has t1 as const and also
-			// (potentially) avoiding a pitfall mentioned earlier about clones.
-			const auto& id = detail::global_scope()->Find(t1->GetName());
-
-			if ( id && id->IsType() && id->GetType()->Tag() == TYPE_ENUM )
-				// It should make most sense to return the real type here rather
-				// than a copy since it may be redef'd later in parsing.  If we
-				// return a copy, then whoever is using this return value won't
-				// actually see those changes from the redef.
-				return id->GetType();
-
-			std::string msg = util::fmt("incompatible enum types: '%s' and '%s'"
-			                            " ('%s' enum type ID is invalid)",
-			                            t1->GetName().data(), t2->GetName().data(),
-			                            t1->GetName().data());
-			t1->Error(msg.data(), t2);
-			return nullptr;
-			}
+			return merge_enum_types(t1, t2);
 
 		case TYPE_TABLE:
-			{
-			const IndexType* it1 = (const IndexType*)t1;
-			const IndexType* it2 = (const IndexType*)t2;
-
-			const auto& tl1 = it1->GetIndexTypes();
-			const auto& tl2 = it2->GetIndexTypes();
-			TypeListPtr tl3;
-
-			if ( tl1.size() != tl2.size() )
-				{
-				t1->Error("incompatible types", t2);
-				return nullptr;
-				}
-
-			tl3 = make_intrusive<TypeList>();
-
-			for ( auto i = 0u; i < tl1.size(); ++i )
-				{
-				auto tl3_i = merge_types(tl1[i], tl2[i]);
-				if ( ! tl3_i )
-					return nullptr;
-
-				tl3->Append(std::move(tl3_i));
-				}
-
-			const auto& y1 = t1->Yield();
-			const auto& y2 = t2->Yield();
-			TypePtr y3;
-
-			if ( y1 || y2 )
-				{
-				if ( ! y1 || ! y2 )
-					{
-					t1->Error("incompatible types", t2);
-					return nullptr;
-					}
-
-				y3 = merge_types(y1, y2);
-				if ( ! y3 )
-					return nullptr;
-				}
-
-			if ( t1->IsSet() )
-				return make_intrusive<SetType>(std::move(tl3), nullptr);
-			else
-				return make_intrusive<TableType>(std::move(tl3), std::move(y3));
-			}
+			return merge_table_types(t1, t2);
 
 		case TYPE_FUNC:
-			{
-			if ( ! same_type(t1, t2) )
-				{
-				t1->Error("incompatible types", t2);
-				return nullptr;
-				}
-
-			const FuncType* ft1 = (const FuncType*)t1;
-			const FuncType* ft2 = (const FuncType*)t1;
-			auto args = cast_intrusive<RecordType>(merge_types(ft1->Params(), ft2->Params()));
-			auto yield = t1->Yield() ? merge_types(t1->Yield(), t2->Yield()) : nullptr;
-
-			return make_intrusive<FuncType>(std::move(args), std::move(yield), ft1->Flavor());
-			}
+			return merge_func_types(t1, t2);
 
 		case TYPE_RECORD:
-			{
-			const RecordType* rt1 = (const RecordType*)t1;
-			const RecordType* rt2 = (const RecordType*)t2;
-
-			if ( rt1->NumFields() != rt2->NumFields() )
-				return nullptr;
-
-			type_decl_list* tdl3 = new type_decl_list(rt1->NumFields());
-
-			for ( int i = 0; i < rt1->NumFields(); ++i )
-				{
-				const TypeDecl* td1 = rt1->FieldDecl(i);
-				const TypeDecl* td2 = rt2->FieldDecl(i);
-				auto tdl3_i = merge_types(td1->type, td2->type);
-
-				if ( ! util::streq(td1->id, td2->id) || ! tdl3_i )
-					{
-					t1->Error("incompatible record fields", t2);
-					delete tdl3;
-					return nullptr;
-					}
-
-				tdl3->push_back(new TypeDecl(util::copy_string(td1->id), std::move(tdl3_i)));
-				}
-
-			return make_intrusive<RecordType>(tdl3);
-			}
+			return merge_record_types(t1, t2);
 
 		case TYPE_LIST:
-			{
-			const TypeList* tl1 = t1->AsTypeList();
-			const TypeList* tl2 = t2->AsTypeList();
-
-			if ( tl1->IsPure() != tl2->IsPure() )
-				{
-				tl1->Error("incompatible lists", tl2);
-				return nullptr;
-				}
-
-			const auto& l1 = tl1->GetTypes();
-			const auto& l2 = tl2->GetTypes();
-
-			if ( l1.size() == 0 || l2.size() == 0 )
-				{
-				if ( l1.size() == 0 )
-					tl1->Error("empty list");
-				else
-					tl2->Error("empty list");
-				return nullptr;
-				}
-
-			if ( l1.size() != l2.size() )
-				{
-				tl1->Error("different number of indices", tl2);
-				return nullptr;
-				}
-
-			auto tl3 = make_intrusive<TypeList>();
-
-			for ( auto i = 0u; i < l1.size(); ++i )
-				tl3->Append(merge_types(l1[i], l2[i]));
-
-			return tl3;
-			}
+			return merge_list_types(t1, t2);
 
 		case TYPE_VECTOR:
 			if ( ! same_type(t1->Yield(), t2->Yield()) )
