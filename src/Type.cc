@@ -2336,25 +2336,68 @@ TypePtr merge_record_types(const Type* t1, const Type* t2)
 	const RecordType* rt1 = (const RecordType*)t1;
 	const RecordType* rt2 = (const RecordType*)t2;
 
-	if ( rt1->NumFields() != rt2->NumFields() )
-		return nullptr;
+	// We allow the records to have different numbers of fields.
+	// We first go through all of the fields in rt1, and then we
+	// check for whether rt2 has any additional fields.
 
-	type_decl_list* tdl3 = new type_decl_list(rt1->NumFields());
+	type_decl_list* tdl3 = new type_decl_list();
 
 	for ( int i = 0; i < rt1->NumFields(); ++i )
 		{
-		const TypeDecl* td1 = rt1->FieldDecl(i);
-		const TypeDecl* td2 = rt2->FieldDecl(i);
-		auto tdl3_i = merge_types(td1->type, td2->type);
+		auto td1 = rt1->FieldDecl(i);
+		auto td2_offset_i = rt2->FieldOffset(rt1->FieldName(i));
 
-		if ( ! util::streq(td1->id, td2->id) || ! tdl3_i )
+		TypePtr tdl3_i;
+		auto attrs3 = make_intrusive<detail::Attributes>(nullptr, true, false);
+
+		if ( td1->attrs )
+			attrs3->AddAttrs(td1->attrs);
+
+		if ( td2_offset_i >= 0 )
 			{
-			t1->Error("incompatible record fields", t2);
-			delete tdl3;
-			return nullptr;
+			auto td2 = rt2->FieldDecl(td2_offset_i);
+			tdl3_i = merge_types(td1->type, td2->type);
+
+			if ( td2->attrs )
+				attrs3->AddAttrs(td2->attrs);
+
+			if ( ! util::streq(td1->id, td2->id) || ! tdl3_i )
+				{
+				t1->Error("incompatible record fields", t2);
+				delete tdl3;
+				return nullptr;
+				}
+			}
+		else
+			{
+			tdl3_i = td1->type;
+			attrs3->AddAttr(make_intrusive<detail::Attr>(detail::ATTR_OPTIONAL));
 			}
 
-		tdl3->push_back(new TypeDecl(util::copy_string(td1->id), std::move(tdl3_i)));
+		if ( attrs3->GetAttrs().empty() )
+			attrs3 = nullptr;
+
+		auto td3 = new TypeDecl(util::copy_string(td1->id), std::move(tdl3_i), attrs3);
+
+		tdl3->push_back(td3);
+		}
+
+	// Now add in any extras from rt2.
+	for ( int i = 0; i < rt2->NumFields(); ++i )
+		{
+		auto td2 = rt2->FieldDecl(i);
+		auto td1_offset_i = rt1->FieldOffset(rt2->FieldName(i));
+
+		if ( td1_offset_i < 0 )
+			{
+			auto attrs3 = make_intrusive<detail::Attributes>(nullptr, true, false);
+			if ( td2->attrs )
+				attrs3->AddAttrs(td2->attrs);
+
+			attrs3->AddAttr(make_intrusive<detail::Attr>(detail::ATTR_OPTIONAL));
+			auto td_merge = new TypeDecl(util::copy_string(td2->id), std::move(td2->type), attrs3);
+			tdl3->push_back(td_merge);
+			}
 		}
 
 	return make_intrusive<RecordType>(tdl3);
