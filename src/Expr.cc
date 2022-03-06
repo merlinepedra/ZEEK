@@ -3612,6 +3612,22 @@ TraversalCode RecordConstructorExpr::Traverse(TraversalCallback* cb) const
 	HANDLE_TC_EXPR_POST(tc);
 	}
 
+static ExprPtr expand_one_elem(const ExprPList& index_exprs, ExprPtr yield, ExprPtr elem, int elem_offset)
+	{
+	auto expanded_elem = make_intrusive<ListExpr>();
+
+	for ( int i = 0; i < index_exprs.length(); ++i )
+		if ( i == elem_offset )
+			expanded_elem->Append(elem);
+		else
+			expanded_elem->Append({NewRef{}, index_exprs[i]});
+
+	if ( yield )
+		return make_intrusive<AssignExpr>(expanded_elem, yield, true);
+	else
+		return expanded_elem;
+	}
+
 static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
 	{
 	ExprPtr index;
@@ -3668,23 +3684,8 @@ static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
 
 		for ( auto& s_elem : v->AsTableVal()->ToMap() )
 			{
-			auto expanded_elem = make_intrusive<ListExpr>();
 			auto c_elem = make_intrusive<ConstExpr>(s_elem.first);
-
-			for ( int i = 0; i < index_n; ++i )
-				if ( i == set_offset )
-					expanded_elem->Append({NewRef{}, c_elem.release()});
-				else
-					expanded_elem->Append({NewRef{}, index_exprs[i]});
-
-			ExprPtr new_elem;
-
-			if ( yield )
-				new_elem = make_intrusive<AssignExpr>(expanded_elem, yield, true);
-			else
-				new_elem = expanded_elem;
-
-			elems->Append(new_elem);
+			elems->Append(expand_one_elem(index_exprs, yield, c_elem, set_offset));
 			}
 
 		return true;
@@ -3700,21 +3701,8 @@ static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
 	auto sub_list = index_exprs[list_offset]->AsListExpr();
 	for ( auto& sub_list_i : sub_list->Exprs() )
 		{
-		auto expanded_elem = make_intrusive<ListExpr>();
-		for ( int i = 0; i < index_n; ++i )
-			if ( i == list_offset )
-				expanded_elem->Append({NewRef{}, sub_list_i});
-			else
-				expanded_elem->Append({NewRef{}, index_exprs[i]});
-
-		ExprPtr new_elem;
-
-		if ( yield )
-			new_elem = make_intrusive<AssignExpr>(expanded_elem, yield, true);
-		else
-			new_elem = expanded_elem;
-
-		elems->Append(new_elem);
+		ExprPtr e = {NewRef{}, sub_list_i};
+		elems->Append(expand_one_elem(index_exprs, yield, e, list_offset));
 		}
 
 	return true;
