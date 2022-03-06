@@ -1330,9 +1330,9 @@ bool BinaryExpr::CheckForRHSList()
 			}
 
 		if ( lhs_t->IsTable() )
-			op2 = make_intrusive<TableConstructorExpr>(rhs, nullptr);
+			op2 = make_intrusive<TableConstructorExpr>(rhs, nullptr, lhs_t);
 		else
-			op2 = make_intrusive<SetConstructorExpr>(rhs, nullptr);
+			op2 = make_intrusive<SetConstructorExpr>(rhs, nullptr, lhs_t);
 		}
 
 	else if ( lhs_t->Tag() == TYPE_VECTOR )
@@ -1343,7 +1343,7 @@ bool BinaryExpr::CheckForRHSList()
 			return false;
 			}
 
-		op2 = make_intrusive<VectorConstructorExpr>(rhs, nullptr);
+		op2 = make_intrusive<VectorConstructorExpr>(rhs, lhs_t);
 		}
 
 	else
