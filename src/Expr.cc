@@ -3633,18 +3633,62 @@ static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
 		return false;
 		}
 
-	// Look inside the index for any sub-lists, and expand those.
+	// Look inside the index for any sub-lists or sets, and expand those.
 	// There might be more than one, but we'll pick that up recursively
 	// later.
 	auto& index_exprs = index->AsListExpr()->Exprs();
 	int index_n = index_exprs.length();
 	int list_offset = -1;
+	int set_offset = -1;
 	for ( int i = 0; i < index_n; ++i )
+		{
 		if ( index_exprs[i]->Tag() == EXPR_LIST )
 			{
 			list_offset = i;
 			break;
 			}
+
+		if ( index_exprs[i]->GetType()->IsSet() )
+			{
+			set_offset = i;
+			break;
+			}
+		}
+
+	if ( set_offset >= 0 )
+		{ // expand the set
+		auto s_e = index_exprs[set_offset];
+		auto v = s_e->Eval(nullptr);
+		if ( ! v )
+			{
+			s_e->Error("cannot expand constructor elements using a value that depends on local variables");
+			elems->SetError();
+			return false;
+			}
+
+		for ( auto& s_elem : v->AsTableVal()->ToMap() )
+			{
+			auto expanded_elem = make_intrusive<ListExpr>();
+			auto c_elem = make_intrusive<ConstExpr>(s_elem.first);
+
+			for ( int i = 0; i < index_n; ++i )
+				if ( i == set_offset )
+					expanded_elem->Append({NewRef{}, c_elem.release()});
+				else
+					expanded_elem->Append({NewRef{}, index_exprs[i]});
+
+			ExprPtr new_elem;
+
+			if ( yield )
+				new_elem = make_intrusive<AssignExpr>(expanded_elem, yield, true);
+			else
+				new_elem = expanded_elem;
+
+			elems->Append(new_elem);
+			}
+
+		return true;
+		}
 
 	if ( list_offset < 0 )
 		{ // No embedded lists.
@@ -3682,8 +3726,16 @@ ListExprPtr expand_op(ListExprPtr op)
 	bool did_expansion = false;
 
 	for ( auto e : op->Exprs() )
+		{
 		if ( expand_op_elem(new_list, {NewRef{}, e}) )
 			did_expansion = true;
+
+		if ( new_list->IsError() )
+			{
+			op->SetError();
+			return op;
+			}
+		}
 
 	if ( did_expansion )
 		return expand_op(new_list);
