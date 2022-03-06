@@ -211,9 +211,14 @@ static void make_var(const IDPtr& id, TypePtr t, InitClass c, ExprPtr init,
 		{
 		// This can happen because the grammar allows any "init_class",
 		// including none, to be followed by an expression.
-		init->Error("initialization needs to be preceded by =/+=/-=");
-		id->SetType(error_type());
-		return;
+		init->Warn("initialization not preceded by =/+=/-= is deprecated");
+
+		// The historical instances of these, such as the
+		// language/redef-same-prefixtable-idx.zeek btest, treat
+		// this as += rather than =, and with the initializer
+		// implicitly inside a list.
+		init = make_intrusive<ListExpr>(init);
+		c = INIT_EXTRA;
 		}
 
 	if ( init && init->Tag() == EXPR_LIST )
