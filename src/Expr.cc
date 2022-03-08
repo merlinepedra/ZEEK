@@ -1327,6 +1327,8 @@ bool BinaryExpr::CheckForRHSList()
 				op2 = make_intrusive<BitExpr>(EXPR_OR, op2, re_i);
 				}
 
+			SetType(op1->GetType());
+
 			return true;
 			}
 
@@ -1681,6 +1683,14 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	else if ( bt2 == TYPE_LIST )
 		(void)CheckForRHSList();
 
+	else if ( bt1 == TYPE_PATTERN )
+		{
+		if ( bt2 != TYPE_PATTERN )
+			ExprError("pattern += op requires op to be a pattern");
+		else
+			SetType(op1->GetType());
+		}
+
 	else if ( IsVector(bt1) )
 		{
 		bt1 = op1->GetType()->AsVectorType()->Yield()->Tag();
@@ -1730,6 +1740,12 @@ ValPtr AddToExpr::Eval(Frame* f) const
 		if ( ! vv->Assign(vv->Size(), v2) )
 			RuntimeError("type-checking failed in vector append");
 
+		return v1;
+		}
+
+	if ( type->Tag() == TYPE_PATTERN )
+		{
+		v2->AddTo(v1.get(), false);
 		return v1;
 		}
 
