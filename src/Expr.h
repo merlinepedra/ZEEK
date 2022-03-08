@@ -599,6 +599,9 @@ protected:
 	// Same for when the constants are sets.
 	virtual ValPtr SetFold(Val* v1, Val* v2) const;
 
+	// Same for when the constants are tables.
+	virtual ValPtr TableFold(Val* v1, Val* v2) const;
+
 	// Same for when the constants are addresses or subnets.
 	virtual ValPtr AddrFold(Val* v1, Val* v2) const;
 	virtual ValPtr SubNetFold(Val* v1, Val* v2) const;

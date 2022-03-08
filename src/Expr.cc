@@ -853,6 +853,9 @@ ValPtr BinaryExpr::Fold(Val* v1, Val* v2) const
 	if ( t1->IsSet() )
 		return SetFold(v1, v2);
 
+	if ( t1->IsTable() )
+		return TableFold(v1, v2);
+
 	if ( tag == EXPR_ADD_TO )
 		{
 		if ( t1->IsTable() )
@@ -1184,6 +1187,33 @@ ValPtr BinaryExpr::SetFold(Val* v1, Val* v2) const
 	return val_mgr->Bool(res);
 	}
 
+ValPtr BinaryExpr::TableFold(Val* v1, Val* v2) const
+	{
+	TableVal* tv1 = v1->AsTableVal();
+	TableVal* tv2 = v2->AsTableVal();
+
+	switch ( tag )
+		{
+		case EXPR_ADD_TO:
+			// Avoid doing the AddTo operation if tv2 is empty,
+			// because then it might not type-check for trivial
+			// reasons.
+			if ( tv2->Size() > 0 )
+				tv2->AddTo(tv1, false);
+			return {NewRef{}, tv1};
+
+		case EXPR_REMOVE_FROM:
+			if ( tv2->Size() > 0 )
+				tv2->RemoveFrom(tv1);
+			return {NewRef{}, tv1};
+
+		default:
+			BadTag("BinaryExpr::TableFold", expr_name(tag));
+		}
+
+	return nullptr;
+	}
+
 ValPtr BinaryExpr::AddrFold(Val* v1, Val* v2) const
 	{
 	IPAddr a1 = v1->AsAddr();
@@ -1309,12 +1339,6 @@ bool BinaryExpr::CheckForRHSList()
 
 	if ( lhs_t->Tag() == TYPE_TABLE )
 		{
-		if ( tag == EXPR_REMOVE_FROM && lhs_t->IsTable() )
-			{
-			ExprError("constructor list not allowed for -= operations on tables");
-			return false;
-			}
-
 		if ( lhs_t->IsSet() && rhs_exprs.size() >= 1 && same_type(lhs_t, rhs_exprs[0]->GetType()) )
 			{
 			// This is potentially the idiom of "set1 += { set2 }"
@@ -1327,6 +1351,18 @@ bool BinaryExpr::CheckForRHSList()
 				op2 = make_intrusive<BitExpr>(EXPR_OR, op2, re_i);
 				}
 
+			SetType(op1->GetType());
+
+			return true;
+			}
+
+		if ( lhs_t->IsTable() && rhs_exprs.size() == 1 && same_type(lhs_t, rhs_exprs[0]->GetType()) )
+			{
+			// This is the idiom of "table1 += { table2 }" (or -=).
+			// Unlike for sets we don't allow more than one table
+			// in the RHS list because table "union" isn't
+			// well-defined.
+			op2 = {NewRef{}, rhs_exprs[0]};
 			SetType(op1->GetType());
 
 			return true;
@@ -1672,8 +1708,10 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	if ( IsError() )
 		return;
 
-	TypeTag bt1 = op1->GetType()->Tag();
-	TypeTag bt2 = op2->GetType()->Tag();
+	auto& t1 = op1->GetType();
+	auto& t2 = op2->GetType();
+	TypeTag bt1 = t1->Tag();
+	TypeTag bt2 = t2->Tag();
 
 	if ( BothArithmetic(bt1, bt2) )
 		PromoteType(max_type(bt1, bt2), is_vector(op1) || is_vector(op2));
@@ -1683,17 +1721,25 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	else if ( bt2 == TYPE_LIST )
 		(void)CheckForRHSList();
 
+	else if ( bt1 == TYPE_TABLE )
+		{
+		if ( same_type(t1, t2) )
+			SetType(t1);
+		else
+			ExprError("invalid RHS operand to table/set +=");
+		}
+
 	else if ( bt1 == TYPE_PATTERN )
 		{
 		if ( bt2 != TYPE_PATTERN )
 			ExprError("pattern += op requires op to be a pattern");
 		else
-			SetType(op1->GetType());
+			SetType(t1);
 		}
 
 	else if ( IsVector(bt1) )
 		{
-		bt1 = op1->GetType()->AsVectorType()->Yield()->Tag();
+		bt1 = t1->AsVectorType()->Yield()->Tag();
 
 		if ( IsArithmetic(bt1) )
 			{
@@ -1702,7 +1748,7 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 				if ( bt2 != bt1 )
 					op2 = make_intrusive<ArithCoerceExpr>(std::move(op2), bt1);
 
-				SetType(op1->GetType());
+				SetType(t1);
 				}
 
 			else
@@ -1714,7 +1760,7 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 				util::fmt("incompatible vector append: %s and %s", type_name(bt1), type_name(bt2)));
 
 		else
-			SetType(op1->GetType());
+			SetType(t1);
 		}
 
 	else
@@ -1814,8 +1860,10 @@ RemoveFromExpr::RemoveFromExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	if ( IsError() )
 		return;
 
-	TypeTag bt1 = op1->GetType()->Tag();
-	TypeTag bt2 = op2->GetType()->Tag();
+	auto& t1 = op1->GetType();
+	auto& t2 = op2->GetType();
+	TypeTag bt1 = t1->Tag();
+	TypeTag bt2 = t2->Tag();
 
 	if ( BothArithmetic(bt1, bt2) )
 		PromoteType(max_type(bt1, bt2), is_vector(op1) || is_vector(op2));
@@ -1824,6 +1872,14 @@ RemoveFromExpr::RemoveFromExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 
 	else if ( bt2 == TYPE_LIST )
 		(void)CheckForRHSList();
+
+	else if ( bt1 == TYPE_TABLE )
+		{
+		if ( same_type(t1, t2) )
+			SetType(t1);
+		else
+			ExprError("invalid RHS operand to table/set -=");
+		}
 
 	else
 		ExprError("requires two arithmetic operands");
