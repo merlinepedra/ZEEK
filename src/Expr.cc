@@ -418,6 +418,7 @@ bool Expr::IsPure() const
 	return true;
 	}
 
+// ###
 ValPtr Expr::InitVal(const TypePtr& t, ValPtr aggr) const
 	{
 	if ( aggr )
@@ -2564,7 +2565,12 @@ AssignExpr::AssignExpr(ExprPtr arg_op1, ExprPtr arg_op2, bool arg_is_init, ValPt
 		}
 
 	if ( op2->Tag() == EXPR_LIST && CheckForRHSList() )
-		;
+		{
+		if ( op2->Tag() == EXPR_TABLE_CONSTRUCTOR )
+			cast_intrusive<TableConstructorExpr>(op2)->SetAttrs(attrs);
+		else if ( op2->Tag() == EXPR_SET_CONSTRUCTOR )
+			cast_intrusive<SetConstructorExpr>(op2)->SetAttrs(attrs);
+		}
 
 	else if ( typecheck )
 		// We discard the status from TypeCheck since it has already
@@ -3771,9 +3777,9 @@ TableConstructorExpr::TableConstructorExpr(ListExprPtr constructor_list,
 		}
 
 	if ( arg_attrs )
-		attrs = make_intrusive<Attributes>(std::move(*arg_attrs), type, false, false);
+		SetAttrs(make_intrusive<Attributes>(std::move(*arg_attrs), type, false, false));
 	else
-		attrs = arg_attrs2;
+		SetAttrs(arg_attrs2);
 
 	const auto& indices = type->AsTableType()->GetIndices()->GetTypes();
 	const ExprPList& cle = op->AsListExpr()->Exprs();
@@ -3782,7 +3788,11 @@ TableConstructorExpr::TableConstructorExpr(ListExprPtr constructor_list,
 	for ( const auto& expr : cle )
 		{
 		if ( expr->Tag() != EXPR_ASSIGN )
-			continue;
+			{
+			expr->Error("illegal table constructor element");
+			SetError();
+			return;
+			}
 
 		auto idx_expr = expr->AsAssignExpr()->GetOp1();
 		auto val_expr = expr->AsAssignExpr()->GetOp2();
@@ -3905,9 +3915,9 @@ SetConstructorExpr::SetConstructorExpr(ListExprPtr constructor_list,
 		SetError("values in set(...) constructor do not specify a set");
 
 	if ( arg_attrs )
-		attrs = make_intrusive<Attributes>(std::move(*arg_attrs), type, false, false);
+		SetAttrs(make_intrusive<Attributes>(std::move(*arg_attrs), type, false, false));
 	else
-		attrs = arg_attrs2;
+		SetAttrs(arg_attrs2);
 
 	const auto& indices = type->AsTableType()->GetIndices()->GetTypes();
 	ExprPList& cle = op->AsListExpr()->Exprs();

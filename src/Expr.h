@@ -1188,6 +1188,7 @@ public:
 	TableConstructorExpr(ListExprPtr constructor_list, std::unique_ptr<std::vector<AttrPtr>> attrs,
 	                     TypePtr arg_type = nullptr, AttributesPtr arg_attrs = nullptr);
 
+	void SetAttrs(AttributesPtr _attrs) { attrs = std::move(_attrs); }
 	const AttributesPtr& GetAttrs() const { return attrs; }
 
 	ValPtr Eval(Frame* f) const override;
@@ -1213,6 +1214,7 @@ public:
 	SetConstructorExpr(ListExprPtr constructor_list, std::unique_ptr<std::vector<AttrPtr>> attrs,
 	                   TypePtr arg_type = nullptr, AttributesPtr arg_attrs = nullptr);
 
+	void SetAttrs(AttributesPtr _attrs) { attrs = std::move(_attrs); }
 	const AttributesPtr& GetAttrs() const { return attrs; }
 
 	ValPtr Eval(Frame* f) const override;
