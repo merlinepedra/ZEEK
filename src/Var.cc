@@ -222,7 +222,10 @@ static void make_var(const IDPtr& id, TypePtr t, InitClass c, ExprPtr init,
 		}
 
 	if ( init && init->Tag() == EXPR_LIST )
-		init = expand_op(cast_intrusive<ListExpr>(init));
+		{
+		auto& init_t = t ? t : id->GetType();
+		init = expand_op(cast_intrusive<ListExpr>(init), init_t);
+		}
 
 	if ( id->GetType() )
 		{

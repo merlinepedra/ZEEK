@@ -3650,13 +3650,24 @@ static ExprPtr expand_one_elem(const ExprPList& index_exprs, ExprPtr yield, Expr
 		return expanded_elem;
 	}
 
-static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
+static bool expand_op_elem(ListExprPtr elems, ExprPtr elem, TypePtr t)
 	{
 	ExprPtr index;
 	ExprPtr yield;
 
 	if ( elem->Tag() == EXPR_ASSIGN )
 		{
+		if ( t )
+			{
+			if ( ! t->IsTable() )
+				{
+				elem->Error("table constructor used in a non-table context");
+				return false;
+				}
+
+			t = t->AsTableType()->GetIndices();
+			}
+
 		index = elem->GetOp1();
 		yield = elem->GetOp2();
 		}
@@ -3680,16 +3691,34 @@ static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
 	int set_offset = -1;
 	for ( int i = 0; i < index_n; ++i )
 		{
-		if ( index_exprs[i]->Tag() == EXPR_LIST )
+		auto& ie_i = index_exprs[i];
+
+		if ( ie_i->Tag() == EXPR_LIST )
 			{
 			list_offset = i;
 			break;
 			}
 
-		if ( index_exprs[i]->GetType()->IsSet() )
+		if ( ie_i->GetType()->IsSet() )
 			{
-			set_offset = i;
-			break;
+			// Check for this set corresponding to what's expected
+			// in this location, in which case it shouldn't be
+			// expanded.
+			const TypeList* tl = nullptr;
+			if ( t && t->Tag() == TYPE_LIST )
+				tl = t->AsTypeList();
+
+			// So we're good-to-go in expanding if either
+			// (1) we weren't given a type, or it's not a list,
+			// or (2) it's a list, but doesn't correspond in
+			// length to the list of expressions, or (3) it does
+			// but its corresponding element at this position
+			// doesn't have the same type as this set.
+			if ( ! tl || static_cast<int>(tl->GetTypes().size()) !=  index_n || ! same_type(tl->GetTypes()[i], ie_i->GetType()) )
+				{
+				set_offset = i;
+				break;
+				}
 			}
 		}
 
@@ -3730,14 +3759,14 @@ static bool expand_op_elem(ListExprPtr elems, ExprPtr elem)
 	return true;
 	}
 
-ListExprPtr expand_op(ListExprPtr op)
+ListExprPtr expand_op(ListExprPtr op, const TypePtr& t)
 	{
 	auto new_list = make_intrusive<ListExpr>();
 	bool did_expansion = false;
 
 	for ( auto e : op->Exprs() )
 		{
-		if ( expand_op_elem(new_list, {NewRef{}, e}) )
+		if ( expand_op_elem(new_list, {NewRef{}, e}, t) )
 			did_expansion = true;
 
 		if ( new_list->IsError() )
@@ -3748,7 +3777,7 @@ ListExprPtr expand_op(ListExprPtr op)
 		}
 
 	if ( did_expansion )
-		return expand_op(new_list);
+		return expand_op(new_list, t);
 	else
 		return op;
 	}
@@ -3756,7 +3785,7 @@ ListExprPtr expand_op(ListExprPtr op)
 TableConstructorExpr::TableConstructorExpr(ListExprPtr constructor_list,
                                            std::unique_ptr<std::vector<AttrPtr>> arg_attrs,
                                            TypePtr arg_type, AttributesPtr arg_attrs2)
-	: UnaryExpr(EXPR_TABLE_CONSTRUCTOR, expand_op(constructor_list))
+	: UnaryExpr(EXPR_TABLE_CONSTRUCTOR, expand_op(constructor_list, arg_type))
 	{
 	if ( IsError() )
 		return;
@@ -3899,7 +3928,7 @@ void TableConstructorExpr::ExprDescribe(ODesc* d) const
 SetConstructorExpr::SetConstructorExpr(ListExprPtr constructor_list,
                                        std::unique_ptr<std::vector<AttrPtr>> arg_attrs,
                                        TypePtr arg_type, AttributesPtr arg_attrs2)
-	: UnaryExpr(EXPR_SET_CONSTRUCTOR, expand_op(constructor_list))
+	: UnaryExpr(EXPR_SET_CONSTRUCTOR, expand_op(constructor_list, arg_type))
 	{
 	if ( IsError() )
 		return;

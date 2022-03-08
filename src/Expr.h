@@ -1785,7 +1785,9 @@ extern ExprPtr get_assign_expr(ExprPtr op1, ExprPtr op2, bool is_init);
 // Takes a RHS constructor list and returns a version with any embedded
 // indices within it (used to concisely represent multiple set/table entries)
 // expanded.
-extern ListExprPtr expand_op(ListExprPtr op);
+//
+// Second argument gives the type that the list will expand to, if known.
+extern ListExprPtr expand_op(ListExprPtr op, const TypePtr& t);
 
 /**
  * Type-check the given expression(s) against the given type(s).  Complain
