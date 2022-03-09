@@ -3639,7 +3639,10 @@ TableConstructorExpr::TableConstructorExpr(ListExprPtr constructor_list,
 				}
 
 			else if ( type->Tag() != TYPE_TABLE || type->AsTableType()->IsSet() )
+				{
 				SetError("values in table(...) constructor do not specify a table");
+				return;
+				}
 			}
 		}
 
