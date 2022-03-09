@@ -418,21 +418,6 @@ bool Expr::IsPure() const
 	return true;
 	}
 
-// ###
-ValPtr Expr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	if ( aggr )
-		{
-		Error("bad initializer");
-		return nullptr;
-		}
-
-	if ( IsError() )
-		return nullptr;
-
-	return check_and_promote(Eval(nullptr), t, true);
-	}
-
 bool Expr::IsError() const
 	{
 	return type && type->Tag() == TYPE_ERROR;
@@ -2909,114 +2894,6 @@ void AssignExpr::EvalIntoAggregate(const TypePtr& t, ValPtr aggr, Frame* f) cons
 		RuntimeError("type clash in table assignment");
 	}
 
-ValPtr AssignExpr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	if ( ! aggr )
-		{
-		Error("assignment in initialization");
-		return nullptr;
-		}
-
-	if ( IsError() )
-		return nullptr;
-
-	TypeDecl td;
-
-	if ( IsRecordElement(&td) )
-		{
-		if ( t->Tag() != TYPE_RECORD )
-			{
-			Error("not a record initializer", t.get());
-			return nullptr;
-			}
-
-		const RecordType* rt = t->AsRecordType();
-		int field = rt->FieldOffset(td.id);
-
-		if ( field < 0 )
-			{
-			Error("no such field");
-			return nullptr;
-			}
-
-		if ( aggr->GetType()->Tag() != TYPE_RECORD )
-			Internal("bad aggregate in AssignExpr::InitVal");
-
-		RecordVal* aggr_r = aggr->AsRecordVal();
-
-		auto v = op2->InitVal(rt->GetFieldType(td.id), nullptr);
-
-		if ( ! v )
-			return nullptr;
-
-		aggr_r->Assign(field, v);
-		return v;
-		}
-
-	else if ( op1->Tag() == EXPR_LIST )
-		{
-		if ( t->Tag() != TYPE_TABLE )
-			{
-			Error("not a table initialization", t.get());
-			return nullptr;
-			}
-
-		if ( aggr->GetType()->Tag() != TYPE_TABLE )
-			Internal("bad aggregate in AssignExpr::InitVal");
-
-		auto tv = cast_intrusive<TableVal>(std::move(aggr));
-		const TableType* tt = tv->GetType()->AsTableType();
-		const auto& yt = tv->GetType()->Yield();
-
-		auto index = op1->InitVal(tt->GetIndices(), nullptr);
-
-		if ( yt->Tag() == TYPE_RECORD )
-			{
-			if ( op2->GetType()->Tag() != TYPE_RECORD )
-				{
-				Error(util::fmt("type mismatch in table value initialization: "
-				                "assigning '%s' to table with values of type '%s'",
-				                type_name(op2->GetType()->Tag()), type_name(yt->Tag())));
-				return nullptr;
-				}
-
-			if ( ! same_type(*yt, *op2->GetType()) &&
-			     ! record_promotion_compatible(yt->AsRecordType(), op2->GetType()->AsRecordType()) )
-				{
-				Error("type mismatch in table value initialization: "
-				      "incompatible record types");
-				return nullptr;
-				}
-			}
-		else
-			{
-			if ( ! same_type(*yt, *op2->GetType(), true) )
-				{
-				Error(util::fmt("type mismatch in table value initialization: "
-				                "assigning '%s' to table with values of type '%s'",
-				                type_name(op2->GetType()->Tag()), type_name(yt->Tag())));
-				return nullptr;
-				}
-			}
-
-		auto v = op2->InitVal(yt, nullptr);
-
-		if ( ! index || ! v )
-			return nullptr;
-
-		if ( ! tv->ExpandAndInit(std::move(index), std::move(v)) )
-			return nullptr;
-
-		return tv;
-		}
-
-	else
-		{
-		Error("illegal initializer");
-		return nullptr;
-		}
-	}
-
 bool AssignExpr::IsRecordElement(TypeDecl* td) const
 	{
 	if ( op1->Tag() == EXPR_NAME )
@@ -3595,34 +3472,6 @@ RecordConstructorExpr::RecordConstructorExpr(RecordTypePtr known_rt, ListExprPtr
 		}
 	}
 
-ValPtr RecordConstructorExpr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	if ( IsError() )
-		{
-		Error("bad record initializer");
-		return nullptr;
-		}
-
-	if ( ! init_tag_check(this, "record constructor", TYPE_RECORD, t->Tag()) )
-		return nullptr;
-
-	auto v = Eval(nullptr);
-
-	if ( v )
-		{
-		RecordVal* rv = v->AsRecordVal();
-		RecordTypePtr rt{NewRef{}, t->AsRecordType()};
-		auto aggr_rec = cast_intrusive<RecordVal>(std::move(aggr));
-		auto ar = rv->CoerceTo(std::move(rt), std::move(aggr_rec));
-
-		if ( ar )
-			return ar;
-		}
-
-	Error("bad record initializer");
-	return nullptr;
-	}
-
 ValPtr RecordConstructorExpr::Eval(Frame* f) const
 	{
 	if ( IsError() )
@@ -3954,26 +3803,6 @@ ValPtr TableConstructorExpr::Eval(Frame* f) const
 	return aggr;
 	}
 
-ValPtr TableConstructorExpr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	if ( IsError() )
-		return nullptr;
-
-	if ( ! init_tag_check(this, "table constructor", TYPE_TABLE, t->Tag()) )
-		return nullptr;
-
-	auto tt = GetType<TableType>();
-
-	auto tval = aggr ? TableValPtr{AdoptRef{}, aggr.release()->AsTableVal()}
-	                 : make_intrusive<TableVal>(std::move(tt), attrs);
-	const ExprPList& exprs = op->AsListExpr()->Exprs();
-
-	for ( const auto& expr : exprs )
-		expr->EvalIntoAggregate(t, tval, nullptr);
-
-	return tval;
-	}
-
 void TableConstructorExpr::ExprDescribe(ODesc* d) const
 	{
 	d->Add("table(");
@@ -4068,34 +3897,6 @@ ValPtr SetConstructorExpr::Eval(Frame* f) const
 	return aggr;
 	}
 
-ValPtr SetConstructorExpr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	if ( IsError() )
-		return nullptr;
-
-	if ( ! init_tag_check(this, "set constructor", TYPE_TABLE, t->Tag()) )
-		return nullptr;
-
-	const auto& index_type = t->AsTableType()->GetIndices();
-	auto tt = GetType<TableType>();
-	auto tval = aggr ? TableValPtr{AdoptRef{}, aggr.release()->AsTableVal()}
-	                 : make_intrusive<TableVal>(std::move(tt), attrs);
-	const ExprPList& exprs = op->AsListExpr()->Exprs();
-
-	for ( const auto& e : exprs )
-		{
-		auto element = check_and_promote(e->Eval(nullptr), index_type, true);
-
-		if ( ! element || ! tval->Assign(std::move(element), nullptr) )
-			{
-			Error(util::fmt("initialization type mismatch in set"), e);
-			return nullptr;
-			}
-		}
-
-	return tval;
-	}
-
 void SetConstructorExpr::ExprDescribe(ODesc* d) const
 	{
 	d->Add("set(");
@@ -4159,34 +3960,6 @@ ValPtr VectorConstructorExpr::Eval(Frame* f) const
 		if ( ! vec->Assign(i, e->Eval(f)) )
 			{
 			RuntimeError(util::fmt("type mismatch at index %d", i));
-			return nullptr;
-			}
-		}
-
-	return vec;
-	}
-
-ValPtr VectorConstructorExpr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	if ( IsError() )
-		return nullptr;
-
-	if ( ! init_tag_check(this, "vector constructor", TYPE_VECTOR, t->Tag()) )
-		return nullptr;
-
-	auto vt = GetType<VectorType>();
-	auto vec = aggr ? VectorValPtr{AdoptRef{}, aggr.release()->AsVectorVal()}
-	                : make_intrusive<VectorVal>(std::move(vt));
-	const ExprPList& exprs = op->AsListExpr()->Exprs();
-
-	loop_over_list(exprs, i)
-		{
-		Expr* e = exprs[i];
-		auto v = check_and_promote(e->Eval(nullptr), t->Yield(), true);
-
-		if ( ! v || ! vec->Assign(i, std::move(v)) )
-			{
-			Error(util::fmt("initialization type mismatch at index %d", i), e);
 			return nullptr;
 			}
 		}
@@ -4419,31 +4192,6 @@ RecordCoerceExpr::RecordCoerceExpr(ExprPtr arg_op, RecordTypePtr r)
 				reporter->Warning("%s", t_r->GetFieldDeprecationWarning(i, false).c_str());
 			}
 		}
-	}
-
-ValPtr RecordCoerceExpr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	if ( IsError() )
-		{
-		Error("bad record initializer");
-		return nullptr;
-		}
-
-	if ( ! init_tag_check(this, "record", TYPE_RECORD, t->Tag()) )
-		return nullptr;
-
-	if ( auto v = Eval(nullptr) )
-		{
-		RecordVal* rv = v->AsRecordVal();
-		RecordTypePtr rt{NewRef{}, t->AsRecordType()};
-		auto aggr_rec = cast_intrusive<RecordVal>(std::move(aggr));
-
-		if ( auto ar = rv->CoerceTo(std::move(rt), std::move(aggr_rec)) )
-			return ar;
-		}
-
-	Error("bad record initializer");
-	return nullptr;
 	}
 
 ValPtr RecordCoerceExpr::Fold(Val* v) const
@@ -5317,202 +5065,6 @@ TypePtr ListExpr::InitType() const
 
 		return tl;
 		}
-	}
-
-ValPtr ListExpr::InitVal(const TypePtr& t, ValPtr aggr) const
-	{
-	// While fairly similar to the EvalIntoAggregate() code,
-	// we keep this separate since it also deals with initialization
-	// idioms such as embedded aggregates and cross-product
-	// expansion.
-	if ( IsError() )
-		return nullptr;
-
-	// Check whether each element of this list itself matches t,
-	// in which case we should expand as a ListVal.
-	if ( ! aggr && type->AsTypeList()->AllMatch(t, true) )
-		{
-		auto v = make_intrusive<ListVal>(TYPE_ANY);
-		const auto& tl = type->AsTypeList()->GetTypes();
-
-		if ( exprs.length() != static_cast<int>(tl.size()) )
-			{
-			Error("index mismatch", t.get());
-			return nullptr;
-			}
-
-		loop_over_list(exprs, i)
-			{
-			auto vi = exprs[i]->InitVal(tl[i], nullptr);
-			if ( ! vi )
-				return nullptr;
-
-			v->Append(std::move(vi));
-			}
-
-		return v;
-		}
-
-	if ( t->Tag() == TYPE_LIST )
-		{
-		if ( aggr )
-			{
-			Error("bad use of list in initialization", t.get());
-			return nullptr;
-			}
-
-		const auto& tl = t->AsTypeList()->GetTypes();
-
-		if ( exprs.length() != static_cast<int>(tl.size()) )
-			{
-			Error("index mismatch", t.get());
-			return nullptr;
-			}
-
-		auto v = make_intrusive<ListVal>(TYPE_ANY);
-
-		loop_over_list(exprs, i)
-			{
-			auto vi = exprs[i]->InitVal(tl[i], nullptr);
-
-			if ( ! vi )
-				return nullptr;
-
-			v->Append(std::move(vi));
-			}
-
-		return v;
-		}
-
-	if ( t->Tag() != TYPE_RECORD && t->Tag() != TYPE_TABLE && t->Tag() != TYPE_VECTOR )
-		{
-		if ( exprs.length() == 1 )
-			// Allow "global x:int = { 5 }"
-			return exprs[0]->InitVal(t, aggr);
-		else
-			{
-			Error("aggregate initializer for scalar type", t.get());
-			return nullptr;
-			}
-		}
-
-	if ( ! aggr )
-		Internal("missing aggregate in ListExpr::InitVal");
-
-	if ( t->IsSet() )
-		return AddSetInit(t, std::move(aggr));
-
-	if ( t->Tag() == TYPE_VECTOR )
-		{
-		// v: vector = [10, 20, 30];
-		VectorVal* vec = aggr->AsVectorVal();
-
-		loop_over_list(exprs, i)
-			{
-			ExprPtr e = {NewRef{}, exprs[i]};
-			const auto& vyt = vec->GetType()->AsVectorType()->Yield();
-			auto promoted_e = check_and_promote_expr(e, vyt);
-
-			if ( promoted_e )
-				e = promoted_e;
-
-			if ( ! vec->Assign(i, e->Eval(nullptr)) )
-				{
-				e->Error(util::fmt("type mismatch at index %d", i));
-				return nullptr;
-				}
-			}
-
-		return aggr;
-		}
-
-	// If we got this far, then it's either a table or record
-	// initialization.  Both of those involve AssignExpr's, which
-	// know how to add themselves to a table or record.  Another
-	// possibility is an expression that evaluates itself to a
-	// table, which we can then add to the aggregate.
-	for ( const auto& e : exprs )
-		{
-		if ( e->Tag() == EXPR_ASSIGN || e->Tag() == EXPR_FIELD_ASSIGN )
-			{
-			if ( ! e->InitVal(t, aggr) )
-				return nullptr;
-			}
-		else
-			{
-			if ( t->Tag() == TYPE_RECORD )
-				{
-				e->Error("bad record initializer", t.get());
-				return nullptr;
-				}
-
-			auto v = e->Eval(nullptr);
-
-			if ( ! same_type(v->GetType(), t) )
-				{
-				v->GetType()->Error("type clash in table initializer", t.get());
-				return nullptr;
-				}
-
-			if ( ! v->AsTableVal()->AddTo(aggr->AsTableVal(), true) )
-				return nullptr;
-			}
-		}
-
-	return aggr;
-	}
-
-ValPtr ListExpr::AddSetInit(TypePtr t, ValPtr aggr) const
-	{
-	if ( aggr->GetType()->Tag() != TYPE_TABLE )
-		Internal("bad aggregate in ListExpr::AddSetInit");
-
-	TableVal* tv = aggr->AsTableVal();
-	const TableType* tt = tv->GetType()->AsTableType();
-	TypeListPtr it = tt->GetIndices();
-
-	for ( const auto& expr : exprs )
-		{
-		ValPtr element;
-
-		if ( expr->GetType()->IsSet() )
-			// A set to flatten.
-			element = expr->Eval(nullptr);
-		else if ( expr->GetType()->Tag() == TYPE_LIST )
-			element = expr->InitVal(it, nullptr);
-		else
-			element = expr->InitVal(it->GetTypes()[0], nullptr);
-
-		if ( ! element )
-			return nullptr;
-
-		if ( element->GetType()->IsSet() )
-			{
-			if ( ! same_type(element->GetType(), t) )
-				{
-				element->Error("type clash in set initializer", t.get());
-				return nullptr;
-				}
-
-			if ( ! element->AsTableVal()->AddTo(tv, true) )
-				return nullptr;
-
-			continue;
-			}
-
-		if ( expr->GetType()->Tag() == TYPE_LIST )
-			element = check_and_promote(std::move(element), it, true);
-		else
-			element = check_and_promote(std::move(element), it->GetTypes()[0], true);
-
-		if ( ! element )
-			return nullptr;
-
-		if ( ! tv->ExpandAndInit(std::move(element), nullptr) )
-			return nullptr;
-		}
-
-	return aggr;
 	}
 
 void ListExpr::ExprDescribe(ODesc* d) const

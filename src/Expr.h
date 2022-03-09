@@ -183,13 +183,6 @@ public:
 	// TypeDecl with a description of the element.
 	virtual bool IsRecordElement(TypeDecl* td) const;
 
-	// Returns a value corresponding to this expression interpreted
-	// as an initialization, or nil if the expression is inconsistent
-	// with the given type.  If "aggr" is non-nil, then this expression
-	// is an element of the given aggregate, and it is added to it
-	// accordingly.
-	virtual ValPtr InitVal(const TypePtr& t, ValPtr aggr) const;
-
 	// True if the expression has no side effects, false otherwise.
 	virtual bool IsPure() const;
 
@@ -960,7 +953,6 @@ public:
 	void EvalIntoAggregate(const TypePtr& t, ValPtr aggr, Frame* f) const override;
 	TypePtr InitType() const override;
 	bool IsRecordElement(TypeDecl* td) const override;
-	ValPtr InitVal(const TypePtr& t, ValPtr aggr) const override;
 	bool IsPure() const override;
 
 	// Optimization-related:
@@ -1177,8 +1169,6 @@ public:
 	StmtPtr ReduceToSingletons(Reducer* c) override;
 
 protected:
-	ValPtr InitVal(const TypePtr& t, ValPtr aggr) const override;
-
 	void ExprDescribe(ODesc* d) const override;
 
 	ListExprPtr op;
@@ -1204,8 +1194,6 @@ public:
 	StmtPtr ReduceToSingletons(Reducer* c) override;
 
 protected:
-	ValPtr InitVal(const TypePtr& t, ValPtr aggr) const override;
-
 	void ExprDescribe(ODesc* d) const override;
 
 	AttributesPtr attrs;
@@ -1230,8 +1218,6 @@ public:
 	StmtPtr ReduceToSingletons(Reducer* c) override;
 
 protected:
-	ValPtr InitVal(const TypePtr& t, ValPtr aggr) const override;
-
 	void ExprDescribe(ODesc* d) const override;
 
 	AttributesPtr attrs;
@@ -1250,8 +1236,6 @@ public:
 	bool HasReducedOps(Reducer* c) const override;
 
 protected:
-	ValPtr InitVal(const TypePtr& t, ValPtr aggr) const override;
-
 	void ExprDescribe(ODesc* d) const override;
 	};
 
@@ -1312,7 +1296,6 @@ public:
 	const std::vector<int>& Map() const { return map; }
 
 protected:
-	ValPtr InitVal(const TypePtr& t, ValPtr aggr) const override;
 	ValPtr Fold(Val* v) const override;
 
 	// For each super-record slot, gives subrecord slot with which to
@@ -1501,7 +1484,6 @@ public:
 	ValPtr Eval(Frame* f) const override;
 
 	TypePtr InitType() const override;
-	ValPtr InitVal(const TypePtr& t, ValPtr aggr) const override;
 	ExprPtr MakeLvalue() override;
 	void Assign(Frame* f, ValPtr v) override;
 
@@ -1517,8 +1499,6 @@ public:
 	StmtPtr ReduceToSingletons(Reducer* c) override;
 
 protected:
-	ValPtr AddSetInit(TypePtr t, ValPtr aggr) const;
-
 	void ExprDescribe(ODesc* d) const override;
 
 	ExprPList exprs;

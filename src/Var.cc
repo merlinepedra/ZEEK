@@ -23,19 +23,6 @@
 namespace zeek::detail
 	{
 
-//###
-static ValPtr init_val(ExprPtr init, TypePtr t, ValPtr aggr)
-	{
-	try
-		{
-		return init->InitVal(t, std::move(aggr));
-		}
-	catch ( InterpreterException& e )
-		{
-		return nullptr;
-		}
-	}
-
 static bool add_prototype(const IDPtr& id, Type* t, std::vector<AttrPtr>* attrs,
                           const ExprPtr& init)
 	{
