@@ -248,7 +248,7 @@ static void make_var(const IDPtr& id, TypePtr t, InitClass c, ExprPtr init,
 
 	if ( id->GetType() && id->GetType()->Tag() != TYPE_ERROR )
 		{
-		if ( dt != VAR_REDEF && (! init || ! do_init || (! t && ! (t = init_type(init.get())))) )
+		if ( dt != VAR_REDEF && (! init || ! do_init || (! t && ! (t = init_type(init)))) )
 			{
 			id->Error("already defined", init.get());
 			return;
@@ -287,7 +287,7 @@ static void make_var(const IDPtr& id, TypePtr t, InitClass c, ExprPtr init,
 			return;
 			}
 
-		t = init_type(init.get());
+		t = init_type(init);
 		if ( ! t )
 			{
 			id->SetType(error_type());

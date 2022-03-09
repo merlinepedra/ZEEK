@@ -3713,7 +3713,7 @@ TableConstructorExpr::TableConstructorExpr(ListExprPtr constructor_list,
 				make_intrusive<TableType>(make_intrusive<TypeList>(base_type(TYPE_ANY)), nullptr));
 		else
 			{
-			SetType(init_type(op.get()));
+			SetType(init_type(op));
 
 			if ( ! type )
 				{
@@ -3835,7 +3835,7 @@ SetConstructorExpr::SetConstructorExpr(ListExprPtr constructor_list,
 			SetType(make_intrusive<zeek::SetType>(make_intrusive<TypeList>(base_type(TYPE_ANY)),
 			                                      nullptr));
 		else
-			SetType(init_type(op.get()));
+			SetType(init_type(op));
 		}
 
 	if ( ! type )

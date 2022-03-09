@@ -2629,8 +2629,7 @@ static SetTypePtr init_set_type(detail::ListExpr* l)
 	return make_intrusive<SetType>(ind_list, nullptr);
 	}
 
-// ### ExprPtr&
-TypePtr init_type(detail::Expr* init)
+TypePtr init_type(const detail::ExprPtr& init)
 	{
 	if ( init->Tag() != detail::EXPR_LIST )
 		return init->InitType();
