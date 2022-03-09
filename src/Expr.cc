@@ -1696,7 +1696,7 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 		if ( same_type(t1, t2) )
 			SetType(t1);
 		else
-			ExprError("invalid RHS operand to table/set +=");
+			ExprError("RHS type mismatch for table/set +=");
 		}
 
 	else if ( bt1 == TYPE_PATTERN )
@@ -1848,7 +1848,7 @@ RemoveFromExpr::RemoveFromExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 		if ( same_type(t1, t2) )
 			SetType(t1);
 		else
-			ExprError("invalid RHS operand to table/set -=");
+			ExprError("RHS type mismatch for table/set -=");
 		}
 
 	else
@@ -2656,26 +2656,7 @@ bool AssignExpr::TypeCheck(const AttributesPtr& attrs)
 		return true;
 		}
 
-	if ( bt1 == TYPE_TABLE && op2->Tag() == EXPR_LIST ) // ###
-		{
-		std::unique_ptr<std::vector<AttrPtr>> attr_copy;
-
-		if ( attrs )
-			attr_copy = std::make_unique<std::vector<AttrPtr>>(attrs->GetAttrs());
-
-		if ( op1->GetType()->IsSet() )
-			op2 = make_intrusive<SetConstructorExpr>(cast_intrusive<ListExpr>(op2),
-			                                         std::move(attr_copy), op1->GetType());
-		else
-			op2 = make_intrusive<TableConstructorExpr>(cast_intrusive<ListExpr>(op2),
-			                                           std::move(attr_copy), op1->GetType());
-
-		// The constructor expressions are performing the type
-		// checking and will set op2 to an error state on failure.
-		return ! op2->IsError();
-		}
-
-	if ( bt1 == TYPE_VECTOR ) // ###
+	if ( bt1 == TYPE_VECTOR )
 		{
 		if ( bt2 == bt1 && op2->GetType()->AsVectorType()->IsUnspecifiedVector() )
 			{
@@ -3815,9 +3796,16 @@ SetConstructorExpr::SetConstructorExpr(ListExprPtr constructor_list,
 		loop_over_list(cle, i)
 			{
 			Expr* ce = cle[i];
+
+			if ( ce->Tag() != EXPR_LIST )
+				{
+				ce->Error("not a list of indices");
+				SetError();
+				return;
+				}
+
 			ListExpr* le = ce->AsListExpr();
 
-			assert(ce->Tag() == EXPR_LIST);
 			if ( check_and_promote_exprs(le, type->AsTableType()->GetIndices()) )
 				{
 				if ( le != cle[i] )
