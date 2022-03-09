@@ -28,16 +28,6 @@
 namespace zeek::detail
 	{
 
-static bool init_tag_check(const Expr* expr, const char* name, TypeTag expect_tag, TypeTag init_tag)
-	{
-	if ( expect_tag == init_tag )
-		return true;
-
-	auto msg = util::fmt("unexpected use of %s in '%s' initialization", name, type_name(init_tag));
-	expr->Error(msg);
-	return false;
-	}
-
 const char* expr_name(BroExprTag t)
 	{
 	static const char* expr_names[int(NUM_EXPRS)] = {
