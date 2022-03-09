@@ -164,12 +164,6 @@ public:
 	// or nil if the expression's value isn't fixed.
 	virtual ValPtr Eval(Frame* f) const = 0;
 
-	// Same, but the context is that we are adding an element
-	// into the given aggregate of the given type.  Note that
-	// return type is void since it's updating an existing
-	// value, rather than creating a new one.
-	virtual void EvalIntoAggregate(const TypePtr& t, ValPtr aggr, Frame* f) const;
-
 	// Assign to the given value, if appropriate.
 	virtual void Assign(Frame* f, ValPtr v);
 
@@ -950,7 +944,6 @@ public:
 	           const AttributesPtr& attrs = nullptr, bool type_check = true);
 
 	ValPtr Eval(Frame* f) const override;
-	void EvalIntoAggregate(const TypePtr& t, ValPtr aggr, Frame* f) const override;
 	TypePtr InitType() const override;
 	bool IsRecordElement(TypeDecl* td) const override;
 	bool IsPure() const override;
@@ -1254,7 +1247,6 @@ public:
 	// (in which case an error is reported).
 	bool PromoteTo(TypePtr t);
 
-	void EvalIntoAggregate(const TypePtr& t, ValPtr aggr, Frame* f) const override;
 	bool IsRecordElement(TypeDecl* td) const override;
 
 	// Optimization-related:

@@ -265,11 +265,6 @@ bool Expr::InvertSense()
 	return false;
 	}
 
-void Expr::EvalIntoAggregate(const TypePtr& /* t */, ValPtr /* aggr */, Frame* /* f */) const
-	{
-	Internal("Expr::EvalIntoAggregate called");
-	}
-
 void Expr::Assign(Frame* /* f */, ValPtr /* v */)
 	{
 	Internal("Expr::Assign called");
@@ -2845,55 +2840,6 @@ TypePtr AssignExpr::InitType() const
 	return make_intrusive<TableType>(IntrusivePtr{NewRef{}, tl->AsTypeList()}, op2->GetType());
 	}
 
-void AssignExpr::EvalIntoAggregate(const TypePtr& t, ValPtr aggr, Frame* f) const
-	{
-	if ( IsError() )
-		return;
-
-	TypeDecl td;
-
-	if ( IsRecordElement(&td) )
-		{
-		if ( t->Tag() != TYPE_RECORD )
-			{
-			RuntimeError("not a record initializer");
-			return;
-			}
-
-		const RecordType* rt = t->AsRecordType();
-		int field = rt->FieldOffset(td.id);
-
-		if ( field < 0 )
-			{
-			RuntimeError("no such field");
-			return;
-			}
-
-		RecordVal* aggr_r = aggr->AsRecordVal();
-
-		auto v = op2->Eval(f);
-
-		if ( v )
-			aggr_r->Assign(field, std::move(v));
-
-		return;
-		}
-
-	if ( op1->Tag() != EXPR_LIST )
-		RuntimeError("bad table insertion");
-
-	TableVal* tv = aggr->AsTableVal();
-
-	auto index = op1->Eval(f);
-	auto v = check_and_promote(op2->Eval(f), t->Yield(), true);
-
-	if ( ! index || ! v )
-		return;
-
-	if ( ! tv->Assign(std::move(index), std::move(v)) )
-		RuntimeError("type clash in table assignment");
-	}
-
 bool AssignExpr::IsRecordElement(TypeDecl* td) const
 	{
 	if ( op1->Tag() == EXPR_NAME )
@@ -3792,15 +3738,30 @@ ValPtr TableConstructorExpr::Eval(Frame* f) const
 	if ( IsError() )
 		return nullptr;
 
-	auto aggr = make_intrusive<TableVal>(GetType<TableType>(), attrs);
+	auto tv = make_intrusive<TableVal>(GetType<TableType>(), attrs);
 	const ExprPList& exprs = op->AsListExpr()->Exprs();
 
 	for ( const auto& expr : exprs )
-		expr->EvalIntoAggregate(type, aggr, f);
+		{
+		auto op1 = expr->GetOp1();
+		auto op2 = expr->GetOp2();
 
-	aggr->InitDefaultFunc(f);
+		if ( ! op1 || ! op2 )
+			return nullptr;
 
-	return aggr;
+		auto index = op1->Eval(f);
+		auto v = op2->Eval(f);
+
+		if ( ! index || ! v )
+			return nullptr;
+
+		if ( ! tv->Assign(std::move(index), std::move(v)) )
+			RuntimeError("type clash in table assignment");
+		}
+
+	tv->InitDefaultFunc(f);
+
+	return tv;
 	}
 
 void TableConstructorExpr::ExprDescribe(ODesc* d) const
@@ -3984,25 +3945,6 @@ bool FieldAssignExpr::PromoteTo(TypePtr t)
 	{
 	op = check_and_promote_expr(op, t);
 	return op != nullptr;
-	}
-
-void FieldAssignExpr::EvalIntoAggregate(const TypePtr& t, ValPtr aggr, Frame* f) const
-	{
-	if ( IsError() )
-		return;
-
-	if ( auto v = op->Eval(f) )
-		{
-		RecordVal* rec = aggr->AsRecordVal();
-		const RecordType* rt = t->AsRecordType();
-
-		int idx = rt->FieldOffset(field_name.c_str());
-
-		if ( idx < 0 )
-			reporter->InternalError("Missing record field: %s", field_name.c_str());
-
-		rec->Assign(idx, std::move(v));
-		}
 	}
 
 bool FieldAssignExpr::IsRecordElement(TypeDecl* td) const
