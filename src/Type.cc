@@ -2622,7 +2622,7 @@ static SetTypePtr init_set_type(detail::ListExpr* l)
 		ind_list = cast_intrusive<TypeList>(index);
 	else
 		{
-		ind_list = make_intrusive<TypeList>();
+		ind_list = make_intrusive<TypeList>(index);
 		ind_list->Append(index);
 		}
 
