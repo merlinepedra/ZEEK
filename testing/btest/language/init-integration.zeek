@@ -1,5 +1,6 @@
 # @TEST-EXEC: zeek -b %INPUT >out
 # @TEST-EXEC: btest-diff out
+# @TEST-EXEC: btest-diff .stderr
 
 # A bunch of tests for the unification of global initializations and
 # =/+=/-= expressions.
@@ -95,4 +96,20 @@ event zeek_init()
 	local p = /foo/;
 	p += /bar/;
 	print p;
+
+	# Tests for vectors.
+	local v: vector of count;
+	local v2 = vector(20, 21, 22, 23);
+	v = { 1, 3, 5 };
+	v += 9;
+	v += { 2, 4, 6 };
+	v += v2;
+	print v;
+
+	local v3: vector of vector of count;
+	local v4 = vector(vector(80, 81), vector(90, 91, 92));
+	v3 += { vector(3,2,1), vector(1,2,3) };
+	v3 += v2;
+	v3 += v4;
+	print v3;
 	}

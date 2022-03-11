@@ -1693,6 +1693,8 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 			return;
 			}
 
+		is_vector_elem_append = true;
+
 		bt1 = t1->AsVectorType()->Yield()->Tag();
 
 		if ( IsArithmetic(bt1) )
@@ -1733,8 +1735,8 @@ ValPtr AddToExpr::Eval(Frame* f) const
 	if ( ! v2 )
 		return nullptr;
 
-	if ( is_vector(v1) && op2->Tag() != EXPR_VECTOR_CONSTRUCTOR )
-		{ // regular vector append, not a {} constructor on the RHS
+	if ( is_vector_elem_append )
+		{
 		VectorVal* vv = v1->AsVectorVal();
 
 		if ( ! vv->Assign(vv->Size(), v2) )

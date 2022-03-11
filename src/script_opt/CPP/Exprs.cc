@@ -484,7 +484,7 @@ string CPPCompile::GenAddToExpr(const Expr* e, GenType gt, bool top_level)
 		return GenericValPtrToGT(gen, t, gt);
 		}
 
-	// Second GetOp1 is because for non-vectors, LHS will be a RefExpr.
+	// Second GetOp1 is because if we get this far, LHS will be a RefExpr.
 	auto lhs = e->GetOp1()->GetOp1();
 
 	if ( t->Tag() == TYPE_STRING )

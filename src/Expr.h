@@ -759,6 +759,10 @@ public:
 	bool IsReduced(Reducer* c) const override;
 	ExprPtr Reduce(Reducer* c, StmtPtr& red_stmt) override;
 	ExprPtr ReduceToSingleton(Reducer* c, StmtPtr& red_stmt) override;
+
+private:
+	// Whether this operation is appending a single element to a vector.
+	bool is_vector_elem_append = false;
 	};
 
 class RemoveFromExpr final : public BinaryExpr
