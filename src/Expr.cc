@@ -818,7 +818,7 @@ ValPtr BinaryExpr::Fold(Val* v1, Val* v2) const
 
 	if ( t1->Tag() == TYPE_VECTOR )
 		{
-		// We only get here when using {} constructor on the RHS.
+		// We only get here when using a matching vector on the RHS.
 		v2->AsVectorVal()->AddTo(v1, false);
 		return {NewRef{}, v1};
 		}
