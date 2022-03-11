@@ -900,8 +900,7 @@ bool AddToExpr::IsReduced(Reducer* c) const
 
 ExprPtr AddToExpr::Reduce(Reducer* c, StmtPtr& red_stmt)
 	{
-	auto& t = op1->GetType();
-	auto tag = t->Tag();
+	auto tag = op1->GetType()->Tag();
 
 	switch ( tag )
 		{
@@ -917,6 +916,7 @@ ExprPtr AddToExpr::Reduce(Reducer* c, StmtPtr& red_stmt)
 			else
 				op1 = op1->Reduce(c, red_stmt1);
 
+			auto& t = op1->GetType();
 			op2 = op2->Reduce(c, red_stmt2);
 
 			red_stmt = MergeStmts(red_stmt1, red_stmt2);
