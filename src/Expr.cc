@@ -398,11 +398,6 @@ bool Expr::IsRecordElement(TypeDecl* /* td */) const
 	return false;
 	}
 
-bool Expr::IsPure() const
-	{
-	return true;
-	}
-
 bool Expr::IsError() const
 	{
 	return type && type->Tag() == TYPE_ERROR;
@@ -553,11 +548,6 @@ void NameExpr::Assign(Frame* f, ValPtr v)
 		id->SetVal(std::move(v));
 	else
 		f->SetElement(id, std::move(v));
-	}
-
-bool NameExpr::IsPure() const
-	{
-	return id->IsConst();
 	}
 
 TraversalCode NameExpr::Traverse(TraversalCallback* cb) const
@@ -826,20 +816,11 @@ ValPtr BinaryExpr::Fold(Val* v1, Val* v2) const
 	if ( t1->IsTable() )
 		return TableFold(v1, v2);
 
-	if ( tag == EXPR_ADD_TO )
+	if ( t1->Tag() == TYPE_VECTOR )
 		{
-		if ( t1->IsTable() )
-			// For +=, it turns out we can leverage the same logic
-			// flow as used for sets.
-			return SetFold(v1, v2);
-
-		if ( t1->Tag() == TYPE_VECTOR )
-			{
-			// We only get here when using {} constructor on
-			// the RHS.
-			v2->AsVectorVal()->AddTo(v1, false);
-			return {NewRef{}, v1};
-			}
+		// We only get here when using {} constructor on the RHS.
+		v2->AsVectorVal()->AddTo(v1, false);
+		return {NewRef{}, v1};
 		}
 
 	if ( it == TYPE_INTERNAL_ADDR )
@@ -1482,11 +1463,6 @@ ValPtr IncrExpr::Eval(Frame* f) const
 		}
 	}
 
-bool IncrExpr::IsPure() const
-	{
-	return false;
-	}
-
 ComplementExpr::ComplementExpr(ExprPtr arg_op) : UnaryExpr(EXPR_COMPLEMENT, std::move(arg_op))
 	{
 	if ( IsError() )
@@ -1672,8 +1648,7 @@ void AddExpr::Canonicize()
 	}
 
 AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
-	: BinaryExpr(EXPR_ADD_TO, is_vector(arg_op1) ? std::move(arg_op1) : arg_op1->MakeLvalue(),
-                 std::move(arg_op2))
+	: BinaryExpr(EXPR_ADD_TO, std::move(arg_op1), std::move(arg_op2))
 	{
 	if ( IsError() )
 		return;
@@ -1682,6 +1657,9 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	auto& t2 = op2->GetType();
 	TypeTag bt1 = t1->Tag();
 	TypeTag bt2 = t2->Tag();
+
+	if ( bt1 != TYPE_TABLE && bt1 != TYPE_VECTOR && bt1 != TYPE_PATTERN )
+		op1 = op1->MakeLvalue();
 
 	if ( BothArithmetic(bt1, bt2) )
 		PromoteType(max_type(bt1, bt2), is_vector(op1) || is_vector(op2));
@@ -1709,6 +1687,12 @@ AddToExpr::AddToExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 
 	else if ( IsVector(bt1) )
 		{
+		if ( same_type(t1, t2) )
+			{
+			SetType(t1);
+			return;
+			}
+
 		bt1 = t1->AsVectorType()->Yield()->Tag();
 
 		if ( IsArithmetic(bt1) )
@@ -1825,7 +1809,7 @@ SubExpr::SubExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	}
 
 RemoveFromExpr::RemoveFromExpr(ExprPtr arg_op1, ExprPtr arg_op2)
-	: BinaryExpr(EXPR_REMOVE_FROM, arg_op1->MakeLvalue(), std::move(arg_op2))
+	: BinaryExpr(EXPR_REMOVE_FROM, std::move(arg_op1), std::move(arg_op2))
 	{
 	if ( IsError() )
 		return;
@@ -1834,6 +1818,9 @@ RemoveFromExpr::RemoveFromExpr(ExprPtr arg_op1, ExprPtr arg_op2)
 	auto& t2 = op2->GetType();
 	TypeTag bt1 = t1->Tag();
 	TypeTag bt2 = t2->Tag();
+
+	if ( bt1 != TYPE_TABLE )
+		op1 = op1->MakeLvalue();
 
 	if ( BothArithmetic(bt1, bt2) )
 		PromoteType(max_type(bt1, bt2), is_vector(op1) || is_vector(op2));
@@ -2825,11 +2812,6 @@ bool AssignExpr::IsRecordElement(TypeDecl* td) const
 		return true;
 		}
 
-	return false;
-	}
-
-bool AssignExpr::IsPure() const
-	{
 	return false;
 	}
 
@@ -4289,11 +4271,6 @@ ScheduleExpr::ScheduleExpr(ExprPtr arg_when, EventExprPtr arg_event)
 
 	if ( bt != TYPE_TIME && bt != TYPE_INTERVAL )
 		ExprError("schedule expression requires a time or time interval");
-	}
-
-bool ScheduleExpr::IsPure() const
-	{
-	return false;
 	}
 
 ValPtr ScheduleExpr::Eval(Frame* f) const

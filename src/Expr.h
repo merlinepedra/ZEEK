@@ -178,7 +178,7 @@ public:
 	virtual bool IsRecordElement(TypeDecl* td) const;
 
 	// True if the expression has no side effects, false otherwise.
-	virtual bool IsPure() const;
+	virtual bool IsPure() const { return true; }
 
 	// True if the expression is a constant, false otherwise.
 	bool IsConst() const { return tag == EXPR_CONST; }
@@ -454,7 +454,6 @@ public:
 	ValPtr Eval(Frame* f) const override;
 	void Assign(Frame* f, ValPtr v) override;
 	ExprPtr MakeLvalue() override;
-	bool IsPure() const override;
 
 	TraversalCode Traverse(TraversalCallback* cb) const override;
 
@@ -650,7 +649,7 @@ public:
 
 	ValPtr Eval(Frame* f) const override;
 	ValPtr DoSingleEval(Frame* f, Val* v) const;
-	bool IsPure() const override;
+	bool IsPure() const override { return false; }
 
 	// Optimization-related:
 	ExprPtr Duplicate() override;
@@ -753,23 +752,29 @@ public:
 	ValPtr Eval(Frame* f) const override;
 
 	// Optimization-related:
+	bool IsPure() const override { return false; }
 	ExprPtr Duplicate() override;
+	bool HasReducedOps(Reducer* c) const override { return false; }
 	bool WillTransform(Reducer* c) const override { return true; }
 	bool IsReduced(Reducer* c) const override;
 	ExprPtr Reduce(Reducer* c, StmtPtr& red_stmt) override;
+	ExprPtr ReduceToSingleton(Reducer* c, StmtPtr& red_stmt) override;
 	};
 
 class RemoveFromExpr final : public BinaryExpr
 	{
 public:
+	bool IsPure() const override { return false; }
 	RemoveFromExpr(ExprPtr op1, ExprPtr op2);
 	ValPtr Eval(Frame* f) const override;
 
 	// Optimization-related:
 	ExprPtr Duplicate() override;
+	bool HasReducedOps(Reducer* c) const override { return false; }
 	bool WillTransform(Reducer* c) const override { return true; }
 	bool IsReduced(Reducer* c) const override;
 	ExprPtr Reduce(Reducer* c, StmtPtr& red_stmt) override;
+	ExprPtr ReduceToSingleton(Reducer* c, StmtPtr& red_stmt) override;
 	};
 
 class SubExpr final : public BinaryExpr
@@ -948,7 +953,7 @@ public:
 	ValPtr Eval(Frame* f) const override;
 	TypePtr InitType() const override;
 	bool IsRecordElement(TypeDecl* td) const override;
-	bool IsPure() const override;
+	bool IsPure() const override { return false; }
 
 	// Optimization-related:
 	ExprPtr Duplicate() override;
@@ -1253,7 +1258,6 @@ public:
 
 	// Optimization-related:
 	ExprPtr Duplicate() override;
-
 	bool WillTransform(Reducer* c) const override { return true; }
 	ExprPtr Reduce(Reducer* c, StmtPtr& red_stmt) override;
 
@@ -1343,7 +1347,7 @@ class ScheduleExpr final : public Expr
 public:
 	ScheduleExpr(ExprPtr when, EventExprPtr event);
 
-	bool IsPure() const override;
+	bool IsPure() const override { return false; }
 
 	ValPtr Eval(Frame* f) const override;
 
@@ -1610,10 +1614,12 @@ public:
 	AppendToExpr(ExprPtr op1, ExprPtr op2);
 	ValPtr Eval(Frame* f) const override;
 
+	ExprPtr Duplicate() override;
+
+	bool IsPure() const override { return false; }
 	bool IsReduced(Reducer* c) const override;
 	ExprPtr Reduce(Reducer* c, StmtPtr& red_stmt) override;
-
-	ExprPtr Duplicate() override;
+	ExprPtr ReduceToSingleton(Reducer* c, StmtPtr& red_stmt) override;
 	};
 
 // An internal class for reduced form.
@@ -1627,6 +1633,7 @@ public:
 
 	ExprPtr Duplicate() override;
 
+	bool IsPure() const override { return false; }
 	bool IsReduced(Reducer* c) const override;
 	bool HasReducedOps(Reducer* c) const override;
 	ExprPtr Reduce(Reducer* c, StmtPtr& red_stmt) override;
@@ -1658,6 +1665,7 @@ public:
 
 	ExprPtr Duplicate() override;
 
+	bool IsPure() const override { return false; }
 	bool IsReduced(Reducer* c) const override;
 	bool HasReducedOps(Reducer* c) const override;
 	ExprPtr Reduce(Reducer* c, StmtPtr& red_stmt) override;
