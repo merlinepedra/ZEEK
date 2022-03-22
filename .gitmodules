@@ -49,3 +49,6 @@
 [submodule "auxil/zeek-client"]
 	path = auxil/zeek-client
 	url = https://github.com/zeek/zeek-client
+[submodule "auxil/spicy-plugin"]
+	path = auxil/spicy-plugin
+	url = https://github.com/zeek/spicy-plugin
