@@ -379,6 +379,29 @@ target_include_directories(
 )
 add_dependencies(plugin-_Zeek-Spicy generate_outputs)
 
+# # FIXME(bbannier): Guard with flag.
+get_filename_component(dir ${FLEX_EXECUTABLE} DIRECTORY ABSOLUTE)
+set(FLEX_ROOT ${dir}/..)
+
+get_filename_component(dir ${BISON_EXECUTABLE} DIRECTORY ABSOLUTE)
+set(BISON_ROOT ${dir}/..)
+
+# We build and install Spicy as an external project and not as a subdirectory
+# so that Spicy can e.g., still maintain its own compiler warning flags. We use
+# a DESTDIR install so we can explicitly install during the Zeek installation
+# phase.
+include(ExternalProject)
+set(SPICY_DESTDIR ${CMAKE_CURRENT_BINARY_DIR}/spicy-install)
+ExternalProject_Add(spicy
+    SOURCE_DIR ${CMAKE_SOURCE_DIR}/auxil/spicy
+    CMAKE_ARGS -DFLEX_ROOT=${FLEX_ROOT}
+               -DBISON_ROOT=${BISON_ROOT}
+               -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
+               -DCMAKE_CXX_COMPILER_LAUNCHER=${CMAKE_CXX_COMPILER_LAUNCHER}
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E env DESTDIR=${SPICY_DESTDIR} ${CMAKE_COMMAND} --install .
+)
+install(DIRECTORY ${SPICY_DESTDIR}/${CMAKE_INSTALL_PREFIX}/ DESTINATION "." USE_SOURCE_PERMISSIONS)
+
 include_directories(BEFORE
                     ${PCAP_INCLUDE_DIR}
                     ${BIND_INCLUDE_DIR}

@@ -52,3 +52,6 @@
 [submodule "auxil/spicy-plugin"]
 	path = auxil/spicy-plugin
 	url = https://github.com/zeek/spicy-plugin
+[submodule "auxil/spicy"]
+	path = auxil/spicy
+	url = https://github.com/zeek/spicy
