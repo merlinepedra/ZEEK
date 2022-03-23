@@ -5,6 +5,7 @@
 
 @load base/frameworks/broker
 @load policy/frameworks/management
+@load policy/frameworks/management/node/api
 
 @load ./api
 @load ./config
@@ -19,10 +20,17 @@ export {
 	type SupervisorState: record {
 		node: string; ##< Name of the node the Supervisor is acting on.
 	};
+
+	## Request state for ID value requests, for tracking responses.
+	type GetIdValueState: record {
+		## Request state for every data node managed by this agent.
+		requests: set[string] &default=set();
+	};
 }
 
 redef record Management::Request::Request += {
 	supervisor_state: SupervisorState &optional;
+	get_id_value_state: GetIdValueState &optional;
 };
 
 # Tag our logs correctly
@@ -278,6 +286,65 @@ event Management::Agent::API::get_nodes_request(reqid: string)
 	Management::Log::info(fmt("issued supervisor status, %s", req$id));
 	}
 
+event Management::Node::API::get_id_value_response(reqid: string, result: Management::Result)
+	{
+	Management::Log::info(fmt("rx Management::Node::API::get_id_value_response %s", reqid));
+
+	# Retrieve state for the request we just got a response to
+	local nreq = Management::Request::lookup(reqid);
+	if ( Management::Request::is_null(nreq) )
+		return;
+
+	# Find the original request from the client
+	local req = Management::Request::lookup(nreq$parent_id);
+	if ( Management::Request::is_null(req) )
+		return;
+
+	# Mark the responding node as done
+	if ( nreq$id in req$get_id_value_state$requests )
+		delete req$get_id_value_state$requests[nreq$id];
+
+	# Add this result to the overall response
+	req$results[|req$results|] = result;
+
+	# If we still have pending queries out to the agents, do nothing: we'll
+	# handle this soon, or our request will time out and we respond with
+	# error.
+	if ( |req$get_id_value_state$requests| > 0 )
+		return;
+
+	# Release the agent-nodes request state, since we now have all responses.
+	Management::Request::finish(nreq$id);
+
+	# Send response event back to controller and clean up main request state.
+	Management::Log::info(fmt("tx Management::Agent::API::get_id_value_response %s",
+	    Management::Request::to_string(req)));
+	event Management::Agent::API::get_id_value_response(req$id, req$results);
+	Management::Request::finish(req$id);
+	}
+
+event Management::Agent::API::get_id_value_request(reqid: string, id: string)
+	{
+	Management::Log::info(fmt("rx Management::Agent::API::get_id_value_request %s %s", reqid, id));
+
+	local res: Management::Result;
+	local req = Management::Request::create(reqid);
+
+	req$get_id_value_state = GetIdValueState();
+
+	for ( datanode in g_data_cluster )
+		add req$get_id_value_state$requests[datanode];
+
+	# We use a single request record to track all data node responses. We
+	# know when all nodes have responded via the requests set we just built
+	# up above.
+	local nreq = Management::Request::create();
+	nreq$parent_id = reqid;
+
+	Management::Log::info(fmt("tx Management::Node::API::get_id_value_request %s %s", nreq$id, id));
+	event Management::Node::API::get_id_value_request(nreq$id, id);
+	}
+
 event Management::Agent::API::agent_welcome_request(reqid: string)
 	{
 	Management::Log::info(fmt("rx Management::Agent::API::agent_welcome_request %s", reqid));
@@ -349,21 +416,31 @@ event zeek_init()
 
 	# Auto-publish a bunch of events. Glob patterns or module-level
 	# auto-publish would be helpful here.
-	Broker::auto_publish(agent_topic, Management::Agent::API::get_nodes_response);
-	Broker::auto_publish(agent_topic, Management::Agent::API::set_configuration_response);
-	Broker::auto_publish(agent_topic, Management::Agent::API::agent_welcome_response);
-	Broker::auto_publish(agent_topic, Management::Agent::API::agent_standby_response);
+	local agent_to_controller_events: vector of any = [
+	    Management::Agent::API::get_nodes_response,
+	    Management::Agent::API::set_configuration_response,
+	    Management::Agent::API::agent_welcome_response,
+	    Management::Agent::API::agent_standby_response,
+	    Management::Agent::API::get_id_value_response,
+	    Management::Agent::API::notify_agent_hello,
+	    Management::Agent::API::notify_change,
+	    Management::Agent::API::notify_error,
+	    Management::Agent::API::notify_log
+	    ];
 
-	Broker::auto_publish(agent_topic, Management::Agent::API::notify_agent_hello);
-	Broker::auto_publish(agent_topic, Management::Agent::API::notify_change);
-	Broker::auto_publish(agent_topic, Management::Agent::API::notify_error);
-	Broker::auto_publish(agent_topic, Management::Agent::API::notify_log);
+	for ( i in agent_to_controller_events )
+		Broker::auto_publish(agent_topic, agent_to_controller_events[i]);
 
-	Broker::auto_publish(SupervisorControl::topic_prefix, SupervisorControl::create_request);
-	Broker::auto_publish(SupervisorControl::topic_prefix, SupervisorControl::status_request);
-	Broker::auto_publish(SupervisorControl::topic_prefix, SupervisorControl::destroy_request);
-	Broker::auto_publish(SupervisorControl::topic_prefix, SupervisorControl::restart_request);
-	Broker::auto_publish(SupervisorControl::topic_prefix, SupervisorControl::stop_request);
+	local agent_to_sup_events: vector of any = [
+	    SupervisorControl::create_request,
+	    SupervisorControl::status_request,
+	    SupervisorControl::destroy_request,
+	    SupervisorControl::restart_request,
+	    SupervisorControl::stop_request
+	    ];
+
+	for ( i in agent_to_sup_events )
+		Broker::auto_publish(SupervisorControl::topic_prefix, agent_to_sup_events[i]);
 
 	# Establish connectivity with the controller.
 	if ( Management::Agent::controller$address != "0.0.0.0" )

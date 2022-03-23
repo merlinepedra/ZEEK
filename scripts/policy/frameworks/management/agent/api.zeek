@@ -63,6 +63,11 @@ export {
 	global get_nodes_response: event(reqid: string,
 	    result: Management::Result);
 
+
+	global get_id_value_request: event(reqid: string, id: string);
+	global get_id_value_response: event(reqid: string, result: Management::ResultVec);
+
+
 	## The controller sends this event to confirm to the agent that it is
 	## part of the current cluster topology. The agent acknowledges with the
 	## corresponding response event.

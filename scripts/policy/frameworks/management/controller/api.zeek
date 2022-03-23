@@ -80,6 +80,10 @@ export {
 	    result: Management::ResultVec);
 
 
+	global get_id_value_request: event(reqid: string, id: string);
+	global get_id_value_response: event(reqid: string, result: Management::ResultVec);
+
+
 	# Testing events. These don't provide operational value but expose
 	# internal functionality, triggered by test cases.
 

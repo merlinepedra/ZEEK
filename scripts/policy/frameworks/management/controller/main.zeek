@@ -36,6 +36,14 @@ export {
 		requests: set[string] &default=set();
 	};
 
+	## Request state for ID value requests, for tracking responses. See
+	## :zeek:see:`Management::Controller::API::get_id_value_request` and
+	## :zeek:see:`Management::Controller::API::get_id_value_response`.
+	type GetIdValueState: record {
+		## Request state for every controller/agent transaction.
+		requests: set[string] &default=set();
+	};
+
 	## Dummy state for internal state-keeping test cases.
 	type TestState: record { };
 }
@@ -43,6 +51,7 @@ export {
 redef record Management::Request::Request += {
 	set_configuration_state: SetConfigurationState &optional;
 	get_nodes_state: GetNodesState &optional;
+	get_id_value_state: GetIdValueState &optional;
 	test_state: TestState &optional;
 };
 
@@ -485,7 +494,7 @@ event Management::Agent::API::get_nodes_response(reqid: string, result: Manageme
 	if ( Management::Request::is_null(areq) )
 		return;
 
-	# Release the request, which is now done.
+	# Release the request, since this agent is now done.
 	Management::Request::finish(areq$id);
 
 	# Find the original request from the client
@@ -554,22 +563,89 @@ event Management::Controller::API::get_nodes_request(reqid: string)
 		}
 	}
 
+event Management::Agent::API::get_id_value_response(reqid: string, results: Management::ResultVec)
+	{
+	Management::Log::info(fmt("rx Management::Agent::API::get_id_value_response %s", reqid));
+
+	# Retrieve state for the request we just got a response to
+	local areq = Management::Request::lookup(reqid);
+	if ( Management::Request::is_null(areq) )
+		return;
+
+	# Release the request, since this agent is now done.
+	Management::Request::finish(areq$id);
+
+	# Find the original request from the client
+	local req = Management::Request::lookup(areq$parent_id);
+	if ( Management::Request::is_null(req) )
+		return;
+
+	# Add this agent's results to the overall response
+	for ( i in areq$results )
+		req$results[|req$results|] = areq$results[i];
+
+	# Mark this request as done
+	if ( areq$id in req$get_id_value_state$requests )
+		delete req$get_id_value_state$requests[areq$id];
+
+	# If we still have pending queries out to the agents, do nothing: we'll
+	# handle this soon, or our request will time out and we respond with
+	# error.
+	if ( |req$get_nodes_state$requests| > 0 )
+		return;
+
+	Management::Log::info(fmt("tx Management::Controller::API::get_id_value_response %s",
+	                          Management::Request::to_string(req)));
+	event Management::Controller::API::get_id_value_response(req$id, req$results);
+	Management::Request::finish(req$id);
+	}
+
+event Management::Controller::API::get_id_value_request(reqid: string, id: string)
+	{
+	Management::Log::info(fmt("rx Management::Controller::API::get_id_value_request %s %s", reqid, id));
+
+	# Special case: if we have no instances, respond right away.
+	if ( |g_instances| == 0 )
+		{
+		Management::Log::info(fmt("tx Management::Controller::API::get_id_value_response %s", reqid));
+		event Management::Controller::API::get_id_value_response(reqid, vector(
+		    Management::Result($reqid=reqid, $success=F, $error="no instances connected")));
+		return;
+		}
+
+	local req = Management::Request::create(reqid);
+	req$get_id_value_state = GetIdValueState();
+
+	for ( name in g_instances )
+		{
+		if ( name !in g_instances_ready )
+			next;
+
+		local agent_topic = Management::Agent::topic_prefix + "/" + name;
+		local areq = Management::Request::create();
+
+		areq$parent_id = req$id;
+		add req$get_id_value_state$requests[areq$id];
+
+		Management::Log::info(fmt("tx Management::Agent::API::get_nodes_request %s to %s", areq$id, name));
+		Broker::publish(agent_topic, Management::Agent::API::get_nodes_request, areq$id);
+		}
+	}
+
 event Management::Request::request_expired(req: Management::Request::Request)
 	{
 	# Various handlers for timed-out request state. We use the state members
 	# to identify how to respond.  No need to clean up the request itself,
 	# since we're getting here via the request module's expiration
 	# mechanism that handles the cleanup.
-	local res: Management::Result;
+	local res = Management::Result($reqid=req$id,
+	    $success = F,
+	    $error = "request timed out");
 
 	if ( req?$set_configuration_state )
 		{
 		# This timeout means we no longer have a pending request.
 		g_config_reqid_pending = "";
-
-		res = Management::Result($reqid=req$id);
-		res$success = F;
-		res$error = "request timed out";
 		req$results += res;
 
 		Management::Log::info(fmt("tx Management::Controller::API::set_configuration_response %s",
@@ -579,9 +655,6 @@ event Management::Request::request_expired(req: Management::Request::Request)
 
 	if ( req?$get_nodes_state )
 		{
-		res = Management::Result($reqid=req$id);
-		res$success = F;
-		res$error = "request timed out";
 		req$results += res;
 
 		Management::Log::info(fmt("tx Management::Controller::API::get_nodes_response %s",
@@ -589,12 +662,17 @@ event Management::Request::request_expired(req: Management::Request::Request)
 		event Management::Controller::API::get_nodes_response(req$id, req$results);
 		}
 
+	if ( req?$get_id_value_state )
+		{
+		req$results += res;
+
+		Management::Log::info(fmt("tx Management::Controller::API::get_id_value_response %s",
+		                          Management::Request::to_string(req)));
+		event Management::Controller::API::get_id_value_response(req$id, req$results);
+		}
+
 	if ( req?$test_state )
 		{
-		res = Management::Result($reqid=req$id);
-		res$success = F;
-		res$error = "request timed out";
-
 		Management::Log::info(fmt("tx Management::Controller::API::test_timeout_response %s", req$id));
 		event Management::Controller::API::test_timeout_response(req$id, res);
 		}
@@ -638,6 +716,7 @@ event zeek_init()
 	    Management::Controller::API::get_instances_response,
 	    Management::Controller::API::set_configuration_response,
 	    Management::Controller::API::get_nodes_response,
+	    Management::Controller::API::get_id_value_response,
 	    Management::Controller::API::test_timeout_response
 	    ];
 
