@@ -365,19 +365,8 @@ else ()
 endif ()
 
 # # FIXME(bbannier): Guard with flag.
-set(ZEEK_PLUGIN_INTERNAL_BUILD "ON")
-add_subdirectory(auxil/spicy-plugin)
-target_include_directories(
-    plugin-_Zeek-Spicy
-    PRIVATE
-    ${CMAKE_BINARY_DIR}
-    ${CMAKE_BINARY_DIR}/src/include
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_BINARY_DIR}/src
-    ${CMAKE_SOURCE_DIR}/auxil/broker/include
-    ${CMAKE_CURRENT_BINARY_DIR}/auxil/spicy-plugin
-)
-add_dependencies(plugin-_Zeek-Spicy generate_outputs)
+# Build spicy-plugin into Zeek.
+string(APPEND ZEEK_INCLUDE_PLUGINS ";${CMAKE_SOURCE_DIR}/auxil/spicy-plugin")
 
 # # FIXME(bbannier): Guard with flag.
 # Spicy needs the full prefix flex and bison while Zeek captures only the paths
