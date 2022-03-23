@@ -391,9 +391,13 @@ set(BISON_ROOT ${dir}/..)
 # a DESTDIR install so we can explicitly install during the Zeek installation
 # phase.
 include(ExternalProject)
-set(SPICY_DESTDIR ${CMAKE_CURRENT_BINARY_DIR}/spicy-install)
+set(SPICY_PREFIXDIR ${CMAKE_CURRENT_BINARY_DIR}/spicy)
+set(SPICY_DESTDIR ${SPICY_PREFIXDIR}/spicy-install)
+set(SPICY_BINARY_DIR ${SPICY_PREFIXDIR}/spicy-build)
 ExternalProject_Add(spicy
     SOURCE_DIR ${CMAKE_SOURCE_DIR}/auxil/spicy
+    PREFIX ${SPICY_PREFIXDIR}
+    BINARY_DIR ${SPICY_BINARY_DIR}
     CMAKE_ARGS -DFLEX_ROOT=${FLEX_ROOT}
                -DBISON_ROOT=${BISON_ROOT}
                -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
