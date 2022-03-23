@@ -364,23 +364,26 @@ else ()
   set(broker_includes ${CMAKE_CURRENT_SOURCE_DIR}/auxil/broker/include ${CMAKE_CURRENT_BINARY_DIR}/auxil/broker/include)
 endif ()
 
-# # FIXME(bbannier): Guard with flag.
-# Build spicy-plugin into Zeek.
-set(SPICY_CONFIG "<built later>")
-set(HAVE_SPICY "YES")
-set(SPICY_HAVE_TOOLCHAIN "YES")
-set(SPICY_INCLUDE_DIRS_RUNTIME
-    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/hilti/runtime/include
-    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/spicy/runtime/include
-    ${CMAKE_BINARY_DIR}/auxil/spicy/spicy/include)
-set(SPICY_INCLUDE_DIRS_TOOLCHAIN
-    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/hilti/toolchain/include
-    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/spicy/toolchain/include)
-set(SPICY_LIBRARY spicy)
-string(APPEND ZEEK_INCLUDE_PLUGINS ";${CMAKE_SOURCE_DIR}/auxil/spicy-plugin")
+if ( NOT Spicy_ROOT )
+    add_subdirectory(auxil/spicy)
 
-# # FIXME(bbannier): Guard with flag.
-add_subdirectory(auxil/spicy)
+    # Set variables used by the spicy-plugin build since we are building Spicy
+    # as part of Zeek so spicy-plugin cannot use `spicy-config` at configure
+    # time to set these.
+    set(SPICY_CONFIG "<builtin>")
+    set(HAVE_SPICY "YES")
+    set(SPICY_HAVE_TOOLCHAIN "YES")
+    set(SPICY_INCLUDE_DIRS_RUNTIME
+        ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/hilti/runtime/include
+        ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/spicy/runtime/include
+        ${CMAKE_BINARY_DIR}/auxil/spicy/spicy/include)
+    set(SPICY_INCLUDE_DIRS_TOOLCHAIN
+        ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/hilti/toolchain/include
+        ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/spicy/toolchain/include)
+    set(SPICY_LIBRARY spicy)
+endif ()
+
+string(APPEND ZEEK_INCLUDE_PLUGINS ";${CMAKE_SOURCE_DIR}/auxil/spicy-plugin")
 
 include_directories(BEFORE
                     ${PCAP_INCLUDE_DIR}
