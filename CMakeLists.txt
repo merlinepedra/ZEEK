@@ -627,6 +627,14 @@ CheckOptionalBuildSources(auxil/zeek-aux  Zeek-Aux  INSTALL_AUX_TOOLS)
 CheckOptionalBuildSources(auxil/zeek-archiver ZeekArchiver INSTALL_ZEEK_ARCHIVER)
 CheckOptionalBuildSources(auxil/zeek-client ZeekClient INSTALL_ZEEK_CLIENT)
 
+# At this point the `spicyz` target exists. Make sure we build it after spicy
+# is available.
+if ( NOT DISABLE_SPICY )
+    if ( NOT Spicy_ROOT )
+        add_dependencies(spicyz spicy)
+    endif ()
+endif ()
+
 ########################################################################
 ## Packaging Setup
 
