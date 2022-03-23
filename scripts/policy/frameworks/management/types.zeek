@@ -12,6 +12,7 @@ export {
 		NONE,       ##< No active role in cluster management
 		AGENT,      ##< A cluster management agent.
 		CONTROLLER, ##< The cluster's controller.
+		NODE,       ##< A data cluster node (worker, manager, etc).
 	};
 
 	## A Zeek-side option with value.

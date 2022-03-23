@@ -373,11 +373,10 @@ event zeek_init()
 		             Management::Agent::controller$bound_port,
 		             Management::connect_retry);
 		}
-	else
-		{
-		# Controller connects to us; listen for it.
-		Broker::listen(cat(epi$network$address), epi$network$bound_port);
-		}
+
+	# The agent always listens, to allow data cluster nodes to peer with it.
+	# If the controller connects to us, it also uses this port.
+	Broker::listen(cat(epi$network$address), epi$network$bound_port);
 
 	Management::Log::info("agent is live");
 	}
