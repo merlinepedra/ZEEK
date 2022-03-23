@@ -99,6 +99,7 @@ Usage: $0 [OPTION]... [VAR=VALUE]...
     --with-perftools=PATH  path to Google Perftools install root
     --with-python-inc=PATH path to Python headers
     --with-python-lib=PATH path to libpython
+    --with-spicy=PATH      path to Spicy install root
     --with-swig=PATH       path to SWIG executable
 
   Packaging Options (for developers):
@@ -369,6 +370,9 @@ while [ $# -ne 0 ]; do
             ;;
         --with-python-lib=*)
             append_cache_entry PYTHON_LIBRARY PATH $optarg
+            ;;
+        --with-spicy=*)
+            append_cache_entry SPICY_ROOT PATH $optarg
             ;;
         --with-swig=*)
             append_cache_entry SWIG_EXECUTABLE PATH $optarg
