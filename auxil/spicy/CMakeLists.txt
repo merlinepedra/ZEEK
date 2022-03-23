@@ -3,12 +3,12 @@
 # the assumption that their bindir is under their prefix (which also implies
 # that one such prefix even exists).
 
-if ( FLEX_ROOT )
+if ( FLEX_EXECUTABLE )
     get_filename_component(dir ${FLEX_EXECUTABLE} DIRECTORY ABSOLUTE)
     set(FLEX_ROOT ${dir}/..)
 endif ()
 
-if ( BISON_ROOT )
+if ( BISON_EXECUTABLE )
     get_filename_component(dir ${BISON_EXECUTABLE} DIRECTORY ABSOLUTE)
     set(BISON_ROOT ${dir}/..)
 endif ()
