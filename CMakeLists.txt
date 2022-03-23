@@ -366,6 +366,17 @@ endif ()
 
 # # FIXME(bbannier): Guard with flag.
 # Build spicy-plugin into Zeek.
+set(SPICY_CONFIG "<built later>")
+set(HAVE_SPICY "YES")
+set(SPICY_HAVE_TOOLCHAIN "YES")
+set(SPICY_INCLUDE_DIRS_RUNTIME
+    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/hilti/runtime/include
+    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/spicy/runtime/include
+    ${CMAKE_BINARY_DIR}/auxil/spicy/spicy/include)
+set(SPICY_INCLUDE_DIRS_TOOLCHAIN
+    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/hilti/toolchain/include
+    ${CMAKE_SOURCE_DIR}/auxil/spicy/spicy/spicy/toolchain/include)
+set(SPICY_LIBRARY spicy)
 string(APPEND ZEEK_INCLUDE_PLUGINS ";${CMAKE_SOURCE_DIR}/auxil/spicy-plugin")
 
 # # FIXME(bbannier): Guard with flag.
